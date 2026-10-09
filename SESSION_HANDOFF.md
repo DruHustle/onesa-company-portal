@@ -12,3 +12,15 @@ plus worker, using shared durable private S3 storage. See render.yaml and
 The original local company database/storage and private PDFs are preserved. No data
 is automatically migrated. Keep company/legal editorial gates closed until reviewed.
 Provider authentication, stable HTTPS origins, remote CI and live acceptance remain.
+
+## GitHub release verification — 2026-10-09
+
+Source-only main is now published to the private Onesa UG repository. Added manual
+GitHub Actions deployments with exact-commit CI/hygiene gates, pinned Vercel CLI and
+Render live-status/commit verification. Native provider auto-deploys are disabled in
+the deployment standard. Provider projects/secrets and actual target acceptance are
+still required; no cloud deployment or production qualification is claimed.
+
+Isolated browser acceptance resets only its test database rate buckets and uses one
+absolute storage path shared by server and test cleanup. Local browser acceptance:
+5 passed. Application production rate limits and private corporate files are preserved.

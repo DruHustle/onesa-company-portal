@@ -1,0 +1,84 @@
+name: Deploy from GitHub
+on:
+  workflow_dispatch:
+    inputs:
+      application:
+        description: Application to deploy after CI passes
+        required: true
+        default: both
+        type: choice
+        options: [frontend, backend, both]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.ref !== 'refs/heads/main') throw new Error('Deployments require main');
+            const {owner, repo} = context.repo;
+            const main = await github.rest.git.getRef({owner, repo, ref: 'heads/main'});
+            if (main.data.object.sha !== context.sha) throw new Error('Dispatch the current main commit');
+            for (const workflow_id of ['verify.yml', 'repository-hygiene.yml']) {
+              const runs = await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id, head_sha: context.sha, event: 'push', per_page: 20});
+              const run = runs.data.workflow_runs[0];
+              if (!run || run.status !== 'completed' || run.conclusion !== 'success') {
+                throw new Error(`${workflow_id} must pass on ${context.sha} before deployment`);
+              }
+            }
+  frontend:
+    needs: verify
+    if: inputs.application == 'frontend' || inputs.application == 'both'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: production
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Require Vercel configuration
+        run: test -n "$VERCEL_TOKEN" && test -n "$VERCEL_ORG_ID" && test -n "$VERCEL_PROJECT_ID"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --global vercel@63.1.0
+      - run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - run: vercel build --prod --token="$VERCEL_TOKEN"
+      - run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" > /tmp/vercel-url.txt
+      - name: Record deployed frontend
+        run: cat /tmp/vercel-url.txt >> "$GITHUB_STEP_SUMMARY"
+  backend:
+    needs: verify
+    if: inputs.application == 'backend' || inputs.application == 'both'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: production
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python scripts/deploy_render.py
+  worker:
+    needs: [verify, backend]
+    if: inputs.application == 'backend' || inputs.application == 'both'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: production
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python scripts/deploy_render.py

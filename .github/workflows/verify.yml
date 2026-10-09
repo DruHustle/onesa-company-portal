@@ -21,6 +21,7 @@ jobs:
       PUBLIC_ORIGIN: http://localhost:3300
       BACKEND_URL: http://127.0.0.1:8300
       NODE_ENV: test
+      STORAGE_DIR: ${{ github.workspace }}/.test-storage
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

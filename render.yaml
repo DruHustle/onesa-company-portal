@@ -10,7 +10,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/v1/ready
-    autoDeployTrigger: checksPass
+    autoDeployTrigger: 'off'
     envVars:
       - key: NODE_ENV
         value: production
@@ -44,7 +44,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     dockerCommand: node dist/src/jobs/worker.js
-    autoDeployTrigger: checksPass
+    autoDeployTrigger: 'off'
     envVars:
       - key: NODE_ENV
         value: production

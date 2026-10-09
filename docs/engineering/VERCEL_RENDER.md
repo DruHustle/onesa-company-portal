@@ -3,7 +3,7 @@
 The repository contains provider configuration, not a completed remote deployment.
 Use the private `onesa-ug/onesa-company-portal` GitHub repository and `main`. The frontend and
 backend remain separate release units. Grant the providers access only to the required
-organization repositories. Authenticate through provider connections or operator login.
+organization repositories. Deploy through `.github/workflows/deploy.yml`, dispatched from GitHub Actions.
 
 ## Vercel
 
@@ -24,7 +24,7 @@ AI route duration is 150 seconds for bounded streamed generation; verify plan li
 ## Render
 
 `render.yaml` configures Docker services with app-only build contexts, private
-PostgreSQL, Frankfurt region, readiness checks and deploys after CI passes. Templates
+PostgreSQL, Frankfurt region, readiness checks and disabled native auto-deploys. Templates
 use paid always-on resources: review actual pricing/capacity before applying. No
 resources or charges are created by storing this file. Databases disable public IP
 access by default; allow only an approved temporary operator address if external
@@ -67,3 +67,37 @@ Sources: [Vercel monorepos](https://vercel.com/docs/monorepos),
 [Render Blueprint fields](https://render.com/docs/blueprint-spec),
 [monorepo roots](https://render.com/docs/monorepo-support),
 [pgvector](https://render.com/docs/postgresql-extensions).
+
+## GitHub deployment setup
+
+One-time provider setup is required: import this private GitHub repository into Vercel,
+configure the frontend root above and its production environment, and create the
+Render Blueprint services, private database and backend secrets described above.
+Disable Vercel Git auto-deploys and retain Render `autoDeployTrigger: off` so GitHub
+Actions owns releases. Initial provider provisioning may create an initial deploy;
+keep it access-protected until target checks pass.
+
+Store the following secrets using GitHub's repository or `production` environment
+settings. These commands prompt privately; never put credential values in command
+history or chat. Vercel IDs must belong to the configured project/team. Render API
+access must belong to the service owner's workspace.
+
+```sh
+gh secret set VERCEL_TOKEN --repo onesa-ug/onesa-company-portal
+gh secret set VERCEL_ORG_ID --repo onesa-ug/onesa-company-portal
+gh secret set VERCEL_PROJECT_ID --repo onesa-ug/onesa-company-portal
+gh secret set RENDER_API_KEY --repo onesa-ug/onesa-company-portal
+gh secret set RENDER_BACKEND_SERVICE_ID --repo onesa-ug/onesa-company-portal
+gh secret set RENDER_WORKER_SERVICE_ID --repo onesa-ug/onesa-company-portal
+gh workflow run deploy.yml --repo onesa-ug/onesa-company-portal --ref main -f application=both
+gh run list --repo onesa-ug/onesa-company-portal --workflow deploy.yml
+gh run watch RUN_ID --repo onesa-ug/onesa-company-portal --exit-status
+```
+
+The workflow refuses a branch other than main or a commit without successful push CI
+and publication-hygiene checks. Frontend and backend jobs remain independently selectable.
+Vercel builds the checked-out commit with production provider settings; Render receives
+that exact SHA and is polled until live, with commit verification. Render deploy failure
+or timeout fails the workflow. Check service logs and health before retrying; roll back
+using provider controls to a previously qualified release if needed. No provider tokens,
+database URLs or application secrets belong in the repository.
