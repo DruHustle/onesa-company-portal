@@ -77,8 +77,9 @@ Disable Vercel Git auto-deploys and retain Render `autoDeployTrigger: off` so Gi
 Actions owns releases. Initial provider provisioning may create an initial deploy;
 keep it access-protected until target checks pass.
 
-Store the following secrets using GitHub's repository or `production` environment
-settings. These commands prompt privately; never put credential values in command
+Store the following secrets in each repository's Actions secrets. The organization
+currently uses GitHub Free; private repositories cannot consume organization secrets
+or deployment environment secrets on that plan. These commands prompt privately; never put credential values in command
 history or chat. Vercel IDs must belong to the configured project/team. Render API
 access must belong to the service owner's workspace.
 

@@ -37,7 +37,6 @@ jobs:
     if: inputs.application == 'frontend' || inputs.application == 'both'
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    environment: production
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -59,7 +58,6 @@ jobs:
     if: inputs.application == 'backend' || inputs.application == 'both'
     runs-on: ubuntu-latest
     timeout-minutes: 35
-    environment: production
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
@@ -73,7 +71,6 @@ jobs:
     if: inputs.application == 'backend' || inputs.application == 'both'
     runs-on: ubuntu-latest
     timeout-minutes: 35
-    environment: production
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}

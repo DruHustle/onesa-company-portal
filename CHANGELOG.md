@@ -22,3 +22,6 @@ still required; no cloud deployment or production qualification is claimed.
 Isolated browser acceptance resets only its test database rate buckets and uses one
 absolute storage path shared by server and test cleanup. Local browser acceptance:
 5 passed. Application production rate limits and private corporate files are preserved.
+
+GitHub plan compatibility: deployment workflows consume repository-level Actions
+secrets without paid deployment-environment features.
