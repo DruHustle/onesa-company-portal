@@ -1,0 +1,9 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+process.env.DATABASE_URL='postgresql://unit:unit@127.0.0.1:1/unit';process.env.SESSION_KEY='unit-test-encryption-key-not-for-production-123';process.env.NODE_ENV='test';
+const crypto=await import('../src/auth/crypto.js');
+const {generatePDF}=await import('../src/documents/pdf.js');
+const {pdfSafe}=await import('../src/services/storage.js');
+test('Password hashes are salted and verify only matching passwords',()=>{const a=crypto.passwordHash('long-test-password-123');const b=crypto.passwordHash('long-test-password-123');assert.notEqual(a,b);assert.ok(crypto.passwordValid('long-test-password-123',a));assert.ok(!crypto.passwordValid('wrong',a));});
+test('AES-GCM MFA encryption detects tampering',()=>{const secret='JBSWY3DPEHPK3PXP';const encrypted=crypto.encrypt(secret);assert.ok(!encrypted.includes(secret));assert.equal(crypto.decrypt(encrypted),secret);const bytes=Buffer.from(encrypted,'base64');bytes[30]^=1;assert.throws(()=>crypto.decrypt(bytes.toString('base64')));});
+test('TOTP RFC6238 SHA1 vector and replay protection',()=>{const secret=crypto.base32(Buffer.from('12345678901234567890'));assert.equal(crypto.totp(secret,1),'287082');const now=Math.floor(Date.now()/30000);assert.equal(crypto.validStep(secret,crypto.totp(secret,now),now-1),now);assert.equal(crypto.validStep(secret,crypto.totp(secret,now),now),null);});
+test('PDF generation returns a readable multi-page A4 file',async()=>{const bytes=await generatePDF('Company profile','Onesa UG\n\nDraft — verification required.');assert.ok(bytes.length>2000);assert.ok(pdfSafe(bytes));assert.ok(bytes.includes(Buffer.from('/MediaBox [0 0 595.28 841.89]')));assert.ok(bytes.includes(Buffer.from('/Type /Page')));assert.ok(bytes.includes(Buffer.from('/Count 2')));});

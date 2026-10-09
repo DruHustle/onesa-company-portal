@@ -1,0 +1,121 @@
+name: onesa-company-portal-production
+x-backend: &backend
+  image: ${BACKEND_IMAGE:-onesa-portal-backend:local}
+  build: ./onesa-company-portal-backend
+  env_file: ${PORTAL_ENV_FILE:-.env.production}
+  environment:
+    NODE_ENV: production
+    PORT: 8300
+    DATABASE_URL: ${PORTAL_APP_DATABASE_URL:?Set the restricted application database URL}
+    STORAGE_DIR: /app/storage
+  volumes:
+    - portal_documents:/app/storage
+  networks: [private]
+  init: true
+  restart: unless-stopped
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  mem_limit: 512m
+  cpus: 1
+services:
+  database:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: onesa_portal
+      POSTGRES_USER: onesa_portal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set PostgreSQL password}
+    volumes:
+      - portal_database:/var/lib/postgresql/data
+    networks: [private]
+    restart: unless-stopped
+    mem_limit: 1g
+    healthcheck:
+      test: ['CMD-SHELL','pg_isready -U onesa_portal -d onesa_portal']
+      interval: 5s
+      timeout: 3s
+      retries: 15
+  migrate:
+    <<: *backend
+    environment:
+      NODE_ENV: production
+      PORT: 8300
+      DATABASE_URL: ${PORTAL_OWNER_DATABASE_URL:?Set the private migration-owner database URL}
+      PORTAL_APP_DB_PASSWORD: ${PORTAL_APP_DB_PASSWORD:?Set a generated application role password}
+    command: ['sh','-c','node dist/src/services/migrate.js && node dist/src/services/provision.js && node dist/src/services/seed.js']
+    restart: 'no'
+    read_only: true
+    depends_on:
+      database:
+        condition: service_healthy
+  backend:
+    <<: *backend
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD','node','-e',"fetch('http://127.0.0.1:8300/api/v1/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+  worker:
+    <<: *backend
+    command: ['node','dist/src/jobs/worker.js']
+    healthcheck:
+      disable: true
+    depends_on:
+      backend:
+        condition: service_healthy
+  frontend:
+    image: ${FRONTEND_IMAGE:-onesa-portal-frontend:local}
+    build: ./onesa-company-portal-frontend
+    env_file: ${PORTAL_ENV_FILE:-.env.production}
+    environment:
+      NODE_ENV: production
+      PORT: 3300
+      HOSTNAME: 0.0.0.0
+      BACKEND_URL: http://backend:8300
+    networks: [private]
+    depends_on:
+      backend:
+        condition: service_healthy
+    init: true
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp,/app/.next/cache]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    cpus: 1
+  proxy:
+    image: caddy:2-alpine
+    environment:
+      PORTAL_DOMAIN: ${PORTAL_DOMAIN:?Set approved portal hostname}
+    ports: ['80:80','443:443','443:443/udp']
+    volumes:
+      - ./infra/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - portal_tls:/data
+      - caddy_config:/config
+    networks: [private,edge]
+    depends_on:
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 256m
+  clamav:
+    image: clamav/clamav:stable
+    profiles: [scanner]
+    volumes: [clamav_signatures:/var/lib/clamav]
+    networks: [private]
+    restart: unless-stopped
+    mem_limit: 2g
+networks:
+  private:
+  edge:
+volumes:
+  portal_database:
+  portal_documents:
+  portal_tls:
+  caddy_config:
+  clamav_signatures:

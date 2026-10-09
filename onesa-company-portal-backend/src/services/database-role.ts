@@ -1,0 +1,27 @@
+import type { Pool, PoolClient } from 'pg';
+
+type Connection = Pick<Pool | PoolClient, 'query'>;
+
+export async function provisionApplicationRole(owner:Connection, password:string, role='onesa_portal_app') {
+ if(!/^[a-z][a-z0-9_]{0,62}$/.test(role)||password.length<32)throw new Error('Use a valid role and a generated password of at least 32 characters');
+ const existing=await owner.query('SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=$1',[role]);
+ if(existing.rows[0]&&Object.values(existing.rows[0]).some(Boolean))throw new Error('Existing application role has elevated privileges; operator review required');
+ if(!existing.rowCount){
+  const statement=(await owner.query("SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD %L', $1::text, $2::text)",[role,password])).rows[0].format;
+  await owner.query(statement);
+ }
+ const quoted='"'+role+'"';
+ await owner.query('REVOKE CREATE ON SCHEMA public FROM PUBLIC');
+ await owner.query(`GRANT USAGE ON SCHEMA public TO ${quoted}`);
+ const tables=await owner.query("SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename<>'schema_migrations'");
+ for(const {tablename} of tables.rows){
+  const table='"'+String(tablename).replaceAll('"','""')+'"';
+  await owner.query(`GRANT SELECT,INSERT,UPDATE,DELETE ON TABLE public.${table} TO ${quoted}`);
+ }
+ await owner.query(`GRANT SELECT ON TABLE public.schema_migrations TO ${quoted}`);
+}
+
+export async function applicationRoleSafe(connection:Connection) {
+ const result=await connection.query("SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls OR has_schema_privilege(current_user,'public','CREATE') AS unsafe FROM pg_roles WHERE rolname=current_user");
+ return result.rowCount===1&&result.rows[0].unsafe===false;
+}

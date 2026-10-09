@@ -1,0 +1,7 @@
+services:
+  proxy:
+    ports: !override ['127.0.0.1:3340:80']
+    volumes: !override
+      - ./infra/proxy/Caddyfile.staging:/etc/caddy/Caddyfile:ro
+    environment:
+      PORTAL_DOMAIN: localhost

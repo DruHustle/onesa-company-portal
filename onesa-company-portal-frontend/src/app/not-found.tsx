@@ -1,0 +1,1 @@
+export default function NotFound(){return <html lang="en"><body><main className="section"><p className="eyebrow">404</p><h1>Page not found</h1><p>This page may be unavailable or awaiting publication.</p><a className="button" href="/en">Return to Onesa</a></main></body></html>;}

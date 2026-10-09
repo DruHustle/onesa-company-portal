@@ -1,0 +1,78 @@
+# S3 storage is required so API and background worker share durable private files.
+services:
+  - type: web
+    name: onesa-company-portal-backend
+    runtime: docker
+    region: frankfurt
+    plan: 1c-2g
+    branch: main
+    rootDir: onesa-company-portal-backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/ready
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: PUBLIC_ORIGIN
+        sync: false
+      - key: SESSION_KEY
+        generateValue: true
+      - key: PROXY_SHARED_KEY
+        generateValue: true
+      - key: PUBLISH_ENABLED
+        value: 'false'
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        value: eu-central-1
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+    buildFilter:
+      paths: [onesa-company-portal-backend/**, render.yaml]
+  - type: worker
+    name: onesa-company-portal-worker
+    runtime: docker
+    region: frankfurt
+    plan: 0.5c-512mb
+    branch: main
+    rootDir: onesa-company-portal-backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: node dist/src/jobs/worker.js
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: DATABASE_URL}
+      - key: PUBLIC_ORIGIN
+        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: PUBLIC_ORIGIN}
+      - key: SESSION_KEY
+        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: SESSION_KEY}
+      - key: PROXY_SHARED_KEY
+        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: PROXY_SHARED_KEY}
+      - key: PUBLISH_ENABLED
+        value: 'false'
+      - key: S3_BUCKET
+        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: S3_BUCKET}
+      - key: S3_REGION
+        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: S3_REGION}
+      - key: AWS_ACCESS_KEY_ID
+        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: AWS_ACCESS_KEY_ID}
+      - key: AWS_SECRET_ACCESS_KEY
+        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: AWS_SECRET_ACCESS_KEY}
+    buildFilter:
+      paths: [onesa-company-portal-backend/**, render.yaml]
+databases:
+  - name: onesa-company-portal-db
+    region: frankfurt
+    plan: 0.5c-1g
+    databaseName: onesa_portal
+    user: onesa_portal_owner
+    postgresMajorVersion: '17'
+    ipAllowList: []

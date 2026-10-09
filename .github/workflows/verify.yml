@@ -1,0 +1,57 @@
+name: Portal verification
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: onesa_portal_test
+          POSTGRES_USER: portal_test
+          POSTGRES_PASSWORD: ci-only-test-password
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U portal_test" --health-interval 5s --health-timeout 3s --health-retries 15
+    env:
+      DATABASE_URL: postgresql://portal_test:ci-only-test-password@127.0.0.1:5432/onesa_portal_test
+      TEST_DATABASE_URL: postgresql://portal_test:ci-only-test-password@127.0.0.1:5432/onesa_portal_test
+      SESSION_KEY: ci-placeholder-test-key-do-not-use-in-production-123456
+      PUBLIC_ORIGIN: http://localhost:3300
+      BACKEND_URL: http://127.0.0.1:8300
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+        working-directory: onesa-company-portal-backend
+      - run: npm ci
+        working-directory: onesa-company-portal-frontend
+      - run: python3 scripts/check-contracts.py && python3 scripts/test-contract-break.py
+      - run: npm run lint && npm run build && npm test && npm audit --audit-level=high
+        working-directory: onesa-company-portal-backend
+      - run: npm run lint && npm run typecheck && npm run build && npm audit --audit-level=high
+        working-directory: onesa-company-portal-frontend
+      - run: npm run documents
+        working-directory: onesa-company-portal-backend
+      - run: npm run seed
+        working-directory: onesa-company-portal-backend
+      - run: npx playwright install --with-deps chromium
+        working-directory: onesa-company-portal-frontend
+      - run: |
+          node onesa-company-portal-backend/dist/src/server.js > /tmp/portal-backend.log 2>&1 &
+          (cd onesa-company-portal-frontend && npm start) > /tmp/portal-frontend.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://localhost:3300/en > /dev/null && break || sleep 1; done
+          npm --prefix onesa-company-portal-frontend run test:e2e
+      - run: python3 scripts/validate-docs.py && python3 scripts/scan-secrets.py
+      - run: docker build -t portal-backend-ci ./onesa-company-portal-backend && docker build -t portal-frontend-ci ./onesa-company-portal-frontend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-evidence
+          path: |
+            onesa-company-portal-frontend/test-results
+            onesa-company-portal-backend/openapi/openapi.json

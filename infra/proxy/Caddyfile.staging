@@ -1,0 +1,10 @@
+:80 {
+  request_body {
+    max_size 15MB
+  }
+  header X-Robots-Tag "noindex, nofollow"
+  reverse_proxy frontend:3300
+  log {
+    format json
+  }
+}

@@ -1,0 +1,6 @@
+import { z } from 'zod';
+export const locale=z.enum(['en','de']);
+export const id=z.string().uuid();
+export const contentInput=z.object({kind:z.enum(['page','product','article','job','research','section']),slug:z.string().regex(/^[a-z0-9][a-z0-9-]*$/).max(100),locale,title:z.string().min(2).max(200),summary:z.string().max(1000).default(''),body:z.string().max(50000).default(''),metadata:z.object({category:z.string().max(100).optional(),author:z.string().max(100).optional(),imageId:id.optional(),seoTitle:z.string().max(160).optional(),seoDescription:z.string().max(300).optional()}).default({}),state:z.enum(['draft','published','archived']).default('draft'),publishAt:z.string().datetime().nullable().optional(),revision:z.number().int().positive().optional()});
+export const enquiryInput=z.object({category:z.enum(['general','enterprise','partnership','research','media']),name:z.string().min(2).max(150),email:z.email().max(254),organization:z.string().max(200).default(''),message:z.string().min(10).max(10000),locale,consent:z.literal(true),website:z.string().max(0).default('')});
+export const workflowInput=z.object({status:z.string().max(30).optional(),notes:z.string().max(20000).optional(),ownerId:id.nullable().optional(),followUpAt:z.string().datetime().nullable().optional()});
