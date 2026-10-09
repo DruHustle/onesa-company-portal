@@ -27,8 +27,8 @@ with reviewers and prevent self-approval. Availability depends on the GitHub pla
 
 Required checks: `publication-hygiene`, plus the application checks listed in
 `docs/engineering/BUILD_AND_TEST.md`. Do not promote an artifact built from a different
-revision or use secrets in untrusted fork pull requests. Existing release workflows
-package candidates; deployment requires separate explicit approval.
+revision or use secrets in untrusted fork pull requests. Image release workflows package candidates. Cloud deployments use the independently
+selectable GitHub workflow documented in `docs/engineering/VERCEL_RENDER.md`.
 
 Sources: [GitHub rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets),
 [secret scanning availability](https://docs.github.com/en/code-security/how-tos/secure-your-secrets/detect-secret-leaks/enable-secret-scanning),
@@ -54,7 +54,7 @@ is used during empty repository creation.
 
 ## Publication checklist (not authorization)
 
-Resolve the workspace readiness report first. Review all existing staged work, run
+Review all existing staged work, run
 build/test and full-history hygiene checks, classify source and documents, rotate
 any exposed credentials, and obtain ownership approval. `.gitignore` does not remove
 tracked content or historical blobs. Never blindly run `git add .` during cleanup.
