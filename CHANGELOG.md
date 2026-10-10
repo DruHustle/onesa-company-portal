@@ -172,3 +172,11 @@ Vercel Hobby commercial restrictions, expiring Render free database, missing fre
 workers, EU model/privacy/capacity and restored backup limits remain material.
 Free inference candidates are unconfigured, not a deployed real-model endpoint.
 Production remains NO-GO; preserve independent products and all original data.
+
+### 2026-10-11 — Production readiness checks
+
+Readiness now verifies migration checksums, application CRUD and sequence grants,
+and the existing restricted-role boundary. Container probes honor the assigned
+PORT. CI exercises the actual production command, unavailable databases, safe and
+unsafe roles, authentication boundaries and graceful shutdown on an isolated DB.
+The historical hosted role fault has not been reclassified from a timeout alone.

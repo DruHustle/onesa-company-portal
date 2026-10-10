@@ -48,3 +48,12 @@ application data. Browser tests need an isolated seeded stack and installed Chro
 Existing `verify.yml` runs lint/build/contracts/database/browser/docs/container checks
 under the `verify` job. Require `verify` and `publication-hygiene`. Local preparation
 only runs non-database unit tests; full CI is a separate gate and has not run remotely.
+
+## Container readiness regression
+
+After backend tests create the restricted fixture role on an isolated
+`TEST_DATABASE_URL` ending `_test`, build `portal-backend-ci` and run
+`python3 scripts/startup_smoke.py portal-backend-ci`. This executes the actual
+production CMD at PORT 10000, checks liveness, unsafe-role/unavailable-DB 503,
+restricted-role 200, anonymous protected-route 401 and SIGTERM shutdown.
+Do not use production records or change a live database role to run this test.
