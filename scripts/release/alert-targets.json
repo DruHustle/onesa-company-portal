@@ -1,0 +1,45 @@
+{
+  "status": "PROPOSED engineering targets; not owner approved or deployed",
+  "frequency_seconds": 30,
+  "alert_recipient": null,
+  "incident_owner": "Owner to assign primary and backup",
+  "rules": [
+    {
+      "id": "database-unavailable",
+      "metric": "onesa_portal_database_available",
+      "mode": "value",
+      "operator": "<",
+      "threshold": 1
+    },
+    {
+      "id": "queue-oldest",
+      "metric": "onesa_portal_queue_age_seconds",
+      "mode": "value",
+      "operator": ">",
+      "threshold": 300
+    },
+    {
+      "id": "worker-stale",
+      "metric": "onesa_portal_worker_last_success_timestamp_seconds",
+      "mode": "age",
+      "operator": ">",
+      "threshold": 120
+    },
+    {
+      "id": "backup-stale",
+      "metric": "onesa_portal_backup_last_success_timestamp_seconds",
+      "mode": "age",
+      "operator": ">",
+      "threshold": 90000
+    }
+  ],
+  "additional_required_checks": [
+    "TLS route exact 200 health/401 anonymous auth; no redirects",
+    "5xx ratio above 1% over 5 min, latency p95 2s core/30s model provisional",
+    "inference readiness, streaming failures/TTFT, DB pool saturation",
+    "logical/physical object capacity, terminal email failures",
+    "encrypted DB/object backup age and successful restore",
+    "callback/provider delivery evidence; accepted is not delivered"
+  ],
+  "delivery_acceptance": "Induce isolated staging failure only after approval; retain firing and clearance receipt at approved destination"
+}

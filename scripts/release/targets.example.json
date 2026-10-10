@@ -1,0 +1,6 @@
+{
+  "allowed_origins": [
+    "http://localhost:3362"
+  ],
+  "note": "Audit fixture origins only. Add an approved staging origin explicitly after owner authorization. No wildcard or default production target."
+}

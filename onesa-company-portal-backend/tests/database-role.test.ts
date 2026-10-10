@@ -22,6 +22,14 @@ test('Production role has CRUD access without database administration or migrati
   await app.query('SELECT count(*) FROM schema_migrations');
   await assert.rejects(app.query('CREATE TABLE forbidden_test_table(id integer)'),{code:'42501'});
   await assert.rejects(app.query("INSERT INTO schema_migrations(name,checksum) VALUES('forbidden','fixture')"),{code:'42501'});
-  await assert.rejects(provisionApplicationRole(db,password,'portal_test'),/elevated privileges/);
+  await app.query('BEGIN');
+  await app.query("INSERT INTO audit(action) VALUES('restricted-role-regression')");
+  await app.query('ROLLBACK');
+  const owner=(await db.query('SELECT current_user AS name')).rows[0].name;
+  await assert.rejects(provisionApplicationRole(db,password,owner),/elevated privileges/);
+  await db.query('GRANT UPDATE ON schema_migrations TO onesa_portal_app_test');
+  assert.equal(await applicationRoleSafe(app),false);
+  await db.query('REVOKE UPDATE ON schema_migrations FROM onesa_portal_app_test');
+  assert.equal(await applicationRoleSafe(app),true);
  } finally {await app.end();await db.end();}
 });

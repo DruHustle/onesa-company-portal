@@ -1,0 +1,6 @@
+{
+  "source": "https://render.com/schema/render.yaml.json",
+  "accessed": "2026-10-09",
+  "sha256": "a0d4e8a3eb119a1b63657741757e3c25c091b3ce463c4be8c90e8026678d8163",
+  "limitations": "Snapshot validates syntax; does not provision services, validate credentials or prove hosted operation."
+}

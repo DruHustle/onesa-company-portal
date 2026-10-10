@@ -1,0 +1,22 @@
+{
+  "origin": "Owner-supplied brand images, 2026-10-10",
+  "images": [
+    {
+      "path": "/social/onesa-banner.png",
+      "source": "Onesa Banner.PNG",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "eee23f075852ea0b8b9c932bf2a586f138db4301a4d0e80d1488473a0669763e",
+      "role": "Company banner"
+    },
+    {
+      "path": "/brand/onesa-orbit.png",
+      "source": "Screenshot 2026-10-10 at 02.23.12.png",
+      "width": 972,
+      "height": 882,
+      "sha256": "4dc5ada01211fe5127ab59f33a9e4b19482658ef9878300fa088de4b27e6d7e6",
+      "role": "Favicon and website/link preview"
+    }
+  ],
+  "processing": "Original bytes preserved; no image generation or alteration"
+}

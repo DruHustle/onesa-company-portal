@@ -18,16 +18,24 @@ services:
         sync: false
       - key: PUBLIC_ORIGIN
         sync: false
+      - key: COMPANY_ORIGIN
+        sync: false
+      - key: NOTIFY_EMAIL
+        sync: false
       - key: SESSION_KEY
-        generateValue: true
+        # Render generates 44 characters, below the application's 48-character minimum.
+        # Supply a persistent key; never replace an existing key that encrypts stored data.
+        sync: false
       - key: PROXY_SHARED_KEY
         generateValue: true
       - key: PUBLISH_ENABLED
         value: 'false'
       - key: S3_BUCKET
         sync: false
+      - key: S3_ENDPOINT
+        sync: false
       - key: S3_REGION
-        value: eu-central-1
+        sync: false
       - key: AWS_ACCESS_KEY_ID
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
@@ -52,6 +60,16 @@ services:
         fromService: {type: web, name: onesa-company-portal-backend, envVarKey: DATABASE_URL}
       - key: PUBLIC_ORIGIN
         fromService: {type: web, name: onesa-company-portal-backend, envVarKey: PUBLIC_ORIGIN}
+      - key: COMPANY_ORIGIN
+        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: COMPANY_ORIGIN}
+      - key: NOTIFY_EMAIL
+        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: NOTIFY_EMAIL}
+      - key: MAIL_PROVIDER
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
       - key: SESSION_KEY
         fromService: {type: web, name: onesa-company-portal-backend, envVarKey: SESSION_KEY}
       - key: PROXY_SHARED_KEY
@@ -60,6 +78,8 @@ services:
         value: 'false'
       - key: S3_BUCKET
         fromService: {type: web, name: onesa-company-portal-backend, envVarKey: S3_BUCKET}
+      - key: S3_ENDPOINT
+        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: S3_ENDPOINT}
       - key: S3_REGION
         fromService: {type: web, name: onesa-company-portal-backend, envVarKey: S3_REGION}
       - key: AWS_ACCESS_KEY_ID

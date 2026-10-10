@@ -10,3 +10,13 @@ export const notify=(subject:string,text:string)=>({to:env.NOTIFY_EMAIL||null,su
 export function normalize<T>(value:unknown):T{return JSON.parse(JSON.stringify(value));}
 export class HttpError extends Error{constructor(public status:number,public code:string,message:string){super(message);}}
 export const required=<T>(value:T|undefined):T=>{if(value===undefined)throw new HttpError(404,'NOT_FOUND','Record not found');return value;};
+
+export async function enqueueStorageDeletion(c:pg.PoolClient,key:string){await c.query("INSERT INTO storage_deletions(storage_key) VALUES($1) ON CONFLICT(storage_key) DO NOTHING",[key]);}
+
+// Provisional engineering ceilings, serialized in SQL across API/worker replicas.
+export async function admitFile(c:pg.PoolClient,size:number,owner?:string){
+ await c.query('SELECT pg_advisory_xact_lock(757839)');
+ const total=Number((await c.query('SELECT coalesce(sum(size),0) AS bytes FROM files')).rows[0].bytes);
+ if(total+size>env.MAX_FILE_STORAGE_BYTES)throw new HttpError(429,'STORAGE_QUOTA','File storage capacity is full');
+ if(owner){const used=Number((await c.query('SELECT coalesce(sum(size),0) AS bytes FROM files WHERE owner_id=$1',[owner])).rows[0].bytes);if(used+size>env.MAX_OWNER_FILE_STORAGE_BYTES)throw new HttpError(429,'STORAGE_QUOTA','Your document storage capacity is full');}
+}

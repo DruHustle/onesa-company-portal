@@ -20,3 +20,7 @@ export const publicContent=content.omit({author_id:true,publish_at:true,revision
 export const publicFile=file.pick({id:true,filename:true,mime:true,size:true,title:true,version:true,created_at:true});
 
 export const factKey=z.object({key:z.string().regex(/^[a-z0-9_-]+$/).max(100)});
+
+export const publicFact=fact.pick({key:true,value:true,status:true,verified_at:true});
+
+export const reauthentication=z.object({password:z.string().min(1).max(256),code:z.string().min(6).max(64)});

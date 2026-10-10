@@ -18,7 +18,7 @@ Set server-only backend origin: `BACKEND_URL` for the portal, `ONESA_API_URL` fo
 using the actual Render HTTPS URL. Cookies/CSRF/Origin pass through the frontend BFF;
 do not use cross-site cookies or expose database/model credentials to JavaScript.
 Portal additionally needs `PUBLIC_ORIGIN`, `SITE_URL` and matching server-only
-`PROXY_SHARED_KEY`. Supply `NEXT_PUBLIC_MAX_UPLOAD_BYTES=3145728` at build time.
+`PROXY_SHARED_KEY`. Supply `NEXT_PUBLIC_MAX_UPLOAD_BYTES=10485760` at build time.
 AI route duration is 150 seconds for bounded streamed generation; verify plan limits.
 
 ## Render
@@ -46,16 +46,19 @@ facts and legal/editorial gates remain unapproved until the owner verifies them.
 AI uses PostgreSQL/pgvector and a restricted database URL with `postgresql+psycopg://`.
 Apply Alembic migrations using owner credentials, enable vector, and grant CRUD while
 keeping `alembic_version` read-only. Set actual `ONESA_PUBLIC_ORIGIN`, secure cookies
-and generated metrics token. The blueprint initially labels inference as `mock`;
+and generated metrics token. Production configuration refuses mock inference;
 local Mac Ollama is not reachable from Render. Supply a qualified authenticated
 remote Ollama/vLLM endpoint and model before claiming a live AI service. No model is
 downloaded or trained by deployment.
 
 ## Provider limits and promotion
 
-Vercel function payloads are limited to 4.5 MB, including request encoding; the
-configured 3 MiB file limit leaves room for base64/multipart overhead. Larger uploads
-or downloads require a separately implemented signed object-storage delivery path.
+Vercel function payloads are limited to4.5MB including encoding. The bounded client
+preserves10MiB Portal files using512KiB upload chunks and<=1MiB reauthorized download
+chunks through the same-origin BFF. AI preserves5MiB source documents similarly.
+Configure the Portal build limit to10485760; do not silently apply the former3MiB
+workaround. Legacy whole-file routes remain but may exceed host limits; migrate large
+consumers to the bounded protocol and retest actual TLS/storage/scanner behavior.
 Streaming, login/MFA, Secure cookie/CSRF, ownership, private files, DB role restrictions,
 worker queues, backups/restore and rollback must pass on the actual target before
 production promotion. Provider deployment does not approve corporate claims/privacy
@@ -102,3 +105,39 @@ that exact SHA and is polled until live, with commit verification. Render deploy
 or timeout fails the workflow. Check service logs and health before retrying; roll back
 using provider controls to a previously qualified release if needed. No provider tokens,
 database URLs or application secrets belong in the repository.
+
+## Final release qualification — 2026-10-09
+
+Prepared configuration is not a hosted deployment. Production promotion additionally
+requires the exact-commit `RELEASE_QUALIFICATION_JSON` Actions secret with all four
+reviewed gates passing and a matching source fingerprint. The local audit decision
+is NO-GO. Do not supply a passing attestation until target, operations and content
+approvals actually exist. See restricted `docs/internal/release-audit/` evidence.
+
+Render AI health checks now use `/core-ready`: DB/core failures are unhealthy, while
+optional inference outage reports degraded without causing restart storms. `/ready`
+still verifies inference. Node runtime images exclude build-only package managers;
+run compiled Node migration/worker entry points, not `npm`, inside runtime containers.
+
+
+## Domain and email setup — 2026-10-10
+
+Owner-selected company `onesa.eu`, administration `portal.onesa.eu`, AI
+`platform.onesa.eu` and future robot `robot.onesa.eu`. Company/portal host routing
+and scoped Origin/BFF checks are prepared, with host-only cookies retained. The
+existing durable email queue now supports Resend HTTPS, stable job idempotency,
+timeout and safe receipt validation; SMTP remains available. Examples and Render
+worker secret configuration updated without editing populated environment files.
+See docs/engineering/DOMAINS_AND_EMAIL.md. DNS is currently Squarespace-managed;
+external Vercel/Resend/DNS assignments, TLS, inbox provision and real delivery are
+pending account access. No code publication or provider deployment occurred.
+
+### Read-only hosting diagnosis
+
+Run `gh workflow run inspect-hosting.yml --ref main` in this repository to check
+the existing Render services and Vercel project using the configured Actions
+secrets. The workflow never changes provider settings, deploys code, creates
+resources or prints environment values. Inspect its log for required configuration
+presence, root/health-path matches and the provider's deployment commit. A successful
+diagnostic job means the inspection ran; it does not establish healthy deployment.
+Production deployment still requires a reviewed exact-commit qualification record.

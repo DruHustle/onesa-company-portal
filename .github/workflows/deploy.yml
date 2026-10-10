@@ -18,6 +18,25 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - name: Require reviewed release qualification for this exact commit
+        env:
+          RELEASE_QUALIFICATION_JSON: ${{ secrets.RELEASE_QUALIFICATION_JSON }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          raw = os.environ.get('RELEASE_QUALIFICATION_JSON', '')
+          if not raw:
+              raise SystemExit('Release qualification is missing; production deployment remains blocked')
+          record = json.loads(raw)
+          if record.get('reviewed_commit') != os.environ['GITHUB_SHA']:
+              raise SystemExit('Release qualification does not match the selected commit')
+          path = Path('docs/internal/release-audit/evidence/gates.json')
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(record))
+          PYTHON
+          python3 scripts/release/qualify.py decision
       - uses: actions/github-script@v7
         with:
           script: |
@@ -33,8 +52,8 @@ jobs:
               }
             }
   frontend:
-    needs: verify
-    if: inputs.application == 'frontend' || inputs.application == 'both'
+    needs: [verify, backend, worker]
+    if: always() && needs.verify.result == 'success' && (inputs.application == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success' && needs.worker.result == 'success'))
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
@@ -43,7 +62,15 @@ jobs:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
       - name: Require Vercel configuration
-        run: test -n "$VERCEL_TOKEN" && test -n "$VERCEL_ORG_ID" && test -n "$VERCEL_PROJECT_ID"
+        run: |
+          missing_configuration=0
+          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing GitHub Actions secret: $name"
+              missing_configuration=1
+            fi
+          done
+          exit "$missing_configuration"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '24'}

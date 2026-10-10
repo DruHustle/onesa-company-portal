@@ -1,13 +1,13 @@
 import {test,after} from 'node:test';import assert from 'node:assert/strict';import {randomUUID} from 'node:crypto';import {mkdtemp,rm} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';
 if(!process.env.TEST_DATABASE_URL)throw new Error('TEST_DATABASE_URL must reference an isolated PostgreSQL test database');
 if(!new URL(process.env.TEST_DATABASE_URL).pathname.endsWith('_test'))throw new Error('Refusing to test a database without the _test suffix');
-process.env.DATABASE_URL=process.env.TEST_DATABASE_URL;process.env.NODE_ENV='test';process.env.STORAGE_DIR=await mkdtemp(join(tmpdir(),'onesa-portal-test-'));process.env.CLAMAV_HOST='';
+process.env.COMPANY_ORIGIN='http://company.example.invalid';process.env.DATABASE_URL=process.env.TEST_DATABASE_URL;process.env.NODE_ENV='test';process.env.STORAGE_DIR=await mkdtemp(join(tmpdir(),'onesa-portal-test-'));process.env.CLAMAV_HOST='';
 const {db}=await import('../src/services/db.js');const {migrate}=await import('../src/services/migrate.js');const {seedTemplates}=await import('../src/services/workflows.js');const {passwordHash,encrypt,hash,totp}=await import('../src/auth/crypto.js');const {buildApp}=await import('../src/app.js');const {generatePDF}=await import('../src/documents/pdf.js');
 await migrate();await migrate();await db.query('TRUNCATE audit,jobs,mfa_recovery,recovery_tokens,sessions,applications,files,enquiries,revisions,content,users,rate_limits RESTART IDENTITY CASCADE');await seedTemplates();const app=await buildApp({logging:false});await app.ready();
 after(async()=>{await app.close();await db.end();await rm(process.env.STORAGE_DIR!,{recursive:true,force:true});});
 const password='integration-password-1234';const secret='JBSWY3DPEHPK3PXP';
 async function account(role:string){const id=randomUUID(),email=role+'-'+id+'@example.test';await db.query('INSERT INTO users(id,email,password_hash,role,mfa_secret) VALUES($1,$2,$3,$4,$5)',[id,email,passwordHash(password),role,encrypt(secret)]);return {id,email};}
-async function login(u:{id:string;email:string}){const code=randomUUID();await db.query('INSERT INTO mfa_recovery VALUES($1,$2)',[u.id,hash(code)]);const r=await app.inject({method:'POST',url:'/api/v1/auth/login',payload:{email:u.email,password,code}});assert.equal(r.statusCode,200,r.body);return {cookie:r.cookies[0].name+'='+r.cookies[0].value,'x-csrf-token':r.json().csrf};}
+async function login(u:{id:string;email:string}){const code=randomUUID();await db.query('INSERT INTO mfa_recovery VALUES($1,$2)',[u.id,hash(code)]);const r=await app.inject({method:'POST',url:'/api/v1/auth/login',remoteAddress:`2001:db8:${u.id.slice(0,4)}:${u.id.slice(4,8)}::1`,payload:{email:u.email,password,code}});assert.equal(r.statusCode,200,r.body);return {cookie:r.cookies[0].name+'='+r.cookies[0].value,'x-csrf-token':r.json().csrf,origin:process.env.PUBLIC_ORIGIN||'http://localhost:3300'};}
 const owner=await account('owner'),editor=await account('editor'),hr=await account('hr'),business=await account('business'),viewer=await account('viewer');const ownerH=await login(owner),editorH=await login(editor),hrH=await login(hr),businessH=await login(business),viewerH=await login(viewer);
 const article={kind:'article',slug:'verified-test-story',locale:'en',title:'Workflow test story',summary:'Integration fixture',body:'This is a test fixture, not a company announcement.',state:'draft',metadata:{category:'Testing',author:'Test editor'}};
 let articleId='',jobId='',applicationId='',fileId='',generatedId='';
@@ -21,7 +21,178 @@ test('A verified clean CV is downloadable only by HR/owner; retention deletion r
 test('Template PDF generation, approval, public delivery and restrictions work',async()=>{const r=await app.inject({method:'POST',url:'/api/v1/admin/templates/company-profile/generate',headers:ownerH,payload:{classification:'internal'}});assert.equal(r.statusCode,201,r.body);generatedId=r.json().id;const download=await app.inject({url:`/api/v1/admin/files/${generatedId}/download`,headers:businessH});assert.equal(download.statusCode,200,download.body);assert.equal((await app.inject({url:`/api/v1/public/files/${generatedId}/download`})).statusCode,404);const approved=await app.inject({method:'PATCH',url:`/api/v1/admin/files/${generatedId}`,headers:ownerH,payload:{title:'Test company profile',classification:'public',approval:'approved',reviewAt:null,archived:false}});assert.equal(approved.statusCode,200,approved.body);const publicDownload=await app.inject({url:`/api/v1/public/files/${generatedId}/download`});assert.equal(publicDownload.statusCode,200,publicDownload.body);assert.equal(publicDownload.rawPayload.subarray(0,5).toString(),'%PDF-');});
 test('Unsafe upload and malicious filenames are rejected; quarantine cannot be approved',async()=>{const bad=await app.inject({method:'POST',url:'/api/v1/admin/files',headers:ownerH,payload:{filename:'../../bad.pdf',base64:Buffer.from('not PDF data').toString('base64'),title:'Bad'}});assert.equal(bad.statusCode,400);const bytes=await generatePDF('Draft','Test');const r=await app.inject({method:'POST',url:'/api/v1/admin/files',headers:businessH,payload:{filename:'draft.pdf',base64:bytes.toString('base64'),title:'Draft',classification:'internal'}});assert.equal(r.statusCode,201,r.body);const approve=await app.inject({method:'PATCH',url:`/api/v1/admin/files/${r.json().id}`,headers:ownerH,payload:{title:'Draft',classification:'public',approval:'approved',reviewAt:null,archived:false}});assert.equal(approve.statusCode,409);});
 test('Account enrollment requires password, recovery codes are hashed and single-use',async()=>{const email='new-user@example.test';const created=await app.inject({method:'POST',url:'/api/v1/admin/users',headers:ownerH,payload:{email,password,role:'viewer'}});assert.equal(created.statusCode,201,created.body);assert.equal((await app.inject({method:'POST',url:'/api/v1/auth/mfa/enroll',payload:{email,password:'incorrect'}})).statusCode,403);const start=await app.inject({method:'POST',url:'/api/v1/auth/mfa/enroll',payload:{email,password}});assert.equal(start.statusCode,200,start.body);const enrolled=await app.inject({method:'POST',url:'/api/v1/auth/mfa/verify',payload:{challenge:start.json().challenge,code:totp(start.json().secret)}});assert.equal(enrolled.statusCode,200,enrolled.body);const code=enrolled.json().recoveryCodes[0];assert.equal((await db.query('SELECT code_hash FROM mfa_recovery WHERE user_id=$1',[created.json().id])).rows.some(r=>r.code_hash===code),false);const successful=await app.inject({method:'POST',url:'/api/v1/auth/login',payload:{email,password,code}});assert.equal(successful.statusCode,200,successful.body);assert.equal((await app.inject({method:'POST',url:'/api/v1/auth/login',payload:{email,password,code}})).statusCode,401);assert.equal((await app.inject({method:'POST',url:'/api/v1/auth/mfa/enroll',payload:{email,password}})).statusCode,403);});
-test('MFA replay, session revocation, expiry and privilege escalation are rejected',async()=>{const u=await account('viewer');const code=totp(secret);const first=await app.inject({method:'POST',url:'/api/v1/auth/login',payload:{email:u.email,password,code}});assert.equal(first.statusCode,200,first.body);assert.equal((await app.inject({method:'POST',url:'/api/v1/auth/login',payload:{email:u.email,password,code}})).statusCode,401);const h={cookie:first.cookies[0].name+'='+first.cookies[0].value,'x-csrf-token':first.json().csrf};assert.equal((await app.inject({method:'POST',url:'/api/v1/auth/revoke',headers:h,payload:{}})).statusCode,200);assert.equal((await app.inject({url:'/api/v1/auth/me',headers:h})).statusCode,401);const admin=await account('administrator'),adminH=await login(admin);assert.equal((await app.inject({method:'PATCH',url:'/api/v1/admin/users/'+viewer.id,headers:adminH,payload:{role:'owner',disabled:false}})).statusCode,403);await db.query('UPDATE sessions SET expires_at=now()-interval \'1 minute\' WHERE user_id=$1',[viewer.id]);assert.equal((await app.inject({url:'/api/v1/auth/me',headers:viewerH})).statusCode,401);});
+test('MFA replay, session revocation, expiry and privilege escalation are rejected',async()=>{const u=await account('viewer');const code=totp(secret);const first=await app.inject({method:'POST',url:'/api/v1/auth/login',payload:{email:u.email,password,code}});assert.equal(first.statusCode,200,first.body);assert.equal((await app.inject({method:'POST',url:'/api/v1/auth/login',payload:{email:u.email,password,code}})).statusCode,401);const h={cookie:first.cookies[0].name+'='+first.cookies[0].value,'x-csrf-token':first.json().csrf,origin:process.env.PUBLIC_ORIGIN||'http://localhost:3300'};assert.equal((await app.inject({method:'POST',url:'/api/v1/auth/revoke',headers:h,payload:{}})).statusCode,200);assert.equal((await app.inject({url:'/api/v1/auth/me',headers:h})).statusCode,401);const admin=await account('administrator'),adminH=await login(admin);assert.equal((await app.inject({method:'PATCH',url:'/api/v1/admin/users/'+viewer.id,headers:adminH,payload:{role:'owner',disabled:false}})).statusCode,403);await db.query('UPDATE sessions SET expires_at=now()-interval \'1 minute\' WHERE user_id=$1',[viewer.id]);assert.equal((await app.inject({url:'/api/v1/auth/me',headers:viewerH})).statusCode,401);});
 test('Fact keys with underscores save, public fields are minimal and production legal gate blocks release',async()=>{const value=await app.inject({method:'PUT',url:'/api/v1/admin/facts/register_number',headers:ownerH,payload:{value:'HRB 757830',status:'supplied',source:'User directive; official registry review pending'}});assert.equal(value.statusCode,200,value.body);const docs=await app.inject({url:'/api/v1/public/files'});assert.ok(!JSON.stringify(docs.json()).includes('owner_id'));assert.ok(!JSON.stringify(docs.json()).includes('association'));const {env}=await import('../src/config/env.js');env.NODE_ENV='production';try{assert.equal((await app.inject({url:'/api/v1/public/content'})).statusCode,409);assert.equal((await app.inject({method:'POST',url:'/api/v1/admin/content',headers:ownerH,payload:{...article,slug:'production-blocked',state:'published'}})).statusCode,409);}finally{env.NODE_ENV='test';}});
 test('Empty pagination pages preserve total counts',async()=>{const r=await app.inject({url:'/api/v1/admin/templates?page=100&limit=1',headers:ownerH});assert.equal(r.statusCode,200,r.body);assert.equal(r.json().items.length,0);assert.ok(r.json().total>=36);});
 test('Request schemas, rate limits and audit records do not expose secrets',async()=>{assert.equal((await app.inject({url:'/api/v1/public/content?page=-1'})).statusCode,400);await db.query("INSERT INTO rate_limits VALUES('login:127.0.0.1',100,now()+interval '15 minutes') ON CONFLICT(key) DO UPDATE SET hits=100,expires_at=now()+interval '15 minutes'");const r=await app.inject({method:'POST',url:'/api/v1/auth/login',payload:{email:owner.email,password,code:'000000'}});assert.equal(r.statusCode,429,r.body);const logged=JSON.stringify((await db.query('SELECT * FROM audit')).rows);assert.ok(!logged.includes(password));assert.ok(!logged.includes(secret));assert.ok(!logged.includes(ownerH.cookie));const publicData=await app.inject({url:'/api/v1/public/company'});assert.equal(publicData.json().release_ready,false);assert.equal(publicData.json().facts.length,0);});
+
+
+test('Cookie mutations reject missing Origin and public facts omit reviewer/source',async()=>{
+ const {origin,...missingOrigin}=ownerH;
+ assert.ok(origin);
+ const denied=await app.inject({method:'POST',url:'/api/v1/auth/renew',headers:missingOrigin,payload:{}});
+ assert.equal(denied.statusCode,403);
+ await db.query("INSERT INTO facts(key,value,status,source,verified_by) VALUES('founder','Andrew Gotora','verified','Internal reviewer-only note',$1) ON CONFLICT(key) DO UPDATE SET status='verified',source='Internal reviewer-only note',verified_by=$1",[owner.id]);
+ const response=await app.inject({url:'/api/v1/public/company'});
+ assert.equal(response.statusCode,200);
+ const facts=response.json().facts;
+ assert.ok(facts.some((fact:{key:string})=>fact.key==='founder'));
+ assert.ok(!JSON.stringify(facts).includes('verified_by'));
+ assert.ok(!JSON.stringify(facts).includes('Internal reviewer-only note'));
+});
+
+
+test('Storage cleanup survives worker interruption and rolls back with metadata',async()=>{
+ const {transaction}=await import('../src/services/db.js');
+ const {enqueueStorageDeletion}=await import('../src/services/workflows.js');
+ const {store,retrieve}=await import('../src/services/storage.js');
+ const {tick}=await import('../src/jobs/worker.js');
+ const key=randomUUID();await store(key,Buffer.from('synthetic retention fixture'));
+ await assert.rejects(transaction(async c=>{await enqueueStorageDeletion(c,key);throw new Error('rollback fixture');}));
+ assert.equal((await db.query('SELECT * FROM storage_deletions WHERE storage_key=$1',[key])).rowCount,0);
+ assert.equal((await retrieve(key)).toString(),'synthetic retention fixture');
+ await transaction(c=>enqueueStorageDeletion(c,key));
+ await db.query("UPDATE storage_deletions SET status='running',locked_at=now()-interval '10 minutes' WHERE storage_key=$1",[key]);
+ await tick();await tick();
+ await assert.rejects(retrieve(key),{code:'ENOENT'});
+ assert.equal((await db.query('SELECT status FROM storage_deletions WHERE storage_key=$1',[key])).rows[0].status,'accepted');
+});
+
+test('Sensitive user changes require fresh credentials and atomically revoke target access',async()=>{
+ const actor=await account('owner'),headers=await login(actor),target=await account('viewer'),targetH=await login(target);
+ const url='/api/v1/admin/users/'+target.id,payload={role:'viewer',disabled:true,resetMfa:true};
+ const missing=await app.inject({method:'PATCH',url,headers,payload});
+ assert.equal(missing.statusCode,403);assert.equal(missing.json().error.code,'STEP_UP_REQUIRED');
+ assert.equal((await app.inject({url:'/api/v1/auth/me',headers:targetH})).statusCode,200);
+ const recovery=randomUUID();await db.query('INSERT INTO mfa_recovery VALUES($1,$2)',[actor.id,hash(recovery)]);
+ const wrong=await app.inject({method:'PATCH',url,headers,payload:{...payload,stepUp:{password:'incorrect',code:recovery}}});
+ assert.equal(wrong.statusCode,403);
+ assert.equal((await db.query('SELECT code_hash FROM mfa_recovery WHERE user_id=$1 AND code_hash=$2',[actor.id,hash(recovery)])).rowCount,1);
+ const changed=await app.inject({method:'PATCH',url,headers,payload:{...payload,stepUp:{password,code:recovery}}});
+ assert.equal(changed.statusCode,200,changed.body);assert.equal(changed.json().disabled,true);
+ assert.equal((await app.inject({url:'/api/v1/auth/me',headers:targetH})).statusCode,401);
+ assert.equal((await db.query('SELECT mfa_secret FROM users WHERE id=$1',[target.id])).rows[0].mfa_secret,null);
+ assert.equal((await db.query('SELECT code_hash FROM mfa_recovery WHERE user_id=$1',[target.id])).rowCount,0);
+ const logged=JSON.stringify((await db.query('SELECT action FROM audit WHERE actor_id=$1 AND record_id=$2',[actor.id,target.id])).rows);
+ assert.ok(logged.includes('auth.step_up'));assert.ok(logged.includes('user.mfa_reset'));assert.ok(!logged.includes(recovery));
+ const reused=await app.inject({method:'PATCH',url,headers,payload:{...payload,stepUp:{password,code:recovery}}});
+ assert.equal(reused.statusCode,403);assert.equal(reused.json().error.code,'STEP_UP_FAILED');
+});
+
+test('Fresh authenticator codes cannot be replayed for account changes and owners remain protected',async()=>{
+ const actor=await account('owner'),headers=await login(actor),target=await account('viewer');
+ const payload={role:'hr',disabled:false,stepUp:{password,code:totp(secret)}};
+ const changed=await app.inject({method:'PATCH',url:'/api/v1/admin/users/'+target.id,headers,payload});
+ assert.equal(changed.statusCode,200,changed.body);
+ const replay=await app.inject({method:'PATCH',url:'/api/v1/admin/users/'+target.id,headers,payload});
+ assert.equal(replay.statusCode,403);assert.equal(replay.json().error.code,'STEP_UP_FAILED');
+ const administrator=await account('administrator'),adminH=await login(administrator),recovery=randomUUID();
+ await db.query('INSERT INTO mfa_recovery VALUES($1,$2)',[administrator.id,hash(recovery)]);
+ const forbidden=await app.inject({method:'PATCH',url:'/api/v1/admin/users/'+actor.id,headers:adminH,payload:{role:'viewer',disabled:false,stepUp:{password,code:recovery}}});
+ assert.equal(forbidden.statusCode,403);
+ assert.equal((await db.query('SELECT code_hash FROM mfa_recovery WHERE user_id=$1 AND code_hash=$2',[administrator.id,hash(recovery)])).rowCount,1);
+});
+
+test('Concurrent sensitive changes consume a recovery code only once',async()=>{
+ const actor=await account('owner'),headers=await login(actor),a=await account('viewer'),b=await account('viewer'),code=randomUUID();
+ await db.query('INSERT INTO mfa_recovery VALUES($1,$2)',[actor.id,hash(code)]);
+ const payload={role:'business',disabled:false,stepUp:{password,code}};
+ const responses=await Promise.all([a,b].map(target=>app.inject({method:'PATCH',url:'/api/v1/admin/users/'+target.id,headers,payload})));
+ assert.deepEqual(responses.map(r=>r.statusCode).sort(),[200,403]);
+ assert.equal(Number((await db.query("SELECT count(*) FROM users WHERE id=ANY($1) AND role='business'",[[a.id,b.id]])).rows[0].count),1);
+});
+
+test('Own password change requires fresh proof and revokes every session without removing MFA',async()=>{
+ const actor=await account('viewer'),headers=await login(actor),otherHeaders=await login(actor),code=randomUUID(),url='/api/v1/auth/password/change',newPassword='changed-private-password-45678';
+ await db.query('INSERT INTO mfa_recovery VALUES($1,$2)',[actor.id,hash(code)]);
+ assert.equal((await app.inject({method:'POST',url,headers,payload:{password:newPassword,stepUp:{password:'incorrect',code}}})).statusCode,403);
+ assert.equal((await app.inject({method:'POST',url,headers,payload:{password:newPassword}})).statusCode,400);
+ assert.equal((await app.inject({method:'POST',url,headers:{...headers,origin:'https://untrusted.example'},payload:{password:newPassword,stepUp:{password,code}}})).statusCode,403);
+ assert.equal((await db.query('SELECT code_hash FROM mfa_recovery WHERE user_id=$1 AND code_hash=$2',[actor.id,hash(code)])).rowCount,1);
+ const changed=await app.inject({method:'POST',url,headers,payload:{password:newPassword,stepUp:{password,code}}});
+ assert.equal(changed.statusCode,200,changed.body);
+ assert.equal((await app.inject({url:'/api/v1/auth/me',headers})).statusCode,401);
+ assert.equal((await app.inject({url:'/api/v1/auth/me',headers:otherHeaders})).statusCode,401);
+ assert.ok((await db.query('SELECT mfa_secret FROM users WHERE id=$1',[actor.id])).rows[0].mfa_secret);
+ const newCode=randomUUID();await db.query('INSERT INTO mfa_recovery VALUES($1,$2)',[actor.id,hash(newCode)]);
+ const attempt={method:'POST' as const,url:'/api/v1/auth/login',remoteAddress:`2001:db8:${actor.id.slice(0,4)}:${actor.id.slice(4,8)}::1`,payload:{email:actor.email,password,code:newCode}};
+ assert.equal((await app.inject(attempt)).statusCode,401);
+ assert.equal((await app.inject({...attempt,payload:{...attempt.payload,password:newPassword}})).statusCode,200);
+ const logged=JSON.stringify((await db.query("SELECT action FROM audit WHERE actor_id=$1",[actor.id])).rows);
+ assert.ok(logged.includes('auth.password_changed'));assert.ok(!logged.includes(newPassword));
+});
+
+test('Company origin may submit public enquiries but cannot perform portal authentication',async()=>{
+ const blocked=await app.inject({method:'POST',url:'/api/v1/auth/login',headers:{origin:'http://company.example.invalid'},payload:{email:'nobody@example.invalid',password:'synthetic-password',code:'000000'}});
+ assert.equal(blocked.statusCode,403);assert.equal(blocked.json().error.code,'ORIGIN');
+ const allowed=await app.inject({method:'POST',url:'/api/v1/public/enquiries',headers:{origin:'http://company.example.invalid'},payload:{}});
+ // Validation follows the origin gate, proving this exact public origin is accepted.
+ assert.equal(allowed.statusCode,400);assert.equal(allowed.json().error.code,'VALIDATION');
+ const lookalike=await app.inject({method:'POST',url:'/api/v1/public/enquiries',headers:{origin:'http://company.example.invalid.attacker.invalid'},payload:{}});
+ assert.equal(lookalike.statusCode,403);
+ const alternate=await app.inject({method:'POST',url:'/api/v1/admin/settings/legal',headers:{origin:'http://company.example.invalid'},payload:{}});
+ assert.equal(alternate.statusCode,403);
+});
+
+async function transferred(payload:unknown,headers:Record<string,string>,scope='admin'){
+ const {createHash}=await import('node:crypto');const bytes=Buffer.from(JSON.stringify(payload));
+ const prefix=`/api/v1/${scope}/transfers`;
+ const start=await app.inject({method:'POST',url:prefix,headers,payload:{size:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')}});assert.equal(start.statusCode,201);const receipt=start.json();
+ for(let offset=0,sequence=0;offset<bytes.length;offset+=512*1024,sequence++){
+  const body={ticket:receipt.ticket,sequence,base64:bytes.subarray(offset,offset+512*1024).toString('base64')};const chunk=await app.inject({method:'POST',url:`${prefix}/${receipt.id}/chunks`,headers,payload:body});assert.equal(chunk.statusCode,200);
+  if(sequence===0){const duplicate=await app.inject({method:'POST',url:`${prefix}/${receipt.id}/chunks`,headers,payload:body});assert.deepEqual(duplicate.json(),chunk.json());}
+ }
+ return {prefix,receipt,finish:()=>app.inject({method:'POST',url:`${prefix}/${receipt.id}/complete`,headers,payload:{ticket:receipt.ticket}})};
+}
+
+test('Bounded durable uploads preserve below/at/above 10 MiB limits and one-use finalization',async()=>{
+ const actor=await account('owner'),headers=await login(actor),deniedHeaders=await login(await account('viewer'));const pdf=await generatePDF('Synthetic','Transfer fixture');
+ for(const size of [10485759,10485760,10485761]){
+  const bytes=Buffer.concat([pdf.subarray(0,-6),Buffer.alloc(size-pdf.length,32),pdf.subarray(-6)]);
+  const transfer=await transferred({filename:'bounded.pdf',title:'Bounded fixture',base64:bytes.toString('base64'),classification:'internal'},headers);
+  const responses=await Promise.all([transfer.finish(),transfer.finish()]);assert.equal(responses[0].statusCode,200);assert.deepEqual(responses[0].json(),responses[1].json());
+  const output=responses[0].json();assert.equal(output.status,size>10485760?400:201);
+  assert.equal(Number((await db.query('SELECT count(*) FROM bounded_transfer_chunks WHERE transfer_id=$1',[transfer.receipt.id])).rows[0].count),0);
+  if(output.status===201){const file=output.body;assert.equal(file.size,size);assert.equal(Number((await db.query('SELECT count(*) FROM files WHERE id=$1',[file.id])).rows[0].count),1);
+   assert.equal((await app.inject({url:`/api/v1/admin/files/${file.id}/chunks/0`,headers:deniedHeaders})).statusCode,403);
+   assert.equal((await app.inject({url:`/api/v1/public/files/${file.id}/chunks/0`})).statusCode,404);
+   await db.query("UPDATE files SET scan_status='clean' WHERE id=$1",[file.id]);const downloaded=[];
+   for(let index=0;index*1048576<size;index++){const chunk=await app.inject({url:`/api/v1/admin/files/${file.id}/chunks/${index}`,headers});assert.equal(chunk.statusCode,200);assert.ok(chunk.rawPayload.length<=1048576);assert.equal(Number(chunk.headers['x-file-size']),size);downloaded.push(chunk.rawPayload);}
+   assert.deepEqual(Buffer.concat(downloaded),bytes);
+  }
+ }
+});
+
+test('Transfer cancellation, expiry, owner binding, checksum and interrupted chunks are enforced',async()=>{
+ const actor=await account('owner'),headers=await login(actor),other=await login(await account('owner'));
+ const start=await app.inject({method:'POST',url:'/api/v1/admin/transfers',headers,payload:{size:512*1024+1,sha256:'0'.repeat(64)}});assert.equal(start.statusCode,201);const r=start.json();const payload={ticket:r.ticket};
+ assert.equal((await app.inject({method:'POST',url:`/api/v1/admin/transfers/${r.id}/complete`,headers,payload})).statusCode,409);
+ assert.equal((await app.inject({method:'POST',url:`/api/v1/admin/transfers/${r.id}/cancel`,headers:other,payload})).statusCode,404);
+ assert.equal((await app.inject({method:'POST',url:`/api/v1/admin/transfers/${r.id}/chunks`,headers,payload:{...payload,sequence:1,base64:Buffer.from('x').toString('base64')}})).statusCode,400);
+ assert.equal((await app.inject({method:'POST',url:`/api/v1/admin/transfers/${r.id}/cancel`,headers,payload})).statusCode,200);
+ assert.equal((await app.inject({method:'POST',url:`/api/v1/admin/transfers/${r.id}/complete`,headers,payload})).statusCode,404);
+ const receipt=await transferred({filename:'small.pdf',title:'Small',base64:(await generatePDF('Small','Synthetic')).toString('base64')},headers);
+ await db.query('UPDATE bounded_transfers SET expires_at=now()-interval \'1 second\' WHERE id=$1',[receipt.receipt.id]);assert.equal((await receipt.finish()).statusCode,404);
+});
+
+
+test('Shared storage admission enforces exact global/owner ceilings and rolls back rejected files',async()=>{
+ const {env}=await import('../src/config/env.js');const {admitFile}=await import('../src/services/workflows.js');const {transaction}=await import('../src/services/db.js');
+ const prior={total:env.MAX_FILE_STORAGE_BYTES,owner:env.MAX_OWNER_FILE_STORAGE_BYTES};
+ try{
+  const total=Number((await db.query('SELECT coalesce(sum(size),0) AS bytes FROM files')).rows[0].bytes);
+  const owned=Number((await db.query('SELECT coalesce(sum(size),0) AS bytes FROM files WHERE owner_id=$1',[owner.id])).rows[0].bytes);
+  env.MAX_FILE_STORAGE_BYTES=total+100;env.MAX_OWNER_FILE_STORAGE_BYTES=owned+100;
+  await transaction(c=>admitFile(c,100,owner.id));
+  await assert.rejects(transaction(c=>admitFile(c,101,owner.id)),{code:'STORAGE_QUOTA'});
+  env.MAX_FILE_STORAGE_BYTES=prior.total;env.MAX_OWNER_FILE_STORAGE_BYTES=owned;
+  await assert.rejects(transaction(c=>admitFile(c,1,owner.id)),{code:'STORAGE_QUOTA'});
+ }finally{env.MAX_FILE_STORAGE_BYTES=prior.total;env.MAX_OWNER_FILE_STORAGE_BYTES=prior.owner;}
+});
+
+test('Operational metrics reject anonymous/wrong keys and expose bounded non-personal queue state',async()=>{
+ const {env}=await import('../src/config/env.js');const old=env.METRICS_TOKEN;env.METRICS_TOKEN='synthetic-metrics-'+ 'x'.repeat(48);
+ try{assert.equal((await app.inject({url:'/api/v1/metrics'})).statusCode,403);assert.equal((await app.inject({url:'/api/v1/metrics',headers:{authorization:'Bearer wrong'}})).statusCode,403);
+ const response=await app.inject({url:'/api/v1/metrics',headers:{authorization:'Bearer '+env.METRICS_TOKEN}});assert.equal(response.statusCode,200);assert.ok(response.body.includes('onesa_portal_database_available 1'));assert.ok(response.body.includes('onesa_portal_queue_age_seconds'));assert.ok(!response.body.includes(owner.email));assert.ok(!response.body.includes(env.METRICS_TOKEN));assert.ok(!response.body.includes(password));
+ }finally{env.METRICS_TOKEN=old;}
+});

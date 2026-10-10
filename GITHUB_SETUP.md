@@ -61,3 +61,8 @@ tracked content or historical blobs. Never blindly run `git add .` during cleanu
 After explicit authorization, stage reviewed paths individually, review the staged
 diff, create the reviewed commit, and run `git push -u origin main` (no force flag).
 Set GitHub's default branch to `main` and protections after it exists remotely.
+
+
+## Current ownership audit — 2026-10-09
+
+GitHub REST returns `DruHustle/onesa-company-portal` with owner type User; the intended onesa-ug remote redirects. Do not assume organization ownership from a configured URL. Verify/create the intended organization, explicitly approve an ownership transfer preserving history/private visibility, and revalidate provider installations/service bindings. Current production release is NO-GO. No transfer or remote edit was performed.

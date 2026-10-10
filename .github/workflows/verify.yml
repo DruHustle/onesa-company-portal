@@ -32,21 +32,30 @@ jobs:
       - run: npm ci
         working-directory: onesa-company-portal-frontend
       - run: python3 scripts/check-contracts.py && python3 scripts/test-contract-break.py
+      - run: python3 -m unittest discover -s scripts -p test_inspect_hosting.py
       - run: npm run lint && npm run build && npm test && npm audit --audit-level=high
         working-directory: onesa-company-portal-backend
-      - run: npm run lint && npm run typecheck && npm run build && npm audit --audit-level=high
+      - run: npm run lint && npm run typecheck && npm run test:domains && npm run build && npm audit --audit-level=high
         working-directory: onesa-company-portal-frontend
       - run: npm run documents
         working-directory: onesa-company-portal-backend
       - run: npm run seed
         working-directory: onesa-company-portal-backend
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium firefox webkit
         working-directory: onesa-company-portal-frontend
       - run: |
           node onesa-company-portal-backend/dist/src/server.js > /tmp/portal-backend.log 2>&1 &
           (cd onesa-company-portal-frontend && npm start) > /tmp/portal-frontend.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://localhost:3300/en > /dev/null && break || sleep 1; done
           npm --prefix onesa-company-portal-frontend run test:e2e
+      - name: Verify production hostname boundaries and brand metadata
+        working-directory: onesa-company-portal-frontend
+        run: |
+          NODE_ENV=production SITE_URL=https://onesa.eu PORTAL_URL=https://portal.onesa.eu PUBLIC_ORIGIN=https://portal.onesa.eu BACKEND_URL=http://127.0.0.1:8362 node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3362 > /tmp/portal-domain-frontend.log 2>&1 &
+          domain_frontend_pid=$!
+          trap 'kill "$domain_frontend_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do curl -s http://127.0.0.1:3362/ > /dev/null && break || sleep 1; done
+          npm run test:domain-http
       - run: python3 scripts/validate-docs.py && python3 scripts/scan-secrets.py
       - run: docker build -t portal-backend-ci ./onesa-company-portal-backend && docker build -t portal-frontend-ci ./onesa-company-portal-frontend
       - uses: actions/upload-artifact@v4
@@ -56,3 +65,23 @@ jobs:
           path: |
             onesa-company-portal-frontend/test-results
             onesa-company-portal-backend/openapi/openapi.json
+
+  image-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        application: [onesa-company-portal-backend, onesa-company-portal-frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build application runtime
+        run: docker build -t onesa-security-candidate:ci ./${{ matrix.application }}
+      - name: Scan full runtime, including unfixed vendor advisories
+        run: |
+          mkdir -p data/security
+          chmod 700 data/security
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/data/security:/reports" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image --scanners vuln,secret --format json --output /reports/runtime.json onesa-security-candidate:ci
+          chmod 600 data/security/runtime.json
+          python3 scripts/release/image_gate.py data/security/runtime.json
+      # Restricted raw findings stay on the ephemeral runner; do not upload secrets or internal evidence.
