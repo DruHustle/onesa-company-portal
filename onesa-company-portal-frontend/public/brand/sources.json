@@ -16,7 +16,15 @@
       "height": 882,
       "sha256": "4dc5ada01211fe5127ab59f33a9e4b19482658ef9878300fa088de4b27e6d7e6",
       "role": "Favicon and website/link preview"
+    },
+    {
+      "path": "/favicon.ico",
+      "source": "/brand/onesa-orbit.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "7d236707ace84a0117de7dd6fcb97e4664b96f859b9e1bdc3325e7fe3b097e89",
+      "role": "Browser favicon fallback"
     }
   ],
-  "processing": "Original bytes preserved; no image generation or alteration"
+  "processing": "Owner-supplied originals preserved byte-for-byte; favicon.ico converted from the orbit PNG to 64x64 ICO using macOS sips."
 }
