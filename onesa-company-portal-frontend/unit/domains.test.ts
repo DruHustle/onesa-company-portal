@@ -1,7 +1,23 @@
 import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {surface,routeDestination,applicationOrigin} from '../src/lib/domains.ts';
+import {companySitemap} from '../src/lib/company-sitemap.ts';
 const original={...process.env};
+test('Company sitemap excludes unreleased content, redirect aliases and private routes',()=>{
+ assert.deepEqual(companySitemap('https://onesa.eu',false),[]);
+ assert.deepEqual(companySitemap(undefined,true),[]);
+ assert.deepEqual(companySitemap('http://localhost:3300',true),[]);
+ const sitemap=companySitemap('https://onesa.eu',true);
+ for(const locale of ['en','de']){
+  assert.ok(sitemap.some(entry=>entry.url===`https://onesa.eu/${locale}`));
+  assert.ok(sitemap.some(entry=>entry.url===`https://onesa.eu/${locale}/privacy`));
+ }
+ for(const entry of sitemap){
+  assert.ok(!/\/(admin|api|privacy-policy|search)(\/|$)/.test(new URL(entry.url).pathname));
+  assert.equal(entry.lastModified,undefined);
+  assert.ok(entry.alternates?.languages?.en&&entry.alternates?.languages?.de);
+ }
+});
 afterEach(()=>{for(const key of ['SITE_URL','PORTAL_URL','PUBLIC_ORIGIN']){if(original[key]===undefined)delete process.env[key];else process.env[key]=original[key];}});
 function configure(){process.env.SITE_URL='https://onesa.eu';process.env.PORTAL_URL='https://portal.onesa.eu';process.env.PUBLIC_ORIGIN=process.env.PORTAL_URL;}
 test('Configured hosts separate company and portal and reject other hosts',()=>{
