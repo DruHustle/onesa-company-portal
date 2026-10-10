@@ -24,6 +24,14 @@
       "height": 64,
       "sha256": "7d236707ace84a0117de7dd6fcb97e4664b96f859b9e1bdc3325e7fe3b097e89",
       "role": "Browser favicon fallback"
+    },
+    {
+      "path": "/social/onesa-social-card.png",
+      "source": "/social/onesa-social-card.svg; existing company homepage wordmark, orbit motif, navy/cyan palette and Arial typography",
+      "width": 1200,
+      "height": 630,
+      "sha256": "55b539d18fc716499e7cfb1fdf06b59fb7a8b64695e9de779d0481e5832ec67c",
+      "role": "Homepage Open Graph and Twitter preview"
     }
   ],
   "processing": "Owner-supplied originals preserved byte-for-byte; favicon.ico converted from the orbit PNG to 64x64 ICO using macOS sips."

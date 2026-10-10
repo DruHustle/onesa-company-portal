@@ -2,12 +2,27 @@ import type {Metadata} from 'next';
 import {copy, type Locale} from '../config/copy';
 
 export const socialImage = {
-  url: '/brand/onesa-orbit.png',
-  width: 972,
-  height: 882,
+  url: 'https://onesa.eu/social/onesa-social-card.png',
+  width: 1200,
+  height: 630,
   type: 'image/png',
-  alt: 'ONESA UG orbit logo',
+  alt: 'Onesa — Engineering Intelligent Possibilities',
 };
+
+
+export function homepageMetadata(): Metadata {
+  const title = 'Onesa | Engineering Intelligent Possibilities';
+  const description = 'Onesa develops AI platforms, digital products and intelligent applications for businesses, developers and institutions across Europe and global markets.';
+  const url = 'https://onesa.eu/';
+  return {
+    // All homepage sharing URLs are absolute; avoid Next normalizing the root slash.
+    metadataBase: null, title: {absolute: title}, description,
+    alternates: {canonical: url, languages: {en: url, de: 'https://onesa.eu/de'}},
+    openGraph: {type: 'website', siteName: 'Onesa', title, description, url,
+      images: [{...socialImage, secureUrl: socialImage.url}]},
+    twitter: {card: 'summary_large_image', title, description, images: [socialImage]},
+  };
+}
 
 export const portalSocialImage = {
   url: '/social/onesa-banner.png',
@@ -25,6 +40,7 @@ export function companyMetadata({locale, path = '', title, description, translat
   translated?: boolean;
   article?: boolean;
 }): Metadata {
+  if (locale === 'en' && !path && !title && !description) return homepageMetadata();
   const origin = new URL(process.env.SITE_URL || 'http://localhost:3300').origin;
   const url = `${origin}/${locale}${path}`;
   const resolvedTitle = title ? `${title} | Onesa UG` : `Onesa UG — ${copy[locale].footer}`;

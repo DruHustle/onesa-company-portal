@@ -6,3 +6,8 @@ Disallow: /admin
 Disallow: /api/
 
 Sitemap: https://onesa.eu/sitemap.xml
+
+User-agent: facebookexternalhit
+Allow: /
+Disallow: /admin
+Disallow: /api/
