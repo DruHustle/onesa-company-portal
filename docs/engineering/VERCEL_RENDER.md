@@ -141,3 +141,8 @@ resources or prints environment values. Inspect its log for required configurati
 presence, root/health-path matches and the provider's deployment commit. A successful
 diagnostic job means the inspection ran; it does not establish healthy deployment.
 Production deployment still requires a reviewed exact-commit qualification record.
+
+`gh workflow run repair-hosting.yml --ref main` repairs the existing service layout
+and absent nonsecret configuration, then reads it back. Repository and runtime
+identity must match before any update. This does not deploy or migrate the database;
+missing database/model credentials and qualification remain explicit blockers.

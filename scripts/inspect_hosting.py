@@ -63,6 +63,18 @@ def health(origin, path):
         return 0
 
 
+def log_categories(data):
+    messages = "\n".join(str(item.get("message", "")) for item in data.get("logs", []))
+    patterns = {
+        "docker_context_or_file_missing": r"(?i)(failed to read dockerfile|dockerfile.*no such file|failed to calculate checksum|package.json.*not found)",
+        "package_manager_removed_from_runtime": r"(?i)(npm:.*not found|cannot find module.*npm|exec:.*npm.*not found)",
+        "environment_validation_failed": r"(?i)(validationerror|zoderror|production requires|database_url.*required)",
+        "database_connection_failed": r"(?i)(password authentication failed|connection refused|could not connect|database is not configured)",
+        "schema_not_current": r"(?i)(schema.*revision|migration.*required|schema.*not.*current)",
+    }
+    return [name for name, pattern in patterns.items() if re.search(pattern, messages)]
+
+
 def render(role, service, required, expected_root, expected_health):
     token = os.environ.get("RENDER_API_KEY", "")
     if not token or not re.fullmatch(r"srv-[a-zA-Z0-9]+", service):
@@ -98,10 +110,25 @@ def render(role, service, required, expected_root, expected_health):
         "deactivated",
     }
     origin = details.get("url", "")
+    owner = data.get("ownerId", "")
+    log_data, log_status = get_json(
+        "https://api.render.com/v1/",
+        "logs?" + urlencode({"ownerId": owner, "resource": service, "limit": 100}),
+        token,
+    )
     return {
         "role": role,
         "api_http": status,
         "main_branch": data.get("branch") == "main",
+        "native_auto_deploy_disabled": data.get("autoDeployTrigger") == "off"
+        or data.get("autoDeploy") == "no",
+        "docker_context_matches": runtime.get("dockerContext") in {".", "./"},
+        "dockerfile_matches": runtime.get("dockerfilePath")
+        in {"Dockerfile", "./Dockerfile"},
+        "logs_api_http": log_status,
+        "recognized_log_error_categories": log_categories(log_data)
+        if isinstance(log_data, dict)
+        else [],
         "root_directory_matches": data.get("rootDir") == expected_root,
         "docker_runtime": runtime.get("dockerfilePath") is not None
         or details.get("env") == "docker",

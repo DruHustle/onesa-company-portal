@@ -81,7 +81,8 @@ jobs:
         run: |
           mkdir -p data/security
           chmod 700 data/security
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/data/security:/reports" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image --scanners vuln,secret --format json --output /reports/runtime.json onesa-security-candidate:ci
+          docker save onesa-security-candidate:ci -o data/security/runtime.tar
+          docker run --rm --user "$(id -u):$(id -g)" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v "$PWD/data/security:/reports" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar
           chmod 600 data/security/runtime.json
           python3 scripts/release/image_gate.py data/security/runtime.json
       # Restricted raw findings stay on the ephemeral runner; do not upload secrets or internal evidence.

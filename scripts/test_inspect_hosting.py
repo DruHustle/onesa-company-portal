@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 
 import inspect_hosting
+import repair_hosting
 
 
 class HostingInspectionTests(unittest.TestCase):
@@ -44,6 +45,36 @@ class HostingInspectionTests(unittest.TestCase):
                 ),
                 ({}, 401),
             )
+
+    def test_configuration_repairs_do_not_add_secrets_or_remove_release_gates(self):
+        for portal, worker in [(True, False), (True, True), (False, False)]:
+            configuration = repair_hosting.configuration(portal, worker)
+            self.assertEqual(configuration["autoDeployTrigger"], "off")
+            self.assertEqual(configuration["branch"], "main")
+            self.assertNotIn("plan", configuration["serviceDetails"])
+            self.assertNotIn("envVars", configuration)
+            self.assertNotIn("preDeployCommand", configuration["serviceDetails"])
+        self.assertEqual(
+            repair_hosting.configuration(True, True)["serviceDetails"][
+                "envSpecificDetails"
+            ]["dockerCommand"],
+            "node dist/src/jobs/worker.js",
+        )
+
+    def test_configuration_repair_refuses_a_different_repository(self):
+        with (
+            patch.dict("os.environ", {"RENDER_API_KEY": "synthetic-test-token"}),
+            patch(
+                "repair_hosting.get_json",
+                return_value=({"repo": "https://github.com/other/project"}, 200),
+            ),
+            patch("repair_hosting.write_json") as write,
+        ):
+            result = repair_hosting.repair_render(
+                "DruHustle/onesa-company-portal", "srv-testonly", True
+            )
+            self.assertFalse(result["repository_matches"])
+            write.assert_not_called()
 
     def test_commit_output_rejects_arbitrary_provider_text(self):
         self.assertIsNone(inspect_hosting.safe_commit("private-marker"))

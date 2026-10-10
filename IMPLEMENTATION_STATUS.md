@@ -164,3 +164,13 @@ checks; it emits only required-variable presence and allowlisted status fields.
 Paired releases now wait for the backend (and portal worker) before promoting the
 frontend. Remote CI and provider results will be recorded after the push; they are
 not implied by the earlier local test results.
+
+CI follow-up: clean GitHub runners exposed root-owned Trivy report permissions;
+image scans now use an exported image archive and the runner UID, retaining all
+vulnerability/secret checks. The platform development dependency declaration now
+includes pinned pip-audit, with the lock regenerated from source. Hosting readback
+found missing provider configuration and failed native Render deployments. The
+manual repair workflow only updates existing matched-repository Docker layout,
+health paths, disables native auto-deploy and adds absent approved public origins
+or portal S3 aliases. It never deploys, migrates data, copies/rotates credentials,
+changes plans, creates resources or marks qualification gates as passed.
