@@ -34,7 +34,13 @@ preserved; moving to Netlify is a proposed provider choice, not an applied migra
 [Official Vercel policy](https://vercel.com/docs/limits/fair-use-guidelines).
 Render's free PostgreSQL expires after **30 days**, with no backups; it is a temporary
 test option, not the durable free database recommendation. No free Render worker exists.
-A domain's existing registration/renewal cost is also not made free by hosting.
+Render Free compute can still incur bandwidth/build overages when a payment method
+is attached. For strict zero spend, use a Free workspace without a payment method,
+check the build spend limit and usage, and accept suspension at quota exhaustion;
+never enable an upgrade/paid add-on. The existing account's payment method/plan has
+not been changed. Free staging has no shell or one-off-job access on Render, so run
+migrations from the reviewed image on an authorized operator machine. A domain's
+existing registration/renewal cost is also not made free by hosting.
 
 ## Free inference and continuous workers
 
