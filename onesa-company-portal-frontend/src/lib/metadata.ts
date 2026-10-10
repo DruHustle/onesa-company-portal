@@ -9,6 +9,14 @@ export const socialImage = {
   alt: 'ONESA UG orbit logo',
 };
 
+export const portalSocialImage = {
+  url: '/social/onesa-banner.png',
+  width: 1536,
+  height: 1024,
+  type: 'image/png',
+  alt: 'ONESA wordmark',
+};
+
 export function companyMetadata({locale, path = '', title, description, translated = true, article = false}: {
   locale: Locale;
   path?: string;

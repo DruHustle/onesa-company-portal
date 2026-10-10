@@ -133,3 +133,16 @@ fixtures. Render AI configuration now rejects implicit development/test defaults
 and suppresses input values in configuration validation errors. Fresh platform
 backend checks passed (146 passed, 4 conditional skips); remote full checks remain
 in progress. No production qualification record was fabricated.
+
+
+## Production-hostname preview repair — 2026-10-10
+
+GitHub browser verification reached the production-hostname checks and exposed
+portal preview metadata referencing the orbit icon instead of the supplied ONESA
+banner. The portal now uses `/social/onesa-banner.png` (1536 × 1024) for its social
+preview; the orbit favicon is preserved. A fresh production build and the isolated
+production-hostname routing, exact asset SHA-256, preview metadata and noindex
+checks passed. The Linux WebKit private 10 MiB download regression also passed.
+Production remains NO-GO: the actual worker ID identifies a web service, provider
+backend deployment failed, frontend proxy settings and credential rotation are
+unverified, and operations/content/legal qualification is incomplete.
