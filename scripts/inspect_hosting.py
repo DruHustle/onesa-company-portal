@@ -119,6 +119,20 @@ def render(role, service, required, expected_root, expected_health):
     return {
         "role": role,
         "api_http": status,
+        "service_type": data.get("type")
+        if data.get("type")
+        in {
+            "web_service",
+            "background_worker",
+            "private_service",
+            "cron_job",
+            "static_site",
+        }
+        else "unknown",
+        "runtime": details.get("runtime", details.get("env"))
+        if details.get("runtime", details.get("env"))
+        in {"docker", "node", "python", "image"}
+        else "unknown",
         "main_branch": data.get("branch") == "main",
         "native_auto_deploy_disabled": data.get("autoDeployTrigger") == "off"
         or data.get("autoDeploy") == "no",
@@ -241,6 +255,25 @@ def main():
         ),
     }
     if portal:
+        candidates, candidate_status = get_json(
+            "https://api.render.com/v1/",
+            "services?type=background_worker&limit=100",
+            os.environ.get("RENDER_API_KEY", ""),
+        )
+        worker_ids = []
+        if candidate_status == 200 and isinstance(candidates, list):
+            for entry in candidates:
+                item = entry.get("service", entry)
+                identifier = item.get("id", "")
+                if (
+                    item.get("repo", "").removesuffix(".git").rstrip("/")
+                    == "https://github.com/" + os.environ.get("GITHUB_REPOSITORY", "")
+                    and item.get("type") == "background_worker"
+                    and re.fullmatch(r"srv-[A-Za-z0-9]+", identifier)
+                ):
+                    worker_ids.append(identifier)
+        report["existing_worker_lookup_http"] = candidate_status
+        report["matching_existing_worker_ids"] = worker_ids
         report["worker"] = render(
             "worker",
             os.environ.get("RENDER_WORKER_SERVICE_ID", ""),

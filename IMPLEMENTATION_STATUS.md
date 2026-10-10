@@ -174,3 +174,12 @@ manual repair workflow only updates existing matched-repository Docker layout,
 health paths, disables native auto-deploy and adds absent approved public origins
 or portal S3 aliases. It never deploys, migrates data, copies/rotates credentials,
 changes plans, creates resources or marks qualification gates as passed.
+
+Browser CI repairs: portal blob download anchors are attached to the document and
+object URLs are retained until WebKit starts downloading; the exact 10 MiB private
+CV upload/download and SHA-256 check passed native Linux WebKit. Documentation
+test grants accept only the old fixed or new randomized synthetic example.com
+fixtures. Render AI configuration now rejects implicit development/test defaults
+and suppresses input values in configuration validation errors. Fresh platform
+backend checks passed (146 passed, 4 conditional skips); remote full checks remain
+in progress. No production qualification record was fabricated.
