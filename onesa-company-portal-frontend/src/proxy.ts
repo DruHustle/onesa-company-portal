@@ -7,6 +7,12 @@ export function proxy(request: NextRequest) {
   if(current==='unknown')return new NextResponse('Unrecognized application hostname',{status:421,headers:{'Cache-Control':'no-store'}});
   const destination=routeDestination(origin!,request.nextUrl.pathname);
   if(destination){const target=new URL(destination);target.search=request.nextUrl.search;return NextResponse.redirect(target,307);}
+  // The public file permits crawling only after the existing publication gate opens.
+  if(request.nextUrl.pathname==='/robots.txt'&&process.env.PUBLIC_RELEASE_ENABLED!=='true'){
+    return new NextResponse('User-agent: *\nDisallow: /\n',{
+      headers:{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'},
+    });
+  }
   const nonce = btoa(crypto.randomUUID());
   const development = process.env.NODE_ENV === "development";
   const policy = [
