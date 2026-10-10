@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-11 — Targeted Render database-role repair
+
+- Added an operator-only workflow that verifies the established Portal Neon target,
+  all migration checksums and the complete table inventory before permission changes.
+- Uses a fresh private direct owner URL to create a restricted runtime role, verifies
+  its CRUD/sequence access and forbidden administrative privileges, and saves only
+  the Portal API DATABASE_URL with private provider readback. Existing records,
+  migrations, role passwords, worker and frontend settings remain untouched.
+- The operation does not deploy or restart; existing production qualification gates
+  continue to apply. Missing owner credentials or unknown schema/roles fail safely.
+
 ## 2026-10-10 — Fresh authentication and own-password controls
 
 - Added transactional fresh password/MFA proof for user administration/MFA reset,

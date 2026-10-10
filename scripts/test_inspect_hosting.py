@@ -61,6 +61,14 @@ class HostingInspectionTests(unittest.TestCase):
             "node dist/src/jobs/worker.js",
         )
 
+    def test_ai_configuration_uses_dockerfile_startup(self):
+        self.assertEqual(
+            repair_hosting.configuration(False, False)["serviceDetails"][
+                "envSpecificDetails"
+            ]["dockerCommand"],
+            "",
+        )
+
     def test_configuration_repair_refuses_a_different_repository(self):
         with (
             patch.dict("os.environ", {"RENDER_API_KEY": "synthetic-test-token"}),
