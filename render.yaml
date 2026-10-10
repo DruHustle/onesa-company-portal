@@ -1,3 +1,5 @@
+# HISTORICAL PAID BLUEPRINT: do not apply under the owner free-only policy.
+# Use docs/engineering/FREE_STAGING_SETUP.md; no resource has been changed by this file.
 # S3 storage is required so API and background worker share durable private files.
 services:
   - type: web

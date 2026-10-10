@@ -146,3 +146,18 @@ checks passed. The Linux WebKit private 10 MiB download regression also passed.
 Production remains NO-GO: the actual worker ID identifies a web service, provider
 backend deployment failed, frontend proxy settings and credential rotation are
 unverified, and operations/content/legal qualification is incomplete.
+
+
+## Owner free-only staging direction — 2026-10-10
+
+The owner rejected paid database/GPU budgets and will establish staging. Added
+staging.env.example with real application variable names, blank credential/endpoint
+fields and isolated origins; existing populated env files remain untouched.
+FREE_STAGING_SETUP.md documents ongoing free Neon/Render/Netlify/Resend/conditional
+Zoho options, exact product setup/migration commands, limitations and owner steps.
+Paid proposals/Blueprints are historical and explicitly not to be applied. No paid
+resource, account subscription, DNS cutover, live migration or model switch occurred.
+Vercel Hobby commercial restrictions, expiring Render free database, missing free
+workers, EU model/privacy/capacity and restored backup limits remain material.
+Free inference candidates are unconfigured, not a deployed real-model endpoint.
+Production remains NO-GO; preserve independent products and all original data.

@@ -1,0 +1,16 @@
+# PROPOSED FREE STAGING WEB SERVICE ONLY. Owner creates/identifies staging first.
+# No database, disk, paid worker or GPU is provisioned by this proposal.
+# Import actual isolated variables privately before any reviewed deployment.
+services:
+  - type: web
+    name: onesa-company-portal-staging-api
+    runtime: docker
+    region: frankfurt
+    plan: free
+    branch: main
+    rootDir: onesa-company-portal-backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: node dist/src/server.js
+    healthCheckPath: /api/v1/ready
+    autoDeployTrigger: 'off'
