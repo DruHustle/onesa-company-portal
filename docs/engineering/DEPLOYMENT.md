@@ -38,3 +38,23 @@ Generated clients are derived from actual route schemas; accepted release-baseli
 Owner free-only direction supersedes paid provisioning examples. Follow
 [FREE_STAGING_SETUP](FREE_STAGING_SETUP.md) and staging.env.example; no paid
 Blueprint/application or production release is approved by an example.
+
+### Neon S3 environment and Render build troubleshooting — 2026-10-10
+
+API and worker need the same private `S3_BUCKET` (owner-selected `s3-bucket`).
+`S3_ENDPOINT` and `S3_REGION` remain canonical; the backend also accepts
+`AWS_ENDPOINT_URL_S3` and `AWS_REGION` when the canonical values are absent.
+The SDK reads `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` privately. An
+endpoint alone does not identify a bucket. Replace exposed credentials directly
+in Neon/Render; do not place their values in source, frontend bundles or reports.
+
+Use root directory `onesa-company-portal-backend`, Dockerfile `./Dockerfile`,
+and Docker context `.`. The seven migrations are tracked in that backend root.
+A missing-migrations COPY error requires verifying the actual service, selected
+commit and build context; do not remove the COPY or skip schema checks. The
+API starts with `node dist/src/server.js`; a real background worker uses
+`node dist/src/jobs/worker.js`, not a web service that requires an HTTP port.
+Do not create a paid worker or hide missing worker functionality to satisfy the
+owner's free-only requirement. Both roles require verified shared persistent
+storage. Successful compilation does not prove bucket access, credential
+rotation, migrations, worker operation or production release qualification.
