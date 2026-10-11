@@ -35,3 +35,5 @@ Vercel hosts the frontend; Render hosts the backend. See
 Configuration is prepared; account provisioning and remote acceptance are not yet verified.
 
 [Domain routing, Zoho Mail and Resend setup](docs/engineering/DOMAINS_AND_EMAIL.md).
+
+[Local Actions runner setup and maintenance](docs/engineering/SELF_HOSTED_RUNNER.md).

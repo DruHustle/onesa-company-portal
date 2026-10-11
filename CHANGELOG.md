@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-11 — Isolated local Actions runner
+
+- Route all existing Linux jobs to a repository-scoped ARM64 Ubuntu VM runner.
+  Preserve check names, security gates, three-browser coverage and release controls.
+- Restrict execution to owner-controlled branches/PRs, use read-only checkout
+  credentials, bounded timeouts, allocated database ports and runner-owned cleanup.
+- Add checksum-verified provisioning, service/status tools and maintenance guidance.
+  Remote acceptance is tracked in the release checklist.
+
 ## 2026-10-10 — Fresh authentication and own-password controls
 
 - Added transactional fresh password/MFA proof for user administration/MFA reset,

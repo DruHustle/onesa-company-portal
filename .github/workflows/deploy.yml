@@ -16,9 +16,13 @@ concurrency:
   cancel-in-progress: false
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Require reviewed release qualification for this exact commit
         env:
           RELEASE_QUALIFICATION_JSON: ${{ secrets.RELEASE_QUALIFICATION_JSON }}
@@ -53,8 +57,8 @@ jobs:
             }
   frontend:
     needs: [verify, backend, worker]
-    if: always() && needs.verify.result == 'success' && (inputs.application == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success' && needs.worker.result == 'success'))
-    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (always() && needs.verify.result == 'success' && (inputs.application == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success' && needs.worker.result == 'success'))) }}
+    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
     timeout-minutes: 40
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -72,6 +76,8 @@ jobs:
           done
           exit "$missing_configuration"
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with: {node-version: '24'}
       - run: npm install --global vercel@63.1.0
@@ -82,27 +88,31 @@ jobs:
         run: cat /tmp/vercel-url.txt >> "$GITHUB_STEP_SUMMARY"
   backend:
     needs: verify
-    if: inputs.application == 'backend' || inputs.application == 'both'
-    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application == 'both') }}
+    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
     timeout-minutes: 35
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: python scripts/deploy_render.py
   worker:
     needs: [verify, backend]
-    if: inputs.application == 'backend' || inputs.application == 'both'
-    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application == 'both') }}
+    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
     timeout-minutes: 35
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: python scripts/deploy_render.py

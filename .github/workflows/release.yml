@@ -13,13 +13,19 @@ on:
 permissions:
   contents: read
   checks: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   release-artifacts:
-    if: inputs.authorization == 'approved'
+    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.authorization == 'approved') }}
     environment: production
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Require successful verification for the selected revision
         uses: actions/github-script@v7
         with:
@@ -39,5 +45,6 @@ jobs:
           docker save "portal-${APPLICATION}:${GITHUB_SHA}" | gzip > portal-images.tar.gz
       - uses: actions/upload-artifact@v4
         with:
+          retention-days: 3
           name: approved-container-images
           path: portal-images.tar.gz

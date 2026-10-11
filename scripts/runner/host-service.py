@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+"""Install the per-login VM LaunchAgent; stop the VM first when it is idle."""
+import os
+from pathlib import Path
+import plistlib
+import shutil
+import subprocess
+
+label = 'eu.onesa.portal-ci-vm'
+vm = 'onesa-portal-ci'
+root = Path.home()
+plist = root / 'Library/LaunchAgents' / f'{label}.plist'
+if plist.exists():
+    raise SystemExit(f'{plist} already exists; inspect it rather than replacing a service.')
+logdir = root / '.lima' / vm
+limactl = shutil.which('limactl')
+if not limactl or not logdir.is_dir():
+    raise SystemExit('Install Lima and run setup.py first.')
+plist.parent.mkdir(parents=True, exist_ok=True)
+config = {
+    'Label': label,
+    'ProgramArguments': [limactl, 'start', '--tty=false', '--foreground', vm],
+    'EnvironmentVariables': {'PATH': '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'},
+    'RunAtLoad': True,
+    'KeepAlive': {'SuccessfulExit': False},
+    'ThrottleInterval': 30,
+    'StandardOutPath': str(logdir / 'launchd.stdout.log'),
+    'StandardErrorPath': str(logdir / 'launchd.stderr.log'),
+}
+with plist.open('wb') as stream:
+    plistlib.dump(config, stream)
+plist.chmod(0o600)
+subprocess.run(['plutil', '-lint', str(plist)], check=True)
+subprocess.run(['launchctl', 'bootstrap', f'gui/{os.getuid()}', str(plist)], check=True)
+print(f'Installed {plist}; VM starts after this account logs in, not before login.')

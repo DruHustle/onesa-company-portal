@@ -18,3 +18,10 @@
 - Existing local data is preserved; no private records are automatically migrated.
 
 Source publication and infrastructure preparation alone do not complete this checklist.
+
+## Local runner acceptance — 2026-10-11
+
+- Pending: verify online/idle, guest and host service recovery, smoke and full CI
+  metadata on the task branch. No production deployment is authorized by this test.
+- ARM64 release images require compatible deployment targets; hosted x86 image
+  portability has not been demonstrated.
