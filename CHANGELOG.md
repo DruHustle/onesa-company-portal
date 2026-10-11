@@ -1,5 +1,13 @@
 # Changelog
 
+## Staging branch and environment configuration
+
+- Standardize remote branches on dev, staging and main; preserve branch history in restricted recovery bundles.
+- Scope staging workflows to the GitHub Staging environment and retain commit-specific production authorization.
+- Use each product’s existing Vercel project for staging previews; enable Git previews only for staging in the prepared configuration.
+- Document required environment secret names and block missing or excessively privileged credentials.
+
+
 
 ## 2026-10-11 — Automated review and CI/CD optimization
 

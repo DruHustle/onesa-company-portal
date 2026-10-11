@@ -4,11 +4,13 @@ name: Repository hygiene
     branches:
     - main
     - staging
+    - dev
     - audit/portal-master-acceptance
   pull_request:
     branches:
     - main
     - staging
+    - dev
   workflow_dispatch: null
 permissions:
   contents: read

@@ -36,7 +36,7 @@ POLICIES = {
             "image-security (onesa-company-portal-backend)",
             "image-security (onesa-company-portal-frontend)",
         ],
-        "staging_branch": "audit/portal-master-acceptance",
+        "staging_branch": "staging",
     },
     "onesa-ai-platform": {
         "ci": "ci.yml",
