@@ -2,6 +2,7 @@
 import pg from 'pg';
 import { randomBytes, createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
+import type { TLSSocket } from 'node:tls';
 import { provisionApplicationRole, applicationRoleStatus } from './database-role.js';
 
 class PortalRepairError extends Error {}
@@ -38,9 +39,13 @@ export function confirmedPortalDatabaseURL(raw:string) {
  return validatedDatabaseURL(raw,confirmedDirectHost);
 }
 
+export function assertConfirmedClientTLS(stream:{encrypted?:boolean;authorized?:boolean}) {
+ if(stream.encrypted!==true||stream.authorized!==true)throw new PortalRepairError('Confirmed Portal client TLS is not certificate verified');
+}
+
 export async function confirmedTargetInventory(connection:Pick<pg.Pool,'query'>) {
- const identity=await connection.query('SELECT current_database() AS database, ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()');
- if(identity.rows[0]?.database!==database||identity.rows[0]?.ssl!==true)throw new PortalRepairError('Confirmed Portal target identity or TLS mismatch');
+ const identity=await connection.query('SELECT current_database() AS database');
+ if(identity.rows[0]?.database!==database)throw new PortalRepairError('Confirmed Portal target database identity mismatch');
  const tables=await connection.query("SELECT tablename FROM pg_tables WHERE schemaname='public'");
  if(tables.rows.length===0)return {schema_state:'empty',contains_application_rows:false};
  if(!tables.rows.some(row=>row.tablename==='schema_migrations'))return {schema_state:'unrecognized',contains_application_rows:'not_inspected'};
@@ -77,10 +82,12 @@ export async function inspectConfirmedPortalTarget() {
  try {
   const client=await pool.connect();
   try {
+   // Neon terminates client TLS at its proxy; pg_stat_ssl describes a different hop.
+   assertConfirmedClientTLS(client.connection.stream as Partial<TLSSocket>);
    await client.query('BEGIN TRANSACTION READ ONLY');
    const inventory=await confirmedTargetInventory(client);
    await client.query('ROLLBACK');
-   return {read_only:true,confirmed_direct_host:confirmedDirectHost,database,existing_runtime_direct_host:runtime.hostname.replace('-pooler.','.'),runtime_matches_confirmed_target:false,...inventory,database_cutover:false,migrations_applied:false,permissions_changed:false,deployment_requested:false};
+   return {read_only:true,client_tls_verified:true,confirmed_direct_host:confirmedDirectHost,database,existing_runtime_direct_host:runtime.hostname.replace('-pooler.','.'),runtime_matches_confirmed_target:false,...inventory,database_cutover:false,migrations_applied:false,permissions_changed:false,deployment_requested:false};
   }finally{client.release();}
  }finally{await pool.end();}
 }

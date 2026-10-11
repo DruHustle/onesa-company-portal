@@ -230,3 +230,5 @@ Consolidated policy references and templates, preserved later audited runtime fi
 ## 2026-10-11 — Confirmed alternate Portal database inspection
 
 Added a strictly read-only inspection operation for the owner-confirmed alternate Neon Portal endpoint. Existing runtime-role repair still accepts only its established target. Inspection verifies TLS/schema and reports data presence without records, credentials, migrations, permission changes, settings updates or deployment. Corrected the operator workflow reference to repair-hosting.yml.
+
+Follow-up: verify encrypted/certificate-validated TLS at the actual client socket, rather than using pg_stat_ssl for Neon proxy connections. Reject unverified/plain connections before SQL.

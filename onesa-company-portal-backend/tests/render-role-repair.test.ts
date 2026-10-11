@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import pg from 'pg';
 import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
-import { portalDatabaseURL, confirmedPortalDatabaseURL, confirmedTargetInventory, inspectConfirmedPortalTarget, verifiedSchema, repairPortalRole, safeDiagnostic } from '../src/services/render-role-repair.js';
+import { portalDatabaseURL, confirmedPortalDatabaseURL, assertConfirmedClientTLS, confirmedTargetInventory, inspectConfirmedPortalTarget, verifiedSchema, repairPortalRole, safeDiagnostic } from '../src/services/render-role-repair.js';
 
 const host='ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech';
 const fixture='postgresql://fixture:synthetic-password@'+host+'/neondb?sslmode=require';
@@ -69,9 +69,14 @@ test('Owner-confirmed target is inspection-only and does not relax existing repa
 
 test('Confirmed target inspection reports empty or unknown schemas using SELECT only',async()=>{
  const queries:string[]=[];let tables:{tablename:string}[]=[];
- const connection={query:async(sql:string)=>{queries.push(sql);return {rows:sql.includes('pg_stat_ssl')?[{database:'neondb',ssl:true}]:tables};}} as unknown as Pick<pg.Pool,'query'>;
+ const connection={query:async(sql:string)=>{queries.push(sql);return {rows:sql.includes('current_database()')?[{database:'neondb'}]:tables};}} as unknown as Pick<pg.Pool,'query'>;
  assert.deepEqual(await confirmedTargetInventory(connection),{schema_state:'empty',contains_application_rows:false});
  tables=[{tablename:'other_product_private_records'}];
  assert.deepEqual(await confirmedTargetInventory(connection),{schema_state:'unrecognized',contains_application_rows:'not_inspected'});
  assert.ok(queries.every(sql=>sql.startsWith('SELECT ')));
+});
+
+test('Confirmed inventory requires encrypted and certificate-verified client TLS',()=>{
+ assert.doesNotThrow(()=>assertConfirmedClientTLS({encrypted:true,authorized:true}));
+ for(const stream of [{},{encrypted:true,authorized:false},{encrypted:false,authorized:true}])assert.throws(()=>assertConfirmedClientTLS(stream),/client TLS/);
 });
