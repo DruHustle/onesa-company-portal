@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-11 — Scanner framing and crashed final worker attempts
+
+- Require one complete NUL-framed INSTREAM clean response. Ambiguous, truncated
+  and error replies remain quarantined; infected signatures containing an OK
+  substring are rejected. Bound scanner response bytes and total elapsed time.
+- Exhausted email/storage leases become failed after expiry without a sixth
+  attempt. Active final leases remain owned; reconcile provider acceptance before
+  any manual retry. Added TCP scanner and disposable-database regressions.
+
 ## 2026-10-11 — Owner-created staging targets
 
 - Record the two supplied Render service IDs and add an explicit read-only staging inspection scope. Production settings and release guards remain unchanged; hosted verification is blocked by GitHub's account runner restriction.
