@@ -16,17 +16,73 @@ export function safeDiagnostic(error:unknown,phase:string) {
 
 const repository = 'https://github.com/DruHustle/onesa-company-portal';
 const runtimeHost = 'ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech';
+// Owner-confirmed on 2026-10-11. Inspection does not authorize a database cutover.
+const confirmedDirectHost = 'ep-autumn-glade-b9760olg.c-7.eu-central-1.aws.neon.tech';
 const database = 'neondb';
 const applicationRole = 'onesa_portal_app';
 
-export function portalDatabaseURL(raw:string, direct=false) {
+function validatedDatabaseURL(raw:string,expectedHost:string) {
  let url:URL;
  try {url=new URL(raw);} catch {throw new PortalRepairError('Invalid database connection configuration');}
- const expectedHost=direct?runtimeHost.replace('-pooler.','.'):runtimeHost;
  if(!['postgres:','postgresql:'].includes(url.protocol)||url.hostname!==expectedHost||url.port&&!['5432'].includes(url.port)||decodeURIComponent(url.pathname.slice(1))!==database||!url.username||!url.password||url.hash)throw new PortalRepairError('Portal database identity mismatch');
  if(!['require','verify-full'].includes(url.searchParams.get('sslmode')||''))throw new PortalRepairError('Portal database requires TLS');
  for(const key of ['sslmode','channel_binding'])if(url.searchParams.getAll(key).length>1)throw new PortalRepairError('Ambiguous database TLS configuration');
  return url;
+}
+
+export function portalDatabaseURL(raw:string, direct=false) {
+ return validatedDatabaseURL(raw,direct?runtimeHost.replace('-pooler.','.'):runtimeHost);
+}
+
+export function confirmedPortalDatabaseURL(raw:string) {
+ return validatedDatabaseURL(raw,confirmedDirectHost);
+}
+
+export async function confirmedTargetInventory(connection:Pick<pg.Pool,'query'>) {
+ const identity=await connection.query('SELECT current_database() AS database, ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()');
+ if(identity.rows[0]?.database!==database||identity.rows[0]?.ssl!==true)throw new PortalRepairError('Confirmed Portal target identity or TLS mismatch');
+ const tables=await connection.query("SELECT tablename FROM pg_tables WHERE schemaname='public'");
+ if(tables.rows.length===0)return {schema_state:'empty',contains_application_rows:false};
+ if(!tables.rows.some(row=>row.tablename==='schema_migrations'))return {schema_state:'unrecognized',contains_application_rows:'not_inspected'};
+ try {await verifiedSchema(connection);}
+ catch(error) {
+  if(error instanceof PortalRepairError)return {schema_state:'portal_schema_mismatch',contains_application_rows:'not_inspected'};
+  throw error;
+ }
+ let populated=false;
+ for(const row of tables.rows.filter(row=>row.tablename!=='schema_migrations')) {
+  const table='"'+String(row.tablename).replaceAll('"','""')+'"';
+  const result=await connection.query(`SELECT EXISTS(SELECT 1 FROM public.${table} LIMIT 1) AS populated`);
+  populated=populated||result.rows[0]?.populated===true;
+ }
+ return {schema_state:'verified_portal',contains_application_rows:populated};
+}
+
+export async function inspectConfirmedPortalTarget() {
+ if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-company-portal'||process.env.GITHUB_REF!=='refs/heads/audit/portal-master-acceptance')throw new PortalRepairError('Reviewed Portal inspection branch required');
+ diagnosticPhase='confirmed-migration-url-validation';
+ const owner=confirmedPortalDatabaseURL(process.env.PORTAL_MIGRATION_DATABASE_URL||'');
+ const serviceID=process.env.RENDER_BACKEND_SERVICE_ID||'';
+ if(!/^srv-[a-zA-Z0-9]+$/.test(serviceID))throw new PortalRepairError('Missing Portal service ID');
+ diagnosticPhase='confirmed-target-provider-inspection';
+ const service=await provider('services/'+serviceID);
+ const details=service.serviceDetails||{};
+ if(service.repo?.replace(/\.git$/,'')!==repository||service.branch!=='main'||service.type!=='web_service'||details.env!=='docker'&&details.runtime!=='docker'||service.rootDir!=='onesa-company-portal-backend'||details.url!=='https://onesa-company-portal-backend.onrender.com'||service.autoDeployTrigger!=='off'&&service.autoDeploy!=='no')throw new PortalRepairError('Portal Render target or auto-deploy policy mismatch');
+ const entries=await provider('services/'+serviceID+'/env-vars?limit=100');
+ if(!Array.isArray(entries)||entries.length>=100)throw new PortalRepairError('Incomplete Portal environment inventory');
+ const runtimeValue=entries.map(item=>item.envVar||item).find(item=>item.key==='DATABASE_URL')?.value||'';
+ const runtime=portalDatabaseURL(runtimeValue);
+ diagnosticPhase='confirmed-target-read-only-inventory';
+ const pool=new pg.Pool({connectionString:owner.toString(),max:1,connectionTimeoutMillis:5000,statement_timeout:10000,enableChannelBinding:true});
+ try {
+  const client=await pool.connect();
+  try {
+   await client.query('BEGIN TRANSACTION READ ONLY');
+   const inventory=await confirmedTargetInventory(client);
+   await client.query('ROLLBACK');
+   return {read_only:true,confirmed_direct_host:confirmedDirectHost,database,existing_runtime_direct_host:runtime.hostname.replace('-pooler.','.'),runtime_matches_confirmed_target:false,...inventory,database_cutover:false,migrations_applied:false,permissions_changed:false,deployment_requested:false};
+  }finally{client.release();}
+ }finally{await pool.end();}
 }
 
 async function provider(path:string, method='GET', payload?:unknown) {
@@ -119,7 +175,11 @@ export async function repairPortalRole(apply=false) {
 }
 
 if(process.argv[1]?.endsWith('render-role-repair.ts')||process.argv[1]?.endsWith('render-role-repair.js')) {
- try {console.log(JSON.stringify(await repairPortalRole(process.argv.includes('--apply')),null,2));}
+ try {
+  if(process.argv.includes('--inspect-confirmed-target')&&process.argv.includes('--apply'))throw new PortalRepairError('Confirmed target inspection cannot apply changes');
+  const report=process.argv.includes('--inspect-confirmed-target')?await inspectConfirmedPortalTarget():await repairPortalRole(process.argv.includes('--apply'));
+  console.log(JSON.stringify(report,null,2));
+ }
  catch(error){
   // Database/provider exceptions may contain private values. Only our allowlisted errors leave the runner.
   console.error(safeDiagnostic(error,diagnosticPhase));process.exitCode=1;

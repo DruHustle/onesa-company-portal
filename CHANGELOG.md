@@ -226,3 +226,7 @@ existing roadmap/release documentation, updated links and documentation tooling.
 ## 2026-10-11 — Reviewed governance integration
 
 Consolidated policy references and templates, preserved later audited runtime fixes, and reconciled deployment notes with actual staging evidence. Prepared protection settings remain reference only under GitHub Free. Original local work and private environment files are preserved. Public production qualification is unchanged.
+
+## 2026-10-11 — Confirmed alternate Portal database inspection
+
+Added a strictly read-only inspection operation for the owner-confirmed alternate Neon Portal endpoint. Existing runtime-role repair still accepts only its established target. Inspection verifies TLS/schema and reports data presence without records, credentials, migrations, permission changes, settings updates or deployment. Corrected the operator workflow reference to repair-hosting.yml.

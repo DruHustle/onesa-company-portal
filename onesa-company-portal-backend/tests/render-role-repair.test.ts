@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import pg from 'pg';
 import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
-import { portalDatabaseURL, verifiedSchema, repairPortalRole, safeDiagnostic } from '../src/services/render-role-repair.js';
+import { portalDatabaseURL, confirmedPortalDatabaseURL, confirmedTargetInventory, inspectConfirmedPortalTarget, verifiedSchema, repairPortalRole, safeDiagnostic } from '../src/services/render-role-repair.js';
 
 const host='ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech';
 const fixture='postgresql://fixture:synthetic-password@'+host+'/neondb?sslmode=require';
@@ -52,4 +52,26 @@ test('Operator diagnostics identify the failed phase without disclosing database
   assert.ok(!diagnostic.includes('private-password'));
  }
  assert.ok(!safeDiagnostic(null,'target-verification').includes('null'));
+});
+
+test('Owner-confirmed target is inspection-only and does not relax existing repair identity',async()=>{
+ const confirmed=fixture.replace(host,'ep-autumn-glade-b9760olg.c-7.eu-central-1.aws.neon.tech');
+ assert.equal(confirmedPortalDatabaseURL(confirmed).hostname,'ep-autumn-glade-b9760olg.c-7.eu-central-1.aws.neon.tech');
+ assert.throws(()=>portalDatabaseURL(confirmed,true));
+ assert.throws(()=>confirmedPortalDatabaseURL(fixture));
+ assert.throws(()=>confirmedPortalDatabaseURL(confirmed.replace('sslmode=require','sslmode=disable')));
+ const previous={...process.env};
+ try {
+  process.env.GITHUB_REPOSITORY='DruHustle/onesa-ai-platform';process.env.GITHUB_REF='refs/heads/audit/portal-master-acceptance';
+  await assert.rejects(inspectConfirmedPortalTarget(),/Reviewed Portal/);
+ }finally{process.env=previous;}
+});
+
+test('Confirmed target inspection reports empty or unknown schemas using SELECT only',async()=>{
+ const queries:string[]=[];let tables:{tablename:string}[]=[];
+ const connection={query:async(sql:string)=>{queries.push(sql);return {rows:sql.includes('pg_stat_ssl')?[{database:'neondb',ssl:true}]:tables};}} as unknown as Pick<pg.Pool,'query'>;
+ assert.deepEqual(await confirmedTargetInventory(connection),{schema_state:'empty',contains_application_rows:false});
+ tables=[{tablename:'other_product_private_records'}];
+ assert.deepEqual(await confirmedTargetInventory(connection),{schema_state:'unrecognized',contains_application_rows:'not_inspected'});
+ assert.ok(queries.every(sql=>sql.startsWith('SELECT ')));
 });

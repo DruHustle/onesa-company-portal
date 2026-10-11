@@ -6,7 +6,7 @@ on:
         description: Targeted Portal database role operation (never deploys)
         type: choice
         default: inspect-role
-        options: [inspect-role, repair-role, repair-layout]
+        options: [inspect-role, inspect-confirmed-target, repair-role, repair-layout]
 permissions:
   contents: read
   actions: read
@@ -43,6 +43,10 @@ jobs:
         if: inputs.portal_action == 'inspect-role'
         working-directory: onesa-company-portal-backend
         run: node --import tsx src/services/render-role-repair.ts
+      - name: Inspect the owner-confirmed alternate Portal target without changing databases
+        if: inputs.portal_action == 'inspect-confirmed-target'
+        working-directory: onesa-company-portal-backend
+        run: node --import tsx src/services/render-role-repair.ts --inspect-confirmed-target
       - name: Provision and verify a restricted role then save only the API runtime URL
         if: inputs.portal_action == 'repair-role'
         working-directory: onesa-company-portal-backend
