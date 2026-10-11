@@ -1,5 +1,17 @@
 # Changelog
 
+
+## 2026-10-11 — Automated review and CI/CD optimization
+
+Add read-only Reviewdog, checksum-locked workflow/secret analyzers, negative pipeline
+tests, conservative PR paths, dependency caches, PR cancellation and required CI summary.
+Preserve full release-source checks and independently tested runtime evidence; remove
+Portal duplicate image builds. Add opt-in isolated staging and automatic technical
+qualification, retaining manual exact-digest owner authorization and external production
+credential custody. Legal/operational evidence never receives fabricated PASS.
+Dependabot version schedules are prepared; automatic security-update PRs were enabled
+and verified as requested. No other remote settings, pushes or live deployments. See the CI/CD pipeline report.
+
 ## 2026-10-11 — Private-Free release safeguards
 
 Credential-free hosted PR CI; immutable Actions pins; exact-commit qualification and owner authorization with external production handoff; separate staging credentials; legacy JSON fallback removed; private credential-bearing production workflows excluded. Remote settings and deployments unchanged. See the private-Free safeguard report for owner migration and enforcement limits.

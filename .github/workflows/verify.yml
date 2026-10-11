@@ -1,18 +1,23 @@
 name: Portal verification
 'on':
-  push: null
+  push:
+    branches:
+    - main
+    - staging
+    - audit/portal-master-acceptance
   pull_request:
     branches:
     - main
+    - staging
   workflow_dispatch: null
 permissions:
   contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   verify:
-    if: ${{ always() && true }}
+    if: ${{ needs.changes.result == 'success' && needs.changes.outputs.verify == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
@@ -31,6 +36,8 @@ jobs:
       BACKEND_URL: http://127.0.0.1:8300
       NODE_ENV: test
       STORAGE_DIR: ${{ github.workspace }}/.test-storage
+      REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
     steps:
     - name: Verify GitHub-hosted execution and actual visibility
       env:
@@ -52,12 +59,18 @@ jobs:
         printf ''DATABASE_URL=%s\nTEST_DATABASE_URL=%s\n'' "$database_url" "$database_url" >> "$GITHUB_ENV"
 
         '
-    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
-        persist-credentials: 'false'
-    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        persist-credentials: false
+    - name: Install checksum-locked annotation tool
+      run: python3 scripts/ci/install_tools.py --only reviewdog
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
       with:
         node-version: '24'
+        cache: npm
+        cache-dependency-path: 'onesa-company-portal-backend/package-lock.json
+
+          onesa-company-portal-frontend/package-lock.json'
     - name: 'Release requirement: qualification failure-path tests'
       run: python3 -m unittest discover -s scripts/release -p 'test_*.py'
     - run: npm ci
@@ -67,9 +80,11 @@ jobs:
     - run: python3 scripts/check-contracts.py && python3 scripts/test-contract-break.py
     - run: python3 -m unittest discover -s scripts -p test_inspect_hosting.py
     - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'
-    - run: npm run lint && npm run build && npm test && npm audit --audit-level=high
+    - run: python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src tests && python3 ../scripts/ci/analyze.py
+        tsc -- node_modules/.bin/tsc --pretty false && npm test && npm audit --audit-level=high
       working-directory: onesa-company-portal-backend
-    - run: npm run lint && npm run typecheck && npm run test:domains && npm run build && npm audit --audit-level=high
+    - run: python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src && python3 ../scripts/ci/analyze.py
+        tsc -- node_modules/.bin/tsc --noEmit --pretty false && npm run test:domains && npm run build && npm audit --audit-level=high
       working-directory: onesa-company-portal-frontend
     - run: npm run documents
       working-directory: onesa-company-portal-backend
@@ -91,11 +106,7 @@ jobs:
         \ \"$RUNNER_TEMP/portal-domain-frontend.log\" 2>&1 &\ndomain_frontend_pid=$!\ntrap 'kill \"$domain_frontend_pid\"\
         \ 2>/dev/null || true' EXIT\nfor attempt in $(seq 1 30); do\n  if curl -s http://127.0.0.1:3362/ > /dev/null; then\
         \ break; fi\n  echo \"Waiting for domain frontend: $attempt\"\n  sleep 1\ndone\nnpm run test:domain-http\n"
-    - run: python3 scripts/validate-docs.py && python3 scripts/scan-secrets.py
-    - run: docker build -t portal-backend-ci ./onesa-company-portal-backend && docker build -t portal-frontend-ci ./onesa-company-portal-frontend
-    - name: Verify production command and strict database readiness
-      run: python3 scripts/startup_smoke.py portal-backend-ci
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       if: always()
       with:
         retention-days: 3
@@ -105,8 +116,13 @@ jobs:
           onesa-company-portal-backend/openapi/openapi.json
 
           '
+    permissions:
+      contents: read
+      pull-requests: read
+    needs:
+    - changes
   image-security:
-    if: ${{ always() && true }}
+    if: ${{ needs.changes.result == 'success' && needs.changes.outputs.containers == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -128,12 +144,17 @@ jobs:
         }
 
         '
-    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
-        persist-credentials: 'false'
+        persist-credentials: false
     - name: Build application runtime
       run: docker build -t onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }} ./${{ matrix.application
         }}
+    - name: 'Release requirement: default backend startup and database readiness'
+      if: matrix.application == 'onesa-company-portal-backend'
+      env:
+        APPLICATION: ${{ matrix.application }}
+      run: python3 scripts/startup_smoke.py "onesa-security-candidate:$APPLICATION-$GITHUB_RUN_ID"
     - name: Scan full runtime, including unfixed vendor advisories
       run: 'mkdir -p data/security
 
@@ -152,7 +173,7 @@ jobs:
     - name: 'Release requirement: record tested runtime digest'
       run: python3 scripts/release/evidence.py manifest --image "onesa-security-candidate:${{ matrix.application }}-${{ github.run_id
         }}" --output "$RUNNER_TEMP/runtime/record.json"
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: runtime-${{ matrix.application }}
         path: ${{ runner.temp }}/runtime/record.json
@@ -161,3 +182,49 @@ jobs:
     - name: Remove restricted scan output
       if: always()
       run: rm -rf -- "$GITHUB_WORKSPACE/data/security"
+    needs:
+    - changes
+  pipeline-security:
+    uses: ./.github/workflows/_pipeline-review.yml
+    permissions:
+      contents: read
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.paths.outputs.backend }}
+      frontend: ${{ steps.paths.outputs.frontend }}
+      browser: ${{ steps.paths.outputs.browser }}
+      documentation: ${{ steps.paths.outputs.documentation }}
+      containers: ${{ steps.paths.outputs.containers }}
+      tls: ${{ steps.paths.outputs.tls }}
+      edge: ${{ steps.paths.outputs.edge }}
+      applications: ${{ steps.paths.outputs.applications }}
+      verify: ${{ steps.paths.outputs.verify }}
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: paths
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      run: python3 scripts/ci/paths.py
+  ci-summary:
+    needs:
+    - changes
+    - pipeline-security
+    - verify
+    - image-security
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
+    - name: 'Release requirement: required checks summary'
+      env:
+        CI_SELECTION: ${{ toJSON(needs.changes.outputs) }}
+        CI_RESULTS: ${{ toJSON(needs) }}
+      run: python3 scripts/ci/summary.py

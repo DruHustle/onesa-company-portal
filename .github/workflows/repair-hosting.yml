@@ -44,15 +44,15 @@ jobs:
         }
 
         '
-    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
-        persist-credentials: 'false'
-    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        persist-credentials: false
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
       with:
         node-version: '24'
     - name: Require successful checks before database changes
       if: inputs.portal_action == 'repair-role' || inputs.portal_action == 'initialize-confirmed-target'
-      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
       with:
         script: "const allowed = '${{ inputs.portal_action }}' === 'initialize-confirmed-target'\n  ? ['refs/heads/audit/portal-master-acceptance']\n\
           \  : ['refs/heads/main', 'refs/heads/fix/render-runtime-repair'];\nif (!allowed.includes(context.ref)) throw new\
@@ -81,7 +81,7 @@ jobs:
       env:
         PORTAL_APP_DB_PASSWORD: ${{ secrets.PORTAL_APP_DB_PASSWORD }}
       run: node --import tsx src/services/render-role-repair.ts --initialize-confirmed-target
-    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
       if: inputs.portal_action == 'repair-layout'
       with:
         python-version: '3.11'
@@ -115,14 +115,14 @@ jobs:
         }
 
         '
-    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
-        persist-credentials: 'false'
-    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        persist-credentials: false
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
       with:
         python-version: '3.11'
     - name: Require exact-source staging audit checks
-      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
       with:
         script: "if (context.ref !== 'refs/heads/audit/portal-master-acceptance') throw new Error('Identified Portal audit\
           \ branch required');\nconst {owner, repo} = context.repo;\nfor (const workflow_id of ['verify.yml', 'repository-hygiene.yml'])\

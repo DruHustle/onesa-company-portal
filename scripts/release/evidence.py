@@ -31,6 +31,8 @@ POLICIES = {
         "ci": "verify.yml",
         "jobs": [
             "verify",
+            "pipeline-security / workflow-security",
+            "ci-summary",
             "image-security (onesa-company-portal-backend)",
             "image-security (onesa-company-portal-frontend)",
         ],
@@ -40,6 +42,8 @@ POLICIES = {
         "ci": "ci.yml",
         "jobs": [
             "backend",
+            "pipeline-security / workflow-security",
+            "ci-summary",
             "frontend",
             "browser",
             "documentation",
@@ -54,6 +58,8 @@ POLICIES = {
         "ci": "scaffold.yml",
         "jobs": [
             "backend",
+            "pipeline-security / workflow-security",
+            "ci-summary",
             "frontend",
             "containers (frontend)",
             "containers (backend)",
@@ -267,6 +273,27 @@ def trusted_run(
         require(
             run["status"] == "completed" and run["conclusion"] == "success",
             "Workflow did not succeed",
+        )
+
+
+def trusted_staging_run(github, run, sha, completed=True):
+    """Manual authorized branch, or opt-in owner CI completion on the same main SHA."""
+    event = run["event"]
+    require(event in {"workflow_dispatch", "workflow_run"}, "Untrusted staging event")
+    branches = {POLICY["staging_branch"]} if event == "workflow_dispatch" else {"main"}
+    trusted_run(
+        run, "release-staging.yml", sha, branches, event=event, completed=completed
+    )
+    require(
+        run["actor"]["login"] == OWNER and run["triggering_actor"]["login"] == OWNER,
+        "Staging requires owner provenance",
+    )
+    if event == "workflow_run":
+        main = github.api(f"repos/{REPOSITORY}/branches/main")
+        stage = github.api(f"repos/{REPOSITORY}/branches/{POLICY['staging_branch']}")
+        require(
+            main["commit"]["sha"] == sha and stage["commit"]["sha"] == sha,
+            "Automatic staging requires main and the authorized staging branch at the exact candidate",
         )
 
 
@@ -484,7 +511,7 @@ def generate(github, sha, run, staging_run=None, require_frontend_build=True):
         )
     elif staging_run:
         stage_run = github.run(staging_run)
-        trusted_run(stage_run, "release-staging.yml", sha, {POLICY["staging_branch"]})
+        trusted_staging_run(github, stage_run, sha)
         stage, origin = github.artifact(stage_run, "staging-verification")
         verify_stage(stage, sha, record["valid_for_source_sha256"], builds)
         record["staging"] = {"record": stage, "artifact": origin}
@@ -596,7 +623,7 @@ def technical_gate(github, evidence, sha):
     )
     stage = evidence["staging"]
     stage_run = github.run(stage["artifact"]["run_id"])
-    trusted_run(stage_run, "release-staging.yml", sha, {POLICY["staging_branch"]})
+    trusted_staging_run(github, stage_run, sha)
     stage_record, origin = github.artifact(stage_run, "staging-verification")
     require(
         origin == stage["artifact"] and stage_record == stage["record"],
@@ -829,9 +856,16 @@ def main():
         (directory / "bundle.enc").write_bytes(encrypted)
         record = build["manifest"]
     elif args.mode == "stage-preflight":
-        trusted_run(
-            run, "release-staging.yml", sha, {POLICY["staging_branch"]}, completed=False
-        )
+        trusted_staging_run(github, run, sha, completed=False)
+        if run["event"] == "workflow_run":
+            event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+            upstream = github.run(event["workflow_run"]["id"])
+            trusted_run(upstream, POLICY["ci"], sha, {"main"}, event="push")
+            require(
+                upstream["actor"]["login"] == OWNER
+                and upstream["triggering_actor"]["login"] == OWNER,
+                "Automatic staging requires owner-triggered main CI",
+            )
         record = generate(github, sha, run, require_frontend_build=False)
         require(
             record["CODE_VERIFIED"] == "PASS",

@@ -1,5 +1,7 @@
 # Private GitHub Free safeguards and implementation report
 
+> Current pipeline: [automated review, staging qualification and owner activation](CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.
+
 ## Verified state — 2026-10-11
 
 This report supersedes earlier temporary-public runner guidance for the requested

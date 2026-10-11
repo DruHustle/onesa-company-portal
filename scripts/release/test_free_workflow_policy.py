@@ -8,14 +8,16 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class WorkflowBoundaryTests(unittest.TestCase):
-    def test_free_workflows_are_manual_and_credential_free(self):
+    def test_free_workflows_are_credential_free_and_authorization_is_manual(self):
         for name in ("free-qualification.yml", "free-authorization.yml"):
             text = (ROOT / ".github/workflows" / name).read_text()
             self.assertIn("workflow_dispatch:", text)
             self.assertNotRegex(
-                text, r"(?m)^  (push|pull_request|pull_request_target|workflow_run):"
+                text, r"(?m)^  (push|pull_request|pull_request_target):"
             )
             self.assertNotRegex(text, r"\$\{\{\s*secrets\.")
+            if name == "free-authorization.yml":
+                self.assertNotIn("workflow_run:", text)
             self.assertNotIn("environment:", text)
             self.assertIn("github.triggering_actor", text)
             self.assertIn("persist-credentials: false", text)
@@ -43,6 +45,26 @@ class WorkflowBoundaryTests(unittest.TestCase):
             r"secrets\.(RENDER_API_KEY|VERCEL_TOKEN|VERCEL_PROJECT_ID|VERCEL_AUTOMATION_BYPASS_SECRET)\b",
         )
         self.assertNotIn("environment: Staging", text)
+
+    def test_automatic_staging_is_opt_in_owner_main_only_and_preflights_first(self):
+        text = (ROOT / ".github/workflows/release-staging.yml").read_text()
+        for constraint in (
+            "vars.STAGING_AUTOMATION_ENABLED == 'true'",
+            "github.event.repository.private == true",
+            "github.event.workflow_run.event",
+            "== 'push'",
+            "head_repository.full_name",
+            "head_sha == github.sha",
+            "conclusion ==",
+            "github.triggering_actor == 'DruHustle'",
+        ):
+            self.assertIn(constraint, " ".join(text.split()))
+        self.assertLess(
+            text.index("scripts/release/evidence.py stage-preflight"),
+            text.index("secrets.STAGING_"),
+        )
+        self.assertNotIn("pull_request_target", text)
+        self.assertIn("cancel-in-progress: false", text)
 
     def test_pr_validation_has_no_local_runner_dependency_or_provider_secrets(self):
         ci = {

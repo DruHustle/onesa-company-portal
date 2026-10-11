@@ -146,7 +146,15 @@ def render(service, identifier, sha):
 
 def preflight():
     require(
-        os.environ["GITHUB_REF"] == "refs/heads/" + POLICY["staging_branch"],
+        os.environ["GITHUB_REF"] == "refs/heads/" + POLICY["staging_branch"]
+        or (
+            os.environ.get("GITHUB_EVENT_NAME") == "workflow_run"
+            and os.environ["GITHUB_REF"] == "refs/heads/main"
+            and GitHub().api(f"repos/{REPOSITORY}/branches/{POLICY['staging_branch']}")[
+                "commit"
+            ]["sha"]
+            == os.environ["GITHUB_SHA"]
+        ),
         "Unapproved staging branch",
     )
     service = provider(

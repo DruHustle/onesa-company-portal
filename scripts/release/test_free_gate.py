@@ -139,6 +139,47 @@ class FreeGateTests(unittest.TestCase):
             self.github, SHA, self.github.run(40), 30, fingerprint, 2, "approve"
         )
 
+    def test_automatic_qualification_derives_evidence_without_human_pass(self):
+        value = self.github.run(30)
+        value["event"] = "workflow_run"
+        result = f.qualification(self.github, SHA, value, 20)
+        self.assertEqual(result["CODE_VERIFIED"], "PASS")
+        self.assertEqual(result["STAGING_VERIFIED"], "PASS")
+        self.assertEqual(result["OPERATIONS_VERIFIED"], "BLOCKED")
+        self.assertEqual(result["CONTENT_LEGAL_APPROVED"], "BLOCKED")
+        self.assertIsNone(result["approval_provenance"])
+
+    def test_automatic_staging_requires_exact_branch_pointers(self):
+        value = self.github.run(20)
+        value["event"] = "workflow_run"
+        value["head_branch"] = "main"
+        with patch.object(self.github, "api", return_value={"commit": {"sha": SHA}}):
+            e.trusted_staging_run(self.github, value, SHA)
+        with (
+            patch.object(
+                self.github, "api", return_value={"commit": {"sha": "b" * 40}}
+            ),
+            self.assertRaises(e.Rejected),
+        ):
+            e.trusted_staging_run(self.github, value, SHA)
+
+    def test_automatic_staging_rejects_foreign_owner_sha_event_and_failure(self):
+        original = copy.deepcopy(self.github.run(20))
+        original.update(event="workflow_run", head_branch="main")
+        for field, value in [
+            ("head_sha", "b" * 40),
+            ("event", "pull_request"),
+            ("actor", {"login": "attacker"}),
+            ("triggering_actor", {"login": "attacker"}),
+            ("head_repository", {"full_name": "attacker/fork"}),
+            ("conclusion", "failure"),
+        ]:
+            with self.subTest(field=field):
+                candidate = copy.deepcopy(original)
+                candidate[field] = value
+                with self.assertRaises(e.Rejected):
+                    e.trusted_staging_run(self.github, candidate, SHA)
+
     def test_successful_external_handoff_does_not_trigger_deployment_or_block_git(self):
         self.prepare()
         result = f.verify(self.github, SHA, 40)

@@ -1,5 +1,7 @@
 # GitHub Free operating policy
 
+> Current pipeline: [automated review, staging qualification and owner activation](CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.
+
 The requested operating model is private repositories on GitHub Free. GitHub cannot
 enforce native branch protection, rulesets or production environment approvals for
 that combination. Feature branches and PRs targeting main remain the development

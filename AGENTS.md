@@ -116,3 +116,13 @@ possible; CI and qualification block only the authorized deployment path. Privat
 production uses credential-free owner authorization and externally controlled promotion.
 Retain exact-commit security/staging checks and separate hardware authorization. Do
 not claim remote safeguards are active until the owner completes and verifies migration.
+
+## Current automated CI/CD policy
+
+Use feature/*, fix/* or hotfix/* PRs to main/staging; preserve existing acceptance branches.
+Reviewdog annotations are read-only CI evidence, not an independent human review.
+The mandatory security/summary checks and full exact-main runtime records are release
+requirements. Automatic staging is private-only and default-off pending scoped targets;
+production credentials remain outside editable repository Actions. See
+[the pipeline report](docs/development/CI_CD_PIPELINE_REPORT.md) for tested limits,
+reviewed workflow_run exceptions, owner actions and remote activation status.

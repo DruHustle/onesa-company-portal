@@ -33,12 +33,12 @@ jobs:
 
         test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Visibility changed; dispatch fresh validation under the current policy'';
         exit 1; }'
-    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
-        persist-credentials: 'false'
+        persist-credentials: false
         ref: ${{ github.sha }}
     - name: Require successful verification for the selected revision
-      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
       with:
         script: "const checks = await github.paginate(github.rest.checks.listForRef, {\n  ...context.repo, ref: context.sha,\
           \ per_page: 100\n});\nfor (const name of ['verify', 'publication-hygiene']) {\n  const check = checks.filter(item\
@@ -52,7 +52,7 @@ jobs:
         docker save "portal-${APPLICATION}:${GITHUB_SHA}" | gzip > portal-images.tar.gz
 
         '
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: approved-container-images
         path: portal-images.tar.gz

@@ -48,7 +48,18 @@ def current_main(github, sha):
 
 
 def qualification(github, sha, run, staging_run):
-    e.trusted_run(run, QUALIFICATION, sha, {"main"}, completed=False)
+    e.require(
+        run["event"] in {"workflow_dispatch", "workflow_run"},
+        "Untrusted qualification event",
+    )
+    e.trusted_run(
+        run, QUALIFICATION, sha, {"main"}, event=run["event"], completed=False
+    )
+    e.require(
+        run["actor"]["login"] == e.OWNER
+        and run["triggering_actor"]["login"] == e.OWNER,
+        "Qualification requires owner provenance",
+    )
     pr = current_main(github, sha)
     code, references = e.checked_ci(github, sha)
     e.require(
@@ -63,7 +74,7 @@ def qualification(github, sha, run, staging_run):
         )
     builds = e.artifacts_for_ci(github, references)
     stage_run = github.run(staging_run)
-    e.trusted_run(stage_run, "release-staging.yml", sha, {e.POLICY["staging_branch"]})
+    e.trusted_staging_run(github, stage_run, sha)
     stage, origin = github.artifact(stage_run, "staging-verification")
     fingerprint = e.source_hash()
     e.require(
@@ -83,6 +94,21 @@ def qualification(github, sha, run, staging_run):
         "verified_at": run["created_at"],
         "workflow_run_id": run["id"],
         "status": "AWAITING_OWNER_AUTHORIZATION",
+        "CODE_VERIFIED": "PASS",
+        "STAGING_VERIFIED": "PASS",
+        "OPERATIONS_VERIFIED": "BLOCKED",
+        "CONTENT_LEGAL_APPROVED": "BLOCKED",
+        "operations_evidence": {
+            "scope": "technical staging readiness only",
+            "checks": stage["checks"],
+            "missing": [
+                "verified alert delivery",
+                "off-host restore and rollback approval",
+                "operating limits review",
+            ],
+        },
+        "security_status": "PASS",
+        "approval_provenance": None,
         "scope": "cloud-software-only",
         "physical_hardware_authorized": False,
     }
@@ -90,7 +116,7 @@ def qualification(github, sha, run, staging_run):
 
 def live_qualification(github, sha, identifier):
     run = github.run(identifier)
-    e.trusted_run(run, QUALIFICATION, sha, {"main"})
+    e.trusted_run(run, QUALIFICATION, sha, {"main"}, event=run["event"])
     record, origin = github.artifact(run, "free-release-qualification")
     e.require(
         record.get("workflow_run_id") == run["id"], "Qualification origin mismatch"

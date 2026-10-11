@@ -1,5 +1,7 @@
 # Separate application builds and tests
 
+> Current pipeline: [automated review, staging qualification and owner activation](../development/CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.
+
 Run from the repository root with Node 24, Python 3 and Docker when building images.
 Commit lockfiles; `npm ci` installs their exact dependency resolutions.
 
