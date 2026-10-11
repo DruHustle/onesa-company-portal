@@ -44,7 +44,7 @@ class HostingInspectionTests(unittest.TestCase):
         paused = {**data, "autoDeployTrigger": "off"}
         fixed = deepcopy(paused)
         fixed.update(repair_hosting.configuration(True, False))
-        fixed["branch"] = "audit/portal-master-acceptance"
+        fixed["branch"] = "staging"
         fixed["serviceDetails"].update(data["serviceDetails"])
         with patch.dict("os.environ", {"RENDER_API_KEY": "fixture-token"}), \
              patch("repair_hosting.get_json", side_effect=[(data, 200), (paused, 200), (fixed, 200)]), \

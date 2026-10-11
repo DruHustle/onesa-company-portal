@@ -54,8 +54,8 @@ jobs:
       if: inputs.portal_action == 'repair-role' || inputs.portal_action == 'initialize-confirmed-target'
       uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
       with:
-        script: "const allowed = '${{ inputs.portal_action }}' === 'initialize-confirmed-target'\n  ? ['refs/heads/audit/portal-master-acceptance']\n\
-          \  : ['refs/heads/main', 'refs/heads/fix/render-runtime-repair'];\nif (!allowed.includes(context.ref)) throw new\
+        script: "const allowed = '${{ inputs.portal_action }}' === 'initialize-confirmed-target'\n  ? ['refs/heads/main']\n\
+          \  : ['refs/heads/main'];\nif (!allowed.includes(context.ref)) throw new\
           \ Error('Approved Portal operator branch required');\nconst {owner, repo} = context.repo;\nfor (const workflow_id\
           \ of ['verify.yml', 'repository-hygiene.yml']) {\n  const runs = await github.rest.actions.listWorkflowRuns({owner,\
           \ repo, workflow_id, head_sha: context.sha, event: 'push', per_page: 20});\n  const run = runs.data.workflow_runs[0];\n\
@@ -124,7 +124,7 @@ jobs:
     - name: Require exact-source staging audit checks
       uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
       with:
-        script: "if (context.ref !== 'refs/heads/audit/portal-master-acceptance') throw new Error('Identified Portal audit\
+        script: "if (context.ref !== 'refs/heads/staging') throw new Error('Identified Portal audit\
           \ branch required');\nconst {owner, repo} = context.repo;\nfor (const workflow_id of ['verify.yml', 'repository-hygiene.yml'])\
           \ {\n  const runs = await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id, head_sha: context.sha,\
           \ event: 'push', per_page: 20});\n  const run = runs.data.workflow_runs[0];\n  if (!run || run.status !== 'completed'\

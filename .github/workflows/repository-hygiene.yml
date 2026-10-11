@@ -5,7 +5,6 @@ name: Repository hygiene
     - main
     - staging
     - dev
-    - audit/portal-master-acceptance
   pull_request:
     branches:
     - main

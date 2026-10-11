@@ -68,8 +68,8 @@ export async function confirmedTargetInventory(connection:Pick<pg.Pool,'query'>)
  return {schema_state:'verified_portal',contains_application_rows:populated,contains_configuration_rows:configurationRows,contains_operational_rows:operationalRows};
 }
 
-async function confirmedTargetContext() {
- if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-company-portal'||process.env.GITHUB_REF!=='refs/heads/audit/portal-master-acceptance')throw new PortalRepairError('Reviewed Portal inspection branch required');
+async function confirmedTargetContext(readOnly=false) {
+ if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-company-portal'||!(readOnly?['refs/heads/main','refs/heads/dev']:['refs/heads/main']).includes(process.env.GITHUB_REF||''))throw new PortalRepairError('Reviewed Portal inspection branch required');
  diagnosticPhase='confirmed-migration-url-validation';
  const owner=confirmedPortalDatabaseURL(process.env.PORTAL_MIGRATION_DATABASE_URL||'');
  const serviceID=process.env.RENDER_BACKEND_SERVICE_ID||'';
@@ -86,7 +86,7 @@ async function confirmedTargetContext() {
 }
 
 export async function inspectConfirmedPortalTarget() {
- const {owner,runtime}=await confirmedTargetContext();
+ const {owner,runtime}=await confirmedTargetContext(true);
  diagnosticPhase='confirmed-target-read-only-inventory';
  const pool=new pg.Pool({connectionString:owner.toString(),max:1,connectionTimeoutMillis:5000,statement_timeout:10000,enableChannelBinding:true});
  try {
@@ -185,7 +185,7 @@ async function verifyRuntime(url:URL,requireSafe=true) {
 }
 
 export async function repairPortalRole(apply=false) {
- const approved=['refs/heads/main','refs/heads/fix/render-runtime-repair',...(!apply?['refs/heads/audit/portal-master-acceptance']:[])];
+ const approved=['refs/heads/main',...(!apply?['refs/heads/dev']:[])];
  if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-company-portal'||!approved.includes(process.env.GITHUB_REF||''))throw new PortalRepairError('Approved Portal operator branch required');
  const serviceID=process.env.RENDER_BACKEND_SERVICE_ID||'';
  if(!/^srv-[a-zA-Z0-9]+$/.test(serviceID))throw new PortalRepairError('Missing Portal service ID');

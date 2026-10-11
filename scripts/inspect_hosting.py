@@ -296,7 +296,7 @@ def main():
     backend_id, worker_id = portal_services(scope) if portal else (
         os.environ.get("RENDER_BACKEND_SERVICE_ID", ""), "",
     )
-    expected_branch = "audit/portal-master-acceptance" if portal and scope == "staging" else "main"
+    expected_branch = "staging" if portal and scope == "staging" else "main"
     backend_root = (
         "onesa-company-portal-backend" if portal else "onesa-ai-platform-backend"
     )

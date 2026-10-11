@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 from inspect_hosting import get_json
 
 PORTAL_STAGING_SERVICE = "srv-db5k5had0e5s73fos4g0"
-PORTAL_AUDIT_REF = "refs/heads/audit/portal-master-acceptance"
+PORTAL_AUDIT_REF = "refs/heads/staging"
 
 
 def write_json(origin, path, token, payload, method):

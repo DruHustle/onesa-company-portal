@@ -38,7 +38,7 @@ test('Operator repair cannot target staging AI or a different repository/service
   await assert.rejects(repairPortalRole(true),/Approved Portal/);
   process.env.GITHUB_REPOSITORY='DruHustle/onesa-company-portal';process.env.GITHUB_REF='refs/heads/staging';
   await assert.rejects(repairPortalRole(true),/Approved Portal/);
-  process.env.GITHUB_REF='refs/heads/fix/render-runtime-repair';process.env.RENDER_BACKEND_SERVICE_ID='srv-testfixture';process.env.RENDER_API_KEY='synthetic-private-token';
+  process.env.GITHUB_REF='refs/heads/main';process.env.RENDER_BACKEND_SERVICE_ID='srv-testfixture';process.env.RENDER_API_KEY='synthetic-private-token';
   const methods:string[]=[];
   globalThis.fetch=async(_input,init)=>{methods.push(init?.method||'GET');return new Response(JSON.stringify({repo:'https://github.com/DruHustle/onesa-ai-platform',type:'web_service'}));};
   await assert.rejects(repairPortalRole(true),/Portal Render target/);assert.deepEqual(methods,['GET']);
@@ -62,7 +62,7 @@ test('Owner-confirmed target does not relax existing repair identity or allow an
  assert.throws(()=>confirmedPortalDatabaseURL(confirmed.replace('sslmode=require','sslmode=disable')));
  const previous={...process.env};
  try {
-  process.env.GITHUB_REPOSITORY='DruHustle/onesa-ai-platform';process.env.GITHUB_REF='refs/heads/audit/portal-master-acceptance';
+  process.env.GITHUB_REPOSITORY='DruHustle/onesa-ai-platform';process.env.GITHUB_REF='refs/heads/main';
   await assert.rejects(inspectConfirmedPortalTarget(),/Reviewed Portal/);
   await assert.rejects(initializeConfirmedPortalTarget(),/Reviewed Portal/);
  }finally{process.env=previous;}
@@ -114,4 +114,18 @@ test('Confirmed inventory distinguishes seeded configuration from operational re
  assert.equal((await confirmedTargetInventory(connection)).contains_operational_rows,true);
  assert.ok(queries.every(sql=>sql.startsWith('SELECT ')));
  assert.ok(queries.filter(sql=>sql.includes('FROM public."')).every(sql=>sql.startsWith('SELECT EXISTS(')));
+});
+
+test('Retained dev/staging branches cannot mutate production databases',async()=>{
+ const previous={...process.env};const previousFetch=globalThis.fetch;let providerCalls=0;
+ try {
+  process.env.GITHUB_REPOSITORY='DruHustle/onesa-company-portal';
+  globalThis.fetch=async()=>{providerCalls++;throw new Error('Provider must not be called');};
+  for(const ref of ['refs/heads/dev','refs/heads/staging']) {
+   process.env.GITHUB_REF=ref;
+   await assert.rejects(repairPortalRole(true),/Approved Portal/);
+   await assert.rejects(initializeConfirmedPortalTarget(),/Reviewed Portal/);
+  }
+  assert.equal(providerCalls,0);
+ }finally{process.env=previous;globalThis.fetch=previousFetch;}
 });
