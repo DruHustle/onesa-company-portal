@@ -11,7 +11,7 @@ for(const [host,path,status,location] of cases){const response=await request(hos
 const spoof=await request('unknown.invalid','/',{'X-Forwarded-Host':'portal.onesa.eu'});assert.equal(spoof.status,421);
 for(const host of ['onesa.eu','portal.onesa.eu']){const response=await request(host,'/favicon.ico');assert.equal(response.status,200,`${host} favicon`);assert.match(response.headers['content-type'],/image\/(x-icon|vnd.microsoft.icon)/);assert.equal(createHash('sha256').update(response.body).digest('hex'),createHash('sha256').update(readFileSync('public/favicon.ico')).digest('hex'));console.log(`PASS ${host} same-origin favicon`);}
 for(const [host,path] of [['onesa.eu','/en'],['portal.onesa.eu','/admin']]){const response=await request(host,path);assert.equal(response.status,200);assert.match(response.body.toString(),/<link[^>]*rel="icon"[^>]*href="\/favicon\.ico\?v=20261010"/);console.log(`PASS ${host} explicit favicon metadata`);}
-const robots=await request('onesa.eu','/robots.txt');assert.equal(robots.status,200);assert.match(robots.headers['content-type'],/text\/plain/);assert.match(robots.body.toString(),/^User-agent: \*\nDisallow: \/\n/);assert.match(robots.body.toString(),/User-agent: facebookexternalhit\nDisallow: \/\nAllow: \/\$/m);assert.match(robots.body.toString(),/Allow: \/social\/onesa-social-card\.png\$/m);assert.equal(robots.headers['cache-control'],'no-store');console.log('PASS unreleased company robots blocks crawling');
+const robots=await request('onesa.eu','/robots.txt');assert.equal(robots.status,200);assert.match(robots.headers['content-type'],/text\/plain/);assert.match(robots.body.toString(),/^User-agent: \*\nDisallow: \/\n/);assert.match(robots.body.toString(),/User-agent: facebookexternalhit\nUser-agent: Facebot\nDisallow: \/\nAllow: \/\$/m);assert.match(robots.body.toString(),/Allow: \/de\$/m);assert.match(robots.body.toString(),/Allow: \/social\/onesa-social-card\.png\$/m);assert.equal(robots.headers['cache-control'],'no-store');console.log('PASS unreleased company robots blocks crawling and permits homepage link previews');
 for(const path of ['/brand/onesa-orbit.png','/social/onesa-banner.png']){const response=await request('portal.onesa.eu',path);assert.equal(response.status,200,path);assert.match(response.headers['content-type'],/image\/png/);assert.equal(createHash('sha256').update(response.body).digest('hex'),createHash('sha256').update(readFileSync(`public${path}`)).digest('hex'));console.log(`PASS same-origin brand asset ${path}`);}
 const page=await request('portal.onesa.eu','/admin');assert.equal(page.status,200);const html=page.body.toString();assert.ok(html.includes('/brand/onesa-orbit.png'));assert.ok(html.includes('/social/onesa-banner.png'));assert.match(html,/property="og:title" content="Onesa Portal"/);assert.equal(page.headers['x-robots-tag'],'noindex, nofollow');console.log('PASS portal favicon, preview metadata and noindex');
 
@@ -42,3 +42,31 @@ for (const agent of ['Mozilla/5.0', 'facebookexternalhit/1.1 (+http://www.facebo
   assert.equal(image.body.readUInt32BE(20), 630);
   console.log(`PASS server-rendered social metadata and 1200x630 image: ${agent}`);
 }
+
+for (const [path, canonical, en, de] of [
+  ['/en', 'https://onesa.eu/', 'https://onesa.eu/', 'https://onesa.eu/de'],
+  ['/de', 'https://onesa.eu/de', 'https://onesa.eu/', 'https://onesa.eu/de'],
+  ['/en/about', 'https://onesa.eu/en/about', 'https://onesa.eu/en/about', 'https://onesa.eu/de/about'],
+  ['/de/about', 'https://onesa.eu/de/about', 'https://onesa.eu/en/about', 'https://onesa.eu/de/about'],
+]) {
+  for (const agent of ['Mozilla/5.0', 'facebookexternalhit/1.1', 'Facebot']) {
+    const page = await request('onesa.eu', path, {'User-Agent': agent});
+    assert.equal(page.status, 200, `${agent} ${path}`);
+    const head = page.body.toString().split('</head>')[0];
+    assert.ok(head.includes(`rel="canonical" href="${canonical}"`), `${path} canonical`);
+    for (const [language, url] of [['en', en], ['de', de], ['x-default', en]]) {
+      assert.ok(head.includes(`hrefLang="${language}" href="${url}"`), `${path} ${language} hreflang`);
+    }
+    assert.ok(head.includes(`property="og:url" content="${canonical}"`), `${path} og:url`);
+    assert.ok(!head.includes('localhost') && !head.includes('company-cover.svg'), `${path} obsolete metadata`);
+    assert.match(head, /name="robots" content="noindex, nofollow"/, `${path} publication gate`);
+  }
+  console.log(`PASS canonical, locale links and publication gate: ${path}`);
+}
+const search = await request('onesa.eu', '/en/search?q=software');
+assert.equal(search.status, 200);
+assert.match(search.body.toString().split('</head>')[0], /name="robots" content="noindex, follow"/);
+const sitemap = await request('onesa.eu', '/sitemap.xml');
+assert.equal(sitemap.status, 200);
+assert.ok(!sitemap.body.toString().includes('<loc>'), 'Unapproved content must not enter the sitemap');
+console.log('PASS search noindex and unreleased empty sitemap');

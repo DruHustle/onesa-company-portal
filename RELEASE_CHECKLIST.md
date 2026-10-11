@@ -1,5 +1,19 @@
 # Production release checklist
 
+## Search and sharing acceptance
+
+- Verify `/`, `/en`, `/de`, `/robots.txt` and the 1200×630 PNG on the deployed
+  exact-source frontend with browser, facebookexternalhit and Facebot user agents.
+- Canonical, og:url, hreflang and sitemap use the same root English homepage;
+  published details use implemented routes and actual revision dates. No localhost
+  URL or obsolete SVG preview may appear in company metadata.
+- Confirm Facebook's actual Scrape Again response after deployment. A simulated
+  user-agent GET200 does not establish access from Meta infrastructure.
+- Retain noindex/empty sitemap before editorial and backend release_ready approval;
+  search and private administration remain noindex after public approval.
+
+## Application prerequisites
+
 - Exact source revision passed CI, including publication hygiene and full contracts/tests.
 - Vercel frontend and Render API/worker have approved account ownership and capacity.
 - PostgreSQL migrations applied with owner credentials outside the API/worker runtime;

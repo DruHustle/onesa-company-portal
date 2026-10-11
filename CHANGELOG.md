@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-12 — Company search and social metadata
+
+- Use validated canonical origins without a production localhost fallback. Align the
+  root English homepage, its /en alias, German alternates and sitemap destinations;
+  preserve absolute root URLs when Next.js resolves metadata.
+- Permit facebookexternalhit and Facebot homepage/image previews in the unreleased
+  robots response while retaining publication gates and private-route exclusions.
+- Include published product/article/job/research URLs and verified revision dates in
+  the gated sitemap. Map managed-page search links to implemented routes and keep
+  search results noindex. Do not invent translated detail slugs or modification dates.
+- Expand actual HTTP and unit regressions for crawler HTML, locale links, images,
+  sitemap entries and invalid hosted origins. Live acceptance requires deploying the
+  tested candidate through the existing staging and production qualification gates.
+
 ## Staging branch and environment configuration
 
 - Retarget retired operator branch references; production database mutations remain main-only and require exact-source CI.
