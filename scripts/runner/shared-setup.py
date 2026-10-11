@@ -157,7 +157,7 @@ assert c['gitHubUrl'].rstrip('/') == 'https://github.com/'+sys.argv[1]
 assert c['agentName'] == sys.argv[2]
 PY
 sed -i '/^ACTIONS_RUNNER_HOOK_JOB_/d; /^RUNNER_TOOL_CACHE=/d; /^AGENT_TOOLSDIRECTORY=/d' .env
-printf '%s\n' "RUNNER_TOOL_CACHE=$1/toolcache" "AGENT_TOOLSDIRECTORY=$1/toolcache" "ACTIONS_RUNNER_HOOK_JOB_STARTED=$1/job-started.sh" "ACTIONS_RUNNER_HOOK_JOB_COMPLETED=$1/job-completed.sh" >> .env
+printf '%s\n' "RUNNER_TOOL_CACHE=$1/toolcache" "AGENT_TOOLSDIRECTORY=$1/toolcache" "ACTIONS_RUNNER_HOOK_JOB_STARTED=/usr/local/lib/onesa-ci/$USER/job-started.sh" "ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/usr/local/lib/onesa-ci/$USER/job-completed.sh" >> .env
 """,
             "setup",
             CONFIG["directory"],

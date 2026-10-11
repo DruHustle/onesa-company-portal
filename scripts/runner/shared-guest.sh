@@ -17,8 +17,10 @@ install -d -m 2770 -o root -g onesaci /var/lib/onesa-ci
 install -d -m 755 -o root -g root /usr/local/lib/onesa-ci
 install -m 755 -o root -g root /tmp/onesa-shared-lease.py /usr/local/lib/onesa-ci/lease.py
 install -m 755 -o root -g root /tmp/onesa-shared-cleanup.py /usr/local/lib/onesa-ci/cleanup.py
+policy_root="/usr/local/lib/onesa-ci/$user"
+install -d -m 755 -o root -g root "$policy_root"
 for hook in job-started.sh job-completed.sh visibility.py config.json; do
-  install -m 755 -o root -g root "/tmp/onesa-shared-$hook" "$root/$hook"
+  install -m 755 -o root -g root "/tmp/onesa-shared-$hook" "$policy_root/$hook"
 done
 printf '%s ALL=(root) NOPASSWD: /usr/local/lib/onesa-ci/cleanup.py\n' "$user" > "/etc/sudoers.d/onesa-$user-cleanup"
 chmod 440 "/etc/sudoers.d/onesa-$user-cleanup"
