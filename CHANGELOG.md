@@ -338,3 +338,7 @@ reviewed Vercel prebuilt artifacts, owner approval/revocation records, staged/pr
 receipts and fail-closed promotion/hosted checks. Legacy qualification is retained
 behind an explicit verified migration switch. No production release or legal approval
 was issued; target acceptance adapters/configuration and remote validation remain open.
+
+## 2026-10-11 — Remote CI integration review
+
+Removed pip caching from the publication hygiene job because it installs no packages; GitHub runner cleanup otherwise fails when the cache directory is absent.
