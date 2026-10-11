@@ -146,3 +146,68 @@ Production deployment still requires a reviewed exact-commit qualification recor
 and absent nonsecret configuration, then reads it back. Repository and runtime
 identity must match before any update. This does not deploy or migrate the database;
 missing database/model credentials and qualification remain explicit blockers.
+
+
+## Render DATABASE_ROLE follow-up — 2026-10-10
+
+Status: local role procedure and regression verification complete; hosted role repair
+remains open. Baseline source `db505c89131788c05809ab240f3617ff1a99137f`;
+local branch `fix/render-database-role`, uncommitted changes. No push or deployment.
+
+DATABASE_ROLE is a custom HttpError(503) emitted by /api/v1/ready in src/app.ts when
+production applicationRoleSafe rejects the connected current_user. The role is
+unsafe, not necessarily missing or unable to connect: elevated role flags, schema
+CREATE, relation ownership/inherited ownership, migration-table writes, or membership
+in elevated roles cause rejection. The check uses NODE_ENV and the identity selected
+by DATABASE_URL, not a DATABASE_ROLE environment variable. Which individual condition
+failed on Render remains unverified because existing authorized workflows cannot
+query the effective database role. Do not bypass this validation.
+
+Fresh read-only provider inspection run 38077726204 confirms Docker/root/context/
+Dockerfile/readiness path and nonempty direct DATABASE_URL. Latest attempted deployment
+is update_failed at `532bd1c41a9f4a8310ddb931f112508d558d202b`, older than source.
+The diagnostic returned direct_health_http=0 (no HTTP response obtained within its
+bounded request), not readiness success. Linked environment groups, actual database
+identity/TLS, live revision, migrations and active role require private provider/DB
+readback. Worker binding inspection resolves a web_service, so do not apply worker
+changes using that ID without verifying the actual target.
+
+Changes: existing database-role.ts now returns safe, named privilege-failure reasons
+without credentials. Existing provision.ts requires reviewed expected host/database,
+a dedicated onesa_portal database and remote TLS; defaults to read-only diagnostics.
+Explicit --apply retains the existing transactional limited-role grant procedure and
+never changes an existing password. Readiness now checks reachability, existing
+production-role restrictions, every bundled migration checksum and table CRUD/sequence grants.
+Failures return honest 503 codes DATABASE_CONNECTION/DATABASE_ROLE/DATABASE_SCHEMA/
+DATABASE_PERMISSIONS. Docker health check follows PORT rather than hardcoded 8300.
+Added production image CMD smoke to verify.yml and extended real role integration
+coverage. Public/private authorization and legal publication gates are preserved.
+
+Both actual production backend build and Linux Node 24 test stage pass. Full backend
+suite: 36 passed, zero skips, using disposable onesa_portal_test. Verified owner role
+fails 503, provisioned restricted role reaches 200, migration writes/schema creation
+are denied, removed grant/stale checksum/unreachable DB fail, protected auth/me=401,
+health=200 independently of DB and graceful SIGTERM exits 0. Actual production image
+runs default node CMD at PORT=10000. Lint/types/build, contracts/breaking-contract test,
+provider tests and publication hygiene pass. No hosted success or new remote CI pass
+is claimed. Legal/publication/operations gates remain open.
+
+Reviewed operator procedure (never use the AI/Neon staging URL): confirm Portal
+service DATABASE_URL and linked groups against its own approved resource; privately
+inject migration-owner DATABASE_URL into an isolated operator process.
+Set PORTAL_EXPECTED_DB_HOST and PORTAL_EXPECTED_DB_NAME to the independently reviewed
+Portal identity. Run migrations with that owner, then `node dist/src/services/provision.js`
+for read-only privilege reasons and TLS confirmation. Review role identity/membership/
+ownership and grants before applying `PORTAL_APP_DB_PASSWORD=<private injection>` with
+`node dist/src/services/provision.js --apply`. Required minimum: LOGIN without elevated
+flags/memberships, public schema USAGE, CRUD on application tables, SELECT only on
+schema_migrations, sequence USAGE/SELECT. No schema CREATE, owner membership,
+migration writes, superuser or unrestricted grants. Grants cover existing tables;
+rerun reviewed provisioning after owner migrations add tables. Existing passwords
+are not reset: authenticate with the existing role credential or use a separately
+approved rotation process. Verify connection and readiness using the restricted role,
+then separately approve setting only API/actual-worker DATABASE_URL to that restricted
+Portal URL (preserve database/host/TLS settings). Owner credentials must not remain in
+runtime or overriding groups. Changing production secrets is not authorized here.
+Deploy the exact reviewed new revision only after CI/release approval and recheck
+health=200/ready=200, unavailable dependencies, authorization and publication gates.

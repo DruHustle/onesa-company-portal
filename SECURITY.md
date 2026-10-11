@@ -1,28 +1,7 @@
-# Security policy
+# Security
 
-Supported software: the latest reviewed revision of `main`; no historical release
-support promise is made before a release/support policy is approved.
+The authoritative security policy is the [Security policy section in AGENTS.md](AGENTS.md#security-policy). Report vulnerabilities privately through GitHub private vulnerability reporting if enabled or an owner through an existing private channel. Do not disclose credentials, personal data or exploit details in public issues. No dedicated contact or response SLA is asserted.
 
-Report vulnerabilities privately through GitHub's private vulnerability reporting
-if enabled, or an organization owner using an existing private channel. Do not file
-credentials, customer records, exploitation details or personal data in public issues.
-A dedicated security contact and response targets must be assigned before production.
+Support is limited to the latest reviewed main revision; no historical release support is promised. Store secrets and private records outside Git and CI artifacts. Ordinary feature/PR CI must not use production secrets. Production approval, storage, backup, credential and release qualification require verified deployment-specific evidence.
 
-Do not store API credentials, production environment files, private corporate records,
-model weights, database dumps or user uploads in Git or CI artifacts. Use a secret
-manager and access-controlled storage. Separate frontend public configuration from
-backend secrets. Local `.env` files must remain ignored; examples contain placeholders.
-Use least-privilege database/service identities and protected production environments.
-
-If a credential was committed, revoke/rotate it first, assess access and logs, and
-notify the security owner privately. Ignoring or untracking a file does not remove
-it from history. Remove it from future commits only after reviewing staged work;
-historical removal requires a separately approved, coordinated remediation plan.
-Never automatically rewrite history or force-push. Confidential documents already
-in history block publication until an owner approves an appropriate remediation.
-
-`python3 scripts/repository_hygiene.py --history` scans available reachable history,
-staged content and publishable working files without printing matched values.
-This heuristic cannot prove absence of secrets or confidential prose. Enable GitHub
-secret scanning/push protection where the organization plan supports it, and conduct
-human data-classification review before publishing or uploading CI artifacts.
+The [branch protection report](docs/development/BRANCH_PROTECTION_REPORT.md) records actual enforcement. Main is currently unprotected because GitHub rejects private-repository protection under the account's eligibility. [Emergency recovery](docs/development/branch-protection/ACTIVATION.md#emergency-recovery) requires a recorded, temporary administrator correction; broad permanent bypass is prohibited.

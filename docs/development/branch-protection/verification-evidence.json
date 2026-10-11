@@ -1,0 +1,441 @@
+{
+  "inspected_at": "2026-10-10T21:30:44+02:00",
+  "repository": {
+    "exit_code": 0,
+    "data": {
+      "full_name": "DruHustle/onesa-company-portal",
+      "html_url": "https://github.com/DruHustle/onesa-company-portal",
+      "default_branch": "main",
+      "visibility": "private",
+      "owner": {
+        "login": "DruHustle",
+        "type": "User"
+      },
+      "permissions": {
+        "admin": true,
+        "maintain": true,
+        "push": true,
+        "triage": true,
+        "pull": true
+      },
+      "archived": false
+    }
+  },
+  "collaborators": {
+    "exit_code": 0,
+    "data": [
+      {
+        "login": "DruHustle",
+        "role_name": "admin"
+      }
+    ]
+  },
+  "branches": {
+    "exit_code": 0,
+    "data": [
+      {
+        "name": "main",
+        "commit": {
+          "sha": "db505c89131788c05809ab240f3617ff1a99137f",
+          "url": "https://api.github.com/repos/DruHustle/onesa-company-portal/commits/db505c89131788c05809ab240f3617ff1a99137f"
+        },
+        "protected": false
+      },
+      {
+        "name": "vercel/install-and-configure-vercel-w-ryldw3",
+        "commit": {
+          "sha": "74275f93472c5a013ea809c8540ba6b757d62362",
+          "url": "https://api.github.com/repos/DruHustle/onesa-company-portal/commits/74275f93472c5a013ea809c8540ba6b757d62362"
+        },
+        "protected": false
+      }
+    ]
+  },
+  "rulesets": {
+    "exit_code": 1,
+    "data": {
+      "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+      "documentation_url": "https://docs.github.com/rest/repos/rules#get-all-repository-rulesets",
+      "status": "403"
+    }
+  },
+  "effective_rules": {
+    "exit_code": 1,
+    "data": {
+      "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+      "documentation_url": "https://docs.github.com/rest/repos/rules#get-rules-for-a-branch",
+      "status": "403"
+    }
+  },
+  "branch_protection": {
+    "exit_code": 1,
+    "data": {
+      "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+      "documentation_url": "https://docs.github.com/rest/branches/branch-protection#get-branch-protection",
+      "status": "403"
+    }
+  },
+  "main_checks": {
+    "exit_code": 0,
+    "data": [
+      {
+        "id": 114288102375,
+        "name": "inspect",
+        "head_sha": "db505c89131788c05809ab240f3617ff1a99137f",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38077726204/job/114288102375",
+        "app": "github-actions",
+        "app_id": 15368
+      },
+      {
+        "id": 114249794563,
+        "name": "frontend",
+        "head_sha": "db505c89131788c05809ab240f3617ff1a99137f",
+        "status": "completed",
+        "conclusion": "skipped",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38064662788/job/114249794563",
+        "app": "github-actions",
+        "app_id": 15368
+      },
+      {
+        "id": 114249794014,
+        "name": "worker",
+        "head_sha": "db505c89131788c05809ab240f3617ff1a99137f",
+        "status": "completed",
+        "conclusion": "skipped",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38064662788/job/114249794014",
+        "app": "github-actions",
+        "app_id": 15368
+      },
+      {
+        "id": 114249793574,
+        "name": "backend",
+        "head_sha": "db505c89131788c05809ab240f3617ff1a99137f",
+        "status": "completed",
+        "conclusion": "skipped",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38064662788/job/114249793574",
+        "app": "github-actions",
+        "app_id": 15368
+      },
+      {
+        "id": 114249764604,
+        "name": "verify",
+        "head_sha": "db505c89131788c05809ab240f3617ff1a99137f",
+        "status": "completed",
+        "conclusion": "failure",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38064662788/job/114249764604",
+        "app": "github-actions",
+        "app_id": 15368
+      },
+      {
+        "id": 114249710773,
+        "name": "image-security (onesa-company-portal-backend)",
+        "head_sha": "db505c89131788c05809ab240f3617ff1a99137f",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38064644928/job/114249710773",
+        "app": "github-actions",
+        "app_id": 15368
+      },
+      {
+        "id": 114249710689,
+        "name": "image-security (onesa-company-portal-frontend)",
+        "head_sha": "db505c89131788c05809ab240f3617ff1a99137f",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38064644928/job/114249710689",
+        "app": "github-actions",
+        "app_id": 15368
+      },
+      {
+        "id": 114249710650,
+        "name": "verify",
+        "head_sha": "db505c89131788c05809ab240f3617ff1a99137f",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38064644928/job/114249710650",
+        "app": "github-actions",
+        "app_id": 15368
+      },
+      {
+        "id": 114249710640,
+        "name": "publication-hygiene",
+        "head_sha": "db505c89131788c05809ab240f3617ff1a99137f",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38064644913/job/114249710640",
+        "app": "github-actions",
+        "app_id": 15368
+      }
+    ]
+  },
+  "pull_request_runs": {
+    "exit_code": 0,
+    "data": [
+      {
+        "id": 38059134798,
+        "name": "Portal verification",
+        "head_sha": "74275f93472c5a013ea809c8540ba6b757d62362",
+        "event": "pull_request",
+        "head_branch": "vercel/install-and-configure-vercel-w-ryldw3",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38059134798",
+        "path": ".github/workflows/verify.yml"
+      },
+      {
+        "id": 38059134767,
+        "name": "Repository hygiene",
+        "head_sha": "74275f93472c5a013ea809c8540ba6b757d62362",
+        "event": "pull_request",
+        "head_branch": "vercel/install-and-configure-vercel-w-ryldw3",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38059134767",
+        "path": ".github/workflows/repository-hygiene.yml"
+      }
+    ]
+  },
+  "environments": {
+    "exit_code": 0,
+    "data": {
+      "total_count": 1,
+      "environments": [
+        {
+          "id": 23911821785,
+          "node_id": "EN_kwDOVCu0N88AAAAFkUFx2Q",
+          "name": "Production",
+          "url": "https://api.github.com/repos/DruHustle/onesa-company-portal/environments/Production",
+          "html_url": "https://github.com/DruHustle/onesa-company-portal/deployments/activity_log?environments_filter=Production",
+          "created_at": "2026-10-09T20:08:56Z",
+          "updated_at": "2026-10-09T20:08:56Z",
+          "can_admins_bypass": true,
+          "protection_rules": [],
+          "deployment_branch_policy": null
+        }
+      ]
+    }
+  },
+  "hooks": {
+    "exit_code": 0,
+    "data": []
+  },
+  "deployments": {
+    "exit_code": 0,
+    "data": [
+      {
+        "id": 6969987991,
+        "sha": "f3ffce1aee0baf72eb18d9e9480063b23b8bae4b",
+        "ref": "f3ffce1aee0baf72eb18d9e9480063b23b8bae4b",
+        "environment": "Production",
+        "production_environment": false,
+        "transient_environment": false,
+        "creator": "vercel[bot]"
+      }
+    ]
+  },
+  "installation_inventory": {
+    "exit_code": 1,
+    "data": {
+      "message": "You must authenticate with an access token authorized to a GitHub App in order to list installations",
+      "documentation_url": "https://docs.github.com/rest/apps/installations#list-app-installations-accessible-to-the-user-access-token",
+      "status": "403"
+    }
+  },
+  "application_and_readback": [
+    {
+      "method": "POST",
+      "endpoint": "repos/DruHustle/onesa-company-portal/rulesets",
+      "exit_code": 1,
+      "data": {
+        "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+        "documentation_url": "https://docs.github.com/rest/repos/rules#create-a-repository-ruleset",
+        "status": "403"
+      }
+    },
+    {
+      "method": "PUT",
+      "endpoint": "repos/DruHustle/onesa-company-portal/branches/main/protection",
+      "exit_code": 1,
+      "data": {
+        "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+        "documentation_url": "https://docs.github.com/rest/branches/branch-protection#update-branch-protection",
+        "status": "403"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "repos/DruHustle/onesa-company-portal/branches/main",
+      "exit_code": 0,
+      "data": {
+        "name": "main",
+        "sha": "db505c89131788c05809ab240f3617ff1a99137f",
+        "protected": false,
+        "protection": {
+          "enabled": false,
+          "required_status_checks": {
+            "enforcement_level": "off",
+            "contexts": [],
+            "checks": []
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "repos/DruHustle/onesa-company-portal/rules/branches/main",
+      "exit_code": 1,
+      "data": {
+        "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+        "documentation_url": "https://docs.github.com/rest/repos/rules#get-rules-for-a-branch",
+        "status": "403"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "repos/DruHustle/onesa-company-portal/branches/main/protection",
+      "exit_code": 1,
+      "data": {
+        "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+        "documentation_url": "https://docs.github.com/rest/branches/branch-protection#get-branch-protection",
+        "status": "403"
+      }
+    }
+  ],
+  "pr_jobs_38059134798": {
+    "exit_code": 0,
+    "data": [
+      {
+        "id": 114233624146,
+        "name": "image-security (onesa-company-portal-frontend)",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38059134798/job/114233624146"
+      },
+      {
+        "id": 114233624224,
+        "name": "verify",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38059134798/job/114233624224"
+      },
+      {
+        "id": 114233624272,
+        "name": "image-security (onesa-company-portal-backend)",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38059134798/job/114233624272"
+      }
+    ]
+  },
+  "pr_jobs_38059134767": {
+    "exit_code": 0,
+    "data": [
+      {
+        "id": 114233623921,
+        "name": "publication-hygiene",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38059134767/job/114233623921"
+      }
+    ]
+  },
+  "hosting_inspection": {
+    "source_run": "https://github.com/DruHustle/onesa-company-portal/actions/runs/38077726204",
+    "exit_code": 0,
+    "report": {
+      "read_only": true,
+      "source_commit": "db505c89131788c05809ab240f3617ff1a99137f",
+      "backend": {
+        "role": "backend",
+        "api_http": 200,
+        "service_type": "web_service",
+        "runtime": "docker",
+        "main_branch": true,
+        "native_auto_deploy_disabled": true,
+        "docker_context_matches": true,
+        "dockerfile_matches": true,
+        "logs_api_http": 200,
+        "recognized_log_error_categories": [],
+        "root_directory_matches": true,
+        "docker_runtime": true,
+        "health_path_matches": true,
+        "environment_api_http": 200,
+        "required_environment_nonempty": {
+          "DATABASE_URL": true,
+          "SESSION_KEY": true,
+          "PUBLIC_ORIGIN": true,
+          "PROXY_SHARED_KEY": true,
+          "S3_BUCKET": true,
+          "S3_ENDPOINT": true,
+          "AWS_ACCESS_KEY_ID": true,
+          "AWS_SECRET_ACCESS_KEY": true
+        },
+        "deployment_api_http": 200,
+        "latest_deployment_state": "update_failed",
+        "latest_deployment_commit": "532bd1c41a9f4a8310ddb931f112508d558d202b",
+        "direct_health_http": 0
+      },
+      "frontend": {
+        "api_http": 200,
+        "root_directory_matches": true,
+        "nextjs_framework": true,
+        "environment_api_http": 200,
+        "required_production_environment_present": {
+          "BACKEND_URL": false,
+          "PROXY_SHARED_KEY": false,
+          "SITE_URL": true,
+          "PORTAL_URL": true,
+          "PUBLIC_ORIGIN": true
+        },
+        "production_state": "READY",
+        "production_commit": "f3ffce1aee0baf72eb18d9e9480063b23b8bae4b"
+      },
+      "existing_worker_lookup_http": 200,
+      "matching_existing_worker_ids": [],
+      "worker": {
+        "role": "worker",
+        "api_http": 200,
+        "service_type": "web_service",
+        "runtime": "docker",
+        "main_branch": true,
+        "native_auto_deploy_disabled": false,
+        "docker_context_matches": true,
+        "dockerfile_matches": true,
+        "logs_api_http": 200,
+        "recognized_log_error_categories": [],
+        "root_directory_matches": false,
+        "docker_runtime": true,
+        "health_path_matches": null,
+        "environment_api_http": 200,
+        "required_environment_nonempty": {
+          "DATABASE_URL": true,
+          "SESSION_KEY": true,
+          "S3_BUCKET": true,
+          "S3_ENDPOINT": true,
+          "AWS_ACCESS_KEY_ID": true,
+          "AWS_SECRET_ACCESS_KEY": true,
+          "MAIL_PROVIDER": true,
+          "RESEND_API_KEY": true,
+          "MAIL_FROM": true
+        },
+        "deployment_api_http": 200,
+        "latest_deployment_state": "live",
+        "latest_deployment_commit": "532bd1c41a9f4a8310ddb931f112508d558d202b",
+        "direct_health_http": null
+      }
+    }
+  },
+  "local_validation": {
+    "required_contexts": 4,
+    "workflow_yaml_and_unique_pr_contexts": "passed",
+    "equivalent_payloads": "passed",
+    "executable_job_structure_preserved": "passed",
+    "relative_policy_links": "passed",
+    "git_diff_check": "passed",
+    "publication_hygiene_findings": 0,
+    "enforcement_test_pr": "not performed: GitHub plan blocks activation",
+    "application_tests": "not rerun: governance and job display names only"
+  }
+}

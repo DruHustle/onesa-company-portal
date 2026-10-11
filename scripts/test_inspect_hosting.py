@@ -9,6 +9,19 @@ import repair_hosting
 
 
 class HostingInspectionTests(unittest.TestCase):
+    def test_startup_overrides_and_role_errors_are_classified_without_disclosure(self):
+        marker = "synthetic-private-token"
+        self.assertEqual(inspect_hosting.startup_override(""), "dockerfile_cmd")
+        result = inspect_hosting.startup_override("exec uvicorn --token=" + marker)
+        self.assertNotIn(marker, result)
+        categories = inspect_hosting.log_categories({"logs": [
+            {"message": "sh: exec uvicorn app.main:create_app --factory: not found"},
+            {"message": "DATABASE_ROLE " + marker},
+        ]})
+        self.assertIn("shell_startup_command_not_found", categories)
+        self.assertIn("database_role_unsafe", categories)
+        self.assertNotIn(marker, str(categories))
+
     def test_only_required_environment_presence_is_returned(self):
         marker = "synthetic-private-value-must-not-be-logged"
         entries = [

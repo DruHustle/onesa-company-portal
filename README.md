@@ -21,11 +21,10 @@ The portal stores corporate and personal data. `assets/documents/`, backend stor
 backups and local environments are excluded from Git. Do not upload those files as
 CI artifacts. Existing PDFs are locally retained for owner classification.
 
-[Deployment](docs/engineering/DEPLOYMENT.md) · [GitHub setup and protections](GITHUB_SETUP.md)
-· [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+[Deployment](docs/engineering/DEPLOYMENT.md) · [Engineering policies](AGENTS.md)
 
-This preparation does not claim production acceptance. See `IMPLEMENTATION_STATUS.md`
-and `SESSION_HANDOFF.md` for prior implementation evidence. No software license is
+Production acceptance is tracked in [the release checklist](RELEASE_CHECKLIST.md);
+implementation history is recorded in [the changelog](CHANGELOG.md). No software license is
 assigned pending an ownership decision.
 
 ## Selected cloud deployment
@@ -35,3 +34,7 @@ Vercel hosts the frontend; Render hosts the backend. See
 Configuration is prepared; account provisioning and remote acceptance are not yet verified.
 
 [Domain routing, Zoho Mail and Resend setup](docs/engineering/DOMAINS_AND_EMAIL.md).
+
+[Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Verified branch protection status](docs/development/BRANCH_PROTECTION_REPORT.md). Main protection is currently **BLOCKED — NOT ENFORCED** by GitHub plan eligibility.
+
+The selected policy is [GitHub Free with private repositories](docs/development/FREE_GITHUB_PLAN.md). PR and check discipline is voluntary until server protection is supported; no upgrade or visibility change is proposed.

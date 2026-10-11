@@ -48,3 +48,10 @@ application data. Browser tests need an isolated seeded stack and installed Chro
 Existing `verify.yml` runs lint/build/contracts/database/browser/docs/container checks
 under the `verify` job. Require `verify` and `publication-hygiene`. Local preparation
 only runs non-database unit tests; full CI is a separate gate and has not run remotely.
+
+After full backend tests provision the synthetic restricted role on the disposable
+`TEST_DATABASE_URL`, run `python3 scripts/startup_smoke.py onesa-portal-backend:local`.
+On Linux CI it uses host networking; for a dedicated Docker test database use
+`--network container:<isolated-test-db>`. It exercises the production image's default
+CMD at PORT=10000, health, owner-role 503, restricted-role 200, unavailable DB 503,
+authentication and SIGTERM. Never supply an application database to this test.

@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-10-10 — GitHub Free governance plan
+
+- Selected private GitHub Free operation with voluntary feature-branch PRs, verified
+  CI, manual authorization and least practical write access. No paid upgrade or
+  visibility workaround is proposed; main enforcement remains blocked.
+
+## 2026-10-10 — Branch protection and governance audit
+
+- Verified private personal ownership, admin access, actual PR CI/security check names
+  and deployment/environment evidence across all three repositories.
+- Attempted repository rulesets and classic fallback; GitHub rejected both with HTTP
+  403 requiring Pro eligibility. Main readback remains unprotected, NOT ENFORCED.
+- Prepared exact payloads, solo-developer PR/recovery policy, templates and API-backed
+  reports. Local `deploy.yml` display names now use `deploy-qualification`, `deploy-frontend` and `deploy-backend` plus `deploy-worker`. Job IDs, dependency expressions and deployment behavior are preserved. This removes collisions with required CI checks. These edits are not yet published; merge them through a reviewed PR and verify the resulting names before activating the payload.
+- Existing local work is preserved. No push, merge, deployment, billing, visibility,
+  credential or external provider change was performed.
+
+## 2026-10-10 — Render database-role follow-up
+
+- Guarded the existing restricted-role operator procedure with database identity/TLS
+  checks and read-only default; added credential-free privilege reasons.
+- Readiness verifies migration checksums and application CRUD grants; Docker health
+  follows PORT. Production CMD and owner/restricted/dependency regressions added to CI.
+- 36 backend tests passed on isolated PostgreSQL; production image smoke passed.
+  Hosted role condition/identity remain unverified; production/legal gates stay open.
+
 ## 2026-10-10 — Fresh authentication and own-password controls
 
 - Added transactional fresh password/MFA proof for user administration/MFA reset,
@@ -161,3 +187,10 @@ Vercel Hobby commercial restrictions, expiring Render free database, missing fre
 workers, EU model/privacy/capacity and restored backup limits remain material.
 Free inference candidates are unconfigured, not a deployed real-model endpoint.
 Production remains NO-GO; preserve independent products and all original data.
+
+## 2026-10-10 — Instruction documentation cleanup
+
+Removed completed GitHub setup instructions and duplicate status/session-handoff
+logs. Consolidated contribution, security, repository governance and agent policies
+in one root AGENTS.md per independent repository. Preserved unfinished work in
+existing roadmap/release documentation, updated links and documentation tooling.

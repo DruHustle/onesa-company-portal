@@ -1,23 +1,15 @@
-# Contributing to Onesa UG
+# Contributing
 
-This repository is independently maintained within `onesa-ug`. Keep its frontend and
-backend in their existing subdirectories. Do not initialize a workspace-level Git
-repository, add sibling projects as submodules, or couple their release cycles.
+Engineering and security policies live in [AGENTS.md](AGENTS.md). Current verified protection and exact required checks are in [the branch protection report](docs/development/BRANCH_PROTECTION_REPORT.md). **Main protection is currently blocked by GitHub plan eligibility, not enforced.** Follow the PR workflow voluntarily until activation.
 
-Create a feature branch from `main`, make focused changes, and open a pull request.
-Preserve work already staged or modified locally. Require one independent review;
-use two reviews for authentication, personal data, infrastructure or robot actuation.
-Describe the problem, resulting behavior, validation and deployment/rollback impact.
-Update API contracts, migrations and documentation with behavior changes.
+1. Inspect the current branch and staged/unstaged work. Preserve existing changes; use a separate checkout when unrelated work would contaminate a PR. Do not initialize Git in the workspace parent.
+2. Start `feature/description`, `fix/description` or `security/description` from reviewed current main. Keep each repository and release independent.
+3. Implement focused changes, update contracts/operational documentation when affected and run relevant commands in [BUILD_AND_TEST.md](docs/engineering/BUILD_AND_TEST.md), plus repository hygiene.
+4. Inspect diffs and stage only reviewed paths; never include private data/secrets. Commit the reviewed changes. Push the feature branch only when authorized and open a PR describing validation and release/rollback impact.
+5. Inspect GitHub CI, fix failures with follow-up commits, resolve conversations and synchronize against main. Required CI includes existing security gates; never remove failures to obtain a merge. Do not use skip-CI directives.
+6. While the authenticated team has only one developer, zero independent approvals are intended; PRs and all real checks remain mandatory in the prepared protection policy. Add one independent approval and verified security/infrastructure code owners when authorized reviewers join. The author cannot independently approve their own PR.
+7. Merge through GitHub only with corresponding authorization and satisfied policy. Production deployment requires separate authorization and exact-revision release qualification. Feature/PR previews and isolated staging are separate from main production promotion.
 
-Run the commands in `docs/engineering/BUILD_AND_TEST.md` and
-`python3 scripts/repository_hygiene.py` before staging. Inspect `git diff --cached`
-and `git status --short`. Never stage private records, uploads, dumps, models or secrets.
-Use synthetic fixtures; a private repository is not a secret store. Keep environment
-examples as placeholders. New dependencies need provenance and license review.
-Do not introduce a project license until ownership and licensing are approved.
+No direct main pushes, main force pushes, deletion, administrator development bypass, automatic merges or automatic production releases. Keep secrets scoped to trusted deployment workflows/environments. [Recovery and activation](docs/development/branch-protection/ACTIVATION.md) are administrator operations with recorded evidence.
 
-Application builds and releases are independent. Changes to a shared contract must
-remain compatible during separate rollouts. Production promotion, remote pushes and
-visibility changes require explicit authorization. See `GITHUB_SETUP.md` and
-`docs/engineering/DEPLOYMENT.md`. Branch protections are recommendations until configured.
+The selected policy is [GitHub Free with private repositories](docs/development/FREE_GITHUB_PLAN.md). PR and check discipline is voluntary until server protection is supported; no upgrade or visibility change is proposed.

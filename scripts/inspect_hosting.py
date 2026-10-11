@@ -66,6 +66,8 @@ def health(origin, path):
 def log_categories(data):
     messages = "\n".join(str(item.get("message", "")) for item in data.get("logs", []))
     patterns = {
+        "shell_startup_command_not_found": r"(?i)(exec.*uvicorn.*not found|uvicorn:.*not found)",
+        "database_role_unsafe": r"DATABASE_ROLE",
         "docker_context_or_file_missing": r"(?i)(failed to read dockerfile|dockerfile.*no such file|failed to calculate checksum|package.json.*not found)",
         "package_manager_removed_from_runtime": r"(?i)(npm:.*not found|cannot find module.*npm|exec:.*npm.*not found)",
         "environment_validation_failed": r"(?i)(validationerror|zoderror|production requires|database_url.*required)",
@@ -73,6 +75,19 @@ def log_categories(data):
         "schema_not_current": r"(?i)(schema.*revision|migration.*required|schema.*not.*current)",
     }
     return [name for name, pattern in patterns.items() if re.search(pattern, messages)]
+
+
+def startup_override(command):
+    # Classify rather than echo a provider command that may contain secrets.
+    if command in {None, ""}:
+        return "dockerfile_cmd"
+    if command == "sh /app/start.sh":
+        return "startup_script"
+    if command == "node dist/src/server.js":
+        return "node_server"
+    if command == "node dist/src/jobs/worker.js":
+        return "node_worker"
+    return "unrecognized_override_requires_private_review"
 
 
 def render(role, service, required, expected_root, expected_health):
@@ -136,6 +151,7 @@ def render(role, service, required, expected_root, expected_health):
         "main_branch": data.get("branch") == "main",
         "native_auto_deploy_disabled": data.get("autoDeployTrigger") == "off"
         or data.get("autoDeploy") == "no",
+        "docker_command_mode": startup_override(runtime.get("dockerCommand")),
         "docker_context_matches": runtime.get("dockerContext") in {".", "./"},
         "dockerfile_matches": runtime.get("dockerfilePath")
         in {"Dockerfile", "./Dockerfile"},
