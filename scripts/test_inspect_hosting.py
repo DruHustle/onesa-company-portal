@@ -9,6 +9,41 @@ import repair_hosting
 
 
 class HostingInspectionTests(unittest.TestCase):
+    def test_staging_inspection_selects_only_the_owner_supplied_targets(self):
+        with patch.dict("os.environ", {"RENDER_BACKEND_SERVICE_ID": "srv-productionapi", "RENDER_WORKER_SERVICE_ID": "srv-productionworker"}):
+            self.assertEqual(inspect_hosting.portal_services("production"), ("srv-productionapi", "srv-productionworker"))
+            self.assertEqual(inspect_hosting.portal_services("staging"), ("srv-db5k5had0e5s73fos4g0", "srv-db5k4mlckfvc73agdr40"))
+            with self.assertRaises(SystemExit):
+                inspect_hosting.portal_services("unrecognized")
+
+    def test_inventory_filters_foreign_repositories_and_never_returns_provider_values(self):
+        marker = "synthetic-private-provider-value"
+        item = {"id": "srv-fixture", "repo": "https://github.com/DruHustle/onesa-company-portal.git",
+                "branch": "staging", "type": "web_service", "rootDir": "onesa-company-portal-backend",
+                "autoDeployTrigger": "off", "envVars": [{"value": marker}],
+                "serviceDetails": {"plan": "free", "region": "frankfurt", "dockerCommand": marker}}
+        foreign = {**item, "id": "srv-foreign", "repo": "https://github.com/other/private-project"}
+        with patch("inspect_hosting.get_json", return_value=([{"service": item}, {"service": foreign}], 200)) as read:
+            report = inspect_hosting.render_inventory("synthetic-test-token")
+        self.assertTrue(report["complete"])
+        self.assertEqual(len(report["services"]), 1)
+        self.assertEqual(report["services"][0]["branch"], "staging")
+        self.assertEqual(report["services"][0]["plan"], "free")
+        self.assertNotIn(marker, json.dumps(report))
+        self.assertNotIn("private-project", json.dumps(report))
+        read.assert_called_once()
+
+    def test_inventory_pagination_is_bounded_and_partial_results_are_not_complete(self):
+        page = [{"service": {}, "cursor": "same-cursor"} for _ in range(100)]
+        with patch("inspect_hosting.get_json", return_value=(page, 200)) as read:
+            report = inspect_hosting.render_inventory("synthetic-test-token")
+        self.assertFalse(report["complete"])
+        self.assertEqual(read.call_count, 2)
+        self.assertIn("cursor=same-cursor", read.call_args.args[1])
+        with patch("inspect_hosting.get_json", return_value=({}, 403)):
+            self.assertFalse(inspect_hosting.render_inventory("synthetic-test-token")["complete"])
+        self.assertIsNone(inspect_hosting.safe_identifier("private-marker", "dep-"))
+
     def test_startup_overrides_and_role_errors_are_classified_without_disclosure(self):
         marker = "synthetic-private-token"
         self.assertEqual(inspect_hosting.startup_override(""), "dockerfile_cmd")
@@ -72,6 +107,14 @@ class HostingInspectionTests(unittest.TestCase):
                 "envSpecificDetails"
             ]["dockerCommand"],
             "node dist/src/jobs/worker.js",
+        )
+
+    def test_ai_configuration_uses_dockerfile_startup(self):
+        self.assertEqual(
+            repair_hosting.configuration(False, False)["serviceDetails"][
+                "envSpecificDetails"
+            ]["dockerCommand"],
+            "",
         )
 
     def test_configuration_repair_refuses_a_different_repository(self):

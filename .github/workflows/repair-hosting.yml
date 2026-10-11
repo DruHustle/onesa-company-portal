@@ -1,8 +1,18 @@
 name: Repair existing hosting configuration
 on:
   workflow_dispatch:
+    inputs:
+      portal_action:
+        description: Targeted Portal database role operation (never deploys)
+        type: choice
+        default: inspect-role
+        options: [inspect-role, inspect-confirmed-target, initialize-confirmed-target, repair-role, repair-layout]
 permissions:
   contents: read
+  actions: read
+concurrency:
+  group: portal-database-role-repair
+  cancel-in-progress: false
 jobs:
   inspect:
     runs-on: ubuntu-latest
@@ -10,15 +20,57 @@ jobs:
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_BACKEND_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
-      RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      PORTAL_MIGRATION_DATABASE_URL: ${{ secrets.PORTAL_MIGRATION_DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Require successful checks before database changes
+        if: inputs.portal_action == 'repair-role' || inputs.portal_action == 'initialize-confirmed-target'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const allowed = '${{ inputs.portal_action }}' === 'initialize-confirmed-target'
+              ? ['refs/heads/audit/portal-master-acceptance']
+              : ['refs/heads/main', 'refs/heads/fix/render-runtime-repair'];
+            if (!allowed.includes(context.ref)) throw new Error('Approved Portal operator branch required');
+            const {owner, repo} = context.repo;
+            for (const workflow_id of ['verify.yml', 'repository-hygiene.yml']) {
+              const runs = await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id, head_sha: context.sha, event: 'push', per_page: 20});
+              const run = runs.data.workflow_runs[0];
+              if (!run || run.status !== 'completed' || run.conclusion !== 'success') throw new Error(`${workflow_id} must pass for this repair revision`);
+            }
+      - run: npm ci
+        working-directory: onesa-company-portal-backend
+      - name: Inspect identified Portal schema and role without revealing credentials
+        if: inputs.portal_action == 'inspect-role'
+        working-directory: onesa-company-portal-backend
+        run: node --import tsx src/services/render-role-repair.ts
+      - name: Inspect the owner-confirmed alternate Portal target without changing databases
+        if: inputs.portal_action == 'inspect-confirmed-target'
+        working-directory: onesa-company-portal-backend
+        run: node --import tsx src/services/render-role-repair.ts --inspect-confirmed-target
+      - name: Provision and verify a restricted role then save only the API runtime URL
+        if: inputs.portal_action == 'repair-role'
+        working-directory: onesa-company-portal-backend
+        run: node --import tsx src/services/render-role-repair.ts --apply
+      - name: Initialize only the confirmed empty database; leave Render runtime untouched
+        if: inputs.portal_action == 'initialize-confirmed-target'
+        working-directory: onesa-company-portal-backend
+        env:
+          PORTAL_APP_DB_PASSWORD: ${{ secrets.PORTAL_APP_DB_PASSWORD }}
+        run: node --import tsx src/services/render-role-repair.ts --initialize-confirmed-target
+      # No deploy/restart call: production release qualification stays intact.
       - uses: actions/setup-python@v5
+        if: inputs.portal_action == 'repair-layout'
         with: {python-version: '3.11'}
-      - name: Read configuration and deployment status without revealing credentials
-        run: python scripts/repair_hosting.py
-      - name: Read back repaired configuration
-        run: python scripts/inspect_hosting.py
+      - name: Repair existing main hosting layout without deploying
+        if: inputs.portal_action == 'repair-layout'
+        env:
+          RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          python scripts/repair_hosting.py
+          python scripts/inspect_hosting.py

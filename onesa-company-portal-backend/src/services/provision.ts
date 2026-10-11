@@ -1,20 +1,17 @@
 import pg from 'pg';
 import { provisionApplicationRole,applicationRoleStatus } from './database-role.js';
+import { provisionTarget } from './provision-target.js';
 
 // Operator-only command: identify the Portal database before importing any runtime configuration.
 const raw=process.env.DATABASE_URL;
 const expectedHost=process.env.PORTAL_EXPECTED_DB_HOST;
 const expectedDatabase=process.env.PORTAL_EXPECTED_DB_NAME;
 if(!raw||!expectedHost||!expectedDatabase)throw new Error('Supply DATABASE_URL, PORTAL_EXPECTED_DB_HOST and PORTAL_EXPECTED_DB_NAME privately');
-let url:URL;
-try{url=new URL(raw);}catch{throw new Error('Invalid database URL; inspect privately');}
-if(!['postgres:','postgresql:'].includes(url.protocol)||url.hostname!==expectedHost||decodeURIComponent(url.pathname.slice(1))!==expectedDatabase)throw new Error('Database identity does not match the reviewed Portal target');
-if(!expectedDatabase.startsWith('onesa_portal'))throw new Error('Only a dedicated onesa_portal database may be provisioned');
-if(!['localhost','127.0.0.1'].includes(url.hostname)&&!['require','verify-full'].includes(url.searchParams.get('sslmode')||''))throw new Error('Remote database requires TLS');
+provisionTarget(raw,expectedHost,expectedDatabase);
 const apply=process.argv.includes('--apply');
 const password=process.env.PORTAL_APP_DB_PASSWORD;
 if(apply&&!password)throw new Error('PORTAL_APP_DB_PASSWORD must be supplied privately');
-const db=new pg.Pool({connectionString:raw,max:1,connectionTimeoutMillis:5000,statement_timeout:10000});
+const db=new pg.Pool({connectionString:raw,max:1,connectionTimeoutMillis:5000,statement_timeout:10000,enableChannelBinding:true});
 try {
  if(apply) {
   const client=await db.connect();

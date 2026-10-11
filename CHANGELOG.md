@@ -1,30 +1,49 @@
 # Changelog
 
-## 2026-10-10 — GitHub Free governance plan
+## 2026-10-11 — Owner-created staging targets
 
-- Selected private GitHub Free operation with voluntary feature-branch PRs, verified
-  CI, manual authorization and least practical write access. No paid upgrade or
-  visibility workaround is proposed; main enforcement remains blocked.
+- Record the two supplied Render service IDs and add an explicit read-only staging inspection scope. Production settings and release guards remain unchanged; hosted verification is blocked by GitHub's account runner restriction.
 
-## 2026-10-10 — Branch protection and governance audit
+## 2026-10-11 — Deployment target discovery
 
-- Verified private personal ownership, admin access, actual PR CI/security check names
-  and deployment/environment evidence across all three repositories.
-- Attempted repository rulesets and classic fallback; GitHub rejected both with HTTP
-  403 requiring Pro eligibility. Main readback remains unprotected, NOT ENFORCED.
-- Prepared exact payloads, solo-developer PR/recovery policy, templates and API-backed
-  reports. Local `deploy.yml` display names now use `deploy-qualification`, `deploy-frontend` and `deploy-backend` plus `deploy-worker`. Job IDs, dependency expressions and deployment behavior are preserved. This removes collisions with required CI checks. These edits are not yet published; merge them through a reviewed PR and verify the resulting names before activating the payload.
-- Existing local work is preserved. No push, merge, deployment, billing, visibility,
-  credential or external provider change was performed.
+Read-only hosting inspection reports exact deployment IDs, Preview protection and
+a bounded, repository-filtered inventory of existing Onesa Render services.
+Provider environment values and commands remain excluded. Partial inventories are
+marked incomplete; discovery does not authorize repurposing or deploying a service.
+Added foreign-resource, redaction and pagination regression checks.
 
-## 2026-10-10 — Render database-role follow-up
+## 2026-10-11 — Confirmed empty Portal database initialization
 
-- Guarded the existing restricted-role operator procedure with database identity/TLS
-  checks and read-only default; added credential-free privilege reasons.
-- Readiness verifies migration checksums and application CRUD grants; Docker health
-  follows PORT. Production CMD and owner/restricted/dependency regressions added to CI.
-- 36 backend tests passed on isolated PostgreSQL; production image smoke passed.
-  Hosted role condition/identity remain unverified; production/legal gates stay open.
+- Added a separate operator action for the owner-confirmed empty autumn-glade
+  database. Exact-commit CI, database identity and verified client TLS are required;
+  occupied schemas and existing role passwords are preserved by refusal.
+- Seven unchanged migrations and a dedicated restricted login are created in one
+  transaction, using a private pre-saved application credential. The login's schema
+  checksums and permissions are verified before any proposed runtime cutover.
+  This operation never changes Render settings, connects to dark-boat or deploys.
+- The shared migration executor does not load runtime environment files. Added a
+  disposable-database rollback/permissions regression. Database test files run
+  serially because shared-fixture grants and sequence writes reproduced a catalog
+  update race; all tests remain enabled.
+
+## 2026-10-11 — Read-only database diagnostics
+
+Identify runtime URL, migration URL, schema, authentication and permission failures
+without logging credentials or provider responses. Read-only inspection now verifies
+the actual configured runtime role, grants and migration checksums. Role repair and
+production release guards remain unchanged; audit branches cannot apply permissions.
+
+
+## 2026-10-11 — Targeted Render database-role repair
+
+- Added an operator-only workflow that verifies the established Portal Neon target,
+  all migration checksums and the complete table inventory before permission changes.
+- Uses a fresh private direct owner URL to create a restricted runtime role, verifies
+  its CRUD/sequence access and forbidden administrative privileges, and saves only
+  the Portal API DATABASE_URL with private provider readback. Existing records,
+  migrations, role passwords, worker and frontend settings remain untouched.
+- The operation does not deploy or restart; existing production qualification gates
+  continue to apply. Missing owner credentials or unknown schema/roles fail safely.
 
 ## 2026-10-10 — Fresh authentication and own-password controls
 
@@ -188,9 +207,54 @@ workers, EU model/privacy/capacity and restored backup limits remain material.
 Free inference candidates are unconfigured, not a deployed real-model endpoint.
 Production remains NO-GO; preserve independent products and all original data.
 
+### 2026-10-11 — Production readiness checks
+
+Readiness now verifies migration checksums, application CRUD and sequence grants,
+and the existing restricted-role boundary. Container probes honor the assigned
+PORT. CI exercises the actual production command, unavailable databases, safe and
+unsafe roles, authentication boundaries and graceful shutdown on an isolated DB.
+The historical hosted role fault has not been reclassified from a timeout alone.
+
+
+## 2026-10-10 — GitHub Free governance plan
+
+- Selected private GitHub Free operation with voluntary feature-branch PRs, verified
+  CI, manual authorization and least practical write access. No paid upgrade or
+  visibility workaround is proposed; main enforcement remains blocked.
+
+## 2026-10-10 — Branch protection and governance audit
+
+- Verified private personal ownership, admin access, actual PR CI/security check names
+  and deployment/environment evidence across all three repositories.
+- Attempted repository rulesets and classic fallback; GitHub rejected both with HTTP
+  403 requiring Pro eligibility. Main readback remains unprotected, NOT ENFORCED.
+- Prepared exact payloads, solo-developer PR/recovery policy, templates and API-backed
+  reports. Local `deploy.yml` display names now use `deploy-qualification`, `deploy-frontend` and `deploy-backend` plus `deploy-worker`. Job IDs, dependency expressions and deployment behavior are preserved. This removes collisions with required CI checks. These edits are not yet published; merge them through a reviewed PR and verify the resulting names before activating the payload.
+- Existing local work is preserved. No push, merge, deployment, billing, visibility,
+  credential or external provider change was performed.
+
+## 2026-10-10 — Render database-role follow-up
+
+- Guarded the existing restricted-role operator procedure with database identity/TLS
+  checks and read-only default; added credential-free privilege reasons.
+- Readiness verifies migration checksums and application CRUD grants; Docker health
+  follows PORT. Production CMD and owner/restricted/dependency regressions added to CI.
+- 36 backend tests passed on isolated PostgreSQL; production image smoke passed.
+  Hosted role condition/identity remain unverified; production/legal gates stay open.
+
 ## 2026-10-10 — Instruction documentation cleanup
 
 Removed completed GitHub setup instructions and duplicate status/session-handoff
 logs. Consolidated contribution, security, repository governance and agent policies
 in one root AGENTS.md per independent repository. Preserved unfinished work in
 existing roadmap/release documentation, updated links and documentation tooling.
+
+## 2026-10-11 — Reviewed governance integration
+
+Consolidated policy references and templates, preserved later audited runtime fixes, and reconciled deployment notes with actual staging evidence. Prepared protection settings remain reference only under GitHub Free. Original local work and private environment files are preserved. Public production qualification is unchanged.
+
+## 2026-10-11 — Confirmed alternate Portal database inspection
+
+Added a strictly read-only inspection operation for the owner-confirmed alternate Neon Portal endpoint. Existing runtime-role repair still accepts only its established target. Inspection verifies TLS/schema and reports data presence without records, credentials, migrations, permission changes, settings updates or deployment. Corrected the operator workflow reference to repair-hosting.yml.
+
+Follow-up: verify encrypted/certificate-validated TLS at the actual client socket, rather than using pg_stat_ssl for Neon proxy connections. Reject unverified/plain connections before SQL.

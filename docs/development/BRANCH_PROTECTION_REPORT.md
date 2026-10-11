@@ -43,9 +43,9 @@ The ruleset bypass list is empty. No admin, deploy key or App receives permanent
 | `image-security (onesa-company-portal-frontend)` | [Job 114233624146](https://github.com/DruHustle/onesa-company-portal/actions/runs/38059134798/job/114233624146) |
 
 
-These checks were observed on successful PR jobs and on main checks. PR workflows have no path filters, conditional required jobs or real-model/GPU/production/hardware dependency. Matrix security checks scan both runtime images where implemented; failing scans remain required. The platform TLS check uses isolated local containers, not a public production deployment. The robot checks cover only scaffold/publication hygiene, not actuation safety or implemented application tests.
+These checks were observed on successful PR jobs and on main checks. PR workflows have no path filters, conditional required jobs or real-model/GPU/production/hardware dependency. Matrix security checks scan both runtime images where implemented; failing scans remain required. The platform TLS check uses isolated local containers, not a public production deployment. Robot checks now cover authenticated software simulation, proxy/browser behavior and both runtime image security gates; physical actuation remains outside their scope.
 
-Local `deploy.yml` display names now use `deploy-qualification`, `deploy-frontend` and `deploy-backend` plus `deploy-worker`. Job IDs, dependency expressions and deployment behavior are preserved. This removes collisions with required CI checks. These edits are not yet published; merge them through a reviewed PR and verify the resulting names before activating the payload.
+Local `deploy.yml` display names now use `deploy-qualification`, `deploy-frontend` and `deploy-backend` plus `deploy-worker`. Job IDs, dependency expressions and deployment behavior are preserved. This removes collisions with required CI checks. These edits are included in the reviewed candidate; verify the resulting names after an authorized PR merge before activating the payload.
 
 Strict up-to-date checks are prepared because one active contributor limits update churn. Existing `pull_request` triggers run without path filters on PR synchronization. Updating a PR against changed main and enforcement of pending/failing checks were not tested under active protection because eligibility is blocked. No merge queue is enabled. Skip-CI commit directives can leave required checks pending and must not be used.
 
@@ -65,7 +65,7 @@ Repository webhook listing returned empty. Vercel bot deployment evidence is pre
 
 No destructive main test was performed. No test PR was created because it cannot demonstrate protection enforcement under this plan. Existing passing PR CI demonstrates runnable checks, not enforced merge blocking. Pending/failing checks and successful authorized merging remain unverified until activation.
 
-Use [the GitHub Free operating plan](FREE_GITHUB_PLAN.md) now. The [activation/recovery procedure](branch-protection/ACTIVATION.md) is retained only for a future separately authorized change in eligibility; no paid activation is part of the selected plan. The repository-level settings task is blocked by GitHub eligibility; local governance changes are prepared on `security/main-branch-governance`, with earlier uncommitted work preserved. They are uncommitted and unpublished; no automatic merge or deployment is authorized.
+Use [the GitHub Free operating plan](FREE_GITHUB_PLAN.md) now. The [activation/recovery procedure](branch-protection/ACTIVATION.md) is retained only for a future separately authorized change in eligibility; no paid activation is part of the selected plan. The repository-level settings task is blocked by GitHub eligibility; local governance changes are prepared on `security/main-branch-governance`, with earlier uncommitted work preserved. These changes are being published on the reviewed candidate branch. This does not activate server protection or authorize automatic merging/production releases.
 
 ## Local validation
 

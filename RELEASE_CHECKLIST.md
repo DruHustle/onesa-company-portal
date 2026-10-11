@@ -34,12 +34,13 @@ instructions does not satisfy release gates. Implementation history remains in G
 and CHANGELOG.md; ongoing policies are consolidated in root AGENTS.md.
 
 
-## Render DATABASE_ROLE follow-up — 2026-10-10
+## Portal runtime acceptance
 
-Local implementation and isolated regression verification passed; hosted repair remains
-open. See [the exact evidence, changes and reviewed configuration procedure](docs/engineering/VERCEL_RENDER.md)
-for current source/deployment revisions and outstanding provider checks. No push or
-deployment, production secret change, DNS/resource/plan change or readiness acceptance.
+Local and CI image/readiness checks pass. The owner-confirmed autumn-glade target
+was verified empty; runtime still points to dark-boat. Guarded initialization and
+restricted-role verification are distinct from a qualified runtime cutover. Hosted
+acceptance still needs that cutover, frontend proxy settings and a verified worker
+target. See docs/engineering/VERCEL_RENDER.md.
 
 ## Branch protection acceptance — 2026-10-10
 
