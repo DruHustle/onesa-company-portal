@@ -1,15 +1,39 @@
+# Public: hosted only. Private: full local validation precedes cloud execution.
 name: Repository hygiene
-on: [push, pull_request, workflow_dispatch]
+'on':
+- push
+- pull_request
+- workflow_dispatch
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
+  local-validation:
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    uses: ./.github/workflows/_local-validation.yml
   publication-hygiene:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: python scripts/repository_hygiene.py --history
+    - name: Verify GitHub-hosted execution and actual visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: |-
+        test "$RUNNER_ENVIRONMENT" = github-hosted
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - run: python scripts/repository_hygiene.py --history
+    needs:
+    - local-validation
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
+    timeout-minutes: 45

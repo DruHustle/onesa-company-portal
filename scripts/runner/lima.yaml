@@ -1,0 +1,41 @@
+minimumLimaVersion: 2.0.0
+vmType: vz
+arch: aarch64
+vmOpts:
+  vz:
+    rosetta:
+      enabled: true
+      binfmt: true
+cpus: 4
+memory: 6GiB
+disk: 60GiB
+images:
+  - location: https://cloud-images.ubuntu.com/releases/noble/release-20260926/ubuntu-24.04-server-cloudimg-arm64.img
+    arch: aarch64
+    digest: sha256:1d6bffe64b848468ac97f821d369a4846d983de1800ccf6b5ec8853e85cefc55
+mounts: []
+containerd:
+  system: false
+  user: false
+ssh:
+  forwardAgent: false
+portForwards:
+  - guestIP: 0.0.0.0
+    guestPortRange: [1, 65535]
+    proto: any
+    ignore: true
+provision:
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -euo pipefail
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y ca-certificates curl git jq unzip build-essential python3 python3-venv docker.io docker-buildx
+      systemctl enable --now docker
+      id portalci >/dev/null 2>&1 || useradd --create-home --shell /bin/bash portalci
+      usermod -aG docker portalci
+      install -d -m 700 -o portalci -g portalci /opt/onesa-actions-runner
+      install -d -m 755 -o portalci -g portalci /opt/hostedtoolcache
+      # Permit the runner to resolve the tool cache without access to the Lima admin home.
+      install -d -m 755 /etc/onesa-runner

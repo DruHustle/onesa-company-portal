@@ -1,0 +1,169 @@
+# Public: hosted only. Private: full local validation precedes cloud execution.
+name: Private local validation
+'on':
+  workflow_call: {}
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on:
+    - self-hosted
+    - Linux
+    - ARM64
+    - onesa-portal-local
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: onesa_portal_test
+          POSTGRES_USER: portal_test
+          POSTGRES_PASSWORD: ci-only-test-password
+        ports:
+        - 5432/tcp
+        options: --health-cmd "pg_isready -U portal_test" --health-interval 5s --health-timeout 3s --health-retries 15
+    env:
+      SESSION_KEY: ci-placeholder-test-key-do-not-use-in-production-123456
+      PUBLIC_ORIGIN: http://localhost:3300
+      BACKEND_URL: http://127.0.0.1:8300
+      NODE_ENV: test
+      STORAGE_DIR: ${{ github.workspace }}/.test-storage
+      ONESA_CI_TOKEN: ${{ github.token }}
+    steps:
+    - name: Configure disposable database connection
+      env:
+        POSTGRES_PORT: ${{ job.services.postgres.ports['5432'] }}
+      run: |
+        database_url="postgresql://portal_test:ci-only-test-password@127.0.0.1:${POSTGRES_PORT}/onesa_portal_test"
+        printf 'DATABASE_URL=%s\nTEST_DATABASE_URL=%s\n' "$database_url" "$database_url" >> "$GITHUB_ENV"
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - run: npm ci
+      working-directory: onesa-company-portal-backend
+    - run: npm ci
+      working-directory: onesa-company-portal-frontend
+    - run: python3 scripts/check-contracts.py && python3 scripts/test-contract-break.py
+    - run: python3 -m unittest discover -s scripts -p test_inspect_hosting.py
+    - run: npm run lint && npm run build && npm test && npm audit --audit-level=high
+      working-directory: onesa-company-portal-backend
+    - run: npm run lint && npm run typecheck && npm run test:domains && npm run build && npm audit --audit-level=high
+      working-directory: onesa-company-portal-frontend
+    - run: npm run documents
+      working-directory: onesa-company-portal-backend
+    - run: npm run seed
+      working-directory: onesa-company-portal-backend
+    - run: npx playwright install chromium firefox webkit
+      working-directory: onesa-company-portal-frontend
+    - run: |
+        cleanup() { kill "$backend_pid" "$frontend_pid" 2>/dev/null || true; wait "$backend_pid" "$frontend_pid" 2>/dev/null || true; }
+        node onesa-company-portal-backend/dist/src/server.js > "$RUNNER_TEMP/portal-backend.log" 2>&1 &
+        backend_pid=$!
+        (cd onesa-company-portal-frontend && npm start) > "$RUNNER_TEMP/portal-frontend.log" 2>&1 &
+        frontend_pid=$!
+        trap cleanup EXIT
+        for attempt in $(seq 1 30); do
+          if curl -fsS http://localhost:3300/en > /dev/null; then break; fi
+          echo "Waiting for frontend: $attempt"
+          sleep 1
+        done
+        curl -fsS http://localhost:3300/en > /dev/null
+        npm --prefix onesa-company-portal-frontend run test:e2e
+    - name: Verify production hostname boundaries and brand metadata
+      working-directory: onesa-company-portal-frontend
+      run: |
+        NODE_ENV=production SITE_URL=https://onesa.eu PORTAL_URL=https://portal.onesa.eu PUBLIC_ORIGIN=https://portal.onesa.eu BACKEND_URL=http://127.0.0.1:8362 node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3362 > "$RUNNER_TEMP/portal-domain-frontend.log" 2>&1 &
+        domain_frontend_pid=$!
+        trap 'kill "$domain_frontend_pid" 2>/dev/null || true' EXIT
+        for attempt in $(seq 1 30); do
+          if curl -s http://127.0.0.1:3362/ > /dev/null; then break; fi
+          echo "Waiting for domain frontend: $attempt"
+          sleep 1
+        done
+        npm run test:domain-http
+    - run: python3 scripts/validate-docs.py && python3 scripts/scan-secrets.py
+    - run: docker build -t portal-backend-ci ./onesa-company-portal-backend && docker build -t portal-frontend-ci ./onesa-company-portal-frontend
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        retention-days: 3
+        name: local-verification-evidence
+        path: |
+          onesa-company-portal-frontend/test-results
+          onesa-company-portal-backend/openapi/openapi.json
+    timeout-minutes: 120
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+  image-security:
+    runs-on:
+    - self-hosted
+    - Linux
+    - ARM64
+    - onesa-portal-local
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        application:
+        - onesa-company-portal-backend
+        - onesa-company-portal-frontend
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Build application runtime
+      run: docker build -t onesa-security-candidate:ci ./${{ matrix.application }}
+    - name: Scan full runtime, including unfixed vendor advisories
+      run: |
+        mkdir -p data/security
+        chmod 700 data/security
+        docker save onesa-security-candidate:ci -o data/security/runtime.tar
+        docker run --rm --user "$(id -u):$(id -g)" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v "$PWD/data/security:/reports" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar
+        chmod 600 data/security/runtime.json
+        python3 scripts/release/image_gate.py data/security/runtime.json
+    - name: Remove restricted scan output
+      if: ${{ always() }}
+      run: rm -rf -- "$GITHUB_WORKSPACE/data/security"
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    env:
+      ONESA_CI_TOKEN: ${{ github.token }}
+  publication-hygiene:
+    runs-on:
+    - self-hosted
+    - Linux
+    - ARM64
+    - onesa-portal-local
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - run: python scripts/repository_hygiene.py --history
+    timeout-minutes: 120
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    env:
+      ONESA_CI_TOKEN: ${{ github.token }}
+  complete:
+    name: local-complete
+    if: ${{ always() && github.event.repository.private == true && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped') }}
+    needs:
+    - verify
+    - image-security
+    - publication-hygiene
+    runs-on:
+    - self-hosted
+    - Linux
+    - ARM64
+    - onesa-portal-local
+    timeout-minutes: 120
+    env:
+      ONESA_CI_TOKEN: ${{ github.token }}
+    steps:
+    - run: echo "All local validation passed for $GITHUB_SHA on $RUNNER_NAME" >> "$GITHUB_STEP_SUMMARY"
