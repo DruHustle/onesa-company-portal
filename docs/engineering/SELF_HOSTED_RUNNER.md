@@ -1,158 +1,159 @@
-# Local GitHub Actions runner
+# GitHub Actions visibility and runner policy
 
-## Current policy — 2026-10-11
+Verified 2026-10-11: `DruHustle/onesa-company-portal` is **public**. All three Onesa repositories are
+currently public; no visibility changes were made by this migration. Public repositories
+use **GitHub-hosted `ubuntu-latest` exclusively**. Their private `local-validation` call
+is skipped intentionally, never reported as a successful local test. Each cloud job verifies
+`RUNNER_ENVIRONMENT=github-hosted` and current GitHub API visibility before checkout.
+Existing cloud check names, matrices, environment approvals and release gates are retained.
 
-The owner has temporarily made this repository public. Current jobs use standard
-GitHub-hosted Ubuntu runners; no local runner is registered in the latest inventory.
-The compatible Portal jobs select the local ARM64 labels only when the repository
-is private. Manual local-runner smoke also requires a private repository. Public
-browser jobs install OS dependencies with Playwright `--with-deps`; a provisioned
-private runner uses its administrator-installed OS libraries.
+## Public repository access
 
-Local runner provisioning remains private-only. Do not register or start a runner
-for public code. Before reactivating a private runner, verify repository scope,
-isolation, shared concurrency locking, lifecycle recovery and capacity. Do not
-cancel existing jobs to change routing or bypass required checks.
+All three repository runner inventories have zero registrations. The former
+`onesa-portal-local-arm64` service was stopped while idle, uninstalled through `svc.sh`,
+and unregistered through the official removal flow; its registration credentials were
+removed. AI/robot runners were not installed because visibility changed before setup.
+The shared `onesa-portal-ci` VM is stopped. The Mac login plist is preserved as
+`~/Library/LaunchAgents/eu.onesa.portal-ci-vm.plist.disabled`, so it cannot start the VM
+at the next login. VM disks/configuration/tool caches are retained, not erased.
+No shared runner serving another private repository was removed; none existed.
 
-## Historical private runner qualification
+An `if` expression alone does not protect a registered public runner: fork code may edit
+workflows. Removing the GitHub registration removes that repository's dispatch access,
+including old audit branches and queued workflows that still select local labels. Public
+PRs and forks use hosted execution. Never restore a local registration for a public repo.
 
-The previously registered `onesa-portal-local-arm64` runner (ID 21) used labels
-`self-hosted`, `Linux`, `ARM64`, `onesa-portal-local`, running as `portalci` in Lima
-VM `onesa-portal-ci`: Ubuntu 24.04 ARM64, 4 CPUs, 6 GiB memory, 60 GiB disk.
-Historical verification passed Chromium, Firefox and WebKit and native ARM64 image
-security. This is historical evidence, not current registration or x86 equivalence.
-
-Vercel prebuilt frontend deployment and release packaging retain `ubuntu-latest`
-because the full x86 Next.js image build under ARM emulation failed with signal 11.
-Do not move those jobs to the ARM runner without verified architecture compatibility.
-Their current public hosted availability must be established by actual GitHub runs;
-old private account restrictions do not prove current public execution is blocked.
-
-## Installation and dependencies
-
-The host needs free Homebrew Lima, Python 3 and authenticated `gh` with repository
-admin access. Run `python3 scripts/runner/setup.py` from a reviewed checkout.
-It checks privacy/admin access, refuses duplicate/replacement runners, downloads an
-official actions/runner release, checks the published asset SHA-256, and registers
-through a short-lived token passed over stdin. The existing GitHub OAuth token
-never enters the VM. Automatic runner updates remain enabled.
-
-Host VM files are under `~/.lima/onesa-portal-ci`; runner files and credentials
-are at `/opt/onesa-actions-runner` **inside the VM**, outside Git. Work is under
-`_work`; `/opt/hostedtoolcache` holds action-managed Node 24/Python 3.11 versions.
-Ubuntu supplies Git, curl, build tools, Python 3, Docker and Buildx. The setup script
-checks the official Node archive checksum and provisions all three browsers' OS
-libraries using the frontend lockfile's Playwright version. Browser binaries are
-installed per workflow, without granting the job sudo. No cache action was added;
-ARM and x86 native caches must not be shared.
-
-For new Playwright OS dependencies, while idle, copy `provision-guest.sh` into the
-VM and run it as the Lima administrator with the new locked version; service
-installation is idempotent. Alternatively run `/opt/onesa-node/bin/npx playwright@VERSION
-install-deps chromium firefox webkit` as VM root. Review the version first.
-
-## Service, startup and logs
-
-`bash scripts/runner/status.sh` checks the VM, guest service, disk and GitHub status.
-The supported runner service is installed using `svc.sh`, enabled in systemd and
-starts whenever the VM boots. For start/stop/restart inside the VM:
+On a visibility change, run on the Mac:
 
 ```sh
-limactl shell onesa-portal-ci -- sudo bash -c 'systemctl restart "$(cat /opt/onesa-actions-runner/.service)"'
-limactl shell onesa-portal-ci -- sudo bash -c 'journalctl -u "$(cat /opt/onesa-actions-runner/.service)" -n 80 --no-pager'
+python3 scripts/runner/policy.py
+python3 scripts/runner/policy.py --enforce
 ```
 
-Runner logs: `/opt/onesa-actions-runner/_diag` in the VM (14-day cleanup).
-VM startup logs: `~/.lima/onesa-portal-ci/ha.stderr.log`, `serial*.log`, and
-`launchd.{stdout,stderr}.log` on the host. Logs may contain restricted operational
-information; inspect locally and do not commit raw logs.
+Inspection reads actual visibility and registrations through host `gh`. Enforcement
+revokes known public local registrations via GitHub first; unfamiliar registrations fail
+closed for manual review. Stop/uninstall the corresponding guest service and remove its
+configuration with the official runner removal token flow. Do not start a stopped VM
+solely to perform hosted validation. These commands never change visibility or remove
+another private repository's access. Recheck policy before any runner service reactivation.
 
-While the runner is idle, stop the VM, then run
-`python3 scripts/runner/host-service.py` to install
-`~/Library/LaunchAgents/eu.onesa.portal-ci-vm.plist`. It runs Lima in the foreground
-under launchd and starts the VM after **this Mac account logs in**. It cannot start
-before FileVault unlock/login. Closing a terminal does not stop the service.
-Mac sleep suspends CI and may break network connections/timeouts; keep the Mac
-awake during jobs (`caffeinate -i` for an intentional local session). No permanent
-power setting is changed. A real host reboot/login test requires the owner; the
-VM/service restart test checks guest boot recovery only.
+## Private repository ordering
 
-Before intentionally stopping the VM, unload its LaunchAgent:
+If an owner separately makes this repository private, each workflow first invokes the
+same `_local-validation.yml` reusable workflow at the caller's exact revision. It contains
+all implemented checks from `verify.yml` plus publication hygiene, including existing
+matrices. A final `local-complete` job requires every local job to succeed. The reusable
+call must return success before any existing cloud job may start. A local failure, missing
+runner or cancelled check blocks cloud stages; there is no paid hosted fallback. Each
+checkout pins `github.sha`; a new commit requires new local and cloud validation.
+Manual deployment workflows also require their existing exact-commit cloud CI and
+production qualification/approvals. Local CI alone does not authorize deployment.
+
+Planned private registration: `onesa-portal-local-arm64`, labels `self-hosted`, `Linux`, `ARM64`,
+`onesa-portal-local`, user `portalci`, directory `/opt/onesa-actions-runner`. Repository scope is
+mandatory: these are personally owned repositories, not an organization runner group.
+The existing isolated Ubuntu 24.04 ARM64 Lima VZ VM has **4 CPUs, 6 GiB RAM, 60 GiB
+in total**, shared by any future private registrations. Inspect host resources before
+adding capacity. Root-owned worker leases serialize builds before service containers;
+90-minute waits and 120-minute local timeouts bound the queue. Dedicated users/workspaces,
+services and tool caches prevent accidental data/port conflicts. Docker membership is
+root-equivalent inside this VM: the three trusted repositories are not security boundaries
+against one another. Never register untrusted writers. Owner guards restrict private PRs.
+
+Private hooks/configuration are stored under root-owned `/usr/local/lib/onesa-ci/USER`,
+outside the runner-owned checkout and installation directory. Before any private job's code runs, a root-owned started hook calls `visibility.py` using
+a short-lived, repository-scoped `ONESA_CI_TOKEN` supplied by the workflow's read-only
+`github.token`; no personal credential is shared. It verifies actual API visibility and
+repository identity both before and after waiting for the lease. Public repositories,
+missing tokens and API failures deny execution before checkout/service containers.
+This independently protects against a visibility change while registration revocation is
+pending. Registration removal is still required; do not rely only on workflow conditions
+or allow long-lived public access. Re-run the policy reconciler whenever visibility changes.
+
+## Private provisioning, services and logs
+
+Private setup is intentionally not active/tested end-to-end under current public visibility:
 
 ```sh
-launchctl bootout "gui/$(id -u)/eu.onesa.portal-ci-vm"
-limactl stop onesa-portal-ci
-# Resume:
-launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/eu.onesa.portal-ci-vm.plist"
+# Only after actual private visibility, idle checks and policy reconciliation:
+limactl start --tty=false onesa-portal-ci
+python3 scripts/runner/shared-setup.py
+bash scripts/runner/status.sh
 ```
 
-## Trust and persistent state
+Setup verifies privacy/admin access, isolated VM configuration, aggregate resources,
+all registrations/workers idle, official ARM64 runner archive SHA-256 and identity.
+The registration token goes through stdin, never argv/source/logs. GitHub host `gh`
+credentials remain on the Mac. Automatic runner updates remain enabled. Ubuntu provides
+Docker/Compose V2, compiler/venv tools and browser OS libraries; actions provision Node24
+and Python3.11, with locked Playwright1.64.0 browser binaries installed per job without sudo.
+The existing Node archive's official checksum was verified during initial portal setup.
+If recreating the VM, use the reviewed `lima.yaml` and original dependency bootstrap,
+then the shared reconciler; do not reinstall or replace registrations automatically.
 
-No host mounts, SSH-agent forwarding, Docker Desktop socket, personal home directory
-or host GitHub credentials are supplied to jobs. Application TCP/UDP forwarding is
-disabled; Lima's local SSH management channel remains. No router ports are opened.
-The dedicated Docker daemon belongs only to this VM. Docker group membership
-permits VM root access: the VM, not the Unix account, is the isolation boundary.
-The VM has outbound network access, including reachable LAN services; it is not
-a complete network sandbox. Keep sensitive host/LAN services authenticated.
+Service name if privately activated:
+`actions.runner.DruHustle-onesa-company-portal.onesa-portal-local-arm64.service`.
+Use supported `svc.sh` installation and systemd enable/start/restart only while all VM
+jobs are idle. Startup requires macOS login/FileVault unlock, host awake/network available;
+restore a reviewed LaunchAgent only when at least one private registration needs it.
+Check `_diag` in the runner directory and `journalctl -u SERVICE`, and host
+`~/.lima/onesa-portal-ci/launchd.stdout.log` / `launchd.stderr.log`. Keep raw logs private.
 
-Job conditions permit only `DruHustle` as actor, and PRs must also have that author
-and originate in this same repository. Fork/other-user PRs are skipped, so skipped
-checks are **not** validation; review code and run an owner-controlled branch before
-merging. No `pull_request_target` or privileged `workflow_run` path exists. This is
-an operational trust boundary, not protection against a writer who edits workflows.
-Repository writers can alter job conditions; grant write access only to trusted
-maintainers and review workflow changes. Secrets remain accessible to authorized
-jobs in their existing scope. Production approval/qualification checks are retained;
-runner setup does not establish missing private-Free branch/environment protections.
+Completed hooks remove only the account's fixed checkout through an argument-free,
+root-owned sudo helper and release only that worker's PID/start-time lease. Logs retain
+14 days; CI artifacts retain3days. Inspect guest `df -h /` and `docker system df` before
+large builds. While idle remove reviewed candidate tags individually and prune old build
+cache with `docker builder prune --filter until=168h`. Never blindly prune volumes or touch
+the host's Docker Desktop apps. VM mounts expose no home/project/credential directories,
+no host Docker socket and no SSH agent. Application forwarding is disabled; only loopback
+SSH management remains. Outgoing networking is not a LAN firewall. Rosetta was enabled
+for investigation and remains in preserved VM configuration: its vendor runtime mount
+reported `rw`, not a verified read-only host mount. No x86 frontend build under Rosetta
+was completed before the public-only policy superseded local execution. Public hosted
+x86 builds need no translation; private ARM scans never prove x86 runtime compatibility.
 
-Jobs use read-only token permissions (with existing checks/actions read scopes),
-checkout credentials are not persisted, timeouts are bounded, and concurrency never
-cancels an active deployment. Only one runner executes one job at a time. PostgreSQL
-uses an allocated port. Browser servers are stopped using their own recorded PIDs;
-GitHub runner process/container cleanup remains active. Job completion removes
-only this repository's runner-owned checkout; restricted security reports are also
-removed explicitly. Tool/browser/Docker caches persist in the VM and need disk review.
-Never prune the host's Docker Desktop or kill unrelated development processes.
+## Releases and unverified scope
 
-For disk pressure, first confirm GitHub reports `busy: false`, stop the guest runner,
-then inspect `docker system df` **through `limactl shell onesa-portal-ci`**. Remove
-only identified runner images/unused build cache. Never run broad host pruning or
-remove active service containers. The service should be restarted after maintenance.
+Task pushes trigger CI, not production deployment. Production remains separately gated;
+no release qualification is fabricated. Secret names only: `RELEASE_QUALIFICATION_JSON`,
+`RENDER_API_KEY`, `RENDER_BACKEND_SERVICE_ID`, optional `RENDER_WORKER_SERVICE_ID`,
+`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`; retain each existing staging/docs
+workflow's additional environment secrets. Never publish values or raw private evidence.
+If hosted execution hits a minutes/spending/storage restriction, report cloud validation
+blocked; do not buy capacity, enable fallback or bypass checks. A passing local stage
+with a blocked cloud stage is not production qualification.
 
-## Troubleshooting, removal and rollback
+AI software fixtures use mock inference/lexical retrieval where specified and disposable
+real PostgreSQL/pgvector; real model/semantic-host/GPU/training acceptance is separate.
+Robot main remains scaffold-only; audit snapshots have software simulation. ROS2
+compilation/messaging, real sensors/actuators, GPU and physical movement are unverified;
+no physical operation is allowed by this task. The historical Mac-native Firefox profile failure is environment-specific;
+all 18 current Linux-hosted Robot browser cases passed at `6b421ee`.
+The older portal private service/VM restart recovered without a Mac reboot. No AI/robot
+private service restart or actual host reboot/login recovery was tested; current services
+are deliberately absent. For a future privately activated setup, restart each idle unit,
+verify online/idle metadata, then dispatch fresh validation. Actual reboot/login remains
+manual after separate authorization; no host reboot occurred here.
 
-If queued for more than a few minutes, check exact labels, online/busy state, service
-logs and outbound HTTPS connectivity to GitHub; investigate before retrying. One
-runner intentionally queues concurrent jobs. A stale remote registration without
-its VM is refused by setup; reconcile explicitly rather than replacing another runner.
-Never delete credentials or copy `.runner`/`.credentials*` into Git.
+## Audit handoff and rollback
 
-Stop the LaunchAgent and guest service before removal. Obtain a short-lived removal
-token with the host `gh` API and pass it privately via stdin to `config.sh remove`
-using `ACTIONS_RUNNER_INPUT_TOKEN`; never echo it. Remove the LaunchAgent plist.
-Delete the VM only after reviewing any retained evidence; `limactl delete` destroys
-its runner-owned disk. No host development containers/data need removal.
+Existing audit branches do not inherit workflow edits from `main`. In the audit session's
+own worktree, merge the reviewed policy revision or cherry-pick its CI-only commit(s).
+Preserve all implemented audit check names/tests and production guards. Update both the
+cloud workflow and `_local-validation.yml` with any newly implemented checks; robot must
+retain backend/frontend/container/browser coverage rather than replace it with scaffold
+checks. Keep every cloud job hosted; its `needs: local-validation`/visibility gate controls
+private ordering. Public local calls stay skipped and registrations stay absent.
+Push the latest audit commit and monitor fresh runs with `gh run list/view --repo
+DruHustle/onesa-company-portal`; inspect `/actions/runs/RUN_ID/jobs` for runner names/labels and
+candidate SHA. Older local-selected runs are not evidence for the current public policy.
+Rollback via a reviewed PR, preserving required checks/approvals; never restore public
+self-hosted access. Runner policy removal is independent of application rollback/state.
 
-Rollback through a reviewed PR restoring `runs-on: ubuntu-latest` and the browser
-`--with-deps` install. Retain tests and trust guards; hosted jobs still need available
-account allowance. Never enable a paid fallback automatically. Default-branch
-workflows keep their previous routing until this PR is merged with authorization.
+## Hosted CI evidence — 2026-10-11
 
-Self-hosting does **not** remove artifact/cache storage quotas or account-level
-restrictions. Evidence on 2026-10-11: hosted checks reported recent payment failure
-or spending limit; the available token could not read usage details (`user` scope
-missing). Self-hosted eligibility was then verified: [push CI](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131161012),
-[publication hygiene](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131161041),
-[PR CI](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131178868) and
-[manual smoke](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131160962)
-passed on `onesa-portal-local-arm64`, runner ID 21, commit `09a5bc6`.
-Fresh CI must verify the final PR revision after documenting the two incompatible
-x86 jobs; the initial successful checks are evidence, not final-commit acceptance. Production workflows were not dispatched.
+Policy candidate `7b51ce1` passed [push validation](https://github.com/DruHustle/onesa-company-portal/actions/runs/38136347961), [PR validation](https://github.com/DruHustle/onesa-company-portal/actions/runs/38136350329) and hygiene on hosted x86 runners. The verification evidence artifact uploaded successfully (21,874,420 bytes); no storage/capacity block occurred in these runs. Final documentation/hook-location corrections require fresh checks before merge. Production packaging and provider deployment were not dispatched: release qualification remains NO-GO.
+GitHub currently reports no main branch protection (404) and no applicable branch rules ([]); this migration did not change enforcement settings. PR/check discipline and production approvals remain required.
 
-Official references: [runner requirements](https://docs.github.com/en/actions/reference/runners/self-hosted-runners),
-[adding a runner](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners),
-[service configuration](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/configure-the-application),
-[security](https://docs.github.com/en/actions/reference/security/secure-use),
-[Lima configuration](https://lima-vm.io/docs/config/),
-[Actions usage](https://docs.github.com/en/actions/concepts/billing-and-usage).
+The audit reconciliation retains current startup readiness and full browser/security
+checks. Hosted success does not authorize production, real inference or physical motion.

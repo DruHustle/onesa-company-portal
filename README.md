@@ -35,8 +35,8 @@ Configuration is prepared; account provisioning and remote acceptance are not ye
 
 [Domain routing, Zoho Mail and Resend setup](docs/engineering/DOMAINS_AND_EMAIL.md).
 
-[Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Verified branch protection status](docs/development/BRANCH_PROTECTION_REPORT.md). Main protection is currently **BLOCKED — NOT ENFORCED** by GitHub plan eligibility.
+[Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Verified branch protection status](docs/development/BRANCH_PROTECTION_REPORT.md). Main protection is **NOT ENFORCED** in the current public repository; historical private-plan rejection does not establish current eligibility.
 
-The selected policy is [GitHub Free with private repositories](docs/development/FREE_GITHUB_PLAN.md). PR and check discipline is voluntary until server protection is supported; no upgrade or visibility change is proposed.
+The selected policy is [GitHub Free with public repositories and hosted Actions](docs/development/FREE_GITHUB_PLAN.md). Local validation is private-only and requires separately verified provisioning. PR and check discipline remain required; remote protection must be activated and verified independently.
 
 [Local Actions runner setup and maintenance](docs/engineering/SELF_HOSTED_RUNNER.md).
