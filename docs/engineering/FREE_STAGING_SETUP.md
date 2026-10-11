@@ -312,3 +312,13 @@ and delivery/scanner/storage acceptance remain prerequisites.
 The [Render update-service API](https://api-docs.render.com/reference/update-service)
 does not deploy configuration updates automatically; deployment is a separate
 operation requiring the existing release/target gates.
+
+## Verified layout and inventory — 2026-10-11
+
+The guarded action at f3715a4 verified the identified staging API layout with native
+updates disabled (GitHub run38136781194). Its missing runtime variables, private
+storage, frontend and executor requirements still block deployment acceptance.
+Confirmed database inventory distinguishes configuration rows (facts/settings,
+including migration defaults) from operational rows. An aggregate presence flag alone
+does not establish user/business records or authorize initializing an occupied schema.
+No data, role or migration is changed by inventory; all existing schema guards remain.

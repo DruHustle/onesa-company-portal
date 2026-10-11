@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-11 — Verified staging layout and read-only inventory clarity
+
+- Applied the guarded Portal staging layout correction with auto-deploy disabled;
+  branch, backend root, command and readiness path are verified without deploying.
+- Distinguish facts/settings rows from operational records in confirmed database
+  inventory. Seeded configuration no longer implies business data; preserve the
+  existing aggregate field and use SELECT EXISTS only, without reading record content.
+
+
 ## 2026-10-11 — Public repository hosted Actions
 
 - Record the owner-selected temporary public visibility and standard GitHub-hosted
