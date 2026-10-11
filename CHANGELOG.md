@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-11 — Deployment target discovery
+
+Read-only hosting inspection reports exact deployment IDs, Preview protection and
+a bounded, repository-filtered inventory of existing Onesa Render services.
+Provider environment values and commands remain excluded. Partial inventories are
+marked incomplete; discovery does not authorize repurposing or deploying a service.
+Added foreign-resource, redaction and pagination regression checks.
+
 ## 2026-10-11 — Confirmed empty Portal database initialization
 
 - Added a separate operator action for the owner-confirmed empty autumn-glade

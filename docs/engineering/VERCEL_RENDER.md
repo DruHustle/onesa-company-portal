@@ -142,6 +142,12 @@ presence, root/health-path matches and the provider's deployment commit. A succe
 diagnostic job means the inspection ran; it does not establish healthy deployment.
 Production deployment still requires a reviewed exact-commit qualification record.
 
+Inspection also returns allowlisted service/deployment IDs, Preview-protection
+status and an existing Render inventory restricted to the three Onesa repositories.
+Pagination is bounded and partial results are marked incomplete. Discovery alone
+does not authorize deploying or repurposing an existing resource. No environment
+values or provider commands are printed. See [Render pagination](https://api-docs.render.com/reference/pagination).
+
 `gh workflow run repair-hosting.yml --ref main` repairs the existing service layout
 and absent nonsecret configuration, then reads it back. Repository and runtime
 identity must match before any update. This does not deploy or migrate the database;

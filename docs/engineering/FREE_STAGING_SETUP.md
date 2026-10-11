@@ -1,5 +1,65 @@
 # Free-only staging setup — 2026-10-10
 
+## Owner setup for the verified Portal database — 2026-10-11
+
+The autumn-glade Portal database is already initialized with seven reviewed
+migrations and a verified restricted `onesa_portal_app` login. Its fresh password
+is saved as private repository Actions secret `PORTAL_APP_DB_PASSWORD`; GitHub
+does not reveal saved secret values. Do not reset that role or use `neondb_owner`
+as the API login. An operator workflow can transfer its credential privately once
+the actual staging service is identified. Do not copy production credentials.
+
+In Render choose **New → Web Service → existing GitHub repository**:
+
+| Setting | Value |
+|---|---|
+| Name | `onesa-company-portal-backend-staging` (proposed new name) |
+| Repository | `DruHustle/onesa-company-portal` |
+| Branch | `audit/portal-master-acceptance` |
+| Root Directory | `onesa-company-portal-backend` |
+| Runtime | Docker |
+| Dockerfile / context | `./Dockerfile` / `.` relative to the root directory |
+| Docker Command override | Leave blank; use the reviewed image CMD |
+| Region | Frankfurt |
+| Instance | Free; do not apply the historical paid root Blueprint |
+| Auto Deploy | Off |
+| Health Check Path | `/api/v1/ready` |
+
+Do not replace the existing production service. Creation may initiate an initial
+build; the service cannot pass startup/readiness until its private staging settings
+are installed. A resource existing in the dashboard is not successful deployment.
+After creation provide its `srv-...` ID and actual `.onrender.com` URL, without
+credentials, so the guarded configuration can identify it before any writes.
+
+Staging API configuration uses `NODE_ENV=production` for hosted security,
+`PUBLISH_ENABLED=false`, a restricted pooled `DATABASE_URL` for autumn-glade,
+a fresh independent `SESSION_KEY` of 64 hex characters, and a fresh independent
+`PROXY_SHARED_KEY`. `PUBLIC_ORIGIN` must be the actual protected staging frontend
+origin; a separate company origin is optional and must be distinct if configured.
+The API requires a private staging bucket and its actual `S3_BUCKET`, `S3_ENDPOINT`,
+`S3_REGION`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Use `staging.env.example`
+as the key inventory, with fresh scoped credentials entered through approved settings.
+Never place the owner database URL or backend credentials in `NEXT_PUBLIC` variables.
+
+For Vercel, retain the existing portal project and frontend root
+`onesa-company-portal-frontend`, with production branch `main`. Enable Vercel
+Authentication for Preview deployments. Keep native Git deployments disabled;
+deployment will use GitHub Actions/CLI. Use Preview-only variables scoped to
+`audit/portal-master-acceptance`, with server-only `BACKEND_URL` set to the verified
+new API and the matching fresh `PROXY_SHARED_KEY`. The actual protected Preview
+origin must be coordinated with `PUBLIC_ORIGIN`, `SITE_URL` and `PORTAL_URL`; do
+not guess a Vercel hostname or reuse public production origins.
+
+No free Render background-worker instance exists. Do not select a paid worker or
+use an unrelated web service as one. Full enquiry/email/scanner acceptance still
+needs an independently approved worker/scanner host. A free existing private host
+is possible, but its real reachable endpoints and storage access must be verified.
+
+Acceptance remains exact-source CI, real health/ready JSON200, anonymous auth401,
+authenticated CMS/business tests, storage and worker/mail tests, persistence and
+restoration. See [Render Free limits](https://render.com/docs/free) and
+[Vercel Authentication](https://vercel.com/docs/deployment-protection/methods-to-protect-deployments/vercel-authentication).
+
 The owner has rejected paid services and will create the isolated staging environment.
 No resource, paid upgrade, trial subscription, DNS change or populated private env
 file was changed by preparing this guide. Checked-in examples contain no credentials.
