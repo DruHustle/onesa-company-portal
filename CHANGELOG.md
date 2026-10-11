@@ -314,3 +314,9 @@ Consolidated policy references and templates, preserved later audited runtime fi
 Added a strictly read-only inspection operation for the owner-confirmed alternate Neon Portal endpoint. Existing runtime-role repair still accepts only its established target. Inspection verifies TLS/schema and reports data presence without records, credentials, migrations, permission changes, settings updates or deployment. Corrected the operator workflow reference to repair-hosting.yml.
 
 Follow-up: verify encrypted/certificate-validated TLS at the actual client socket, rather than using pg_stat_ssl for Neon proxy connections. Reject unverified/plain connections before SQL.
+
+## Documentation portal integration — 2026-10-11
+
+Company navigation now links to the approved public Company Portal guide, with an
+English/German label. Private engineering access and application release gates are
+unchanged. Hosted documentation publication is verified separately.
