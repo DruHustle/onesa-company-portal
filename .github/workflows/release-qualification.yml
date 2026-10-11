@@ -25,16 +25,16 @@ concurrency:
   cancel-in-progress: false
 jobs:
   qualify:
-    if: always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && (github.repository == 'DruHustle/onesa-company-portal'
-      && github.actor == 'DruHustle' && (github.event_name == 'workflow_dispatch' || ((github.event.workflow_run.event == 'push' || github.event.workflow_run.event
-      == 'workflow_dispatch') && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_sha
-      == github.sha)))
+    if: always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name
+      == 'workflow_dispatch' || ((github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')
+      && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_sha ==
+      github.sha)))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       with:
-        persist-credentials: false
+        persist-credentials: 'false'
         ref: ${{ github.sha }}
     - name: Generate observed technical evidence
       env:
@@ -42,13 +42,9 @@ jobs:
         STAGING_RUN: ${{ inputs.staging_run || (github.event.workflow_run.name == 'Approved staging qualification' && github.event.workflow_run.id)
           || '' }}
       run: python3 scripts/release/evidence.py generate --output "$RUNNER_TEMP/qualification/record.json"
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: release-qualification
         path: ${{ runner.temp }}/qualification/record.json
         retention-days: 7
         if-no-files-found: error
-    needs: local-validation
-  local-validation:
-    if: github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle'
-    uses: ./.github/workflows/_local-validation.yml

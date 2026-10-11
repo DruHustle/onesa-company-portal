@@ -1,8 +1,10 @@
 # Automated release qualification
 
+> Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
+
 Implemented locally on `release/automated-qualification`; remote activation and hosted
-acceptance remain pending. This supplements the legacy secret gate until migration is
-verified. It does not authorize a production deployment or approve business/legal matters.
+acceptance remain pending. The legacy JSON secret gate has been retired. This native-protection path is
+reserved for a verified supported configuration; private Free uses the linked handoff. It does not authorize a production deployment or approve business/legal matters.
 
 ## Architecture
 
@@ -221,13 +223,15 @@ Sources: [environment plan limits](https://docs.github.com/en/actions/how-tos/de
    Dispatch `release-review.yml` on main with `qualification_run`, `evidence_digest`,
    `decision=approve`, `operations_review=approved`, `legal_review=approved`, `review_url`.
    This is a human action. Codex must not do it on the owner's behalf.
-9. After real remote dry-run/provenance/negative tests verify migration, set repository
-   Actions variable `AUTOMATED_QUALIFICATION_ENABLED=true`. Do not delete the legacy
-   secret yet. The default empty `approval_run` keeps the original secret gate intact.
+9. For the supported native-protection path only, retain the explicit migration
+   switch after remote tests. The legacy JSON fallback is removed and `approval_run`
+   is required. Private Free uses `free-qualification.yml`, `free-authorization.yml`
+   and the external owner runbook instead; never expose production credentials in
+   repository Actions for that operating model.
 10. Only with separate production authorization, dispatch `deploy.yml` on main with
     the selected `application` and `approval_run=<owner review run ID>`. Monitor every
     job and the `post-deployment-verification` artifact. Provider build success alone
-    is insufficient. Existing private local validation guards are retained.
+    is insufficient. PR checks use credential-free hosted runners within the free quota.
 
 If a gate fails, fix its evidence/configuration and generate a new exact-candidate
 record. To revoke before promotion, close the referenced owner review issue or dispatch

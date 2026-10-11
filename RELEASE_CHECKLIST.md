@@ -87,3 +87,7 @@ Local evidence/approval automation and rejection tests are implemented. See
 protection, encryption secret provisioning, complete hosted staging/production
 acceptance and explicit owner operations/legal approval remain blocked.
 The migration switch stays off and the original secret gate is retained.
+
+## Private-Free production prerequisites — 2026-10-11
+
+Local credential-free qualification/authorization and failure demonstration are implemented. Owner billing/visibility confirmation, production credential removal/rotation, provider auto-deploy readback, isolated staging acceptance and remote workflow installation remain pending. Direct pushes remain possible. See [the enforcement report](docs/development/PRIVATE_FREE_SAFEGUARDS.md). Physical Robot deployment stays separately blocked.

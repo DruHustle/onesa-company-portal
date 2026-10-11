@@ -1,5 +1,7 @@
 # Deployment and independent releases
 
+> Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
+
 The frontend and backend have separate Docker build contexts and versioned images.
 Build either image using the build guide, label it with the reviewed source revision,
 and release only the selected application when API compatibility allows. Worker and

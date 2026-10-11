@@ -72,13 +72,15 @@ human data-classification review before publishing or uploading CI artifacts.
 
 ### Visibility, runner selection and access
 
-On 2026-10-11 the owner made the repositories public temporarily and selected
-standard GitHub-hosted Actions for public runs. Local runners may be used only for
-private repositories after isolation and registration are verified. Do not provision
-or re-register local runners for the public repositories. Keep existing job names,
-security gates, release guards and private data exclusions. The owner choice supersedes
-the earlier private-visibility recommendation and runner-submission pause for hosted CI.
-Do not change visibility, billing or ownership independently.
+The current owner request selects private GitHub Free safeguards. Credential-free
+PR checks use GitHub-hosted runners within the free private quota; a local runner
+must not be a mandatory dependency for untrusted PR validation. Keep the retained
+private-only reusable runner dormant unless separately isolated and authorized.
+Production credentials must be held outside editable repository Actions. Repository
+writers can alter workflows to read repository secrets; restrict write access.
+Readback on 2026-10-11 still returned public and account plan null. Do not change
+visibility, billing, ownership, access or provider settings without authorization.
+See `docs/development/PRIVATE_FREE_SAFEGUARDS.md` for scope and owner actions.
 
 ### Protect main
 
@@ -108,8 +110,9 @@ Sources: [GitHub rulesets](https://docs.github.com/en/repositories/configuring-b
 
 ## Selected GitHub Free policy
 
-Follow `docs/development/FREE_GITHUB_PLAN.md`: public repositories use standard
-GitHub-hosted Actions; local runners are private-only and need verified provisioning.
-Do not upgrade billing, change visibility or transfer ownership. Use authorized
-feature/audit/staging branches and verified CI with least practical write access.
-Do not claim server enforcement or production readiness without current evidence.
+Follow `docs/development/FREE_GITHUB_PLAN.md` and the private-Free safeguard report.
+Native private-Free branch/environment protection is unavailable. Direct pushes remain
+possible; CI and qualification block only the authorized deployment path. Private
+production uses credential-free owner authorization and externally controlled promotion.
+Retain exact-commit security/staging checks and separate hardware authorization. Do
+not claim remote safeguards are active until the owner completes and verifies migration.

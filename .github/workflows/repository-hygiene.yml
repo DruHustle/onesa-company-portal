@@ -1,34 +1,38 @@
 name: Repository hygiene
-on: [push, pull_request, workflow_dispatch]
+'on':
+  push: null
+  pull_request:
+    branches:
+    - main
+  workflow_dispatch: null
 permissions:
   contents: read
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  local-validation:
-    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    uses: ./.github/workflows/_local-validation.yml
   publication-hygiene:
-    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
-
-    needs: local-validation
+    if: ${{ always() && true }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Verify GitHub-hosted execution and actual visibility
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EXPECTED_PRIVATE: ${{ github.event.repository.private }}
-        run: |
-          test "$RUNNER_ENVIRONMENT" = github-hosted
-          actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
-          test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: python scripts/repository_hygiene.py --history
+    - name: Verify GitHub-hosted execution and actual visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
+
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
+
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Repository visibility changed; start fresh validation''; exit 1;
+        }
+
+        '
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      with:
+        persist-credentials: 'false'
+        fetch-depth: 0
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: '3.11'
+    - run: python scripts/repository_hygiene.py --history

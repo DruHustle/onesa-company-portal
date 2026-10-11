@@ -1,5 +1,7 @@
 # Vercel frontend and Render backend
 
+> Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
+
 Owner-created Portal staging targets are recorded in `FREE_STAGING_SETUP.md`.
 Use the read-only inspection workflow's `portal_scope=staging` option to inspect
 those IDs; the default remains production inspection. This does not deploy or
@@ -115,7 +117,7 @@ database URLs or application secrets belong in the repository.
 ## Final release qualification — 2026-10-09
 
 Prepared configuration is not a hosted deployment. Production promotion additionally
-requires the exact-commit `RELEASE_QUALIFICATION_JSON` Actions secret with all four
+historically required the exact-commit `RELEASE_QUALIFICATION_JSON` secret with all four
 reviewed gates passing and a matching source fingerprint. The local audit decision
 is NO-GO. Do not supply a passing attestation until target, operations and content
 approvals actually exist. See restricted `docs/internal/release-audit/` evidence.
@@ -216,4 +218,4 @@ storage, credential rotation, worker, frontend, backup, legal or deployment gate
 
 See [automated release qualification](AUTOMATED_QUALIFICATION.md) for immutable
 Actions evidence, explicit owner reviews, build integrity and the guarded migration.
-The legacy secret remains active until remote migration verification is complete.
+The legacy JSON secret fallback is retired. Private-Free production uses the external owner handoff; production credential removal/rotation and provider control verification remain owner actions.

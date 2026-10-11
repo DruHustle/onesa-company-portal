@@ -9,29 +9,29 @@ concurrency:
   cancel-in-progress: false
 jobs:
   staging:
-    if: always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && (github.repository == 'DruHustle/onesa-company-portal'
-      && github.actor == 'DruHustle' && github.ref == 'refs/heads/audit/portal-master-acceptance')
+    if: always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref
+      == 'refs/heads/audit/portal-master-acceptance')
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
       GH_TOKEN: ${{ github.token }}
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_ID: srv-db5k5had0e5s73fos4g0
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+      RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+      VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
-      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
       STAGING_FIXTURES_JSON: ${{ secrets.STAGING_FIXTURES_JSON }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       with:
-        persist-credentials: false
+        persist-credentials: 'false'
         ref: ${{ github.sha }}
     - name: Require successful exact-source checks and approved target
       run: 'python3 scripts/release/evidence.py stage-preflight --output "$RUNNER_TEMP/technical/record.json"
 
         python3 scripts/release/hosted.py preflight'
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
         node-version: '24'
     - name: Build protected staging Preview with existing branch settings
@@ -43,7 +43,8 @@ jobs:
 
         VERCEL=1 vercel build --token="$VERCEL_TOKEN"
 
-        vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta githubCommitRef="$STAGING_BRANCH" --meta githubCommitSha="$GITHUB_SHA" > /tmp/vercel-url.txt'
+        vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta githubCommitRef="$STAGING_BRANCH" --meta githubCommitSha="$GITHUB_SHA"
+        > /tmp/vercel-url.txt'
     - name: Bind only the approved staging API origin to this verified Preview
       run: python3 scripts/release/hosted.py bind-staging-origin
     - name: Deploy exact staging backend source without database migration
@@ -55,7 +56,7 @@ jobs:
     - name: Capture provider identity and real hosted probes
       run: python3 scripts/release/hosted.py stage --evidence "$RUNNER_TEMP/technical/record.json" --render-receipt "$RUNNER_TEMP/render/record.json"
         --output "$RUNNER_TEMP/staging/record.json"
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: staging-verification
         path: ${{ runner.temp }}/staging/record.json
@@ -64,7 +65,3 @@ jobs:
     - name: Report outstanding acceptance honestly
       run: python3 -c 'import json,os; from pathlib import Path; r=json.loads((Path(os.environ["RUNNER_TEMP"])/"staging/record.json").read_text());
         print("Hosted qualification:",r["status"]); print(json.dumps(r["checks"],indent=2))'
-    needs: local-validation
-  local-validation:
-    if: github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle'
-    uses: ./.github/workflows/_local-validation.yml

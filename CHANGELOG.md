@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-11 — Private-Free release safeguards
+
+Credential-free hosted PR CI; immutable Actions pins; exact-commit qualification and owner authorization with external production handoff; separate staging credentials; legacy JSON fallback removed; private credential-bearing production workflows excluded. Remote settings and deployments unchanged. See the private-Free safeguard report for owner migration and enforcement limits.
+
 ## 2026-10-11 — Preserve audited applications with owner runner policy
 
 - Merge the owner-approved main policy without replacing current application fixes.

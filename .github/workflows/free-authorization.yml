@@ -1,0 +1,57 @@
+name: Free release authorization
+'on':
+  workflow_dispatch:
+    inputs:
+      qualification_run:
+        description: Exact free-qualification run ID
+        type: string
+        required: true
+      evidence_digest:
+        description: SHA256 printed by the reviewed qualification run
+        type: string
+        required: true
+      review_issue:
+        description: Open owner-authored issue binding candidate, digest and reviews
+        type: string
+        required: true
+      decision:
+        description: Authorize external owner handoff or revoke older approval
+        type: choice
+        options:
+        - revoke
+        - approve
+        default: revoke
+        required: true
+permissions:
+  contents: read
+  actions: read
+  issues: read
+  pull-requests: read
+concurrency:
+  group: free-production-authorization
+  cancel-in-progress: false
+jobs:
+  authorization:
+    if: github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor ==
+      'DruHustle' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Derive and verify exact-commit evidence; no production credentials
+      env:
+        GH_TOKEN: ${{ github.token }}
+        QUALIFICATION_RUN: ${{ inputs.qualification_run }}
+        EVIDENCE_DIGEST: ${{ inputs.evidence_digest }}
+        REVIEW_ISSUE: ${{ inputs.review_issue }}
+        REVIEW_DECISION: ${{ inputs.decision }}
+      run: python3 scripts/release/free_gate.py authorize --output "$RUNNER_TEMP/free-release/record.json"
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: free-production-authorization
+        path: ${{ runner.temp }}/free-release/record.json
+        retention-days: 7
+        if-no-files-found: error

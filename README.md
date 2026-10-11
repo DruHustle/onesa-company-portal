@@ -1,5 +1,7 @@
 # Onesa UG Company Portal
 
+> Current private-Free release policy: [safeguards and external owner authorization](docs/development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
+
 Corporate website and authenticated company operations portal. The Next.js frontend
 and Fastify/TypeScript backend are independent deployable applications in this one
 repository. PostgreSQL, private document storage and background processing belong
@@ -37,6 +39,6 @@ Configuration is prepared; account provisioning and remote acceptance are not ye
 
 [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Verified branch protection status](docs/development/BRANCH_PROTECTION_REPORT.md). Main protection is **NOT ENFORCED** in the current public repository; historical private-plan rejection does not establish current eligibility.
 
-The selected policy is [GitHub Free with public repositories and hosted Actions](docs/development/FREE_GITHUB_PLAN.md). Local validation is private-only and requires separately verified provisioning. PR and check discipline remain required; remote protection must be activated and verified independently.
+The selected policy is [private GitHub Free safeguards and hosted PR checks](docs/development/FREE_GITHUB_PLAN.md). Production credentials stay outside editable Actions. PR discipline does not block direct pushes; see the implementation report for the public/private discrepancy and owner actions.
 
 [Local Actions runner setup and maintenance](docs/engineering/SELF_HOSTED_RUNNER.md).

@@ -284,6 +284,9 @@ def checked_ci(github, sha):
             if run["event"] == "push"
             and run["head_branch"] in {"main", POLICY["staging_branch"]}
         ]
+        main_runs = [item for item in runs if item["head_branch"] == "main"]
+        if main_runs:
+            runs = main_runs
         if not runs:
             missing = True
             continue
