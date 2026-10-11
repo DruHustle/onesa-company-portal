@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-11 — Guarded staging layout repair
+
+- Fresh authenticated inspection found the owner-created staging API on main with
+  the wrong root/health path, native auto-deploy enabled and no runtime variables.
+  Add an exact-source CI-gated operator action limited to its fixed service ID,
+  matching repository, Docker runtime, Frankfurt and free plan.
+- Pause auto-deploy with readback before changing branch/root/CMD/health; verify
+  final configuration without reading/copying environment values or deploying.
+  Refuse foreign, paid, mismatched and unverified targets. The purported worker is
+  a web service and remains blocked; no conversion, paid plan or runtime cutover.
+
 ## 2026-10-11 — Scanner framing and crashed final worker attempts
 
 - Require one complete NUL-framed INSTREAM clean response. Ambiguous, truncated
