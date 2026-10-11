@@ -38,3 +38,5 @@ Configuration is prepared; account provisioning and remote acceptance are not ye
 [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Verified branch protection status](docs/development/BRANCH_PROTECTION_REPORT.md). Main protection is currently **BLOCKED — NOT ENFORCED** by GitHub plan eligibility.
 
 The selected policy is [GitHub Free with private repositories](docs/development/FREE_GITHUB_PLAN.md). PR and check discipline is voluntary until server protection is supported; no upgrade or visibility change is proposed.
+
+[Local Actions runner setup and maintenance](docs/engineering/SELF_HOSTED_RUNNER.md).
