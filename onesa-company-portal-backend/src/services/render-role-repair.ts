@@ -55,13 +55,17 @@ export async function confirmedTargetInventory(connection:Pick<pg.Pool,'query'>)
   if(error instanceof PortalRepairError)return {schema_state:'portal_schema_mismatch',contains_application_rows:'not_inspected'};
   throw error;
  }
- let populated=false;
+ let populated=false,configurationRows=false,operationalRows=false;
  for(const row of tables.rows.filter(row=>row.tablename!=='schema_migrations')) {
   const table='"'+String(row.tablename).replaceAll('"','""')+'"';
   const result=await connection.query(`SELECT EXISTS(SELECT 1 FROM public.${table} LIMIT 1) AS populated`);
-  populated=populated||result.rows[0]?.populated===true;
+  const present=result.rows[0]?.populated===true;
+  populated=populated||present;
+  // Migrations seed facts/settings; their presence is not evidence of business records.
+  if(['facts','settings'].includes(row.tablename))configurationRows=configurationRows||present;
+  else operationalRows=operationalRows||present;
  }
- return {schema_state:'verified_portal',contains_application_rows:populated};
+ return {schema_state:'verified_portal',contains_application_rows:populated,contains_configuration_rows:configurationRows,contains_operational_rows:operationalRows};
 }
 
 async function confirmedTargetContext() {

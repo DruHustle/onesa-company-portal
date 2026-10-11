@@ -90,3 +90,28 @@ test('Confirmed inventory requires encrypted and certificate-verified client TLS
  assert.doesNotThrow(()=>assertConfirmedClientTLS({encrypted:true,authorized:true}));
  for(const stream of [{},{encrypted:true,authorized:false},{encrypted:false,authorized:true}])assert.throws(()=>assertConfirmedClientTLS(stream),/client TLS/);
 });
+
+
+test('Confirmed inventory distinguishes seeded configuration from operational records without reading content',async()=>{
+ const migrations:{name:string;checksum:string}[]=[];const tables=new Set(['schema_migrations']);
+ for(const name of (await readdir('migrations')).filter(name=>name.endsWith('.sql'))){
+  const source=await readFile('migrations/'+name,'utf8');
+  migrations.push({name,checksum:createHash('sha256').update(source).digest('hex')});
+  for(const match of source.matchAll(/CREATE TABLE\s+([a-z_]+)/g))tables.add(match[1]);
+ }
+ const populated=new Set(['facts','settings']);const queries:string[]=[];
+ const connection={query:async(sql:string)=>{
+  queries.push(sql);
+  if(sql.includes('current_database()'))return {rows:[{database:'neondb'}]};
+  if(sql.includes('SELECT name,checksum'))return {rows:migrations};
+  if(sql.includes('pg_tables'))return {rows:[...tables].map(tablename=>({tablename}))};
+  const table=sql.match(/FROM public\."([a-z_]+)"/);
+  if(!table)throw new Error('Unexpected inventory query');
+  return {rows:[{populated:populated.has(table[1])}]};
+ }} as unknown as Pick<pg.Pool,'query'>;
+ assert.deepEqual(await confirmedTargetInventory(connection),{schema_state:'verified_portal',contains_application_rows:true,contains_configuration_rows:true,contains_operational_rows:false});
+ populated.add('enquiries');
+ assert.equal((await confirmedTargetInventory(connection)).contains_operational_rows,true);
+ assert.ok(queries.every(sql=>sql.startsWith('SELECT ')));
+ assert.ok(queries.filter(sql=>sql.includes('FROM public."')).every(sql=>sql.startsWith('SELECT EXISTS(')));
+});
