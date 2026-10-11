@@ -36,6 +36,13 @@ and CHANGELOG.md; ongoing policies are consolidated in root AGENTS.md.
 
 ## Portal runtime acceptance
 
+Authenticated inspection on audit cf54781 confirmed the supplied staging API uses
+main, an incorrect root/health path and native auto-deploy; all required runtime
+variables are missing. The service named worker is actually a web service. Use the
+guarded `repair-staging-layout` action only after exact-source CI to repair the API
+layout without deployment. Its runtime secrets, private storage and real executor
+must be independently qualified; no owner URL or exposed credential may be reused.
+
 Local image/readiness checks pass; current exact-SHA CI must qualify the combined
 runner/audit revision. The owner-confirmed autumn-glade target was initialized with
 seven migrations and a restricted login. Last authenticated production runtime

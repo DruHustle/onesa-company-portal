@@ -9,6 +9,9 @@ from urllib.parse import urlencode
 
 from inspect_hosting import get_json
 
+PORTAL_STAGING_SERVICE = "srv-db5k5had0e5s73fos4g0"
+PORTAL_AUDIT_REF = "refs/heads/audit/portal-master-acceptance"
+
 
 def write_json(origin, path, token, payload, method):
     request = urllib.request.Request(
@@ -154,8 +157,66 @@ def repair_vercel(repo, portal):
     return {"public_origin_updates_http": changes, "deployment_requested": False}
 
 
+def repair_portal_staging_layout():
+    """Change only the owner-identified free staging API layout, never its secrets."""
+    token = os.environ.get("RENDER_API_KEY", "")
+    base = "https://api.render.com/v1/"
+    path = "services/" + PORTAL_STAGING_SERVICE
+    data, status = get_json(base, path, token) if token else ({}, 0)
+    details = data.get("serviceDetails", {})
+    if (
+        status != 200
+        or data.get("id") != PORTAL_STAGING_SERVICE
+        or data.get("repo", "").removesuffix(".git").rstrip("/")
+        != "https://github.com/DruHustle/onesa-company-portal"
+        or data.get("type") != "web_service"
+        or details.get("runtime", details.get("env")) != "docker"
+        or details.get("plan") != "free"
+        or details.get("region") != "frankfurt"
+    ):
+        return {"target_verified": False, "api_http": status, "deployment_requested": False}
+    pause = write_json(base, path, token, {"autoDeployTrigger": "off"}, "PATCH")
+    paused, paused_status = get_json(base, path, token)
+    if pause != 200 or paused_status != 200 or paused.get("autoDeployTrigger") != "off":
+        return {"target_verified": True, "layout_verified": False,
+                "disable_auto_deploy_http": pause, "deployment_requested": False}
+    payload = configuration(True, False)
+    payload["branch"] = PORTAL_AUDIT_REF.removeprefix("refs/heads/")
+    update = write_json(base, path, token, payload, "PATCH")
+    current, current_status = get_json(base, path, token)
+    current_details = current.get("serviceDetails", {})
+    runtime = current_details.get("envSpecificDetails", {})
+    verified = (
+        update == 200 and current_status == 200
+        and current.get("id") == PORTAL_STAGING_SERVICE
+        and current.get("repo", "").removesuffix(".git").rstrip("/")
+        == "https://github.com/DruHustle/onesa-company-portal"
+        and current.get("type") == "web_service"
+        and current.get("autoDeployTrigger") == "off"
+        and current.get("branch") == payload["branch"]
+        and current.get("rootDir") == payload["rootDir"]
+        and current_details.get("plan") == "free"
+        and current_details.get("region") == "frankfurt"
+        and current_details.get("runtime", current_details.get("env")) == "docker"
+        and current_details.get("healthCheckPath") == "/api/v1/ready"
+        and runtime.get("dockerfilePath") == "./Dockerfile"
+        and runtime.get("dockerContext") == "."
+        and runtime.get("dockerCommand") == "node dist/src/server.js"
+    )
+    return {"target_verified": True, "layout_update_http": update,
+            "layout_verified": verified, "deployment_requested": False}
+
+
 def main():
     repo = os.environ.get("GITHUB_REPOSITORY", "")
+    if os.environ.get("PORTAL_REPAIR_SCOPE") == "staging":
+        if repo != "DruHustle/onesa-company-portal" or os.environ.get("GITHUB_REF") != PORTAL_AUDIT_REF:
+            raise SystemExit("Staging layout repair requires the identified Portal audit branch")
+        report = repair_portal_staging_layout()
+        print(json.dumps(report, indent=2))
+        if not report.get("layout_verified"):
+            raise SystemExit("Staging layout was not verified; no deployment requested")
+        return
     if (
         repo not in {"DruHustle/onesa-company-portal", "DruHustle/onesa-ai-platform"}
         or os.environ.get("GITHUB_REF") != "refs/heads/main"

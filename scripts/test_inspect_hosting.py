@@ -1,6 +1,7 @@
 """Negative coverage for provider diagnostics and credential disclosure."""
 
 import json
+from copy import deepcopy
 import unittest
 from unittest.mock import patch
 
@@ -9,6 +10,74 @@ import repair_hosting
 
 
 class HostingInspectionTests(unittest.TestCase):
+    @staticmethod
+    def staging_service():
+        return {"id": repair_hosting.PORTAL_STAGING_SERVICE,
+                "repo": "https://github.com/DruHustle/onesa-company-portal.git",
+                "type": "web_service", "autoDeployTrigger": "commit",
+                "serviceDetails": {"runtime": "docker", "plan": "free", "region": "frankfurt"}}
+
+    def test_staging_layout_refuses_wrong_identity_type_runtime_plan_and_region(self):
+        for change in [{"id": "srv-another"}, {"repo": "https://github.com/other/project"},
+                       {"type": "background_worker"}, {"serviceDetails": {"runtime": "node"}},
+                       {"serviceDetails": {"plan": "starter"}}, {"serviceDetails": {"region": "oregon"}}]:
+            data = self.staging_service()
+            for key, value in change.items():
+                if isinstance(value, dict): data[key].update(value)
+                else: data[key] = value
+            with self.subTest(change=change), patch.dict("os.environ", {"RENDER_API_KEY": "fixture-token"}), \
+                 patch("repair_hosting.get_json", return_value=(data, 200)), patch("repair_hosting.write_json") as write:
+                self.assertFalse(repair_hosting.repair_portal_staging_layout()["target_verified"])
+                write.assert_not_called()
+
+    def test_staging_layout_requires_verified_pause_before_layout_changes(self):
+        data = self.staging_service()
+        with patch.dict("os.environ", {"RENDER_API_KEY": "fixture-token"}), \
+             patch("repair_hosting.get_json", return_value=(data, 200)), \
+             patch("repair_hosting.write_json", return_value=200) as write:
+            self.assertFalse(repair_hosting.repair_portal_staging_layout()["layout_verified"])
+        self.assertEqual(write.call_count, 1)
+        self.assertEqual(write.call_args.args[3], {"autoDeployTrigger": "off"})
+
+    def test_staging_layout_changes_only_identified_nonsecret_fields_and_checks_readback(self):
+        data = self.staging_service()
+        paused = {**data, "autoDeployTrigger": "off"}
+        fixed = deepcopy(paused)
+        fixed.update(repair_hosting.configuration(True, False))
+        fixed["branch"] = "audit/portal-master-acceptance"
+        fixed["serviceDetails"].update(data["serviceDetails"])
+        with patch.dict("os.environ", {"RENDER_API_KEY": "fixture-token"}), \
+             patch("repair_hosting.get_json", side_effect=[(data, 200), (paused, 200), (fixed, 200)]), \
+             patch("repair_hosting.write_json", return_value=200) as write:
+            result = repair_hosting.repair_portal_staging_layout()
+        self.assertTrue(result["layout_verified"])
+        self.assertFalse(result["deployment_requested"])
+        self.assertEqual(write.call_count, 2)
+        for call in write.call_args_list:
+            self.assertEqual(call.args[1], "services/" + repair_hosting.PORTAL_STAGING_SERVICE)
+            self.assertEqual(call.args[4], "PATCH")
+        payload = write.call_args.args[3]
+        self.assertEqual(set(payload), {"autoDeployTrigger", "branch", "rootDir", "serviceDetails"})
+        self.assertNotIn("plan", payload["serviceDetails"])
+        self.assertNotIn("envVars", payload)
+        self.assertNotIn("fixture-token", json.dumps(result))
+
+    def test_staging_layout_does_not_claim_success_for_failed_provider_readback(self):
+        data = self.staging_service()
+        paused = {**data, "autoDeployTrigger": "off"}
+        with patch.dict("os.environ", {"RENDER_API_KEY": "fixture-token"}), \
+             patch("repair_hosting.get_json", side_effect=[(data, 200), (paused, 200), ({}, 503)]), \
+             patch("repair_hosting.write_json", return_value=200):
+            self.assertFalse(repair_hosting.repair_portal_staging_layout()["layout_verified"])
+
+    def test_staging_repair_entrypoint_refuses_main_and_other_repositories(self):
+        for repo, ref in [("DruHustle/onesa-company-portal", "refs/heads/main"),
+                          ("DruHustle/onesa-ai-platform", repair_hosting.PORTAL_AUDIT_REF)]:
+            with patch.dict("os.environ", {"PORTAL_REPAIR_SCOPE": "staging", "GITHUB_REPOSITORY": repo, "GITHUB_REF": ref}), \
+                 patch("repair_hosting.get_json") as read:
+                with self.assertRaises(SystemExit): repair_hosting.main()
+                read.assert_not_called()
+
     def test_staging_inspection_selects_only_the_owner_supplied_targets(self):
         with patch.dict("os.environ", {"RENDER_BACKEND_SERVICE_ID": "srv-productionapi", "RENDER_WORKER_SERVICE_ID": "srv-productionworker"}):
             self.assertEqual(inspect_hosting.portal_services("production"), ("srv-productionapi", "srv-productionworker"))

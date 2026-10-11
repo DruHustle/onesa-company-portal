@@ -285,3 +285,30 @@ managed GPU capacity or company legal approval is claimed. Production remains NO
 
 Do not promote the free staging project onto `onesa.eu`/`portal.onesa.eu` or change
 Squarespace/Zoho/Resend DNS in this setup. Existing production projects are preserved.
+## Confirmed Portal staging layout repair — 2026-10-11
+
+Read-only Actions inspection verified the owner-created API
+`srv-db5k5had0e5s73fos4g0` is a Frankfurt Free Docker web service in this repository,
+but uses main, the wrong root/health path, native auto-deploy and missing runtime
+variables. After `verify.yml` and `repository-hygiene.yml` pass on the exact reviewed
+`audit/portal-master-acceptance` revision, run **Repair existing hosting configuration**
+with `portal_action=repair-staging-layout` on that branch. This pauses native
+auto-deploy, sets the audit branch, backend root, Dockerfile/context, Node server
+CMD and `/api/v1/ready`, then verifies readback. It does not deploy, initialize a
+database, read/copy runtime credentials, change a plan or modify production.
+
+Set fresh, independently scoped staging `DATABASE_URL`, `SESSION_KEY` (at least
+48 characters), `PUBLIC_ORIGIN`, `COMPANY_ORIGIN`, `PROXY_SHARED_KEY`, `S3_BUCKET`,
+`S3_ENDPOINT`, `S3_REGION`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` directly in
+the staging API settings. Keep `PUBLISH_ENABLED=false`. Use a restricted application
+database role and private staging storage. Never use previously exposed credentials
+or the migration-owner URL. Saving settings is not readiness or release acceptance.
+
+The purported worker `srv-db5k4mlckfvc73agdr40` was authenticated as a Free web
+service, not a background worker. Do not convert it to a paid plan or wrap a worker
+in dummy HTTP health checks. A separately approved genuinely free private executor
+and delivery/scanner/storage acceptance remain prerequisites.
+
+The [Render update-service API](https://api-docs.render.com/reference/update-service)
+does not deploy configuration updates automatically; deployment is a separate
+operation requiring the existing release/target gates.

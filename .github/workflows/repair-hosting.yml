@@ -6,7 +6,7 @@ on:
         description: Targeted Portal database role operation (never deploys)
         type: choice
         default: inspect-role
-        options: [inspect-role, inspect-confirmed-target, initialize-confirmed-target, repair-role, repair-layout]
+        options: [inspect-role, inspect-confirmed-target, initialize-confirmed-target, repair-role, repair-layout, repair-staging-layout]
 permissions:
   contents: read
   actions: read
@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   inspect:
-    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && inputs.portal_action != 'repair-staging-layout' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
     runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
     timeout-minutes: 10
     env:
@@ -77,3 +77,30 @@ jobs:
         run: |
           python scripts/repair_hosting.py
           python scripts/inspect_hosting.py
+
+  staging-layout:
+    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && inputs.portal_action == 'repair-staging-layout' }}
+    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Require exact-source staging audit checks
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.ref !== 'refs/heads/audit/portal-master-acceptance') throw new Error('Identified Portal audit branch required');
+            const {owner, repo} = context.repo;
+            for (const workflow_id of ['verify.yml', 'repository-hygiene.yml']) {
+              const runs = await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id, head_sha: context.sha, event: 'push', per_page: 20});
+              const run = runs.data.workflow_runs[0];
+              if (!run || run.status !== 'completed' || run.conclusion !== 'success') throw new Error(`${workflow_id} must pass on this staging repair revision`);
+            }
+      - name: Repair only the existing free staging API layout without deploying
+        env:
+          PORTAL_REPAIR_SCOPE: staging
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: python scripts/repair_hosting.py
