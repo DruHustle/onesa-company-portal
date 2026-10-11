@@ -1,0 +1,61 @@
+name: Reviewed production frontend build
+'on':
+  workflow_dispatch: {}
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: reviewed-production-build
+  cancel-in-progress: false
+jobs:
+  local-validation:
+    if: github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle'
+    uses: ./.github/workflows/_local-validation.yml
+  build:
+    needs: local-validation
+    if: always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && github.repository == 'DruHustle/onesa-company-portal'
+      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      RELEASE_BUILD_KEY: ${{ secrets.RELEASE_BUILD_KEY }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Require protected main and exact-candidate CI
+      run: python3 scripts/release/evidence.py build-preflight --output "$RUNNER_TEMP/build-preflight/record.json"
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - name: Build production candidate without publishing
+      run: 'npm install --global vercel@63.1.0
+
+        vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+        vercel build --prod --token="$VERCEL_TOKEN"
+
+        git diff --quiet HEAD --
+
+        SOURCE_SHA256=$(python3 scripts/release/evidence.py source-hash) node scripts/release/bundle.mjs pack "$RUNNER_TEMP/reviewed-build"'
+    - uses: actions/upload-artifact@v4
+      with:
+        name: production-build-manifest
+        path: ${{ runner.temp }}/reviewed-build/record.json
+        retention-days: 7
+        if-no-files-found: error
+    - uses: actions/upload-artifact@v4
+      with:
+        name: production-build-encrypted
+        path: ${{ runner.temp }}/reviewed-build/bundle.enc
+        retention-days: 7
+        if-no-files-found: error
+    - name: Remove private build and provider environment files
+      if: always()
+      run: rm -rf -- "$GITHUB_WORKSPACE/.vercel" "$RUNNER_TEMP/reviewed-build"
+    environment: Production

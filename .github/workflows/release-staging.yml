@@ -1,0 +1,70 @@
+name: Approved staging qualification
+'on':
+  workflow_dispatch: {}
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: approved-staging-deployment
+  cancel-in-progress: false
+jobs:
+  staging:
+    if: always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && (github.repository == 'DruHustle/onesa-company-portal'
+      && github.actor == 'DruHustle' && github.ref == 'refs/heads/audit/portal-master-acceptance')
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_ID: srv-db5k5had0e5s73fos4g0
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      STAGING_FIXTURES_JSON: ${{ secrets.STAGING_FIXTURES_JSON }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Require successful exact-source checks and approved target
+      run: 'python3 scripts/release/evidence.py stage-preflight --output "$RUNNER_TEMP/technical/record.json"
+
+        python3 scripts/release/hosted.py preflight'
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - name: Build protected staging Preview with existing branch settings
+      env:
+        STAGING_BRANCH: audit/portal-master-acceptance
+      run: 'npm install --global vercel@63.1.0
+
+        vercel pull --yes --environment=preview --git-branch="$STAGING_BRANCH" --token="$VERCEL_TOKEN"
+
+        VERCEL=1 vercel build --token="$VERCEL_TOKEN"
+
+        vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta githubCommitRef="$STAGING_BRANCH" --meta githubCommitSha="$GITHUB_SHA" > /tmp/vercel-url.txt'
+    - name: Bind only the approved staging API origin to this verified Preview
+      run: python3 scripts/release/hosted.py bind-staging-origin
+    - name: Deploy exact staging backend source without database migration
+      run: python3 scripts/deploy_render.py
+      env:
+        RENDER_RECEIPT_PATH: ${{ runner.temp }}/render/record.json
+    - name: Verify authenticated synthetic workflows, storage and actual inference where applicable
+      run: python3 scripts/release/hosted_suite.py
+    - name: Capture provider identity and real hosted probes
+      run: python3 scripts/release/hosted.py stage --evidence "$RUNNER_TEMP/technical/record.json" --render-receipt "$RUNNER_TEMP/render/record.json"
+        --output "$RUNNER_TEMP/staging/record.json"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: staging-verification
+        path: ${{ runner.temp }}/staging/record.json
+        retention-days: 7
+        if-no-files-found: error
+    - name: Report outstanding acceptance honestly
+      run: python3 -c 'import json,os; from pathlib import Path; r=json.loads((Path(os.environ["RUNNER_TEMP"])/"staging/record.json").read_text());
+        print("Hosted qualification:",r["status"]); print(json.dumps(r["checks"],indent=2))'
+    needs: local-validation
+  local-validation:
+    if: github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle'
+    uses: ./.github/workflows/_local-validation.yml

@@ -211,3 +211,9 @@ parameters. Apply configuration only through a reviewed cutover operation paired
 with the qualified source revision. Preserve dark-boat for rollback review; never
 reuse the migration owner login in a runtime service. Initialization does not close
 storage, credential rotation, worker, frontend, backup, legal or deployment gates.
+
+## Automated qualification migration
+
+See [automated release qualification](AUTOMATED_QUALIFICATION.md) for immutable
+Actions evidence, explicit owner reviews, build integrity and the guarded migration.
+The legacy secret remains active until remote migration verification is complete.

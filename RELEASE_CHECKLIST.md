@@ -79,3 +79,11 @@ target. See docs/engineering/VERCEL_RENDER.md.
   on the new exact commit before accepting the routing change.
 - Historical private runner acceptance does not certify a current registration.
   Production promotion still requires all applicable release gates and authorization.
+
+## Automated release qualification acceptance
+
+Local evidence/approval automation and rejection tests are implemented. See
+[qualification guide](docs/engineering/AUTOMATED_QUALIFICATION.md) for the trust model and owner actions. Remote CI/provenance validation, main
+protection, encryption secret provisioning, complete hosted staging/production
+acceptance and explicit owner operations/legal approval remain blocked.
+The migration switch stays off and the original secret gate is retained.

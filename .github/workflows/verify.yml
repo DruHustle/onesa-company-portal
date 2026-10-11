@@ -51,6 +51,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: 'Release requirement: qualification failure-path tests'
+        run: python3 -m unittest discover -s scripts/release -p 'test_evidence.py'
       - run: npm ci
         working-directory: onesa-company-portal-backend
       - run: npm ci
@@ -140,6 +142,15 @@ jobs:
           docker run --rm --user "$(id -u):$(id -g)" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v "$PWD/data/security:/reports" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar
           chmod 600 data/security/runtime.json
           python3 scripts/release/image_gate.py data/security/runtime.json
+      - name: 'Release requirement: record tested runtime digest'
+        run: python3 scripts/release/evidence.py manifest --image "onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }}" --output
+          "$RUNNER_TEMP/runtime/record.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runtime-${{ matrix.application }}
+          path: ${{ runner.temp }}/runtime/record.json
+          retention-days: 7
+          if-no-files-found: error
       # Restricted raw findings are removed from this persistent runner; never upload them.
       - name: Remove restricted scan output
         if: always()

@@ -314,3 +314,11 @@ Consolidated policy references and templates, preserved later audited runtime fi
 Added a strictly read-only inspection operation for the owner-confirmed alternate Neon Portal endpoint. Existing runtime-role repair still accepts only its established target. Inspection verifies TLS/schema and reports data presence without records, credentials, migrations, permission changes, settings updates or deployment. Corrected the operator workflow reference to repair-hosting.yml.
 
 Follow-up: verify encrypted/certificate-validated TLS at the actual client socket, rather than using pg_stat_ssl for Neon proxy connections. Reject unverified/plain connections before SQL.
+
+## 2026-10-11 — Automated qualification (local implementation)
+
+Added versioned exact-candidate Actions evidence, tested runtime digests, encrypted
+reviewed Vercel prebuilt artifacts, owner approval/revocation records, staged/provider
+receipts and fail-closed promotion/hosted checks. Legacy qualification is retained
+behind an explicit verified migration switch. No production release or legal approval
+was issued; target acceptance adapters/configuration and remote validation remain open.
