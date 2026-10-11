@@ -146,3 +146,8 @@ Production deployment still requires a reviewed exact-commit qualification recor
 and absent nonsecret configuration, then reads it back. Repository and runtime
 identity must match before any update. This does not deploy or migrate the database;
 missing database/model credentials and qualification remain explicit blockers.
+
+
+## Current Portal deployment gate
+
+The reviewed Dockerfile CMD and restricted-role/schema readiness tests pass in CI. The hosted API remains unqualified: the owner migration secret failed the established Portal database identity guard. Confirm the intended Portal Neon project/branch and direct hostname before any further repair. Never substitute AI credentials or bypass this guard. Use `portal-role-repair.yml` for the targeted, identity-checked operator procedure; it verifies schema checksums and preserves records. Read-only inspection is supported on the audit branch; applying changes remains restricted to the reviewed operator/main branches. The frontend also needs server-only BACKEND_URL and PROXY_SHARED_KEY, and the configured worker ID must be replaced by a verified worker target. No successful Portal rollout is claimed.

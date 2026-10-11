@@ -16,6 +16,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   verify:
+    name: deploy-qualification
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,6 +53,7 @@ jobs:
               }
             }
   frontend:
+    name: deploy-frontend
     needs: [verify, backend, worker]
     if: always() && needs.verify.result == 'success' && (inputs.application == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success' && needs.worker.result == 'success'))
     runs-on: ubuntu-latest
@@ -81,6 +83,7 @@ jobs:
       - name: Record deployed frontend
         run: cat /tmp/vercel-url.txt >> "$GITHUB_STEP_SUMMARY"
   backend:
+    name: deploy-backend
     needs: verify
     if: inputs.application == 'backend' || inputs.application == 'both'
     runs-on: ubuntu-latest
@@ -94,6 +97,7 @@ jobs:
         with: {python-version: '3.11'}
       - run: python scripts/deploy_render.py
   worker:
+    name: deploy-worker
     needs: [verify, backend]
     if: inputs.application == 'backend' || inputs.application == 'both'
     runs-on: ubuntu-latest

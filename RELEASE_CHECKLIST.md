@@ -18,3 +18,28 @@
 - Existing local data is preserved; no private records are automatically migrated.
 
 Source publication and infrastructure preparation alone do not complete this checklist.
+
+## Outstanding owner and hosted acceptance
+
+- Verify organization ownership and provider bindings; the inspected GitHub owner
+  is DruHustle, not an independently verified onesa-ug organization.
+- Retest hosted API/worker readiness and original503 failures at the reviewed revision.
+- Verify credential rotation privately; never restore exposed credentials.
+- Complete independent security/accessibility and API compatibility acceptance.
+- Confirm domain/DNS, email delivery, staging isolation and target-host operations.
+- Obtain real company-fact/editorial/legal approval before public release.
+
+Check current evidence before closing these items. Removing completed setup/handoff
+instructions does not satisfy release gates. Implementation history remains in Git
+and CHANGELOG.md; ongoing policies are consolidated in root AGENTS.md.
+
+
+## Portal runtime acceptance
+
+Local and CI image/readiness checks pass. Hosted acceptance is blocked by migration secret identity mismatch, missing frontend proxy settings and an unverified worker target. See docs/engineering/VERCEL_RENDER.md.
+
+## Branch protection acceptance — 2026-10-10
+
+- **BLOCKED, NOT ENFORCED:** GitHub rejected ruleset/classic protection writes for this private personal repository. No production approval is inferred.
+- Activate and verify the [prepared policy](docs/development/branch-protection/ACTIVATION.md) after separately authorized eligibility changes; verify check uniqueness and pending/failure/pass merge behavior.
+- Resolve the [recorded deployment environment/integration gaps](docs/development/BRANCH_PROTECTION_REPORT.md) before promotion.

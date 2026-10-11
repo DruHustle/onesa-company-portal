@@ -64,3 +64,11 @@ never relax the established database identity guard or paste URLs into logs.
 Inspection reports actual role safety and grants only after verifying the database
 identity and schema. Applying a repair remains restricted to the original operator
 branches and successful exact-revision checks.
+
+
+After full backend tests provision the synthetic restricted role on the disposable
+`TEST_DATABASE_URL`, run `python3 scripts/startup_smoke.py onesa-portal-backend:local`.
+On Linux CI it uses host networking; for a dedicated Docker test database use
+`--network container:<isolated-test-db>`. It exercises the production image's default
+CMD at PORT=10000, health, owner-role 503, restricted-role 200, unavailable DB 503,
+authentication and SIGTERM. Never supply an application database to this test.
