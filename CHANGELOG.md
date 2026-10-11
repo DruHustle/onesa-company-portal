@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-11 — Preserve audited applications with owner runner policy
+
+- Merge the owner-approved main policy without replacing current application fixes.
+- Public jobs verify hosted execution and live visibility; private reusable validation
+  retains all implemented tests, browser matrices, startup and image-security gates.
+- No local runner activation, production promotion or physical control.
+
 ## 2026-10-11 — Verified staging layout and read-only inventory clarity
 
 - Applied the guarded Portal staging layout correction with auto-deploy disabled;

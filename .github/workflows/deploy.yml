@@ -15,12 +15,25 @@ concurrency:
   group: production-deployment
   cancel-in-progress: false
 jobs:
+  local-validation:
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    uses: ./.github/workflows/_local-validation.yml
   verify:
     name: deploy-qualification
-    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","ARM64","onesa-portal-local"]') || 'ubuntu-latest' }}
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle'))) }}
+
+    needs: local-validation
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      - name: Verify GitHub-hosted execution and actual visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+          test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
@@ -68,6 +81,14 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
+      - name: Verify GitHub-hosted execution and actual visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+          test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }
       - name: Require Vercel configuration
         run: |
           missing_configuration=0
@@ -93,12 +114,20 @@ jobs:
     name: deploy-backend
     needs: verify
     if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application == 'both') }}
-    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","ARM64","onesa-portal-local"]') || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
     steps:
+      - name: Verify GitHub-hosted execution and actual visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+          test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
@@ -109,12 +138,20 @@ jobs:
     name: deploy-worker
     needs: [verify, backend]
     if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application == 'both') }}
-    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","ARM64","onesa-portal-local"]') || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
     steps:
+      - name: Verify GitHub-hosted execution and actual visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+          test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }
       - uses: actions/checkout@v4
         with:
           persist-credentials: false

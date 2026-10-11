@@ -6,9 +6,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  local-validation:
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    uses: ./.github/workflows/_local-validation.yml
   verify:
-    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","ARM64","onesa-portal-local"]') || 'ubuntu-latest' }}
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
+
+    needs: local-validation
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
       postgres:
@@ -26,6 +31,14 @@ jobs:
       NODE_ENV: test
       STORAGE_DIR: ${{ github.workspace }}/.test-storage
     steps:
+      - name: Verify GitHub-hosted execution and actual visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+          test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }
       - name: Configure disposable database connection
         env:
           POSTGRES_PORT: ${{ job.services.postgres.ports['5432'] }}
@@ -44,6 +57,7 @@ jobs:
         working-directory: onesa-company-portal-frontend
       - run: python3 scripts/check-contracts.py && python3 scripts/test-contract-break.py
       - run: python3 -m unittest discover -s scripts -p test_inspect_hosting.py
+      - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'
       - run: npm run lint && npm run build && npm test && npm audit --audit-level=high
         working-directory: onesa-company-portal-backend
       - run: npm run lint && npm run typecheck && npm run test:domains && npm run build && npm audit --audit-level=high
@@ -53,12 +67,7 @@ jobs:
       - run: npm run seed
         working-directory: onesa-company-portal-backend
       - name: Install browsers and OS dependencies on GitHub-hosted Ubuntu
-        if: ${{ !github.event.repository.private }}
         run: npx playwright install --with-deps chromium firefox webkit
-        working-directory: onesa-company-portal-frontend
-      - name: Install browsers on the provisioned private runner
-        if: ${{ github.event.repository.private }}
-        run: npx playwright install chromium firefox webkit
         working-directory: onesa-company-portal-frontend
       - run: |
           cleanup() { kill "$backend_pid" "$frontend_pid" 2>/dev/null || true; wait "$backend_pid" "$frontend_pid" 2>/dev/null || true; }
@@ -100,14 +109,24 @@ jobs:
             onesa-company-portal-backend/openapi/openapi.json
 
   image-security:
-    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","ARM64","onesa-portal-local"]') || 'ubuntu-latest' }}
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
+
+    needs: local-validation
+    runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
         application: [onesa-company-portal-backend, onesa-company-portal-frontend]
     steps:
+      - name: Verify GitHub-hosted execution and actual visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+          test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }
       - uses: actions/checkout@v4
         with:
           persist-credentials: false

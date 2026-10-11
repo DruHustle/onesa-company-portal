@@ -13,12 +13,12 @@ and existing secret/data exclusion. Public source does not authorize public secr
 internal records, model weights, uploads or confidential CI evidence.
 
 Local runners may be used only when the repository is private and their isolation,
-registration and capacity have been verified. The Portal selects its existing ARM64
-labels only for private repository events; its manual local smoke is private-only.
-AI Platform and Robot currently retain their existing hosted configuration: do not
-invent or register local runners. Any future private migration needs a separately
-verified compatible runner. Keep native x86 jobs hosted until a compatible private
-runner is qualified; never substitute an unverified architecture.
+registration and capacity have been verified. Portal and Robot include a private-only
+reusable validation gate; all its implemented checks must pass before cloud stages.
+Public events skip that gate and use GitHub-hosted jobs with an actual-visibility check.
+No local runner is registered or activated by source configuration. AI Platform retains
+its independently reviewed hosted configuration. Any future private migration needs
+separately qualified provisioning; ARM validation does not establish x86 compatibility.
 
 ## Required workflow
 

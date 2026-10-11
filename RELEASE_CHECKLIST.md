@@ -36,11 +36,10 @@ and CHANGELOG.md; ongoing policies are consolidated in root AGENTS.md.
 
 ## Portal runtime acceptance
 
-Authenticated inspection on audit cf54781 confirmed the supplied staging API uses
-main, an incorrect root/health path and native auto-deploy; all required runtime
-variables are missing. The service named worker is actually a web service. Use the
-guarded `repair-staging-layout` action only after exact-source CI to repair the API
-layout without deployment. Its runtime secrets, private storage and real executor
+The guarded staging layout action passed at reviewed revision f3715a4 in run
+38136781194. Readback 38136905181 confirms audit branch, backend root, Node command,
+readiness path and disabled native auto-deploy. All eight required staging runtime
+variables remain missing. The service named worker is actually a web service. Its runtime secrets, private storage and real executor
 must be independently qualified; no owner URL or exposed credential may be reused.
 
 Local image/readiness checks pass; current exact-SHA CI must qualify the combined
@@ -53,7 +52,7 @@ target. See docs/engineering/VERCEL_RENDER.md.
 
 ## Branch protection acceptance — 2026-10-10
 
-- **BLOCKED, NOT ENFORCED:** GitHub rejected ruleset/classic protection writes for this private personal repository. No production approval is inferred.
+- **NOT ENFORCED:** Fresh public main readback shows no active protection. Earlier writes were rejected while private; current eligibility must be checked separately. No production approval is inferred.
 - Activate and verify the [prepared policy](docs/development/branch-protection/ACTIVATION.md) after separately authorized eligibility changes; verify check uniqueness and pending/failure/pass merge behavior.
 - Resolve the [recorded deployment environment/integration gaps](docs/development/BRANCH_PROTECTION_REPORT.md) before promotion.
 
@@ -66,11 +65,11 @@ target. See docs/engineering/VERCEL_RENDER.md.
   [publication hygiene](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131161041)
   and [manual smoke](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131160962)
   passed at `09a5bc6`; job metadata identifies `onesa-portal-local-arm64` (ID 21).
-- Before merge, verify fresh checks on the final [PR revision](https://github.com/DruHustle/onesa-company-portal/pull/4), including retention of the two incompatible x86 jobs.
+- Owner merged [the runner-policy PR](https://github.com/DruHustle/onesa-company-portal/pull/4). The audit merge retains all newer application fixes and requires fresh exact-revision hosted checks, including x86 runtime jobs.
   ARM CI/security images do not establish x86 runtime security equivalence. Production commands remain untested against providers; no
   production workflow was dispatched. Existing release gates still apply.
-- Owner must authorize the PR merge to change default-branch routing; real Mac
-  reboot/login and sleep recovery remain owner acceptance tasks.
+- No private registration is currently active. Real Mac reboot/login and sleep
+  recovery remain separately authorized future private-runner acceptance tasks.
 
 ## Public hosted runner acceptance — 2026-10-11
 

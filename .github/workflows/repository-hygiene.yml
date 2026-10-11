@@ -6,11 +6,24 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  local-validation:
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    uses: ./.github/workflows/_local-validation.yml
   publication-hygiene:
-    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","ARM64","onesa-portal-local"]') || 'ubuntu-latest' }}
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
+
+    needs: local-validation
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      - name: Verify GitHub-hosted execution and actual visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+          test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
@@ -19,42 +32,3 @@ jobs:
         with:
           python-version: '3.11'
       - run: python scripts/repository_hygiene.py --history
-
-  local-runner-smoke:
-    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.event_name == 'workflow_dispatch' && github.event.repository.private }}
-    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
-    timeout-minutes: 10
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_PASSWORD: smoke-fixture-password
-        ports: ['5432/tcp']
-        options: --health-cmd pg_isready --health-interval 5s --health-timeout 3s --health-retries 15
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Verify isolation, runtimes and Linux service containers
-        env:
-          POSTGRES_PORT: ${{ job.services.postgres.ports['5432'] }}
-        run: |
-          test "$(id -un)" = portalci
-          test "$(uname -m)" = aarch64
-          test ! -e /Users/andrewgotora
-          test -z "${SSH_AUTH_SOCK:-}"
-          node --version
-          python --version
-          docker version
-          python - <<'PYTHON'
-          import os, socket
-          with socket.create_connection(('127.0.0.1', int(os.environ['POSTGRES_PORT'])), timeout=5):
-              print('PostgreSQL service container reachable')
-          PYTHON
-          printf 'Runner: %s; OS: %s; architecture: %s\n' "$RUNNER_NAME" "$RUNNER_OS" "$RUNNER_ARCH" >> "$GITHUB_STEP_SUMMARY"
