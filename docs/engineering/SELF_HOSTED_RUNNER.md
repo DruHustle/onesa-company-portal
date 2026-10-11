@@ -1,22 +1,32 @@
 # Local GitHub Actions runner
 
-This private repository uses the repository-scoped `onesa-portal-local-arm64`
-runner with labels `self-hosted`, `Linux`, `ARM64`, `onesa-portal-local`.
-It runs as `portalci` in Lima VM `onesa-portal-ci`: Ubuntu 24.04 ARM64,
-4 CPUs, 6 GiB memory, 60 GiB disk. Verification, both image-security matrix entries,
-publication hygiene, hosting operations and backend/worker deployment jobs select
-these labels. There are no Windows/macOS jobs or reusable workflows. Chromium,
-Firefox and WebKit coverage is retained. Native CI/security images now exercise
-ARM64; x86 runtime security equivalence is not established by an ARM scan.
+## Current policy — 2026-10-11
 
-Two jobs retain `ubuntu-latest`: Vercel prebuilt frontend deployment and approved
-release-artifact packaging. Their previous x86-64 build environment is preserved.
-Ubuntu QEMU and the current Docker-documented QEMU 10.2.3 were tested in this VM;
-Node could report x64 under the latter, but the full Next.js x86 image build crashed
-with signal 11. An actual x86 Linux machine/VM or separately verified translation
-setup is needed before migrating these jobs. No paid hosted fallback was added or
-triggered. Their existing account restriction remains; frontend production release
-and artifact packaging therefore remain blocked without compatible capacity.
+The owner has temporarily made this repository public. Current jobs use standard
+GitHub-hosted Ubuntu runners; no local runner is registered in the latest inventory.
+The compatible Portal jobs select the local ARM64 labels only when the repository
+is private. Manual local-runner smoke also requires a private repository. Public
+browser jobs install OS dependencies with Playwright `--with-deps`; a provisioned
+private runner uses its administrator-installed OS libraries.
+
+Local runner provisioning remains private-only. Do not register or start a runner
+for public code. Before reactivating a private runner, verify repository scope,
+isolation, shared concurrency locking, lifecycle recovery and capacity. Do not
+cancel existing jobs to change routing or bypass required checks.
+
+## Historical private runner qualification
+
+The previously registered `onesa-portal-local-arm64` runner (ID 21) used labels
+`self-hosted`, `Linux`, `ARM64`, `onesa-portal-local`, running as `portalci` in Lima
+VM `onesa-portal-ci`: Ubuntu 24.04 ARM64, 4 CPUs, 6 GiB memory, 60 GiB disk.
+Historical verification passed Chromium, Firefox and WebKit and native ARM64 image
+security. This is historical evidence, not current registration or x86 equivalence.
+
+Vercel prebuilt frontend deployment and release packaging retain `ubuntu-latest`
+because the full x86 Next.js image build under ARM emulation failed with signal 11.
+Do not move those jobs to the ARM runner without verified architecture compatibility.
+Their current public hosted availability must be established by actual GitHub runs;
+old private account restrictions do not prove current public execution is blocked.
 
 ## Installation and dependencies
 

@@ -18,7 +18,7 @@ jobs:
   verify:
     name: deploy-qualification
     if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
+    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","ARM64","onesa-portal-local"]') || 'ubuntu-latest' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -93,7 +93,7 @@ jobs:
     name: deploy-backend
     needs: verify
     if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application == 'both') }}
-    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
+    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","ARM64","onesa-portal-local"]') || 'ubuntu-latest' }}
     timeout-minutes: 35
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
@@ -109,7 +109,7 @@ jobs:
     name: deploy-worker
     needs: [verify, backend]
     if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application == 'both') }}
-    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
+    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","ARM64","onesa-portal-local"]') || 'ubuntu-latest' }}
     timeout-minutes: 35
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
