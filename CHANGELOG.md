@@ -54,6 +54,17 @@ production release guards remain unchanged; audit branches cannot apply permissi
 - The operation does not deploy or restart; existing production qualification gates
   continue to apply. Missing owner credentials or unknown schema/roles fail safely.
 
+## 2026-10-11 — Isolated local Actions runner
+
+- Route compatible verification/inspection jobs to the existing repository-scoped ARM64 Ubuntu VM runner.
+  Preserve check names, security gates, three-browser coverage and release controls.
+- Restrict execution to owner-controlled branches/PRs, use read-only checkout
+  credentials, bounded timeouts, allocated database ports and runner-owned cleanup.
+- Add checksum-verified provisioning, service/status tools and maintenance guidance.
+  Remote acceptance is tracked in the release checklist.
+- Retain hosted x86 frontend prebuilt deployment and artifact packaging: local
+  x86 emulation crashed the full frontend build. No paid fallback was enabled.
+
 ## 2026-10-10 — Fresh authentication and own-password controls
 
 - Added transactional fresh password/MFA proof for user administration/MFA reset,

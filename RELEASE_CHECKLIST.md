@@ -36,9 +36,11 @@ and CHANGELOG.md; ongoing policies are consolidated in root AGENTS.md.
 
 ## Portal runtime acceptance
 
-Local and CI image/readiness checks pass. The owner-confirmed autumn-glade target
-was verified empty; runtime still points to dark-boat. Guarded initialization and
-restricted-role verification are distinct from a qualified runtime cutover. Hosted
+Local image/readiness checks pass; current exact-SHA CI must qualify the combined
+runner/audit revision. The owner-confirmed autumn-glade target was initialized with
+seven migrations and a restricted login. Last authenticated production runtime
+readback pointed to dark-boat; current runtime remains unqualified. Database
+initialization is complete and must not be repeated. Hosted
 acceptance still needs that cutover, frontend proxy settings and a verified worker
 target. See docs/engineering/VERCEL_RENDER.md.
 
@@ -47,3 +49,18 @@ target. See docs/engineering/VERCEL_RENDER.md.
 - **BLOCKED, NOT ENFORCED:** GitHub rejected ruleset/classic protection writes for this private personal repository. No production approval is inferred.
 - Activate and verify the [prepared policy](docs/development/branch-protection/ACTIVATION.md) after separately authorized eligibility changes; verify check uniqueness and pending/failure/pass merge behavior.
 - Resolve the [recorded deployment environment/integration gaps](docs/development/BRANCH_PROTECTION_REPORT.md) before promotion.
+
+## Local runner acceptance — 2026-10-11
+
+- Verified repository scope, online/idle state, Linux ARM64/custom labels, checksum,
+  idempotent registration, systemd service restart and LaunchAgent VM boot recovery.
+- Initial [push CI](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131161012),
+  [PR CI](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131178868),
+  [publication hygiene](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131161041)
+  and [manual smoke](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131160962)
+  passed at `09a5bc6`; job metadata identifies `onesa-portal-local-arm64` (ID 21).
+- Before merge, verify fresh checks on the final [PR revision](https://github.com/DruHustle/onesa-company-portal/pull/4), including retention of the two incompatible x86 jobs.
+  ARM CI/security images do not establish x86 runtime security equivalence. Production commands remain untested against providers; no
+  production workflow was dispatched. Existing release gates still apply.
+- Owner must authorize the PR merge to change default-branch routing; real Mac
+  reboot/login and sleep recovery remain owner acceptance tasks.
