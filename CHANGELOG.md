@@ -342,3 +342,5 @@ was issued; target acceptance adapters/configuration and remote validation remai
 ## 2026-10-11 — Remote CI integration review
 
 Removed pip caching from the publication hygiene job because it installs no packages; GitHub runner cleanup otherwise fails when the cache directory is absent.
+
+The backend image startup job now creates, migrates and cleans up its own disposable PostgreSQL fixture, using the exact image under security review. This preserves restricted-role readiness and shutdown checks after separating image verification from the application test job.

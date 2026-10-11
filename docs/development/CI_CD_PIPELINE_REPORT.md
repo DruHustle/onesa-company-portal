@@ -450,3 +450,9 @@ private-Free safeguards through their branch ancestry. No branch was pushed or P
 - `scripts/release/hosted.py`
 - `scripts/release/test_free_gate.py`
 - `scripts/release/test_free_workflow_policy.py`
+
+### Authorized push review — 2026-10-11
+
+The backend image startup job now creates, migrates and cleans up its own disposable PostgreSQL fixture, using the exact image under security review. This preserves restricted-role readiness and shutdown checks after separating image verification from the application test job.
+
+GitHub pull-request validation found and prompted this correction before any authorized deployment. Production/staging provider prerequisites and owner approvals remain separately required.
