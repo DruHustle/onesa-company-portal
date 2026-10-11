@@ -1,7 +1,7 @@
 """Regression checks for credentials and triggers at the private-Free boundary."""
 
-import re
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -50,10 +50,17 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertNotIn("secrets.VERCEL_PROJECT_ID", text)
 
     def test_git_previews_do_not_enable_native_production_deployment(self):
-        config = json.loads((ROOT / (ROOT.name + "-frontend") / "vercel.json").read_text())
-        self.assertEqual(config["git"]["deploymentEnabled"], {
-            "main": False, "dev": False, "staging": True,
-        })
+        config = json.loads(
+            (ROOT / (ROOT.name + "-frontend") / "vercel.json").read_text()
+        )
+        self.assertEqual(
+            config["git"]["deploymentEnabled"],
+            {
+                "main": False,
+                "dev": False,
+                "staging": True,
+            },
+        )
 
     def test_automatic_staging_is_opt_in_owner_main_only_and_preflights_first(self):
         text = (ROOT / ".github/workflows/release-staging.yml").read_text()
