@@ -2,6 +2,32 @@
 
 ## Owner setup for the verified Portal database — 2026-10-11
 
+The owner has supplied the API `srv-db5k5had0e5s73fos4g0` at
+`https://onesa-company-portal-backend-staging.onrender.com` and the proposed worker
+`srv-db5k4mlckfvc73agdr40` at
+`https://onesa-company-portal-backend-worker-e1j1.onrender.com`.
+Do not create duplicate services. Their repository, branch, runtime, plan,
+environment scope and actual health remain unverified: GitHub refused the new
+inspection job before startup with an account billing/spending-limit restriction.
+No provider environment values, service commands or deployments were changed.
+
+After GitHub Actions is available, run **Inspect hosting configuration** on
+`audit/portal-master-acceptance`, selecting `portal_scope=staging`:
+
+```sh
+gh workflow run inspect-hosting.yml --repo DruHustle/onesa-company-portal \
+  --ref audit/portal-master-acceptance -f portal_scope=staging
+```
+
+This action only reads the two supplied service IDs, allowlisted resource inventory
+and existing production frontend configuration; it never deploys or prints
+credential values. Review repository/branch/type mismatches before writes.
+Check **GitHub account → Settings → Billing & licensing → Usage / Budgets and alerts**
+for available included Actions usage and the restriction. Keep paid usage disabled.
+If included minutes are exhausted, wait for their reset or separately approve an
+existing private self-hosted runner. Do not raise a spending limit automatically
+or repeatedly retry a rejected workflow without resolving its cause.
+
 The autumn-glade Portal database is already initialized with seven reviewed
 migrations and a verified restricted `onesa_portal_app` login. Its fresh password
 is saved as private repository Actions secret `PORTAL_APP_DB_PASSWORD`; GitHub
@@ -9,11 +35,11 @@ does not reveal saved secret values. Do not reset that role or use `neondb_owner
 as the API login. An operator workflow can transfer its credential privately once
 the actual staging service is identified. Do not copy production credentials.
 
-In Render choose **New → Web Service → existing GitHub repository**:
+For the supplied API, check **Render → service → Settings** against:
 
 | Setting | Value |
 |---|---|
-| Name | `onesa-company-portal-backend-staging` (proposed new name) |
+| Name | Owner-created `onesa-company-portal-backend_staging` |
 | Repository | `DruHustle/onesa-company-portal` |
 | Branch | `audit/portal-master-acceptance` |
 | Root Directory | `onesa-company-portal-backend` |
@@ -28,8 +54,9 @@ In Render choose **New → Web Service → existing GitHub repository**:
 Do not replace the existing production service. Creation may initiate an initial
 build; the service cannot pass startup/readiness until its private staging settings
 are installed. A resource existing in the dashboard is not successful deployment.
-After creation provide its `srv-...` ID and actual `.onrender.com` URL, without
-credentials, so the guarded configuration can identify it before any writes.
+The service ID and URL have already been supplied; they are not requested again.
+The verified restricted credential still needs a guarded private transfer;
+do not paste it into chat or use the Neon owner connection as the API runtime.
 
 Staging API configuration uses `NODE_ENV=production` for hosted security,
 `PUBLISH_ENABLED=false`, a restricted pooled `DATABASE_URL` for autumn-glade,
@@ -54,6 +81,10 @@ No free Render background-worker instance exists. Do not select a paid worker or
 use an unrelated web service as one. Full enquiry/email/scanner acceptance still
 needs an independently approved worker/scanner host. A free existing private host
 is possible, but its real reachable endpoints and storage access must be verified.
+The supplied `backend-worker_staging` public URL is characteristic of a web service;
+its name does not establish a background-worker runtime. Do not add a dummy HTTP
+health response to disguise worker failure or claim an always-running Free worker.
+Confirm the actual service type first; preserve it without repurposing it.
 
 Acceptance remains exact-source CI, real health/ready JSON200, anonymous auth401,
 authenticated CMS/business tests, storage and worker/mail tests, persistence and

@@ -1,6 +1,12 @@
 name: Inspect hosting configuration
 on:
   workflow_dispatch:
+    inputs:
+      portal_scope:
+        description: Read only the production targets or the owner-identified staging targets
+        type: choice
+        default: production
+        options: [production, staging]
 permissions:
   contents: read
 jobs:
@@ -8,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
+      PORTAL_INSPECTION_SCOPE: ${{ inputs.portal_scope }}
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_BACKEND_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
       RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}

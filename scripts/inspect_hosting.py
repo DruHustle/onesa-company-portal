@@ -67,6 +67,15 @@ def safe_identifier(value, prefix):
     return value if isinstance(value, str) and re.fullmatch(prefix + r"[A-Za-z0-9]+", value) else None
 
 
+def portal_services(scope):
+    if scope == "staging":
+        # Supplied by the owner; inspection verifies these before any later operator writes.
+        return "srv-db5k5had0e5s73fos4g0", "srv-db5k4mlckfvc73agdr40"
+    if scope != "production":
+        raise SystemExit("Choose production or staging inspection; no provider request made")
+    return os.environ.get("RENDER_BACKEND_SERVICE_ID", ""), os.environ.get("RENDER_WORKER_SERVICE_ID", "")
+
+
 def render_inventory(token):
     """Bounded inventory; provider environment values and commands never leave this function."""
     if not token:
@@ -147,7 +156,7 @@ def startup_override(command):
     return "unrecognized_override_requires_private_review"
 
 
-def render(role, service, required, expected_root, expected_health):
+def render(role, service, required, expected_root, expected_health, expected_branch="main"):
     token = os.environ.get("RENDER_API_KEY", "")
     if not token or not re.fullmatch(r"srv-[a-zA-Z0-9]+", service):
         return {"role": role, "configured": False}
@@ -207,6 +216,9 @@ def render(role, service, required, expected_root, expected_health):
         in {"docker", "node", "python", "image"}
         else "unknown",
         "main_branch": data.get("branch") == "main",
+        "branch_matches": data.get("branch") == expected_branch,
+        "repository_matches": data.get("repo", "").removesuffix(".git").rstrip("/")
+        == "https://github.com/DruHustle/" + expected_root.removesuffix("-backend"),
         "native_auto_deploy_disabled": data.get("autoDeployTrigger") == "off"
         or data.get("autoDeploy") == "no",
         "docker_command_mode": startup_override(runtime.get("dockerCommand")),
@@ -280,6 +292,11 @@ def vercel(expected_root, required):
 
 def main():
     portal = os.environ.get("GITHUB_REPOSITORY", "").endswith("/onesa-company-portal")
+    scope = os.environ.get("PORTAL_INSPECTION_SCOPE") or "production"
+    backend_id, worker_id = portal_services(scope) if portal else (
+        os.environ.get("RENDER_BACKEND_SERVICE_ID", ""), "",
+    )
+    expected_branch = "audit/portal-master-acceptance" if portal and scope == "staging" else "main"
     backend_root = (
         "onesa-company-portal-backend" if portal else "onesa-ai-platform-backend"
     )
@@ -312,13 +329,16 @@ def main():
     )
     report = {
         "read_only": True,
+        "render_scope": scope if portal else "production",
+        "frontend_scope": "production_read_only",
         "source_commit": safe_commit(os.environ.get("GITHUB_SHA")),
         "backend": render(
             "backend",
-            os.environ.get("RENDER_BACKEND_SERVICE_ID", ""),
+            backend_id,
             required,
             backend_root,
             "/api/v1/ready" if portal else "/core-ready",
+            expected_branch,
         ),
         "frontend": vercel(
             frontend_root,
@@ -356,7 +376,7 @@ def main():
         report["matching_existing_worker_ids"] = worker_ids
         report["worker"] = render(
             "worker",
-            os.environ.get("RENDER_WORKER_SERVICE_ID", ""),
+            worker_id,
             [
                 "DATABASE_URL",
                 "SESSION_KEY",
@@ -370,6 +390,7 @@ def main():
             ],
             backend_root,
             "",
+            expected_branch,
         )
     print(json.dumps(report, indent=2))
 

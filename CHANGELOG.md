@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-11 — Owner-created staging targets
+
+- Record the two supplied Render service IDs and add an explicit read-only staging inspection scope. Production settings and release guards remain unchanged; hosted verification is blocked by GitHub's account runner restriction.
+
 ## 2026-10-11 — Deployment target discovery
 
 Read-only hosting inspection reports exact deployment IDs, Preview protection and

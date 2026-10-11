@@ -1,5 +1,11 @@
 # Vercel frontend and Render backend
 
+Owner-created Portal staging targets are recorded in `FREE_STAGING_SETUP.md`.
+Use the read-only inspection workflow's `portal_scope=staging` option to inspect
+those IDs; the default remains production inspection. This does not deploy or
+modify production secrets. Current runner billing/usage restrictions must be
+resolved before hosted inspection or qualification can resume.
+
 The repository contains provider configuration, not a completed remote deployment.
 Use the private `onesa-ug/onesa-company-portal` GitHub repository and `main`. The frontend and
 backend remain separate release units. Grant the providers access only to the required

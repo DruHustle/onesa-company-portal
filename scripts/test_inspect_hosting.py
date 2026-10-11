@@ -9,6 +9,13 @@ import repair_hosting
 
 
 class HostingInspectionTests(unittest.TestCase):
+    def test_staging_inspection_selects_only_the_owner_supplied_targets(self):
+        with patch.dict("os.environ", {"RENDER_BACKEND_SERVICE_ID": "srv-productionapi", "RENDER_WORKER_SERVICE_ID": "srv-productionworker"}):
+            self.assertEqual(inspect_hosting.portal_services("production"), ("srv-productionapi", "srv-productionworker"))
+            self.assertEqual(inspect_hosting.portal_services("staging"), ("srv-db5k5had0e5s73fos4g0", "srv-db5k4mlckfvc73agdr40"))
+            with self.assertRaises(SystemExit):
+                inspect_hosting.portal_services("unrecognized")
+
     def test_inventory_filters_foreign_repositories_and_never_returns_provider_values(self):
         marker = "synthetic-private-provider-value"
         item = {"id": "srv-fixture", "repo": "https://github.com/DruHustle/onesa-company-portal.git",
