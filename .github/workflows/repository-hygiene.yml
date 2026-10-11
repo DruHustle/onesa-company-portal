@@ -8,7 +8,7 @@ concurrency:
 jobs:
   publication-hygiene:
     if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
+    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","ARM64","onesa-portal-local"]') || 'ubuntu-latest' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +21,7 @@ jobs:
       - run: python scripts/repository_hygiene.py --history
 
   local-runner-smoke:
-    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.event_name == 'workflow_dispatch' && github.event.repository.private }}
     runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
     timeout-minutes: 10
     services:

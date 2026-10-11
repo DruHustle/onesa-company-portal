@@ -57,7 +57,7 @@ target. See docs/engineering/VERCEL_RENDER.md.
 - Activate and verify the [prepared policy](docs/development/branch-protection/ACTIVATION.md) after separately authorized eligibility changes; verify check uniqueness and pending/failure/pass merge behavior.
 - Resolve the [recorded deployment environment/integration gaps](docs/development/BRANCH_PROTECTION_REPORT.md) before promotion.
 
-## Local runner acceptance — 2026-10-11
+## Historical private local runner acceptance — 2026-10-11
 
 - Verified repository scope, online/idle state, Linux ARM64/custom labels, checksum,
   idempotent registration, systemd service restart and LaunchAgent VM boot recovery.
@@ -71,3 +71,12 @@ target. See docs/engineering/VERCEL_RENDER.md.
   production workflow was dispatched. Existing release gates still apply.
 - Owner must authorize the PR merge to change default-branch routing; real Mac
   reboot/login and sleep recovery remain owner acceptance tasks.
+
+## Public hosted runner acceptance — 2026-10-11
+
+- Owner selected public repositories and GitHub-hosted Actions. Local runner jobs
+  are private-only; existing shared concurrency and production gates remain intact.
+- Verify test, browser, contract, publication-hygiene and AMD64 image-security jobs
+  on the new exact commit before accepting the routing change.
+- Historical private runner acceptance does not certify a current registration.
+  Production promotion still requires all applicable release gates and authorization.

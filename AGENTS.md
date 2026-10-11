@@ -37,7 +37,7 @@ Application builds and releases are independent. Changes to a shared contract mu
 remain compatible during separate rollouts. Production promotion, remote pushes and
 visibility changes require explicit authorization. See `AGENTS.md` and
 `docs/engineering/DEPLOYMENT.md`. Actual protection status and activation prerequisites are recorded in
-`docs/development/BRANCH_PROTECTION_REPORT.md`; currently BLOCKED, NOT ENFORCED.
+`docs/development/BRANCH_PROTECTION_REPORT.md`; reverify remote enforcement after visibility changes.
 
 ## Security policy
 
@@ -70,22 +70,24 @@ human data-classification review before publishing or uploading CI artifacts.
 
 ## Repository governance
 
-### Visibility and access
+### Visibility, runner selection and access
 
-Recommend **private** for this repository while ownership, security and data review
-are incomplete. Keep the company portal private even when its approved website is
-public. Keep AI intellectual property, training provenance and robot control software
-private until owners approve any public release. Assign least-privilege team access;
-require organization 2FA and a named security/release owner. Do not change visibility
-as part of local setup. Private GitHub storage does not authorize uploading records.
+On 2026-10-11 the owner made the repositories public temporarily and selected
+standard GitHub-hosted Actions for public runs. Local runners may be used only for
+private repositories after isolation and registration are verified. Do not provision
+or re-register local runners for the public repositories. Keep existing job names,
+security gates, release guards and private data exclusions. The owner choice supersedes
+the earlier private-visibility recommendation and runner-submission pause for hosted CI.
+Do not change visibility, billing or ownership independently.
 
 ### Protect main
 
-The authenticated repositories are private and personally owned by DruHustle. GitHub
-rejected ruleset creation and classic branch protection with its Pro-plan requirement;
-main remains unprotected. Never claim local configuration enforces remote rules.
-See `docs/development/BRANCH_PROTECTION_REPORT.md` for verified evidence, exact CI
-contexts and deployment limitations, and `CONTRIBUTING.md` for the Codex PR workflow.
+These repositories remain personally owned by DruHustle. Earlier HTTP 403 protection
+failures occurred when they were private; do not treat them as evidence of current
+public eligibility or enforcement. The runner change does not activate protections.
+Inspect actual remote rules before claiming server enforcement. See
+`docs/development/BRANCH_PROTECTION_REPORT.md` for historical evidence and exact CI
+contexts. Keep PR/check/review discipline and all production authorization gates.
 
 The prepared main policy blocks force pushes/deletion, requires PRs, resolved
 conversations and all observed CI/security checks from GitHub Actions, with strict
@@ -106,7 +108,8 @@ Sources: [GitHub rulesets](https://docs.github.com/en/repositories/configuring-b
 
 ## Selected GitHub Free policy
 
-The owner selected GitHub Free. Follow `docs/development/FREE_GITHUB_PLAN.md`; do
-not upgrade billing, change visibility or transfer ownership. Prepared protection
-payloads are reference only while eligibility is blocked. Use voluntary feature-branch
-PRs and verified CI with least practical write access; never claim server enforcement.
+Follow `docs/development/FREE_GITHUB_PLAN.md`: public repositories use standard
+GitHub-hosted Actions; local runners are private-only and need verified provisioning.
+Do not upgrade billing, change visibility or transfer ownership. Use authorized
+feature/audit/staging branches and verified CI with least practical write access.
+Do not claim server enforcement or production readiness without current evidence.

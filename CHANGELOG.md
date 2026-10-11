@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-11 — Public repository hosted Actions
+
+- Record the owner-selected temporary public visibility and standard GitHub-hosted
+  runner policy. Local runners remain private-only; retain security and release gates.
+- Clarify that earlier private-plan protection failures are historical and do not
+  establish current public-repository enforcement. No billing or protection settings changed.
+- Route public Portal jobs to Ubuntu hosted runners, including browser OS dependencies;
+  keep the manual local smoke gated to private repositories.
+
 ## 2026-10-11 — Guarded staging layout repair
 
 - Fresh authenticated inspection found the owner-created staging API on main with
