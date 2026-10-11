@@ -22,7 +22,6 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      RELEASE_BUILD_KEY: ${{ secrets.RELEASE_BUILD_KEY }}
     steps:
     - uses: actions/checkout@v4
       with:
@@ -38,9 +37,11 @@ jobs:
 
         vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-        vercel build --prod --token="$VERCEL_TOKEN"
-
-        git diff --quiet HEAD --
+        vercel build --prod --token="$VERCEL_TOKEN"'
+    - name: Encrypt reviewed prebuilt output with a scoped key
+      env:
+        RELEASE_BUILD_KEY: ${{ secrets.RELEASE_BUILD_KEY }}
+      run: 'git diff --quiet HEAD --
 
         SOURCE_SHA256=$(python3 scripts/release/evidence.py source-hash) node scripts/release/bundle.mjs pack "$RUNNER_TEMP/reviewed-build"'
     - uses: actions/upload-artifact@v4

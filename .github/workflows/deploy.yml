@@ -84,10 +84,6 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       GH_TOKEN: ${{ github.token }}
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-      STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
-      RELEASE_BUILD_KEY: ${{ secrets.RELEASE_BUILD_KEY }}
     steps:
     - name: Verify GitHub-hosted execution and actual visibility
       env:
@@ -111,6 +107,9 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         APPROVAL_RUN: ${{ inputs.approval_run }}
+        STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       run: 'python3 scripts/release/evidence.py promote --output "$RUNNER_TEMP/promotion/record.json"
 
         python3 scripts/release/hosted.py recheck --evidence "$RUNNER_TEMP/promotion/record.json"'
@@ -125,6 +124,7 @@ jobs:
       if: inputs.approval_run != ''
       env:
         APPROVAL_RUN: ${{ inputs.approval_run }}
+        RELEASE_BUILD_KEY: ${{ secrets.RELEASE_BUILD_KEY }}
       run: 'python3 scripts/release/evidence.py fetch-build --output "$RUNNER_TEMP/reviewed-build/record.json"
 
         node scripts/release/bundle.mjs unpack "$RUNNER_TEMP/reviewed-build"'
@@ -157,11 +157,6 @@ jobs:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
       GH_TOKEN: ${{ github.token }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-      STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
     steps:
     - name: Verify GitHub-hosted execution and actual visibility
       env:
@@ -182,6 +177,11 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         APPROVAL_RUN: ${{ inputs.approval_run }}
+        STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       run: 'python3 scripts/release/evidence.py promote --output "$RUNNER_TEMP/promotion/record.json"
 
         python3 scripts/release/hosted.py recheck --evidence "$RUNNER_TEMP/promotion/record.json"'
@@ -213,11 +213,6 @@ jobs:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
       GH_TOKEN: ${{ github.token }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-      STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
     steps:
     - name: Verify GitHub-hosted execution and actual visibility
       env:
@@ -238,6 +233,11 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         APPROVAL_RUN: ${{ inputs.approval_run }}
+        STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       run: 'python3 scripts/release/evidence.py promote --output "$RUNNER_TEMP/promotion/record.json"
 
         python3 scripts/release/hosted.py recheck --evidence "$RUNNER_TEMP/promotion/record.json"'
