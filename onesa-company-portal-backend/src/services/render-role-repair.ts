@@ -2,9 +2,17 @@
 import pg from 'pg';
 import { randomBytes, createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
-import { provisionApplicationRole, applicationRoleSafe } from './database-role.js';
+import { provisionApplicationRole, applicationRoleStatus } from './database-role.js';
 
 class PortalRepairError extends Error {}
+let diagnosticPhase='target-verification';
+
+export function safeDiagnostic(error:unknown,phase:string) {
+ if(error instanceof PortalRepairError)return phase+': '+error.message;
+ const code=(error as {code?:unknown})?.code;
+ const category=code==='28P01'||code==='28000'?'database_authentication_rejected':code==='42501'?'database_permission_denied':code==='42P01'?'database_schema_missing':'database_or_provider_unavailable';
+ return phase+': '+category+'; no credentials or response bodies emitted';
+}
 
 const repository = 'https://github.com/DruHustle/onesa-company-portal';
 const runtimeHost = 'ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech';
@@ -45,20 +53,22 @@ export async function verifiedSchema(connection:Pick<pg.Pool,'query'>) {
  return names.length;
 }
 
-async function verifyRuntime(url:URL) {
+async function verifyRuntime(url:URL,requireSafe=true) {
  const pool=new pg.Pool({connectionString:url.toString(),max:1,connectionTimeoutMillis:5000,statement_timeout:10000,enableChannelBinding:true});
  try {
-  if(!await applicationRoleSafe(pool))throw new PortalRepairError('Runtime database role remains unsafe');
+  const status=await applicationRoleStatus(pool);
+  if(requireSafe&&!status.safe)throw new PortalRepairError('Runtime database role remains unsafe');
   const migrationCount=await verifiedSchema(pool);
   const tables=await pool.query("SELECT bool_and(has_table_privilege(current_user,c.oid,'SELECT') AND has_table_privilege(current_user,c.oid,'INSERT') AND has_table_privilege(current_user,c.oid,'UPDATE') AND has_table_privilege(current_user,c.oid,'DELETE')) AS allowed FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relname<>'schema_migrations'");
   const sequences=await pool.query("SELECT bool_and(has_sequence_privilege(current_user,c.oid,'USAGE') AND has_sequence_privilege(current_user,c.oid,'SELECT')) AS allowed FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='S'");
   if(tables.rows[0]?.allowed!==true||sequences.rows[0]?.allowed===false)throw new PortalRepairError('Incomplete runtime database permissions');
-  return {runtime_role_safe:true,application_permissions_verified:true,migration_checksums_verified:migrationCount};
+  return {runtime_connection_verified:true,runtime_role_safe:status.safe,runtime_role_reasons:status.reasons,application_permissions_verified:true,migration_checksums_verified:migrationCount};
  }finally{await pool.end();}
 }
 
 export async function repairPortalRole(apply=false) {
- if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-company-portal'||!['refs/heads/main','refs/heads/fix/render-runtime-repair'].includes(process.env.GITHUB_REF||''))throw new PortalRepairError('Approved Portal operator branch required');
+ const approved=['refs/heads/main','refs/heads/fix/render-runtime-repair',...(!apply?['refs/heads/audit/portal-master-acceptance']:[])];
+ if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-company-portal'||!approved.includes(process.env.GITHUB_REF||''))throw new PortalRepairError('Approved Portal operator branch required');
  const serviceID=process.env.RENDER_BACKEND_SERVICE_ID||'';
  if(!/^srv-[a-zA-Z0-9]+$/.test(serviceID))throw new PortalRepairError('Missing Portal service ID');
  const service=await provider('services/'+serviceID);
@@ -68,21 +78,25 @@ export async function repairPortalRole(apply=false) {
  if(!Array.isArray(entries)||entries.length>=100)throw new PortalRepairError('Incomplete Portal environment inventory');
  const values:Record<string,string>={};
  for(const entry of entries){const item=entry.envVar||entry;values[item.key]=item.value;}
+ diagnosticPhase='runtime-url-validation';
  const runtime=portalDatabaseURL(values.DATABASE_URL||'');
  const rawOwner=process.env.PORTAL_MIGRATION_DATABASE_URL;
  if(!rawOwner) {
   if(apply)throw new PortalRepairError('Save fresh direct PORTAL_MIGRATION_DATABASE_URL privately before applying');
   return {read_only:true,render_identity_verified:true,portal_database_identity_verified:true,owner_secret_configured:false,deployment_requested:false};
  }
+ diagnosticPhase='migration-url-validation';
  const owner=portalDatabaseURL(rawOwner,true);
  const pool=new pg.Pool({connectionString:owner.toString(),max:1,connectionTimeoutMillis:5000,statement_timeout:10000,enableChannelBinding:true});
  try {
+  diagnosticPhase='owner-connection-and-schema';
   const migrationCount=await verifiedSchema(pool);
   const role=(await pool.query('SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=$1',[applicationRole])).rows[0];
   const report={read_only:!apply,render_identity_verified:true,portal_database_identity_verified:true,owner_secret_configured:true,migration_checksums_verified:migrationCount,existing_application_role:!!role,deployment_requested:false};
-  if(!apply)return report;
+  if(!apply){diagnosticPhase='runtime-role-verification';return {...report,runtime_is_application_role:decodeURIComponent(runtime.username)===applicationRole,...await verifyRuntime(runtime,false)};}
   if(role&&Object.values(role).some(Boolean))throw new PortalRepairError('Existing Portal role has elevated privileges; operator review required');
   if(role&&decodeURIComponent(runtime.username)!==applicationRole)throw new PortalRepairError('Existing role password is unknown; preserve it and request private operator configuration');
+  diagnosticPhase='permission-repair';
   const password=role?decodeURIComponent(runtime.password):randomBytes(48).toString('base64url');
   const client=await pool.connect();
   try {
@@ -92,8 +106,10 @@ export async function repairPortalRole(apply=false) {
    await client.query('COMMIT');
   }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
   const candidate=new URL(runtime.toString());candidate.username=applicationRole;candidate.password=password;
+  diagnosticPhase='runtime-role-verification';
   const verified=await verifyRuntime(candidate);
   // Change only DATABASE_URL. Provider updates do not deploy; all other credentials stay scoped.
+  diagnosticPhase='provider-runtime-update';
   await provider('services/'+serviceID+'/env-vars/DATABASE_URL','PUT',{value:candidate.toString()});
   const readback=await provider('services/'+serviceID+'/env-vars?limit=100');
   const saved=readback.map((item:{envVar?:{key:string,value:string},key?:string,value?:string})=>item.envVar||item).find((item:{key:string})=>item.key==='DATABASE_URL');
@@ -106,6 +122,6 @@ if(process.argv[1]?.endsWith('render-role-repair.ts')||process.argv[1]?.endsWith
  try {console.log(JSON.stringify(await repairPortalRole(process.argv.includes('--apply')),null,2));}
  catch(error){
   // Database/provider exceptions may contain private values. Only our allowlisted errors leave the runner.
-  console.error(error instanceof PortalRepairError?error.message:'Portal database repair failed; inspect privately. No credentials emitted.');process.exitCode=1;
+  console.error(safeDiagnostic(error,diagnosticPhase));process.exitCode=1;
  }
 }

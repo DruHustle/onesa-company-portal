@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-11 — Read-only database diagnostics
+
+Identify runtime URL, migration URL, schema, authentication and permission failures
+without logging credentials or provider responses. Read-only inspection now verifies
+the actual configured runtime role, grants and migration checksums. Role repair and
+production release guards remain unchanged; audit branches cannot apply permissions.
+
+
 ## 2026-10-11 — Targeted Render database-role repair
 
 - Added an operator-only workflow that verifies the established Portal Neon target,

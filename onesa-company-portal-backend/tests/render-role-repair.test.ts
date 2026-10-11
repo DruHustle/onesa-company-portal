@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import pg from 'pg';
 import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
-import { portalDatabaseURL, verifiedSchema, repairPortalRole } from '../src/services/render-role-repair.js';
+import { portalDatabaseURL, verifiedSchema, repairPortalRole, safeDiagnostic } from '../src/services/render-role-repair.js';
 
 const host='ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech';
 const fixture='postgresql://fixture:synthetic-password@'+host+'/neondb?sslmode=require';
@@ -43,4 +43,13 @@ test('Operator repair cannot target staging AI or a different repository/service
   globalThis.fetch=async(_input,init)=>{methods.push(init?.method||'GET');return new Response(JSON.stringify({repo:'https://github.com/DruHustle/onesa-ai-platform',type:'web_service'}));};
   await assert.rejects(repairPortalRole(true),/Portal Render target/);assert.deepEqual(methods,['GET']);
  }finally{process.env=previous;globalThis.fetch=previousFetch;}
+});
+test('Operator diagnostics identify the failed phase without disclosing database errors',()=>{
+ for(const [code,expected] of [['28P01','database_authentication_rejected'],['42501','database_permission_denied'],['42P01','database_schema_missing'],['other','database_or_provider_unavailable']]){
+  const error=Object.assign(new Error('private-password-and-database-url'),{code});
+  const diagnostic=safeDiagnostic(error,'migration-url-validation');
+  assert.ok(diagnostic.startsWith('migration-url-validation: '+expected));
+  assert.ok(!diagnostic.includes('private-password'));
+ }
+ assert.ok(!safeDiagnostic(null,'target-verification').includes('null'));
 });

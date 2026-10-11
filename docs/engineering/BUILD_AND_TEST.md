@@ -57,3 +57,10 @@ After backend tests create the restricted fixture role on an isolated
 production CMD at PORT 10000, checks liveness, unsafe-role/unavailable-DB 503,
 restricted-role 200, anonymous protected-route 401 and SIGTERM shutdown.
 Do not use production records or change a live database role to run this test.
+
+The read-only Portal role workflow can run on the reviewed audit branch. Its
+allowlisted phase identifies whether runtime or migration URL validation failed;
+never relax the established database identity guard or paste URLs into logs.
+Inspection reports actual role safety and grants only after verifying the database
+identity and schema. Applying a repair remains restricted to the original operator
+branches and successful exact-revision checks.
