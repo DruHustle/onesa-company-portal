@@ -18,7 +18,7 @@ This repository is independently maintained within `onesa-ug`. Keep its frontend
 backend in their existing subdirectories. Do not initialize a workspace-level Git
 repository, add sibling projects as submodules, or couple their release cycles.
 
-Create a feature branch from `main`, make focused changes, and open a pull request.
+Use the retained `dev` branch for focused changes and open a pull request targeting `main` or `staging`. Only `dev`, `staging` and `main` are retained under the owner-selected branch policy.
 Preserve work already staged or modified locally. The verified team currently has one
 developer: require PRs and automated checks, with zero independent approvals until
 an authorized reviewer exists. Then require one independent review; seek two for
@@ -119,7 +119,7 @@ not claim remote safeguards are active until the owner completes and verifies mi
 
 ## Current automated CI/CD policy
 
-Use feature/*, fix/* or hotfix/* PRs to main/staging; preserve existing acceptance branches.
+Use dev PRs to main/staging. Prior acceptance branch commits are preserved in restricted recovery bundles; do not recreate remote branches without owner authorization.
 Reviewdog annotations are read-only CI evidence, not an independent human review.
 The mandatory security/summary checks and full exact-main runtime records are release
 requirements. Automatic staging is private-only and default-off pending scoped targets;

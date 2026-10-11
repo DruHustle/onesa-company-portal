@@ -28,4 +28,4 @@ Remote branches are standardized as `dev`, `staging`, `main`. Dev work is review
 
 The configured project-ID aliases and staging Render service ID are real identifiers. Remaining newly created names are empty and require owner values; existing staging secrets are preserved. The Org/Team ID is still pending.
 
-Branch archives and previous PR records remain in ignored local release-audit storage. Local worktrees and historical branches are retained for recovery. No production branch content is changed by branch cleanup.
+Branch archives and previous PR records remain in ignored local release-audit storage. Local worktree contents are retained as detached snapshots; deleted branch history is recoverable from the restricted Git bundle. No production branch content is changed by branch cleanup.

@@ -4,7 +4,7 @@
 
 The requested operating model is private repositories on GitHub Free. GitHub cannot
 enforce native branch protection, rulesets or production environment approvals for
-that combination. Feature branches and PRs targeting main remain the development
+that combination. The retained dev branch and PRs targeting main remain the development
 policy. Credential-free hosted PR checks use the included private Actions quota;
 quota exhaustion blocks qualification rather than authorizing paid execution.
 Production credentials belong outside editable repository Actions.
