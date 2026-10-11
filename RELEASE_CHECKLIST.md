@@ -21,7 +21,15 @@ Source publication and infrastructure preparation alone do not complete this che
 
 ## Local runner acceptance — 2026-10-11
 
-- Pending: verify online/idle, guest and host service recovery, smoke and full CI
-  metadata on the task branch. No production deployment is authorized by this test.
-- ARM64 release images require compatible deployment targets; hosted x86 image
-  portability has not been demonstrated.
+- Verified repository scope, online/idle state, Linux ARM64/custom labels, checksum,
+  idempotent registration, systemd service restart and LaunchAgent VM boot recovery.
+- Initial [push CI](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131161012),
+  [PR CI](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131178868),
+  [publication hygiene](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131161041)
+  and [manual smoke](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131160962)
+  passed at `09a5bc6`; job metadata identifies `onesa-portal-local-arm64` (ID 21).
+- Before merge, verify fresh checks on the final [PR revision](https://github.com/DruHustle/onesa-company-portal/pull/4), including retention of the two incompatible x86 jobs.
+  ARM CI/security images do not establish x86 runtime security equivalence. Production commands remain untested against providers; no
+  production workflow was dispatched. Existing release gates still apply.
+- Owner must authorize the PR merge to change default-branch routing; real Mac
+  reboot/login and sleep recovery remain owner acceptance tasks.

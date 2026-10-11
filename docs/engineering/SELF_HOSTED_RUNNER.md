@@ -3,10 +3,20 @@
 This private repository uses the repository-scoped `onesa-portal-local-arm64`
 runner with labels `self-hosted`, `Linux`, `ARM64`, `onesa-portal-local`.
 It runs as `portalci` in Lima VM `onesa-portal-ci`: Ubuntu 24.04 ARM64,
-4 CPUs, 6 GiB memory, 60 GiB disk. All jobs and both image-security matrix entries
-select these labels; there are no Windows/macOS coverage jobs or reusable workflows.
-Chromium, Firefox and WebKit coverage is retained. Release images are now ARM64;
-verify the target supports ARM64 before using a release artifact on an x86 server.
+4 CPUs, 6 GiB memory, 60 GiB disk. Verification, both image-security matrix entries,
+publication hygiene, hosting operations and backend/worker deployment jobs select
+these labels. There are no Windows/macOS jobs or reusable workflows. Chromium,
+Firefox and WebKit coverage is retained. Native CI/security images now exercise
+ARM64; x86 runtime security equivalence is not established by an ARM scan.
+
+Two jobs retain `ubuntu-latest`: Vercel prebuilt frontend deployment and approved
+release-artifact packaging. Their previous x86-64 build environment is preserved.
+Ubuntu QEMU and the current Docker-documented QEMU 10.2.3 were tested in this VM;
+Node could report x64 under the latter, but the full Next.js x86 image build crashed
+with signal 11. An actual x86 Linux machine/VM or separately verified translation
+setup is needed before migrating these jobs. No paid hosted fallback was added or
+triggered. Their existing account restriction remains; frontend production release
+and artifact packaging therefore remain blocked without compatible capacity.
 
 ## Installation and dependencies
 
@@ -122,7 +132,13 @@ workflows keep their previous routing until this PR is merged with authorization
 Self-hosting does **not** remove artifact/cache storage quotas or account-level
 restrictions. Evidence on 2026-10-11: hosted checks reported recent payment failure
 or spending limit; the available token could not read usage details (`user` scope
-missing). A self-hosted run is required to determine actual eligibility.
+missing). Self-hosted eligibility was then verified: [push CI](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131161012),
+[publication hygiene](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131161041),
+[PR CI](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131178868) and
+[manual smoke](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131160962)
+passed on `onesa-portal-local-arm64`, runner ID 21, commit `09a5bc6`.
+Fresh CI must verify the final PR revision after documenting the two incompatible
+x86 jobs; the initial successful checks are evidence, not final-commit acceptance. Production workflows were not dispatched.
 
 Official references: [runner requirements](https://docs.github.com/en/actions/reference/runners/self-hosted-runners),
 [adding a runner](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners),

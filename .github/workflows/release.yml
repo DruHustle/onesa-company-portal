@@ -20,7 +20,8 @@ jobs:
   release-artifacts:
     if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.authorization == 'approved') }}
     environment: production
-    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
+    runs-on: ubuntu-latest
+    # Retain x86-64 artifact output; local emulator could not build the frontend.
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4

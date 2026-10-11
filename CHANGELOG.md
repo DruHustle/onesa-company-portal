@@ -8,6 +8,8 @@
   credentials, bounded timeouts, allocated database ports and runner-owned cleanup.
 - Add checksum-verified provisioning, service/status tools and maintenance guidance.
   Remote acceptance is tracked in the release checklist.
+- Retain hosted x86 frontend prebuilt deployment and artifact packaging: local
+  x86 emulation crashed the full frontend build. No paid fallback was enabled.
 
 ## 2026-10-10 — Fresh authentication and own-password controls
 

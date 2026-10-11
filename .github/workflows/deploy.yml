@@ -58,7 +58,8 @@ jobs:
   frontend:
     needs: [verify, backend, worker]
     if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (always() && needs.verify.result == 'success' && (inputs.application == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success' && needs.worker.result == 'success'))) }}
-    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
+    runs-on: ubuntu-latest
+    # Prebuilt native dependencies need x86-64; local emulation failed full builds.
     timeout-minutes: 40
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
