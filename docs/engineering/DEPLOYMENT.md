@@ -1,5 +1,7 @@
 # Deployment and independent releases
 
+> Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
+
 The frontend and backend have separate Docker build contexts and versioned images.
 Build either image using the build guide, label it with the reviewed source revision,
 and release only the selected application when API compatibility allows. Worker and
@@ -58,3 +60,37 @@ Do not create a paid worker or hide missing worker functionality to satisfy the
 owner's free-only requirement. Both roles require verified shared persistent
 storage. Successful compilation does not prove bucket access, credential
 rotation, migrations, worker operation or production release qualification.
+
+### Portal DATABASE_ROLE remediation
+
+A production readiness response with code `DATABASE_ROLE` means the application
+connection has administrative, ownership or migration-write privileges. Preserve
+this check. Create a dedicated runtime identity instead of disabling the check or
+changing NODE_ENV. The existing owner-selected Portal Neon database is `neondb`
+on the established `ep-dark-boat-b91lg22g` branch; its default database name does
+not make it the AI database. The operator repair verifies that branch, all seven
+Portal migration checksums and the complete schema inventory before any grants.
+
+Rotate any exposed Portal owner password in Neon first. Save the fresh direct
+(pooling OFF) TLS connection URL as GitHub Actions repository secret
+`PORTAL_MIGRATION_DATABASE_URL` in `DruHustle/onesa-company-portal`. Never paste
+its value in chat, documentation, frontend settings or workflow inputs.
+
+Dispatch `Repair existing hosting configuration` on `fix/render-runtime-repair`:
+first choose `inspect-role`, then `repair-role` after that revision's CI and hygiene
+pass. The repair creates `onesa_portal_app` only when absent, privately generates its
+password, preserves existing data, grants application CRUD/sequence privileges and
+read-only migration access, checks that runtime permissions are restricted, and
+saves the pooled URL only on the verified Portal API service. An existing role with
+an unknown password is preserved and requires private operator configuration.
+The misidentified RENDER_WORKER_SERVICE_ID is not updated or deployed.
+
+Saving configuration is not hosted acceptance. Render restart reuses the existing
+environment values; it is not a substitute for applying new settings. A new deploy
+must follow the existing release qualification and exact-revision CI gates. After
+that authorized deploy, verify actual JSON responses: `/api/v1/health` 200,
+`/api/v1/ready` 200 and unauthenticated `/api/v1/auth/me` 401. Render's loading HTML
+may return HTTP 200; do not classify it as application readiness.
+
+References: [Render Docker commands](https://render.com/docs/docker),
+[Render deployment and restart behavior](https://render.com/docs/deploys).

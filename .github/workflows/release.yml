@@ -1,4 +1,3 @@
-# Public: hosted only. Private: full local validation precedes cloud execution.
 name: Approved release artifacts
 'on':
   workflow_dispatch:
@@ -20,48 +19,42 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  local-validation:
-    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    uses: ./.github/workflows/_local-validation.yml
   release-artifacts:
-    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && (inputs.authorization == 'approved') }}
-    environment: production
+    if: ${{ always() && true && (inputs.authorization == 'approved') }}
     runs-on: ubuntu-latest
     steps:
     - name: Verify GitHub-hosted execution and actual visibility
       env:
         GH_TOKEN: ${{ github.token }}
         EXPECTED_PRIVATE: ${{ github.event.repository.private }}
-      run: |-
-        test "$RUNNER_ENVIRONMENT" = github-hosted
-        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
-        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
-    - uses: actions/checkout@v4
+      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
+
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
+
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Visibility changed; dispatch fresh validation under the current policy'';
+        exit 1; }'
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
         persist-credentials: false
         ref: ${{ github.sha }}
     - name: Require successful verification for the selected revision
-      uses: actions/github-script@v7
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
       with:
-        script: |
-          const checks = await github.paginate(github.rest.checks.listForRef, {
-            ...context.repo, ref: context.sha, per_page: 100
-          });
-          for (const name of ['verify', 'publication-hygiene']) {
-            const check = checks.filter(item => item.name === name).sort((a, b) => b.id - a.id)[0];
-            if (!check || check.conclusion !== 'success') core.setFailed(`Required successful check missing: ${name}`);
-          }
+        script: "const checks = await github.paginate(github.rest.checks.listForRef, {\n  ...context.repo, ref: context.sha,\
+          \ per_page: 100\n});\nfor (const name of ['verify', 'publication-hygiene']) {\n  const check = checks.filter(item\
+          \ => item.name === name).sort((a, b) => b.id - a.id)[0];\n  if (!check || check.conclusion !== 'success') core.setFailed(`Required\
+          \ successful check missing: ${name}`);\n}\n"
     - name: Package selected application
       env:
         APPLICATION: ${{ inputs.application }}
-      run: |
-        docker build -t "portal-${APPLICATION}:${GITHUB_SHA}" "./onesa-company-portal-${APPLICATION}"
+      run: 'docker build -t "portal-${APPLICATION}:${GITHUB_SHA}" "./onesa-company-portal-${APPLICATION}"
+
         docker save "portal-${APPLICATION}:${GITHUB_SHA}" | gzip > portal-images.tar.gz
-    - uses: actions/upload-artifact@v4
+
+        '
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: approved-container-images
         path: portal-images.tar.gz
         retention-days: 3
-    needs:
-    - local-validation
     timeout-minutes: 45

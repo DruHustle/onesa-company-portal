@@ -1,5 +1,13 @@
 # Vercel frontend and Render backend
 
+> Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
+
+Owner-created Portal staging targets are recorded in `FREE_STAGING_SETUP.md`.
+Use the read-only inspection workflow's `portal_scope=staging` option to inspect
+those IDs; the default remains production inspection. This does not deploy or
+modify production secrets. Current runner billing/usage restrictions must be
+resolved before hosted inspection or qualification can resume.
+
 The repository contains provider configuration, not a completed remote deployment.
 Use the private `onesa-ug/onesa-company-portal` GitHub repository and `main`. The frontend and
 backend remain separate release units. Grant the providers access only to the required
@@ -109,7 +117,7 @@ database URLs or application secrets belong in the repository.
 ## Final release qualification — 2026-10-09
 
 Prepared configuration is not a hosted deployment. Production promotion additionally
-requires the exact-commit `RELEASE_QUALIFICATION_JSON` Actions secret with all four
+historically required the exact-commit `RELEASE_QUALIFICATION_JSON` secret with all four
 reviewed gates passing and a matching source fingerprint. The local audit decision
 is NO-GO. Do not supply a passing attestation until target, operations and content
 approvals actually exist. See restricted `docs/internal/release-audit/` evidence.
@@ -142,7 +150,72 @@ presence, root/health-path matches and the provider's deployment commit. A succe
 diagnostic job means the inspection ran; it does not establish healthy deployment.
 Production deployment still requires a reviewed exact-commit qualification record.
 
+Inspection also returns allowlisted service/deployment IDs, Preview-protection
+status and an existing Render inventory restricted to the three Onesa repositories.
+Pagination is bounded and partial results are marked incomplete. Discovery alone
+does not authorize deploying or repurposing an existing resource. No environment
+values or provider commands are printed. See [Render pagination](https://api-docs.render.com/reference/pagination).
+
 `gh workflow run repair-hosting.yml --ref main` repairs the existing service layout
 and absent nonsecret configuration, then reads it back. Repository and runtime
 identity must match before any update. This does not deploy or migrate the database;
 missing database/model credentials and qualification remain explicit blockers.
+
+
+## Current Portal deployment gate
+
+The reviewed Dockerfile CMD and restricted-role/schema readiness tests pass in CI.
+The owner confirmed autumn-glade after the original migration identity check failed;
+read-only inspection verified its empty public schema and authenticated TLS. Render
+still targets dark-boat. Never substitute AI credentials or bypass either target
+guard. `repair-hosting.yml` separates original role repair from confirmed empty-target
+initialization; neither operation qualifies a release. The frontend also needs
+server-only BACKEND_URL and PROXY_SHARED_KEY, and the configured worker ID must be
+replaced by a verified worker target. No successful Portal rollout is claimed.
+
+## Owner-confirmed alternate Portal endpoint
+
+On 2026-10-11 the owner identified direct endpoint `ep-autumn-glade-b9760olg.c-7.eu-central-1.aws.neon.tech`, database `neondb`. The Render runtime was previously verified against the separate `dark-boat` endpoint. Do not replace the runtime URL or broaden permission-repair identity checks merely because a new endpoint was supplied.
+
+Use `repair-hosting.yml` on `audit/portal-master-acceptance` with `portal_action=inspect-confirmed-target` to inspect only the confirmed direct migration secret, TLS and Portal schema in a read-only transaction. It reports an empty, mismatched or verified Portal schema and whether application rows exist without returning records or credentials. It reads the existing provider identity but does not connect to its database, change settings, migrate, provision roles or deploy. Database reconciliation/cutover and backup requirements depend on the actual inventory; an empty replacement must not silently discard existing Portal records.
+
+TLS inspection uses the established client socket encrypted/authorized state; server-side pg_stat_ssl does not qualify the client-to-proxy connection. See [Node TLS socket verification](https://nodejs.org/api/tls.html#tlssocketauthorized).
+
+### Initialize the confirmed empty target without cutting over
+
+The owner reported no records to migrate after the read-only inspection. Save a
+fresh dedicated 48-byte base64url application password as repository Actions secret
+`PORTAL_APP_DB_PASSWORD` before creating the role. It is separate from the owner
+credential in `PORTAL_MIGRATION_DATABASE_URL`; neither value belongs in Git, chat,
+workflow inputs or frontend configuration. The workflow consumes secrets privately.
+
+After `verify.yml` and `repository-hygiene.yml` pass on the exact audit revision:
+
+```sh
+gh workflow run repair-hosting.yml --ref audit/portal-master-acceptance \
+  -f portal_action=initialize-confirmed-target
+```
+
+The action verifies the confirmed direct host, database name and actual TLS socket,
+then locks and rechecks the public schema and role. It refuses any existing public
+objects or application role; no password reset or data replacement occurs. All seven
+unchanged migrations and restricted role grants commit in one transaction. It then
+verifies the actual restricted login, schema checksums and application permissions.
+Rerunning initialization against a populated schema refuses changes; use read-only
+inspection to review the initialized state. Default facts remain unverified and
+legal/brand approval settings remain false; no user accounts or company records are
+seeded. The existing dark-boat database is neither connected to nor altered.
+
+Render's API/worker `DATABASE_URL` remains unchanged. Its future server-only runtime
+URL must use the confirmed target's pooled endpoint, database `neondb`, restricted
+user `onesa_portal_app`, this privately stored application password and provider TLS
+parameters. Apply configuration only through a reviewed cutover operation paired
+with the qualified source revision. Preserve dark-boat for rollback review; never
+reuse the migration owner login in a runtime service. Initialization does not close
+storage, credential rotation, worker, frontend, backup, legal or deployment gates.
+
+## Automated qualification migration
+
+See [automated release qualification](AUTOMATED_QUALIFICATION.md) for immutable
+Actions evidence, explicit owner reviews, build integrity and the guarded migration.
+The legacy JSON secret fallback is retired. Private-Free production uses the external owner handoff; production credential removal/rotation and provider control verification remain owner actions.

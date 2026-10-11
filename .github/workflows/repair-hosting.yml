@@ -1,46 +1,137 @@
-# Public: hosted only. Private: full local validation precedes cloud execution.
 name: Repair existing hosting configuration
 'on':
-  workflow_dispatch: null
+  workflow_dispatch:
+    inputs:
+      portal_action:
+        description: Targeted Portal database role operation (never deploys)
+        type: choice
+        default: inspect-role
+        options:
+        - inspect-role
+        - inspect-confirmed-target
+        - initialize-confirmed-target
+        - repair-role
+        - repair-layout
+        - repair-staging-layout
 permissions:
   contents: read
+  actions: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: portal-database-role-repair
   cancel-in-progress: false
 jobs:
-  local-validation:
-    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    uses: ./.github/workflows/_local-validation.yml
   inspect:
+    if: ${{ github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal'
+      && github.actor == 'DruHustle' && inputs.portal_action != 'repair-staging-layout' && (github.event_name != 'pull_request'
+      || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle'))))
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_BACKEND_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
-      RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      PORTAL_MIGRATION_DATABASE_URL: ${{ secrets.PORTAL_MIGRATION_DATABASE_URL }}
     steps:
     - name: Verify GitHub-hosted execution and actual visibility
       env:
         GH_TOKEN: ${{ github.token }}
         EXPECTED_PRIVATE: ${{ github.event.repository.private }}
-      run: |-
-        test "$RUNNER_ENVIRONMENT" = github-hosted
-        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
-        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
-    - uses: actions/checkout@v4
+      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
+
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
+
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Repository visibility changed; start fresh validation''; exit 1;
+        }
+
+        '
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
         persist-credentials: false
-        ref: ${{ github.sha }}
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: '24'
+    - name: Require successful checks before database changes
+      if: inputs.portal_action == 'repair-role' || inputs.portal_action == 'initialize-confirmed-target'
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+      with:
+        script: "const allowed = '${{ inputs.portal_action }}' === 'initialize-confirmed-target'\n  ? ['refs/heads/main']\n\
+          \  : ['refs/heads/main'];\nif (!allowed.includes(context.ref)) throw new\
+          \ Error('Approved Portal operator branch required');\nconst {owner, repo} = context.repo;\nfor (const workflow_id\
+          \ of ['verify.yml', 'repository-hygiene.yml']) {\n  const runs = await github.rest.actions.listWorkflowRuns({owner,\
+          \ repo, workflow_id, head_sha: context.sha, event: 'push', per_page: 20});\n  const run = runs.data.workflow_runs[0];\n\
+          \  if (!run || run.status !== 'completed' || run.conclusion !== 'success') throw new Error(`${workflow_id} must\
+          \ pass for this repair revision`);\n}\n"
+    - run: npm ci
+      working-directory: onesa-company-portal-backend
+    - name: Inspect identified Portal schema and role without revealing credentials
+      if: inputs.portal_action == 'inspect-role'
+      working-directory: onesa-company-portal-backend
+      run: node --import tsx src/services/render-role-repair.ts
+    - name: Inspect the owner-confirmed alternate Portal target without changing databases
+      if: inputs.portal_action == 'inspect-confirmed-target'
+      working-directory: onesa-company-portal-backend
+      run: node --import tsx src/services/render-role-repair.ts --inspect-confirmed-target
+    - name: Provision and verify a restricted role then save only the API runtime URL
+      if: inputs.portal_action == 'repair-role'
+      working-directory: onesa-company-portal-backend
+      run: node --import tsx src/services/render-role-repair.ts --apply
+    - name: Initialize only the confirmed empty database; leave Render runtime untouched
+      if: inputs.portal_action == 'initialize-confirmed-target'
+      working-directory: onesa-company-portal-backend
+      env:
+        PORTAL_APP_DB_PASSWORD: ${{ secrets.PORTAL_APP_DB_PASSWORD }}
+      run: node --import tsx src/services/render-role-repair.ts --initialize-confirmed-target
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+      if: inputs.portal_action == 'repair-layout'
       with:
         python-version: '3.11'
-    - name: Read configuration and deployment status without revealing credentials
+    - name: Repair existing main hosting layout without deploying
+      if: inputs.portal_action == 'repair-layout'
+      env:
+        RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      run: 'python scripts/repair_hosting.py
+
+        python scripts/inspect_hosting.py
+
+        '
+  staging-layout:
+    if: ${{ github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal'
+      && github.actor == 'DruHustle' && inputs.portal_action == 'repair-staging-layout')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Verify GitHub-hosted execution and actual visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
+
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
+
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Repository visibility changed; start fresh validation''; exit 1;
+        }
+
+        '
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+      with:
+        python-version: '3.11'
+    - name: Require exact-source staging audit checks
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+      with:
+        script: "if (context.ref !== 'refs/heads/staging') throw new Error('Identified Portal audit\
+          \ branch required');\nconst {owner, repo} = context.repo;\nfor (const workflow_id of ['verify.yml', 'repository-hygiene.yml'])\
+          \ {\n  const runs = await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id, head_sha: context.sha,\
+          \ event: 'push', per_page: 20});\n  const run = runs.data.workflow_runs[0];\n  if (!run || run.status !== 'completed'\
+          \ || run.conclusion !== 'success') throw new Error(`${workflow_id} must pass on this staging repair revision`);\n\
+          }\n"
+    - name: Repair only the existing free staging API layout without deploying
+      env:
+        PORTAL_REPAIR_SCOPE: staging
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       run: python scripts/repair_hosting.py
-    - name: Read back repaired configuration
-      run: python scripts/inspect_hosting.py
-    needs:
-    - local-validation
-    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}

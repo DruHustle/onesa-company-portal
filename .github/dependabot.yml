@@ -1,0 +1,47 @@
+version: 2
+updates:
+- package-ecosystem: github-actions
+  directory: /
+  schedule:
+    interval: monthly
+  open-pull-requests-limit: 2
+  groups:
+    compatible-actions:
+      applies-to: version-updates
+      patterns:
+      - '*'
+      update-types:
+      - minor
+      - patch
+  cooldown:
+    default-days: 7
+- package-ecosystem: npm
+  directory: /onesa-company-portal-backend
+  schedule:
+    interval: monthly
+  open-pull-requests-limit: 2
+  groups:
+    compatible-packages:
+      applies-to: version-updates
+      patterns:
+      - '*'
+      update-types:
+      - minor
+      - patch
+  cooldown:
+    default-days: 7
+- package-ecosystem: npm
+  directory: /onesa-company-portal-frontend
+  schedule:
+    interval: monthly
+  open-pull-requests-limit: 2
+  groups:
+    compatible-packages:
+      applies-to: version-updates
+      patterns:
+      - '*'
+      update-types:
+      - minor
+      - patch
+  cooldown:
+    default-days: 7

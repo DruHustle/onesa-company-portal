@@ -1,5 +1,9 @@
 # Onesa UG Company Portal
 
+> Current pipeline: [automated review, staging qualification and owner activation](docs/development/CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.
+
+> Current private-Free release policy: [safeguards and external owner authorization](docs/development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
+
 Corporate website and authenticated company operations portal. The Next.js frontend
 and Fastify/TypeScript backend are independent deployable applications in this one
 repository. PostgreSQL, private document storage and background processing belong
@@ -21,11 +25,10 @@ The portal stores corporate and personal data. `assets/documents/`, backend stor
 backups and local environments are excluded from Git. Do not upload those files as
 CI artifacts. Existing PDFs are locally retained for owner classification.
 
-[Deployment](docs/engineering/DEPLOYMENT.md) · [GitHub setup and protections](GITHUB_SETUP.md)
-· [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+[Deployment](docs/engineering/DEPLOYMENT.md) · [Engineering policies](AGENTS.md)
 
-This preparation does not claim production acceptance. See `IMPLEMENTATION_STATUS.md`
-and `SESSION_HANDOFF.md` for prior implementation evidence. No software license is
+Production acceptance is tracked in [the release checklist](RELEASE_CHECKLIST.md);
+implementation history is recorded in [the changelog](CHANGELOG.md). No software license is
 assigned pending an ownership decision.
 
 ## Selected cloud deployment
@@ -36,4 +39,8 @@ Configuration is prepared; account provisioning and remote acceptance are not ye
 
 [Domain routing, Zoho Mail and Resend setup](docs/engineering/DOMAINS_AND_EMAIL.md).
 
-[Actions visibility policy and runner maintenance](docs/engineering/SELF_HOSTED_RUNNER.md).
+[Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Verified branch protection status](docs/development/BRANCH_PROTECTION_REPORT.md). Main protection is **NOT ENFORCED** in the current public repository; historical private-plan rejection does not establish current eligibility.
+
+The selected policy is [private GitHub Free safeguards and hosted PR checks](docs/development/FREE_GITHUB_PLAN.md). Production credentials stay outside editable Actions. PR discipline does not block direct pushes; see the implementation report for the public/private discrepancy and owner actions.
+
+[Local Actions runner setup and maintenance](docs/engineering/SELF_HOSTED_RUNNER.md).

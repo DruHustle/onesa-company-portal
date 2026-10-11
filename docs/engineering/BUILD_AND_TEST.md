@@ -1,5 +1,7 @@
 # Separate application builds and tests
 
+> Current pipeline: [automated review, staging qualification and owner activation](../development/CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.
+
 Run from the repository root with Node 24, Python 3 and Docker when building images.
 Commit lockfiles; `npm ci` installs their exact dependency resolutions.
 
@@ -45,6 +47,35 @@ with `TEST_DATABASE_URL` ending `_test`; it truncates test tables. Never point i
 application data. Browser tests need an isolated seeded stack and installed Chromium:
 `npm --prefix onesa-company-portal-frontend run test:e2e`.
 
+Backend test files run serially because their shared fixture performs grants,
+migrations, truncation and sequence writes. The initialization regression creates
+and removes only its uniquely named disposable `_test` database and test role;
+it verifies rollback, strict refusal of existing objects and restricted permissions.
+
 Existing `verify.yml` runs lint/build/contracts/database/browser/docs/container checks
 under the `verify` job. Require `verify` and `publication-hygiene`. Local preparation
 only runs non-database unit tests; full CI is a separate gate and has not run remotely.
+
+## Container readiness regression
+
+After backend tests create the restricted fixture role on an isolated
+`TEST_DATABASE_URL` ending `_test`, build `portal-backend-ci` and run
+`python3 scripts/startup_smoke.py portal-backend-ci`. This executes the actual
+production CMD at PORT 10000, checks liveness, unsafe-role/unavailable-DB 503,
+restricted-role 200, anonymous protected-route 401 and SIGTERM shutdown.
+Do not use production records or change a live database role to run this test.
+
+The read-only Portal role workflow can run on the reviewed audit branch. Its
+allowlisted phase identifies whether runtime or migration URL validation failed;
+never relax the established database identity guard or paste URLs into logs.
+Inspection reports actual role safety and grants only after verifying the database
+identity and schema. Applying a repair remains restricted to the original operator
+branches and successful exact-revision checks.
+
+
+After full backend tests provision the synthetic restricted role on the disposable
+`TEST_DATABASE_URL`, run `python3 scripts/startup_smoke.py onesa-portal-backend:local`.
+On Linux CI it uses host networking; for a dedicated Docker test database use
+`--network container:<isolated-test-db>`. It exercises the production image's default
+CMD at PORT=10000, health, owner-role 503, restricted-role 200, unavailable DB 503,
+authentication and SIGTERM. Never supply an application database to this test.

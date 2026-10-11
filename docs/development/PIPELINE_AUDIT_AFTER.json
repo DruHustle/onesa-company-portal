@@ -1,0 +1,1856 @@
+{
+  "repository": "onesa-company-portal",
+  "observed_at": "2026-10-11",
+  "scope": "Local prepared workflows only; no remote changes",
+  "workflows": [
+    {
+      "file": "_local-validation.yml",
+      "name": "Private local validation",
+      "trigger": {
+        "workflow_call": {}
+      },
+      "permissions": {
+        "contents": "read"
+      },
+      "concurrency": null,
+      "jobs": {
+        "verify": {
+          "runs-on": [
+            "self-hosted",
+            "Linux",
+            "ARM64",
+            "onesa-portal-local"
+          ],
+          "services": {
+            "postgres": {
+              "image": "postgres:17-alpine",
+              "env": {
+                "POSTGRES_DB": "onesa_portal_test",
+                "POSTGRES_USER": "portal_test",
+                "POSTGRES_PASSWORD": "ci-only-test-password"
+              },
+              "ports": [
+                "5432/tcp"
+              ],
+              "options": "--health-cmd \"pg_isready -U portal_test\" --health-interval 5s --health-timeout 3s --health-retries 15"
+            }
+          },
+          "env": {
+            "SESSION_KEY": "ci-placeholder-test-key-do-not-use-in-production-123456",
+            "PUBLIC_ORIGIN": "http://localhost:3300",
+            "BACKEND_URL": "http://127.0.0.1:8300",
+            "NODE_ENV": "test",
+            "STORAGE_DIR": "${{ github.workspace }}/.test-storage",
+            "ONESA_CI_TOKEN": "${{ github.token }}"
+          },
+          "steps": [
+            {
+              "name": "Configure disposable database connection",
+              "env": {
+                "POSTGRES_PORT": "${{ job.services.postgres.ports['5432'] }}"
+              },
+              "run": "database_url=\"postgresql://portal_test:ci-only-test-password@127.0.0.1:${POSTGRES_PORT}/onesa_portal_test\"\nprintf 'DATABASE_URL=%s\\nTEST_DATABASE_URL=%s\\n' \"$database_url\" \"$database_url\" >> \"$GITHUB_ENV\"\n"
+            },
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false,
+                "ref": "${{ github.sha }}"
+              }
+            },
+            {
+              "uses": "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "with": {
+                "node-version": "24"
+              }
+            },
+            {
+              "run": "npm ci",
+              "working-directory": "onesa-company-portal-backend"
+            },
+            {
+              "run": "npm ci",
+              "working-directory": "onesa-company-portal-frontend"
+            },
+            {
+              "run": "python3 scripts/check-contracts.py && python3 scripts/test-contract-break.py"
+            },
+            {
+              "run": "python3 -m unittest discover -s scripts -p test_inspect_hosting.py"
+            },
+            {
+              "run": "python3 -m unittest discover -s scripts/runner -p 'test_*.py'"
+            },
+            {
+              "run": "npm run lint && npm run build && npm test && npm audit --audit-level=high",
+              "working-directory": "onesa-company-portal-backend"
+            },
+            {
+              "run": "npm run lint && npm run typecheck && npm run test:domains && npm run build && npm audit --audit-level=high",
+              "working-directory": "onesa-company-portal-frontend"
+            },
+            {
+              "run": "npm run documents",
+              "working-directory": "onesa-company-portal-backend"
+            },
+            {
+              "run": "npm run seed",
+              "working-directory": "onesa-company-portal-backend"
+            },
+            {
+              "run": "npx playwright install chromium firefox webkit",
+              "working-directory": "onesa-company-portal-frontend"
+            },
+            {
+              "run": "cleanup() { kill \"$backend_pid\" \"$frontend_pid\" 2>/dev/null || true; wait \"$backend_pid\" \"$frontend_pid\" 2>/dev/null || true; }\nnode onesa-company-portal-backend/dist/src/server.js > \"$RUNNER_TEMP/portal-backend.log\" 2>&1 &\nbackend_pid=$!\n(cd onesa-company-portal-frontend && npm start) > \"$RUNNER_TEMP/portal-frontend.log\" 2>&1 &\nfrontend_pid=$!\ntrap cleanup EXIT\nfor attempt in $(seq 1 30); do\n  if curl -fsS http://localhost:3300/en > /dev/null; then break; fi\n  echo \"Waiting for frontend: $attempt\"\n  sleep 1\ndone\ncurl -fsS http://localhost:3300/en > /dev/null\nnpm --prefix onesa-company-portal-frontend run test:e2e\n"
+            },
+            {
+              "name": "Verify production hostname boundaries and brand metadata",
+              "working-directory": "onesa-company-portal-frontend",
+              "run": "NODE_ENV=production SITE_URL=https://onesa.eu PORTAL_URL=https://portal.onesa.eu PUBLIC_ORIGIN=https://portal.onesa.eu BACKEND_URL=http://127.0.0.1:8362 node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3362 > \"$RUNNER_TEMP/portal-domain-frontend.log\" 2>&1 &\ndomain_frontend_pid=$!\ntrap 'kill \"$domain_frontend_pid\" 2>/dev/null || true' EXIT\nfor attempt in $(seq 1 30); do\n  if curl -s http://127.0.0.1:3362/ > /dev/null; then break; fi\n  echo \"Waiting for domain frontend: $attempt\"\n  sleep 1\ndone\nnpm run test:domain-http\n"
+            },
+            {
+              "run": "python3 scripts/validate-docs.py && python3 scripts/scan-secrets.py"
+            },
+            {
+              "run": "docker build -t portal-backend-ci ./onesa-company-portal-backend && docker build -t portal-frontend-ci ./onesa-company-portal-frontend"
+            },
+            {
+              "name": "Verify production command and strict database readiness",
+              "run": "python3 scripts/startup_smoke.py portal-backend-ci"
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "if": "always()",
+              "with": {
+                "retention-days": 3,
+                "name": "local-verification-evidence",
+                "path": "onesa-company-portal-frontend/test-results\nonesa-company-portal-backend/openapi/openapi.json\n"
+              }
+            }
+          ],
+          "timeout-minutes": 120,
+          "if": "${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}"
+        },
+        "image-security": {
+          "runs-on": [
+            "self-hosted",
+            "Linux",
+            "ARM64",
+            "onesa-portal-local"
+          ],
+          "timeout-minutes": 120,
+          "strategy": {
+            "fail-fast": false,
+            "matrix": {
+              "application": [
+                "onesa-company-portal-backend",
+                "onesa-company-portal-frontend"
+              ]
+            }
+          },
+          "steps": [
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false,
+                "ref": "${{ github.sha }}"
+              }
+            },
+            {
+              "name": "Build application runtime",
+              "run": "docker build -t onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }} ./${{ matrix.application }}"
+            },
+            {
+              "name": "Scan full runtime, including unfixed vendor advisories",
+              "run": "mkdir -p data/security\nchmod 700 data/security\ndocker save onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }} -o data/security/runtime.tar\ndocker run --rm --user \"$(id -u):$(id -g)\" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v \"$PWD/data/security:/reports\" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar\nchmod 600 data/security/runtime.json\npython3 scripts/release/image_gate.py data/security/runtime.json\n"
+            },
+            {
+              "name": "Remove restricted scan output",
+              "if": "${{ always() }}",
+              "run": "rm -rf -- \"$GITHUB_WORKSPACE/data/security\""
+            }
+          ],
+          "if": "${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}",
+          "env": {
+            "ONESA_CI_TOKEN": "${{ github.token }}"
+          }
+        },
+        "publication-hygiene": {
+          "runs-on": [
+            "self-hosted",
+            "Linux",
+            "ARM64",
+            "onesa-portal-local"
+          ],
+          "steps": [
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "fetch-depth": 0,
+                "persist-credentials": false,
+                "ref": "${{ github.sha }}"
+              }
+            },
+            {
+              "uses": "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+              "with": {
+                "python-version": "3.11"
+              }
+            },
+            {
+              "run": "python scripts/repository_hygiene.py --history"
+            }
+          ],
+          "timeout-minutes": 120,
+          "if": "${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}",
+          "env": {
+            "ONESA_CI_TOKEN": "${{ github.token }}"
+          }
+        },
+        "complete": {
+          "name": "local-complete",
+          "if": "${{ always() && github.event.repository.private == true && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped') }}",
+          "needs": [
+            "verify",
+            "image-security",
+            "publication-hygiene"
+          ],
+          "runs-on": [
+            "self-hosted",
+            "Linux",
+            "ARM64",
+            "onesa-portal-local"
+          ],
+          "timeout-minutes": 120,
+          "env": {
+            "ONESA_CI_TOKEN": "${{ github.token }}"
+          },
+          "steps": [
+            {
+              "run": "echo \"All local validation passed for $GITHUB_SHA on $RUNNER_NAME\" >> \"$GITHUB_STEP_SUMMARY\""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "_pipeline-review.yml",
+      "name": "Pipeline static security",
+      "trigger": {
+        "workflow_call": {}
+      },
+      "permissions": {
+        "contents": "read"
+      },
+      "concurrency": null,
+      "jobs": {
+        "workflow-security": {
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 15,
+          "steps": [
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false,
+                "fetch-depth": 0
+              }
+            },
+            {
+              "uses": "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+              "with": {
+                "python-version": "3.11"
+              }
+            },
+            {
+              "name": "Install checksum-locked local analysis tools",
+              "run": "python3 scripts/ci/install_tools.py --only actionlint zizmor gitleaks reviewdog"
+            },
+            {
+              "name": "Release requirement: workflow and secret security",
+              "run": "python3 scripts/ci/security.py --output \"$RUNNER_TEMP/pipeline-security/record.json\""
+            },
+            {
+              "name": "Release requirement: pipeline negative tests",
+              "run": "python3 -m unittest discover -s scripts/ci -p 'test_*.py'"
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "if": "always()",
+              "with": {
+                "name": "pipeline-security",
+                "path": "${{ runner.temp }}/pipeline-security/record.json",
+                "retention-days": 3,
+                "if-no-files-found": "error"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "deploy.yml",
+      "name": "Deploy from GitHub",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "application": {
+              "description": "Application to deploy after CI passes",
+              "required": true,
+              "default": "both",
+              "type": "choice",
+              "options": [
+                "frontend",
+                "backend",
+                "both"
+              ]
+            },
+            "approval_run": {
+              "description": "Latest exact-commit owner release-review approval run; no JSON fallback",
+              "type": "string",
+              "required": true
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "issues": "read"
+      },
+      "concurrency": {
+        "group": "production-deployment",
+        "cancel-in-progress": false
+      },
+      "jobs": {
+        "verify": {
+          "name": "deploy-qualification",
+          "if": "${{ github.event.repository.private == false && ((always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')))) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 45,
+          "steps": [
+            {
+              "name": "Verify GitHub-hosted execution and actual visibility",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "EXPECTED_PRIVATE": "${{ github.event.repository.private }}"
+              },
+              "run": "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n"
+            },
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false
+              }
+            },
+            {
+              "name": "Verify immutable qualification and owner approval",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "APPROVAL_RUN": "${{ inputs.approval_run }}",
+                "MIGRATION_VERIFIED": "${{ vars.AUTOMATED_QUALIFICATION_ENABLED }}"
+              },
+              "run": "test \"$MIGRATION_VERIFIED\" = true || { echo \"Automated migration has not been verified\"; exit 1; }\npython3 scripts/release/evidence.py promote --output \"$RUNNER_TEMP/promotion/record.json\""
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "if": "inputs.approval_run != ''",
+              "with": {
+                "name": "production-qualification",
+                "path": "${{ runner.temp }}/promotion/record.json",
+                "retention-days": 7,
+                "if-no-files-found": "error"
+              }
+            },
+            {
+              "uses": "actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b",
+              "with": {
+                "script": "if (context.ref !== 'refs/heads/main') throw new Error('Deployments require main');\nconst {owner, repo} = context.repo;\nconst main = await github.rest.git.getRef({owner, repo, ref: 'heads/main'});\nif (main.data.object.sha !== context.sha) throw new Error('Dispatch the current main commit');\nfor (const workflow_id of ['verify.yml', 'repository-hygiene.yml']) {\n  const runs = await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id, head_sha: context.sha, event: 'push', per_page: 20});\n  const run = runs.data.workflow_runs[0];\n  if (!run || run.status !== 'completed' || run.conclusion !== 'success') {\n    throw new Error(`${workflow_id} must pass on ${context.sha} before deployment`);\n  }\n}\n"
+              }
+            }
+          ]
+        },
+        "frontend": {
+          "name": "deploy-frontend",
+          "needs": [
+            "verify",
+            "backend",
+            "worker"
+          ],
+          "if": "${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (always() && needs.verify.result == 'success' && (inputs.application == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success' && needs.worker.result == 'success')))) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 40,
+          "env": {
+            "VERCEL_TOKEN": "${{ secrets.VERCEL_TOKEN }}",
+            "VERCEL_ORG_ID": "${{ secrets.VERCEL_ORG_ID }}",
+            "VERCEL_PROJECT_ID": "${{ secrets.VERCEL_PROJECT_ID }}",
+            "GH_TOKEN": "${{ github.token }}"
+          },
+          "steps": [
+            {
+              "name": "Verify GitHub-hosted execution and actual visibility",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "EXPECTED_PRIVATE": "${{ github.event.repository.private }}"
+              },
+              "run": "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n"
+            },
+            {
+              "name": "Require Vercel configuration",
+              "run": "missing_configuration=0\nfor name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do\n  if [ -z \"${!name}\" ]; then\n    echo \"::error::Missing GitHub Actions secret: $name\"\n    missing_configuration=1\n  fi\ndone\nexit \"$missing_configuration\"\n"
+            },
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false
+              }
+            },
+            {
+              "name": "Revalidate approval before provider changes",
+              "if": "inputs.approval_run != ''",
+              "env": {
+                "VERCEL_TOKEN": "${{ secrets.STAGING_VERCEL_TOKEN }}",
+                "VERCEL_ORG_ID": "${{ secrets.STAGING_VERCEL_ORG_ID }}",
+                "GH_TOKEN": "${{ github.token }}",
+                "APPROVAL_RUN": "${{ inputs.approval_run }}",
+                "STAGING_VERCEL_PROJECT_ID": "${{ secrets.STAGING_VERCEL_PROJECT_ID }}",
+                "VERCEL_AUTOMATION_BYPASS_SECRET": "${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}",
+                "RENDER_API_KEY": "${{ secrets.STAGING_RENDER_API_KEY }}"
+              },
+              "run": "python3 scripts/release/evidence.py promote --output \"$RUNNER_TEMP/promotion/record.json\"\npython3 scripts/release/hosted.py recheck --evidence \"$RUNNER_TEMP/promotion/record.json\""
+            },
+            {
+              "uses": "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "with": {
+                "node-version": "24"
+              }
+            },
+            {
+              "run": "npm install --global vercel@63.1.0"
+            },
+            {
+              "run": "vercel pull --yes --environment=production --token=\"$VERCEL_TOKEN\""
+            },
+            {
+              "name": "Restore the exact owner-reviewed production build",
+              "if": "inputs.approval_run != ''",
+              "env": {
+                "APPROVAL_RUN": "${{ inputs.approval_run }}",
+                "RELEASE_BUILD_KEY": "${{ secrets.RELEASE_BUILD_KEY }}"
+              },
+              "run": "python3 scripts/release/evidence.py fetch-build --output \"$RUNNER_TEMP/reviewed-build/record.json\"\nnode scripts/release/bundle.mjs unpack \"$RUNNER_TEMP/reviewed-build\""
+            },
+            {
+              "run": "vercel deploy --prebuilt --prod --token=\"$VERCEL_TOKEN\" --meta githubCommitRef=main --meta githubCommitSha=\"$GITHUB_SHA\" > /tmp/vercel-url.txt"
+            },
+            {
+              "name": "Record deployed frontend",
+              "run": "cat /tmp/vercel-url.txt >> \"$GITHUB_STEP_SUMMARY\""
+            },
+            {
+              "name": "Record frontend deployment metadata",
+              "if": "inputs.approval_run != ''",
+              "run": "python3 scripts/release/hosted.py frontend-receipt --environment Production --output \"$RUNNER_TEMP/frontend/record.json\""
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "if": "inputs.approval_run != ''",
+              "with": {
+                "name": "production-frontend-deployment",
+                "path": "${{ runner.temp }}/frontend/record.json",
+                "retention-days": 7,
+                "if-no-files-found": "error"
+              }
+            },
+            {
+              "name": "Remove private restored build",
+              "if": "always()",
+              "run": "rm -rf -- \"$GITHUB_WORKSPACE/.vercel\" \"$RUNNER_TEMP/reviewed-build\""
+            }
+          ],
+          "environment": "Production"
+        },
+        "backend": {
+          "name": "deploy-backend",
+          "needs": "verify",
+          "if": "${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application == 'both')) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 35,
+          "env": {
+            "RENDER_API_KEY": "${{ secrets.RENDER_API_KEY }}",
+            "RENDER_SERVICE_ID": "${{ secrets.RENDER_BACKEND_SERVICE_ID }}",
+            "GH_TOKEN": "${{ github.token }}"
+          },
+          "steps": [
+            {
+              "name": "Verify GitHub-hosted execution and actual visibility",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "EXPECTED_PRIVATE": "${{ github.event.repository.private }}"
+              },
+              "run": "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n"
+            },
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false
+              }
+            },
+            {
+              "name": "Revalidate approval before provider changes",
+              "if": "inputs.approval_run != ''",
+              "env": {
+                "VERCEL_TOKEN": "${{ secrets.STAGING_VERCEL_TOKEN }}",
+                "VERCEL_ORG_ID": "${{ secrets.STAGING_VERCEL_ORG_ID }}",
+                "GH_TOKEN": "${{ github.token }}",
+                "APPROVAL_RUN": "${{ inputs.approval_run }}",
+                "STAGING_VERCEL_PROJECT_ID": "${{ secrets.STAGING_VERCEL_PROJECT_ID }}",
+                "VERCEL_AUTOMATION_BYPASS_SECRET": "${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}",
+                "VERCEL_PROJECT_ID": "${{ secrets.STAGING_VERCEL_PROJECT_ID }}"
+              },
+              "run": "python3 scripts/release/evidence.py promote --output \"$RUNNER_TEMP/promotion/record.json\"\npython3 scripts/release/hosted.py recheck --evidence \"$RUNNER_TEMP/promotion/record.json\""
+            },
+            {
+              "uses": "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+              "with": {
+                "python-version": "3.11"
+              }
+            },
+            {
+              "run": "python scripts/deploy_render.py",
+              "env": {
+                "RENDER_RECEIPT_PATH": "${{ runner.temp }}/render/record.json"
+              }
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "if": "inputs.approval_run != '' && success()",
+              "with": {
+                "name": "production-backend-deployment",
+                "path": "${{ runner.temp }}/render/record.json",
+                "retention-days": 7,
+                "if-no-files-found": "error"
+              }
+            }
+          ],
+          "environment": "Production"
+        },
+        "worker": {
+          "name": "deploy-worker",
+          "needs": [
+            "verify",
+            "backend"
+          ],
+          "if": "${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application == 'both')) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 35,
+          "env": {
+            "RENDER_API_KEY": "${{ secrets.STAGING_RENDER_API_KEY }}",
+            "RENDER_SERVICE_ID": "${{ secrets.RENDER_WORKER_SERVICE_ID }}",
+            "GH_TOKEN": "${{ github.token }}"
+          },
+          "steps": [
+            {
+              "name": "Verify GitHub-hosted execution and actual visibility",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "EXPECTED_PRIVATE": "${{ github.event.repository.private }}"
+              },
+              "run": "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n"
+            },
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false
+              }
+            },
+            {
+              "name": "Revalidate approval before provider changes",
+              "if": "inputs.approval_run != ''",
+              "env": {
+                "VERCEL_TOKEN": "${{ secrets.STAGING_VERCEL_TOKEN }}",
+                "VERCEL_ORG_ID": "${{ secrets.STAGING_VERCEL_ORG_ID }}",
+                "GH_TOKEN": "${{ github.token }}",
+                "APPROVAL_RUN": "${{ inputs.approval_run }}",
+                "STAGING_VERCEL_PROJECT_ID": "${{ secrets.STAGING_VERCEL_PROJECT_ID }}",
+                "VERCEL_AUTOMATION_BYPASS_SECRET": "${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}",
+                "VERCEL_PROJECT_ID": "${{ secrets.STAGING_VERCEL_PROJECT_ID }}"
+              },
+              "run": "python3 scripts/release/evidence.py promote --output \"$RUNNER_TEMP/promotion/record.json\"\npython3 scripts/release/hosted.py recheck --evidence \"$RUNNER_TEMP/promotion/record.json\""
+            },
+            {
+              "uses": "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+              "with": {
+                "python-version": "3.11"
+              }
+            },
+            {
+              "run": "python scripts/deploy_render.py",
+              "env": {
+                "RENDER_RECEIPT_PATH": "${{ runner.temp }}/render/record.json"
+              }
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "if": "inputs.approval_run != '' && success()",
+              "with": {
+                "name": "production-worker-deployment",
+                "path": "${{ runner.temp }}/render/record.json",
+                "retention-days": 7,
+                "if-no-files-found": "error"
+              }
+            }
+          ],
+          "environment": "Production"
+        },
+        "post-deployment": {
+          "if": "${{ github.event.repository.private == false && ((always() && (inputs.approval_run != '' && needs.verify.result == 'success' && (inputs.application == 'frontend' && needs.frontend.result == 'success' || inputs.application == 'backend' && needs.backend.result == 'success' && needs.worker.result == 'success' || inputs.application == 'both' && needs.frontend.result == 'success' && needs.backend.result == 'success' && needs.worker.result == 'success'))) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}",
+          "needs": [
+            "verify",
+            "frontend",
+            "backend",
+            "worker"
+          ],
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 15,
+          "env": {
+            "GH_TOKEN": "${{ github.token }}",
+            "APPROVAL_RUN": "${{ inputs.approval_run }}",
+            "APPLICATION": "${{ inputs.application }}",
+            "RENDER_API_KEY": "${{ secrets.STAGING_RENDER_API_KEY }}",
+            "RENDER_BACKEND_SERVICE_ID": "${{ secrets.RENDER_BACKEND_SERVICE_ID }}",
+            "RENDER_WORKER_SERVICE_ID": "${{ secrets.RENDER_WORKER_SERVICE_ID }}",
+            "VERCEL_TOKEN": "${{ secrets.STAGING_VERCEL_TOKEN }}",
+            "VERCEL_ORG_ID": "${{ secrets.STAGING_VERCEL_ORG_ID }}",
+            "VERCEL_PROJECT_ID": "${{ secrets.STAGING_VERCEL_PROJECT_ID }}",
+            "STAGING_VERCEL_PROJECT_ID": "${{ secrets.STAGING_VERCEL_PROJECT_ID }}",
+            "PRODUCTION_FIXTURES_JSON": "${{ secrets.PRODUCTION_FIXTURES_JSON }}",
+            "VERCEL_AUTOMATION_BYPASS_SECRET": "${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}"
+          },
+          "steps": [
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false,
+                "ref": "${{ github.sha }}"
+              }
+            },
+            {
+              "name": "Revalidate authorized release before hosted checks",
+              "run": "python3 scripts/release/evidence.py promote --output \"$RUNNER_TEMP/promotion/record.json\""
+            },
+            {
+              "name": "Record actual provider revisions, readiness and remaining hosted acceptance",
+              "run": "python3 scripts/release/hosted.py production --output \"$RUNNER_TEMP/post/record.json\""
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "if": "always()",
+              "with": {
+                "name": "post-deployment-verification",
+                "path": "${{ runner.temp }}/post/record.json",
+                "retention-days": 7,
+                "if-no-files-found": "error"
+              }
+            },
+            {
+              "name": "Require hosted acceptance; provider builds alone are insufficient",
+              "run": "python3 -c 'import json,os; from pathlib import Path; r=json.loads((Path(os.environ[\"RUNNER_TEMP\"])/\"post/record.json\").read_text()); raise SystemExit(0 if r[\"status\"] == \"PASS\" else \"Hosted acceptance incomplete; follow approved rollback runbook\")'"
+            }
+          ],
+          "environment": "Production"
+        }
+      }
+    },
+    {
+      "file": "free-authorization.yml",
+      "name": "Free release authorization",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "qualification_run": {
+              "description": "Exact free-qualification run ID",
+              "type": "string",
+              "required": true
+            },
+            "evidence_digest": {
+              "description": "SHA256 printed by the reviewed qualification run",
+              "type": "string",
+              "required": true
+            },
+            "review_issue": {
+              "description": "Open owner-authored issue binding candidate, digest and reviews",
+              "type": "string",
+              "required": true
+            },
+            "decision": {
+              "description": "Authorize external owner handoff or revoke older approval",
+              "type": "choice",
+              "options": [
+                "revoke",
+                "approve"
+              ],
+              "default": "revoke",
+              "required": true
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "issues": "read",
+        "pull-requests": "read"
+      },
+      "concurrency": {
+        "group": "free-production-authorization",
+        "cancel-in-progress": false
+      },
+      "jobs": {
+        "authorization": {
+          "if": "github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/main'",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 15,
+          "steps": [
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false,
+                "ref": "${{ github.sha }}"
+              }
+            },
+            {
+              "name": "Derive and verify exact-commit evidence; no production credentials",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "QUALIFICATION_RUN": "${{ inputs.qualification_run }}",
+                "EVIDENCE_DIGEST": "${{ inputs.evidence_digest }}",
+                "REVIEW_ISSUE": "${{ inputs.review_issue }}",
+                "REVIEW_DECISION": "${{ inputs.decision }}"
+              },
+              "run": "python3 scripts/release/free_gate.py authorize --output \"$RUNNER_TEMP/free-release/record.json\""
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "with": {
+                "name": "free-production-authorization",
+                "path": "${{ runner.temp }}/free-release/record.json",
+                "retention-days": 7,
+                "if-no-files-found": "error"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "free-qualification.yml",
+      "name": "Free release qualification",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "staging_run": {
+              "description": "Successful exact-commit isolated staging run",
+              "type": "string",
+              "required": true
+            }
+          }
+        },
+        "workflow_run": {
+          "workflows": [
+            "Approved staging qualification"
+          ],
+          "types": [
+            "completed"
+          ]
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "issues": "read",
+        "pull-requests": "read"
+      },
+      "concurrency": {
+        "group": "free-production-authorization",
+        "cancel-in-progress": false
+      },
+      "jobs": {
+        "qualification": {
+          "if": "github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_sha == github.sha && github.event.workflow_run.conclusion == 'success'))",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 15,
+          "steps": [
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false,
+                "ref": "${{ github.sha }}"
+              }
+            },
+            {
+              "name": "Derive and verify exact-commit evidence; no production credentials",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "STAGING_RUN": "${{ inputs.staging_run || github.event.workflow_run.id }}"
+              },
+              "run": "python3 scripts/release/free_gate.py qualify --output \"$RUNNER_TEMP/free-release/record.json\""
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "with": {
+                "name": "free-release-qualification",
+                "path": "${{ runner.temp }}/free-release/record.json",
+                "retention-days": 7,
+                "if-no-files-found": "error"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "inspect-hosting.yml",
+      "name": "Inspect hosting configuration",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "portal_scope": {
+              "description": "Read only the production targets or the owner-identified staging targets",
+              "type": "choice",
+              "default": "production",
+              "options": [
+                "production",
+                "staging"
+              ]
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read"
+      },
+      "concurrency": {
+        "group": "${{ github.workflow }}-${{ github.ref }}",
+        "cancel-in-progress": false
+      },
+      "jobs": {
+        "inspect": {
+          "if": "${{ github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')))) }}",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 10,
+          "env": {
+            "PORTAL_INSPECTION_SCOPE": "${{ inputs.portal_scope }}",
+            "RENDER_API_KEY": "${{ secrets.RENDER_API_KEY }}",
+            "RENDER_BACKEND_SERVICE_ID": "${{ secrets.RENDER_BACKEND_SERVICE_ID }}",
+            "RENDER_WORKER_SERVICE_ID": "${{ secrets.RENDER_WORKER_SERVICE_ID }}",
+            "VERCEL_TOKEN": "${{ secrets.VERCEL_TOKEN }}",
+            "VERCEL_ORG_ID": "${{ secrets.VERCEL_ORG_ID }}",
+            "VERCEL_PROJECT_ID": "${{ secrets.VERCEL_PROJECT_ID }}"
+          },
+          "steps": [
+            {
+              "name": "Verify GitHub-hosted execution and actual visibility",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "EXPECTED_PRIVATE": "${{ github.event.repository.private }}"
+              },
+              "run": "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n"
+            },
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false
+              }
+            },
+            {
+              "uses": "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+              "with": {
+                "python-version": "3.11"
+              }
+            },
+            {
+              "name": "Read configuration and deployment status without revealing credentials",
+              "run": "python scripts/inspect_hosting.py"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "release-build.yml",
+      "name": "Reviewed production frontend build",
+      "trigger": {
+        "workflow_dispatch": {}
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read"
+      },
+      "concurrency": {
+        "group": "reviewed-production-build",
+        "cancel-in-progress": false
+      },
+      "jobs": {
+        "build": {
+          "if": "${{ github.event.repository.private == false && (always() && true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 40,
+          "env": {
+            "GH_TOKEN": "${{ github.token }}",
+            "VERCEL_TOKEN": "${{ secrets.VERCEL_TOKEN }}",
+            "VERCEL_ORG_ID": "${{ secrets.VERCEL_ORG_ID }}",
+            "VERCEL_PROJECT_ID": "${{ secrets.VERCEL_PROJECT_ID }}"
+          },
+          "steps": [
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false,
+                "ref": "${{ github.sha }}"
+              }
+            },
+            {
+              "name": "Require protected main and exact-candidate CI",
+              "run": "python3 scripts/release/evidence.py build-preflight --output \"$RUNNER_TEMP/build-preflight/record.json\""
+            },
+            {
+              "uses": "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "with": {
+                "node-version": "24"
+              }
+            },
+            {
+              "name": "Build production candidate without publishing",
+              "run": "npm install --global vercel@63.1.0\nvercel pull --yes --environment=production --token=\"$VERCEL_TOKEN\"\nvercel build --prod --token=\"$VERCEL_TOKEN\""
+            },
+            {
+              "name": "Encrypt reviewed prebuilt output with a scoped key",
+              "env": {
+                "RELEASE_BUILD_KEY": "${{ secrets.RELEASE_BUILD_KEY }}"
+              },
+              "run": "git diff --quiet HEAD --\nSOURCE_SHA256=$(python3 scripts/release/evidence.py source-hash) node scripts/release/bundle.mjs pack \"$RUNNER_TEMP/reviewed-build\""
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "with": {
+                "name": "production-build-manifest",
+                "path": "${{ runner.temp }}/reviewed-build/record.json",
+                "retention-days": 7,
+                "if-no-files-found": "error"
+              }
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "with": {
+                "name": "production-build-encrypted",
+                "path": "${{ runner.temp }}/reviewed-build/bundle.enc",
+                "retention-days": 7,
+                "if-no-files-found": "error"
+              }
+            },
+            {
+              "name": "Remove private build and provider environment files",
+              "if": "always()",
+              "run": "rm -rf -- \"$GITHUB_WORKSPACE/.vercel\" \"$RUNNER_TEMP/reviewed-build\""
+            }
+          ],
+          "environment": "Production"
+        }
+      }
+    },
+    {
+      "file": "release-qualification.yml",
+      "name": "Release qualification evidence",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "staging_run": {
+              "description": "Optional exact-candidate successful release-staging run ID",
+              "type": "string",
+              "required": false
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read"
+      },
+      "concurrency": {
+        "group": "release-qualification-${{ github.sha }}",
+        "cancel-in-progress": false
+      },
+      "jobs": {
+        "qualify": {
+          "if": "always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name == 'workflow_dispatch' || ((github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_sha == github.sha)))",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 10,
+          "steps": [
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false,
+                "ref": "${{ github.sha }}"
+              }
+            },
+            {
+              "name": "Generate observed technical evidence",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "STAGING_RUN": "${{ inputs.staging_run || (github.event.workflow_run.name == 'Approved staging qualification' && github.event.workflow_run.id) || '' }}"
+              },
+              "run": "python3 scripts/release/evidence.py generate --output \"$RUNNER_TEMP/qualification/record.json\""
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "with": {
+                "name": "release-qualification",
+                "path": "${{ runner.temp }}/qualification/record.json",
+                "retention-days": 7,
+                "if-no-files-found": "error"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "release-review.yml",
+      "name": "Owner release review",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "qualification_run": {
+              "description": "Exact qualification run reviewed",
+              "type": "string",
+              "required": true
+            },
+            "evidence_digest": {
+              "description": "Canonical JSON SHA256 from qualification summary",
+              "type": "string",
+              "required": true
+            },
+            "decision": {
+              "description": "Approve production or revoke a prior approval",
+              "type": "choice",
+              "options": [
+                "revoke",
+                "approve"
+              ],
+              "default": "revoke",
+              "required": true
+            },
+            "operations_review": {
+              "description": "Owner reviewed monitoring, alerts, recovery, limits, worker, rollback evidence",
+              "type": "choice",
+              "options": [
+                "blocked",
+                "approved"
+              ],
+              "default": "blocked",
+              "required": true
+            },
+            "legal_review": {
+              "description": "Owner explicitly approves candidate content/legal/business version",
+              "type": "choice",
+              "options": [
+                "blocked",
+                "approved"
+              ],
+              "default": "blocked",
+              "required": true
+            },
+            "review_url": {
+              "description": "Open owner-authored repository issue/PR documenting reviewed evidence",
+              "type": "string",
+              "required": true
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "issues": "read"
+      },
+      "concurrency": {
+        "group": "production-deployment",
+        "cancel-in-progress": false
+      },
+      "jobs": {
+        "review": {
+          "if": "always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main')",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 10,
+          "steps": [
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false,
+                "ref": "${{ github.sha }}"
+              }
+            },
+            {
+              "name": "Validate evidence and record explicit owner decision",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "QUALIFICATION_RUN": "${{ inputs.qualification_run }}",
+                "EVIDENCE_DIGEST": "${{ inputs.evidence_digest }}",
+                "REVIEW_DECISION": "${{ inputs.decision }}",
+                "OPERATIONS_REVIEW": "${{ inputs.operations_review }}",
+                "LEGAL_REVIEW": "${{ inputs.legal_review }}",
+                "REVIEW_URL": "${{ inputs.review_url }}"
+              },
+              "run": "python3 scripts/release/evidence.py review --output \"$RUNNER_TEMP/approval/record.json\""
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "with": {
+                "name": "release-approval",
+                "path": "${{ runner.temp }}/approval/record.json",
+                "retention-days": 7,
+                "if-no-files-found": "error"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "release-staging.yml",
+      "name": "Approved staging qualification",
+      "trigger": {
+        "workflow_dispatch": {},
+        "workflow_run": {
+          "workflows": [
+            "Portal verification"
+          ],
+          "types": [
+            "completed"
+          ],
+          "branches": [
+            "main"
+          ]
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read"
+      },
+      "concurrency": {
+        "group": "approved-staging-deployment",
+        "cancel-in-progress": false
+      },
+      "jobs": {
+        "staging": {
+          "if": "github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/audit/portal-master-acceptance') || (github.event_name == 'workflow_run' && github.event.repository.private == true && vars.STAGING_AUTOMATION_ENABLED == 'true' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_sha == github.sha && github.event.workflow_run.conclusion == 'success'))",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 55,
+          "steps": [
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false,
+                "ref": "${{ github.sha }}"
+              }
+            },
+            {
+              "name": "Require successful exact-source checks before provider credentials",
+              "run": "python3 scripts/release/evidence.py stage-preflight --output \"$RUNNER_TEMP/technical/record.json\""
+            },
+            {
+              "name": "Verify isolated provider targets",
+              "env": {
+                "RENDER_API_KEY": "${{ secrets.STAGING_RENDER_API_KEY }}",
+                "RENDER_SERVICE_ID": "${{ secrets.STAGING_RENDER_SERVICE_ID }}",
+                "VERCEL_TOKEN": "${{ secrets.STAGING_VERCEL_TOKEN }}",
+                "VERCEL_ORG_ID": "${{ secrets.STAGING_VERCEL_ORG_ID }}",
+                "VERCEL_PROJECT_ID": "${{ secrets.STAGING_VERCEL_PROJECT_ID }}",
+                "VERCEL_AUTOMATION_BYPASS_SECRET": "${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}",
+                "STAGING_FIXTURES_JSON": "${{ secrets.STAGING_FIXTURES_JSON }}"
+              },
+              "run": "python3 scripts/release/hosted.py preflight"
+            },
+            {
+              "uses": "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "with": {
+                "node-version": "24"
+              }
+            },
+            {
+              "name": "Build protected staging Preview with existing branch settings",
+              "env": {
+                "STAGING_BRANCH": "audit/portal-master-acceptance",
+                "VERCEL_TOKEN": "${{ secrets.STAGING_VERCEL_TOKEN }}",
+                "VERCEL_ORG_ID": "${{ secrets.STAGING_VERCEL_ORG_ID }}",
+                "VERCEL_PROJECT_ID": "${{ secrets.STAGING_VERCEL_PROJECT_ID }}"
+              },
+              "run": "npm install --global vercel@63.1.0\nvercel pull --yes --environment=preview --git-branch=\"$STAGING_BRANCH\" --token=\"$VERCEL_TOKEN\"\nVERCEL=1 vercel build --token=\"$VERCEL_TOKEN\"\nvercel deploy --prebuilt --token=\"$VERCEL_TOKEN\" --meta githubCommitRef=\"$STAGING_BRANCH\" --meta githubCommitSha=\"$GITHUB_SHA\" > /tmp/vercel-url.txt"
+            },
+            {
+              "name": "Bind only the approved staging API origin to this verified Preview",
+              "run": "python3 scripts/release/hosted.py bind-staging-origin",
+              "env": {
+                "RENDER_API_KEY": "${{ secrets.STAGING_RENDER_API_KEY }}",
+                "RENDER_SERVICE_ID": "${{ secrets.STAGING_RENDER_SERVICE_ID }}",
+                "VERCEL_TOKEN": "${{ secrets.STAGING_VERCEL_TOKEN }}",
+                "VERCEL_ORG_ID": "${{ secrets.STAGING_VERCEL_ORG_ID }}",
+                "VERCEL_PROJECT_ID": "${{ secrets.STAGING_VERCEL_PROJECT_ID }}",
+                "VERCEL_AUTOMATION_BYPASS_SECRET": "${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}",
+                "STAGING_FIXTURES_JSON": "${{ secrets.STAGING_FIXTURES_JSON }}"
+              }
+            },
+            {
+              "name": "Deploy exact staging backend source without database migration",
+              "run": "python3 scripts/deploy_render.py",
+              "env": {
+                "RENDER_RECEIPT_PATH": "${{ runner.temp }}/render/record.json",
+                "RENDER_API_KEY": "${{ secrets.STAGING_RENDER_API_KEY }}",
+                "RENDER_SERVICE_ID": "${{ secrets.STAGING_RENDER_SERVICE_ID }}"
+              }
+            },
+            {
+              "name": "Verify authenticated synthetic workflows, storage and actual inference where applicable",
+              "run": "python3 scripts/release/hosted_suite.py",
+              "env": {
+                "RENDER_API_KEY": "${{ secrets.STAGING_RENDER_API_KEY }}",
+                "RENDER_SERVICE_ID": "${{ secrets.STAGING_RENDER_SERVICE_ID }}",
+                "VERCEL_TOKEN": "${{ secrets.STAGING_VERCEL_TOKEN }}",
+                "VERCEL_ORG_ID": "${{ secrets.STAGING_VERCEL_ORG_ID }}",
+                "VERCEL_PROJECT_ID": "${{ secrets.STAGING_VERCEL_PROJECT_ID }}",
+                "VERCEL_AUTOMATION_BYPASS_SECRET": "${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}",
+                "STAGING_FIXTURES_JSON": "${{ secrets.STAGING_FIXTURES_JSON }}"
+              }
+            },
+            {
+              "name": "Capture provider identity and real hosted probes",
+              "run": "python3 scripts/release/hosted.py stage --evidence \"$RUNNER_TEMP/technical/record.json\" --render-receipt \"$RUNNER_TEMP/render/record.json\" --output \"$RUNNER_TEMP/staging/record.json\"",
+              "env": {
+                "RENDER_API_KEY": "${{ secrets.STAGING_RENDER_API_KEY }}",
+                "RENDER_SERVICE_ID": "${{ secrets.STAGING_RENDER_SERVICE_ID }}",
+                "VERCEL_TOKEN": "${{ secrets.STAGING_VERCEL_TOKEN }}",
+                "VERCEL_ORG_ID": "${{ secrets.STAGING_VERCEL_ORG_ID }}",
+                "VERCEL_PROJECT_ID": "${{ secrets.STAGING_VERCEL_PROJECT_ID }}",
+                "VERCEL_AUTOMATION_BYPASS_SECRET": "${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}",
+                "STAGING_FIXTURES_JSON": "${{ secrets.STAGING_FIXTURES_JSON }}"
+              }
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "with": {
+                "name": "staging-verification",
+                "path": "${{ runner.temp }}/staging/record.json",
+                "retention-days": 7,
+                "if-no-files-found": "error"
+              }
+            },
+            {
+              "name": "Report outstanding acceptance honestly",
+              "run": "python3 -c 'import json,os; from pathlib import Path; r=json.loads((Path(os.environ[\"RUNNER_TEMP\"])/\"staging/record.json\").read_text()); print(\"Hosted qualification:\",r[\"status\"]); print(json.dumps(r[\"checks\"],indent=2))'"
+            }
+          ],
+          "env": {
+            "GH_TOKEN": "${{ github.token }}"
+          }
+        }
+      }
+    },
+    {
+      "file": "release.yml",
+      "name": "Approved release artifacts",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "application": {
+              "description": "Application to package independently",
+              "type": "choice",
+              "options": [
+                "frontend",
+                "backend"
+              ],
+              "required": true
+            },
+            "authorization": {
+              "description": "Type approved after reviewing release gates",
+              "required": true
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "checks": "read"
+      },
+      "concurrency": {
+        "group": "${{ github.workflow }}-${{ github.ref }}",
+        "cancel-in-progress": false
+      },
+      "jobs": {
+        "release-artifacts": {
+          "if": "${{ always() && true && (inputs.authorization == 'approved') }}",
+          "runs-on": "ubuntu-latest",
+          "steps": [
+            {
+              "name": "Verify GitHub-hosted execution and actual visibility",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "EXPECTED_PRIVATE": "${{ github.event.repository.private }}"
+              },
+              "run": "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }"
+            },
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false,
+                "ref": "${{ github.sha }}"
+              }
+            },
+            {
+              "name": "Require successful verification for the selected revision",
+              "uses": "actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b",
+              "with": {
+                "script": "const checks = await github.paginate(github.rest.checks.listForRef, {\n  ...context.repo, ref: context.sha, per_page: 100\n});\nfor (const name of ['verify', 'publication-hygiene']) {\n  const check = checks.filter(item => item.name === name).sort((a, b) => b.id - a.id)[0];\n  if (!check || check.conclusion !== 'success') core.setFailed(`Required successful check missing: ${name}`);\n}\n"
+              }
+            },
+            {
+              "name": "Package selected application",
+              "env": {
+                "APPLICATION": "${{ inputs.application }}"
+              },
+              "run": "docker build -t \"portal-${APPLICATION}:${GITHUB_SHA}\" \"./onesa-company-portal-${APPLICATION}\"\ndocker save \"portal-${APPLICATION}:${GITHUB_SHA}\" | gzip > portal-images.tar.gz\n"
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "with": {
+                "name": "approved-container-images",
+                "path": "portal-images.tar.gz",
+                "retention-days": 3
+              }
+            }
+          ],
+          "timeout-minutes": 45
+        }
+      }
+    },
+    {
+      "file": "repair-hosting.yml",
+      "name": "Repair existing hosting configuration",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "portal_action": {
+              "description": "Targeted Portal database role operation (never deploys)",
+              "type": "choice",
+              "default": "inspect-role",
+              "options": [
+                "inspect-role",
+                "inspect-confirmed-target",
+                "initialize-confirmed-target",
+                "repair-role",
+                "repair-layout",
+                "repair-staging-layout"
+              ]
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read"
+      },
+      "concurrency": {
+        "group": "portal-database-role-repair",
+        "cancel-in-progress": false
+      },
+      "jobs": {
+        "inspect": {
+          "if": "${{ github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && inputs.portal_action != 'repair-staging-layout' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')))) }}",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 10,
+          "env": {
+            "RENDER_API_KEY": "${{ secrets.RENDER_API_KEY }}",
+            "RENDER_BACKEND_SERVICE_ID": "${{ secrets.RENDER_BACKEND_SERVICE_ID }}",
+            "PORTAL_MIGRATION_DATABASE_URL": "${{ secrets.PORTAL_MIGRATION_DATABASE_URL }}"
+          },
+          "steps": [
+            {
+              "name": "Verify GitHub-hosted execution and actual visibility",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "EXPECTED_PRIVATE": "${{ github.event.repository.private }}"
+              },
+              "run": "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n"
+            },
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false
+              }
+            },
+            {
+              "uses": "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "with": {
+                "node-version": "24"
+              }
+            },
+            {
+              "name": "Require successful checks before database changes",
+              "if": "inputs.portal_action == 'repair-role' || inputs.portal_action == 'initialize-confirmed-target'",
+              "uses": "actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b",
+              "with": {
+                "script": "const allowed = '${{ inputs.portal_action }}' === 'initialize-confirmed-target'\n  ? ['refs/heads/audit/portal-master-acceptance']\n  : ['refs/heads/main', 'refs/heads/fix/render-runtime-repair'];\nif (!allowed.includes(context.ref)) throw new Error('Approved Portal operator branch required');\nconst {owner, repo} = context.repo;\nfor (const workflow_id of ['verify.yml', 'repository-hygiene.yml']) {\n  const runs = await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id, head_sha: context.sha, event: 'push', per_page: 20});\n  const run = runs.data.workflow_runs[0];\n  if (!run || run.status !== 'completed' || run.conclusion !== 'success') throw new Error(`${workflow_id} must pass for this repair revision`);\n}\n"
+              }
+            },
+            {
+              "run": "npm ci",
+              "working-directory": "onesa-company-portal-backend"
+            },
+            {
+              "name": "Inspect identified Portal schema and role without revealing credentials",
+              "if": "inputs.portal_action == 'inspect-role'",
+              "working-directory": "onesa-company-portal-backend",
+              "run": "node --import tsx src/services/render-role-repair.ts"
+            },
+            {
+              "name": "Inspect the owner-confirmed alternate Portal target without changing databases",
+              "if": "inputs.portal_action == 'inspect-confirmed-target'",
+              "working-directory": "onesa-company-portal-backend",
+              "run": "node --import tsx src/services/render-role-repair.ts --inspect-confirmed-target"
+            },
+            {
+              "name": "Provision and verify a restricted role then save only the API runtime URL",
+              "if": "inputs.portal_action == 'repair-role'",
+              "working-directory": "onesa-company-portal-backend",
+              "run": "node --import tsx src/services/render-role-repair.ts --apply"
+            },
+            {
+              "name": "Initialize only the confirmed empty database; leave Render runtime untouched",
+              "if": "inputs.portal_action == 'initialize-confirmed-target'",
+              "working-directory": "onesa-company-portal-backend",
+              "env": {
+                "PORTAL_APP_DB_PASSWORD": "${{ secrets.PORTAL_APP_DB_PASSWORD }}"
+              },
+              "run": "node --import tsx src/services/render-role-repair.ts --initialize-confirmed-target"
+            },
+            {
+              "uses": "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+              "if": "inputs.portal_action == 'repair-layout'",
+              "with": {
+                "python-version": "3.11"
+              }
+            },
+            {
+              "name": "Repair existing main hosting layout without deploying",
+              "if": "inputs.portal_action == 'repair-layout'",
+              "env": {
+                "RENDER_WORKER_SERVICE_ID": "${{ secrets.RENDER_WORKER_SERVICE_ID }}",
+                "VERCEL_TOKEN": "${{ secrets.VERCEL_TOKEN }}",
+                "VERCEL_ORG_ID": "${{ secrets.VERCEL_ORG_ID }}",
+                "VERCEL_PROJECT_ID": "${{ secrets.VERCEL_PROJECT_ID }}"
+              },
+              "run": "python scripts/repair_hosting.py\npython scripts/inspect_hosting.py\n"
+            }
+          ]
+        },
+        "staging-layout": {
+          "if": "${{ github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && inputs.portal_action == 'repair-staging-layout')) }}",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 10,
+          "steps": [
+            {
+              "name": "Verify GitHub-hosted execution and actual visibility",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "EXPECTED_PRIVATE": "${{ github.event.repository.private }}"
+              },
+              "run": "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n"
+            },
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false
+              }
+            },
+            {
+              "uses": "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+              "with": {
+                "python-version": "3.11"
+              }
+            },
+            {
+              "name": "Require exact-source staging audit checks",
+              "uses": "actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b",
+              "with": {
+                "script": "if (context.ref !== 'refs/heads/audit/portal-master-acceptance') throw new Error('Identified Portal audit branch required');\nconst {owner, repo} = context.repo;\nfor (const workflow_id of ['verify.yml', 'repository-hygiene.yml']) {\n  const runs = await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id, head_sha: context.sha, event: 'push', per_page: 20});\n  const run = runs.data.workflow_runs[0];\n  if (!run || run.status !== 'completed' || run.conclusion !== 'success') throw new Error(`${workflow_id} must pass on this staging repair revision`);\n}\n"
+              }
+            },
+            {
+              "name": "Repair only the existing free staging API layout without deploying",
+              "env": {
+                "PORTAL_REPAIR_SCOPE": "staging",
+                "RENDER_API_KEY": "${{ secrets.RENDER_API_KEY }}"
+              },
+              "run": "python scripts/repair_hosting.py"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "repository-hygiene.yml",
+      "name": "Repository hygiene",
+      "trigger": {
+        "push": {
+          "branches": [
+            "main",
+            "staging",
+            "audit/portal-master-acceptance"
+          ]
+        },
+        "pull_request": {
+          "branches": [
+            "main",
+            "staging"
+          ]
+        },
+        "workflow_dispatch": null
+      },
+      "permissions": {
+        "contents": "read"
+      },
+      "concurrency": {
+        "group": "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}",
+        "cancel-in-progress": "${{ github.event_name == 'pull_request' }}"
+      },
+      "jobs": {
+        "publication-hygiene": {
+          "if": "${{ always() && true }}",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 45,
+          "steps": [
+            {
+              "name": "Verify GitHub-hosted execution and actual visibility",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "EXPECTED_PRIVATE": "${{ github.event.repository.private }}"
+              },
+              "run": "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n"
+            },
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false,
+                "fetch-depth": 0
+              }
+            },
+            {
+              "uses": "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+              "with": {
+                "python-version": "3.11"
+              }
+            },
+            {
+              "run": "python scripts/repository_hygiene.py --history"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "verify.yml",
+      "name": "Portal verification",
+      "trigger": {
+        "push": {
+          "branches": [
+            "main",
+            "staging",
+            "audit/portal-master-acceptance"
+          ]
+        },
+        "pull_request": {
+          "branches": [
+            "main",
+            "staging"
+          ]
+        },
+        "workflow_dispatch": null
+      },
+      "permissions": {
+        "contents": "read"
+      },
+      "concurrency": {
+        "group": "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}",
+        "cancel-in-progress": "${{ github.event_name == 'pull_request' }}"
+      },
+      "jobs": {
+        "verify": {
+          "if": "${{ needs.changes.result == 'success' && needs.changes.outputs.verify == 'true' }}",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 45,
+          "services": {
+            "postgres": {
+              "image": "postgres:17-alpine",
+              "env": {
+                "POSTGRES_DB": "onesa_portal_test",
+                "POSTGRES_USER": "portal_test",
+                "POSTGRES_PASSWORD": "ci-only-test-password"
+              },
+              "ports": [
+                "5432/tcp"
+              ],
+              "options": "--health-cmd \"pg_isready -U portal_test\" --health-interval 5s --health-timeout 3s --health-retries 15"
+            }
+          },
+          "env": {
+            "SESSION_KEY": "ci-placeholder-test-key-do-not-use-in-production-123456",
+            "PUBLIC_ORIGIN": "http://localhost:3300",
+            "BACKEND_URL": "http://127.0.0.1:8300",
+            "NODE_ENV": "test",
+            "STORAGE_DIR": "${{ github.workspace }}/.test-storage",
+            "REVIEW_BASE_SHA": "${{ github.event.pull_request.base.sha }}",
+            "REVIEWDOG_GITHUB_API_TOKEN": "${{ github.token }}"
+          },
+          "steps": [
+            {
+              "name": "Verify GitHub-hosted execution and actual visibility",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "EXPECTED_PRIVATE": "${{ github.event.repository.private }}"
+              },
+              "run": "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n"
+            },
+            {
+              "name": "Configure disposable database connection",
+              "env": {
+                "POSTGRES_PORT": "${{ job.services.postgres.ports['5432'] }}"
+              },
+              "run": "database_url=\"postgresql://portal_test:ci-only-test-password@127.0.0.1:${POSTGRES_PORT}/onesa_portal_test\"\nprintf 'DATABASE_URL=%s\\nTEST_DATABASE_URL=%s\\n' \"$database_url\" \"$database_url\" >> \"$GITHUB_ENV\"\n"
+            },
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false
+              }
+            },
+            {
+              "name": "Install checksum-locked annotation tool",
+              "run": "python3 scripts/ci/install_tools.py --only reviewdog"
+            },
+            {
+              "uses": "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "with": {
+                "node-version": "24",
+                "cache": "npm",
+                "cache-dependency-path": "onesa-company-portal-backend/package-lock.json\nonesa-company-portal-frontend/package-lock.json"
+              }
+            },
+            {
+              "name": "Release requirement: qualification failure-path tests",
+              "run": "python3 -m unittest discover -s scripts/release -p 'test_*.py'"
+            },
+            {
+              "run": "npm ci",
+              "working-directory": "onesa-company-portal-backend"
+            },
+            {
+              "run": "npm ci",
+              "working-directory": "onesa-company-portal-frontend"
+            },
+            {
+              "run": "python3 scripts/check-contracts.py && python3 scripts/test-contract-break.py"
+            },
+            {
+              "run": "python3 -m unittest discover -s scripts -p test_inspect_hosting.py"
+            },
+            {
+              "run": "python3 -m unittest discover -s scripts/runner -p 'test_*.py'"
+            },
+            {
+              "run": "python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src tests && python3 ../scripts/ci/analyze.py tsc -- node_modules/.bin/tsc --pretty false && npm test && npm audit --audit-level=high",
+              "working-directory": "onesa-company-portal-backend"
+            },
+            {
+              "run": "python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src && python3 ../scripts/ci/analyze.py tsc -- node_modules/.bin/tsc --noEmit --pretty false && npm run test:domains && npm run build && npm audit --audit-level=high",
+              "working-directory": "onesa-company-portal-frontend"
+            },
+            {
+              "run": "npm run documents",
+              "working-directory": "onesa-company-portal-backend"
+            },
+            {
+              "run": "npm run seed",
+              "working-directory": "onesa-company-portal-backend"
+            },
+            {
+              "name": "Install browsers and OS dependencies on GitHub-hosted Ubuntu",
+              "run": "npx playwright install --with-deps chromium firefox webkit",
+              "working-directory": "onesa-company-portal-frontend"
+            },
+            {
+              "run": "cleanup() { kill \"$backend_pid\" \"$frontend_pid\" 2>/dev/null || true; wait \"$backend_pid\" \"$frontend_pid\" 2>/dev/null || true; }\nnode onesa-company-portal-backend/dist/src/server.js > \"$RUNNER_TEMP/portal-backend.log\" 2>&1 &\nbackend_pid=$!\n(cd onesa-company-portal-frontend && npm start) > \"$RUNNER_TEMP/portal-frontend.log\" 2>&1 &\nfrontend_pid=$!\ntrap cleanup EXIT\nfor attempt in $(seq 1 30); do\n  if curl -fsS http://localhost:3300/en > /dev/null; then break; fi\n  echo \"Waiting for frontend: $attempt\"\n  sleep 1\ndone\ncurl -fsS http://localhost:3300/en > /dev/null\nnpm --prefix onesa-company-portal-frontend run test:e2e\n"
+            },
+            {
+              "name": "Verify production hostname boundaries and brand metadata",
+              "working-directory": "onesa-company-portal-frontend",
+              "run": "NODE_ENV=production SITE_URL=https://onesa.eu PORTAL_URL=https://portal.onesa.eu PUBLIC_ORIGIN=https://portal.onesa.eu BACKEND_URL=http://127.0.0.1:8362 node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3362 > \"$RUNNER_TEMP/portal-domain-frontend.log\" 2>&1 &\ndomain_frontend_pid=$!\ntrap 'kill \"$domain_frontend_pid\" 2>/dev/null || true' EXIT\nfor attempt in $(seq 1 30); do\n  if curl -s http://127.0.0.1:3362/ > /dev/null; then break; fi\n  echo \"Waiting for domain frontend: $attempt\"\n  sleep 1\ndone\nnpm run test:domain-http\n"
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "if": "always()",
+              "with": {
+                "retention-days": 3,
+                "name": "verification-evidence",
+                "path": "onesa-company-portal-frontend/test-results\nonesa-company-portal-backend/openapi/openapi.json\n"
+              }
+            }
+          ],
+          "permissions": {
+            "contents": "read",
+            "pull-requests": "read"
+          },
+          "needs": [
+            "changes"
+          ]
+        },
+        "image-security": {
+          "if": "${{ needs.changes.result == 'success' && needs.changes.outputs.containers == 'true' }}",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 25,
+          "strategy": {
+            "fail-fast": false,
+            "matrix": {
+              "application": [
+                "onesa-company-portal-backend",
+                "onesa-company-portal-frontend"
+              ]
+            }
+          },
+          "steps": [
+            {
+              "name": "Verify GitHub-hosted execution and actual visibility",
+              "env": {
+                "GH_TOKEN": "${{ github.token }}",
+                "EXPECTED_PRIVATE": "${{ github.event.repository.private }}"
+              },
+              "run": "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n"
+            },
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false
+              }
+            },
+            {
+              "name": "Build application runtime",
+              "run": "docker build -t onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }} ./${{ matrix.application }}"
+            },
+            {
+              "name": "Release requirement: default backend startup and database readiness",
+              "if": "matrix.application == 'onesa-company-portal-backend'",
+              "env": {
+                "APPLICATION": "${{ matrix.application }}"
+              },
+              "run": "python3 scripts/startup_smoke.py \"onesa-security-candidate:$APPLICATION-$GITHUB_RUN_ID\""
+            },
+            {
+              "name": "Scan full runtime, including unfixed vendor advisories",
+              "run": "mkdir -p data/security\nchmod 700 data/security\ndocker save onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }} -o data/security/runtime.tar\ndocker run --rm --user \"$(id -u):$(id -g)\" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v \"$PWD/data/security:/reports\" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar\nchmod 600 data/security/runtime.json\npython3 scripts/release/image_gate.py data/security/runtime.json\n"
+            },
+            {
+              "name": "Release requirement: record tested runtime digest",
+              "run": "python3 scripts/release/evidence.py manifest --image \"onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }}\" --output \"$RUNNER_TEMP/runtime/record.json\""
+            },
+            {
+              "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              "with": {
+                "name": "runtime-${{ matrix.application }}",
+                "path": "${{ runner.temp }}/runtime/record.json",
+                "retention-days": 7,
+                "if-no-files-found": "error"
+              }
+            },
+            {
+              "name": "Remove restricted scan output",
+              "if": "always()",
+              "run": "rm -rf -- \"$GITHUB_WORKSPACE/data/security\""
+            }
+          ],
+          "needs": [
+            "changes"
+          ]
+        },
+        "pipeline-security": {
+          "uses": "./.github/workflows/_pipeline-review.yml",
+          "permissions": {
+            "contents": "read"
+          }
+        },
+        "changes": {
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 5,
+          "outputs": {
+            "backend": "${{ steps.paths.outputs.backend }}",
+            "frontend": "${{ steps.paths.outputs.frontend }}",
+            "browser": "${{ steps.paths.outputs.browser }}",
+            "documentation": "${{ steps.paths.outputs.documentation }}",
+            "containers": "${{ steps.paths.outputs.containers }}",
+            "tls": "${{ steps.paths.outputs.tls }}",
+            "edge": "${{ steps.paths.outputs.edge }}",
+            "applications": "${{ steps.paths.outputs.applications }}",
+            "verify": "${{ steps.paths.outputs.verify }}"
+          },
+          "steps": [
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false,
+                "fetch-depth": 0
+              }
+            },
+            {
+              "id": "paths",
+              "env": {
+                "BASE_SHA": "${{ github.event.pull_request.base.sha || github.event.before }}"
+              },
+              "run": "python3 scripts/ci/paths.py"
+            }
+          ]
+        },
+        "ci-summary": {
+          "needs": [
+            "changes",
+            "pipeline-security",
+            "verify",
+            "image-security"
+          ],
+          "if": "always()",
+          "runs-on": "ubuntu-latest",
+          "timeout-minutes": 5,
+          "steps": [
+            {
+              "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+              "with": {
+                "persist-credentials": false
+              }
+            },
+            {
+              "name": "Release requirement: required checks summary",
+              "env": {
+                "CI_SELECTION": "${{ toJSON(needs.changes.outputs) }}",
+                "CI_RESULTS": "${{ toJSON(needs) }}"
+              },
+              "run": "python3 scripts/ci/summary.py"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "authorized_remote_setting_changes": {
+    "dependabot_security_updates": {
+      "enabled": true,
+      "paused": false
+    }
+  }
+}

@@ -1,0 +1,2091 @@
+{
+  "repository": "onesa-company-portal",
+  "observed_at": "2026-10-11",
+  "remote": {
+    "repository": {
+      "private": false,
+      "visibility": "public",
+      "default_branch": "main",
+      "permissions": {
+        "admin": true,
+        "maintain": true,
+        "push": true,
+        "triage": true,
+        "pull": true
+      },
+      "security_and_analysis": {
+        "secret_scanning": {
+          "status": "disabled"
+        },
+        "secret_scanning_push_protection": {
+          "status": "disabled"
+        },
+        "dependabot_security_updates": {
+          "status": "disabled"
+        },
+        "secret_scanning_non_provider_patterns": {
+          "status": "disabled"
+        },
+        "secret_scanning_validity_checks": {
+          "status": "disabled"
+        }
+      }
+    },
+    "/actions/runners": {
+      "total_count": 0,
+      "runners": []
+    },
+    "/actions/permissions/workflow": {
+      "default_workflow_permissions": "write",
+      "can_approve_pull_request_reviews": true
+    },
+    "/actions/secrets": {
+      "names": [
+        "PORTAL_APP_DB_PASSWORD",
+        "PORTAL_MIGRATION_DATABASE_URL",
+        "RENDER_API_KEY",
+        "RENDER_BACKEND_SERVICE_ID",
+        "RENDER_WORKER_SERVICE_ID",
+        "VERCEL_ORG_ID",
+        "VERCEL_PROJECT_ID",
+        "VERCEL_TOKEN"
+      ]
+    },
+    "/vulnerability-alerts": {
+      "enabled": true,
+      "response": "HTTP 204"
+    },
+    "/automated-security-fixes": {
+      "enabled": false,
+      "paused": false
+    },
+    "/dependabot/alerts?state=open&per_page=100": []
+  },
+  "workflows": [
+    {
+      "file": "_local-validation.yml",
+      "name": "Private local validation",
+      "trigger": {
+        "workflow_call": {}
+      },
+      "permissions": {
+        "contents": "read"
+      },
+      "installed_remotely": true,
+      "remote_state": "active",
+      "sample_completed_runs": 0,
+      "sample_failures": 0,
+      "average_elapsed_seconds": null,
+      "jobs": {
+        "verify": {
+          "runner": [
+            "self-hosted",
+            "Linux",
+            "ARM64",
+            "onesa-portal-local"
+          ],
+          "needs": null,
+          "if": "${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}",
+          "permissions": {
+            "contents": "read"
+          },
+          "timeout_minutes": 120,
+          "secrets": [],
+          "commands": [
+            "database_url=\"postgresql://portal_test:ci-only-test-password@127.0.0.1:${POSTGRES_PORT}/onesa_portal_test\"\nprintf 'DATABASE_URL=%s\\nTEST_DATABASE_URL=%s\\n' \"$database_url\" \"$database_url\" >> \"$GITHUB_ENV\"\n",
+            "npm ci",
+            "npm ci",
+            "python3 scripts/check-contracts.py && python3 scripts/test-contract-break.py",
+            "python3 -m unittest discover -s scripts -p test_inspect_hosting.py",
+            "python3 -m unittest discover -s scripts/runner -p 'test_*.py'",
+            "npm run lint && npm run build && npm test && npm audit --audit-level=high",
+            "npm run lint && npm run typecheck && npm run test:domains && npm run build && npm audit --audit-level=high",
+            "npm run documents",
+            "npm run seed",
+            "npx playwright install chromium firefox webkit",
+            "cleanup() { kill \"$backend_pid\" \"$frontend_pid\" 2>/dev/null || true; wait \"$backend_pid\" \"$frontend_pid\" 2>/dev/null || true; }\nnode onesa-company-portal-backend/dist/src/server.js > \"$RUNNER_TEMP/portal-backend.log\" 2>&1 &\nbackend_pid=$!\n(cd onesa-company-portal-frontend && npm start) > \"$RUNNER_TEMP/portal-frontend.log\" 2>&1 &\nfrontend_pid=$!\ntrap cleanup EXIT\nfor attempt in $(seq 1 30); do\n  if curl -fsS http://localhost:3300/en > /dev/null; then break; fi\n  echo \"Waiting for frontend: $attempt\"\n  sleep 1\ndone\ncurl -fsS http://localhost:3300/en > /dev/null\nnpm --prefix onesa-company-portal-frontend run test:e2e\n",
+            "NODE_ENV=production SITE_URL=https://onesa.eu PORTAL_URL=https://portal.onesa.eu PUBLIC_ORIGIN=https://portal.onesa.eu BACKEND_URL=http://127.0.0.1:8362 node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3362 > \"$RUNNER_TEMP/portal-domain-frontend.log\" 2>&1 &\ndomain_frontend_pid=$!\ntrap 'kill \"$domain_frontend_pid\" 2>/dev/null || true' EXIT\nfor attempt in $(seq 1 30); do\n  if curl -s http://127.0.0.1:3362/ > /dev/null; then break; fi\n  echo \"Waiting for domain frontend: $attempt\"\n  sleep 1\ndone\nnpm run test:domain-http\n",
+            "python3 scripts/validate-docs.py && python3 scripts/scan-secrets.py",
+            "docker build -t portal-backend-ci ./onesa-company-portal-backend && docker build -t portal-frontend-ci ./onesa-company-portal-frontend",
+            "python3 scripts/startup_smoke.py portal-backend-ci"
+          ],
+          "environment": null
+        },
+        "image-security": {
+          "runner": [
+            "self-hosted",
+            "Linux",
+            "ARM64",
+            "onesa-portal-local"
+          ],
+          "needs": null,
+          "if": "${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}",
+          "permissions": {
+            "contents": "read"
+          },
+          "timeout_minutes": 120,
+          "secrets": [],
+          "commands": [
+            "docker build -t onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }} ./${{ matrix.application }}",
+            "mkdir -p data/security\nchmod 700 data/security\ndocker save onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }} -o data/security/runtime.tar\ndocker run --rm --user \"$(id -u):$(id -g)\" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v \"$PWD/data/security:/reports\" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar\nchmod 600 data/security/runtime.json\npython3 scripts/release/image_gate.py data/security/runtime.json\n",
+            "rm -rf -- \"$GITHUB_WORKSPACE/data/security\""
+          ],
+          "environment": null
+        },
+        "publication-hygiene": {
+          "runner": [
+            "self-hosted",
+            "Linux",
+            "ARM64",
+            "onesa-portal-local"
+          ],
+          "needs": null,
+          "if": "${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}",
+          "permissions": {
+            "contents": "read"
+          },
+          "timeout_minutes": 120,
+          "secrets": [],
+          "commands": [
+            "python scripts/repository_hygiene.py --history"
+          ],
+          "environment": null
+        },
+        "complete": {
+          "runner": [
+            "self-hosted",
+            "Linux",
+            "ARM64",
+            "onesa-portal-local"
+          ],
+          "needs": [
+            "verify",
+            "image-security",
+            "publication-hygiene"
+          ],
+          "if": "${{ always() && github.event.repository.private == true && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped') }}",
+          "permissions": {
+            "contents": "read"
+          },
+          "timeout_minutes": 120,
+          "secrets": [],
+          "commands": [
+            "echo \"All local validation passed for $GITHUB_SHA on $RUNNER_NAME\" >> \"$GITHUB_STEP_SUMMARY\""
+          ],
+          "environment": null
+        }
+      }
+    },
+    {
+      "file": "deploy.yml",
+      "name": "Deploy from GitHub",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "application": {
+              "description": "Application to deploy after CI passes",
+              "required": true,
+              "default": "both",
+              "type": "choice",
+              "options": [
+                "frontend",
+                "backend",
+                "both"
+              ]
+            },
+            "approval_run": {
+              "description": "Latest exact-commit owner release-review approval run; no JSON fallback",
+              "type": "string",
+              "required": true
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "issues": "read"
+      },
+      "installed_remotely": true,
+      "remote_state": "active",
+      "sample_completed_runs": 0,
+      "sample_failures": 0,
+      "average_elapsed_seconds": null,
+      "jobs": {
+        "verify": {
+          "runner": "ubuntu-latest",
+          "needs": null,
+          "if": "${{ github.event.repository.private == false && ((always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')))) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}",
+          "permissions": {
+            "contents": "read",
+            "actions": "read",
+            "issues": "read"
+          },
+          "timeout_minutes": 45,
+          "secrets": [],
+          "commands": [
+            "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n",
+            "test \"$MIGRATION_VERIFIED\" = true || { echo \"Automated migration has not been verified\"; exit 1; }\npython3 scripts/release/evidence.py promote --output \"$RUNNER_TEMP/promotion/record.json\""
+          ],
+          "environment": null
+        },
+        "frontend": {
+          "runner": "ubuntu-latest",
+          "needs": [
+            "verify",
+            "backend",
+            "worker"
+          ],
+          "if": "${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (always() && needs.verify.result == 'success' && (inputs.application == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success' && needs.worker.result == 'success')))) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}",
+          "permissions": {
+            "contents": "read",
+            "actions": "read",
+            "issues": "read"
+          },
+          "timeout_minutes": 40,
+          "secrets": [
+            "RELEASE_BUILD_KEY",
+            "STAGING_RENDER_API_KEY",
+            "STAGING_VERCEL_AUTOMATION_BYPASS_SECRET",
+            "STAGING_VERCEL_ORG_ID",
+            "STAGING_VERCEL_PROJECT_ID",
+            "STAGING_VERCEL_TOKEN",
+            "VERCEL_ORG_ID",
+            "VERCEL_PROJECT_ID",
+            "VERCEL_TOKEN"
+          ],
+          "commands": [
+            "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n",
+            "missing_configuration=0\nfor name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do\n  if [ -z \"${!name}\" ]; then\n    echo \"::error::Missing GitHub Actions secret: $name\"\n    missing_configuration=1\n  fi\ndone\nexit \"$missing_configuration\"\n",
+            "python3 scripts/release/evidence.py promote --output \"$RUNNER_TEMP/promotion/record.json\"\npython3 scripts/release/hosted.py recheck --evidence \"$RUNNER_TEMP/promotion/record.json\"",
+            "npm install --global vercel@63.1.0",
+            "vercel pull --yes --environment=production --token=\"$VERCEL_TOKEN\"",
+            "python3 scripts/release/evidence.py fetch-build --output \"$RUNNER_TEMP/reviewed-build/record.json\"\nnode scripts/release/bundle.mjs unpack \"$RUNNER_TEMP/reviewed-build\"",
+            "vercel deploy --prebuilt --prod --token=\"$VERCEL_TOKEN\" --meta githubCommitRef=main --meta githubCommitSha=\"$GITHUB_SHA\" > /tmp/vercel-url.txt",
+            "cat /tmp/vercel-url.txt >> \"$GITHUB_STEP_SUMMARY\"",
+            "python3 scripts/release/hosted.py frontend-receipt --environment Production --output \"$RUNNER_TEMP/frontend/record.json\"",
+            "rm -rf -- \"$GITHUB_WORKSPACE/.vercel\" \"$RUNNER_TEMP/reviewed-build\""
+          ],
+          "environment": "Production"
+        },
+        "backend": {
+          "runner": "ubuntu-latest",
+          "needs": "verify",
+          "if": "${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application == 'both')) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}",
+          "permissions": {
+            "contents": "read",
+            "actions": "read",
+            "issues": "read"
+          },
+          "timeout_minutes": 35,
+          "secrets": [
+            "RENDER_API_KEY",
+            "RENDER_BACKEND_SERVICE_ID",
+            "STAGING_VERCEL_AUTOMATION_BYPASS_SECRET",
+            "STAGING_VERCEL_ORG_ID",
+            "STAGING_VERCEL_PROJECT_ID",
+            "STAGING_VERCEL_TOKEN"
+          ],
+          "commands": [
+            "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n",
+            "python3 scripts/release/evidence.py promote --output \"$RUNNER_TEMP/promotion/record.json\"\npython3 scripts/release/hosted.py recheck --evidence \"$RUNNER_TEMP/promotion/record.json\"",
+            "python scripts/deploy_render.py"
+          ],
+          "environment": "Production"
+        },
+        "worker": {
+          "runner": "ubuntu-latest",
+          "needs": [
+            "verify",
+            "backend"
+          ],
+          "if": "${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application == 'both')) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}",
+          "permissions": {
+            "contents": "read",
+            "actions": "read",
+            "issues": "read"
+          },
+          "timeout_minutes": 35,
+          "secrets": [
+            "RENDER_WORKER_SERVICE_ID",
+            "STAGING_RENDER_API_KEY",
+            "STAGING_VERCEL_AUTOMATION_BYPASS_SECRET",
+            "STAGING_VERCEL_ORG_ID",
+            "STAGING_VERCEL_PROJECT_ID",
+            "STAGING_VERCEL_TOKEN"
+          ],
+          "commands": [
+            "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n",
+            "python3 scripts/release/evidence.py promote --output \"$RUNNER_TEMP/promotion/record.json\"\npython3 scripts/release/hosted.py recheck --evidence \"$RUNNER_TEMP/promotion/record.json\"",
+            "python scripts/deploy_render.py"
+          ],
+          "environment": "Production"
+        },
+        "post-deployment": {
+          "runner": "ubuntu-latest",
+          "needs": [
+            "verify",
+            "frontend",
+            "backend",
+            "worker"
+          ],
+          "if": "${{ github.event.repository.private == false && ((always() && (inputs.approval_run != '' && needs.verify.result == 'success' && (inputs.application == 'frontend' && needs.frontend.result == 'success' || inputs.application == 'backend' && needs.backend.result == 'success' && needs.worker.result == 'success' || inputs.application == 'both' && needs.frontend.result == 'success' && needs.backend.result == 'success' && needs.worker.result == 'success'))) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}",
+          "permissions": {
+            "contents": "read",
+            "actions": "read",
+            "issues": "read"
+          },
+          "timeout_minutes": 15,
+          "secrets": [
+            "PRODUCTION_FIXTURES_JSON",
+            "RENDER_BACKEND_SERVICE_ID",
+            "RENDER_WORKER_SERVICE_ID",
+            "STAGING_RENDER_API_KEY",
+            "STAGING_VERCEL_AUTOMATION_BYPASS_SECRET",
+            "STAGING_VERCEL_ORG_ID",
+            "STAGING_VERCEL_PROJECT_ID",
+            "STAGING_VERCEL_TOKEN"
+          ],
+          "commands": [
+            "python3 scripts/release/evidence.py promote --output \"$RUNNER_TEMP/promotion/record.json\"",
+            "python3 scripts/release/hosted.py production --output \"$RUNNER_TEMP/post/record.json\"",
+            "python3 -c 'import json,os; from pathlib import Path; r=json.loads((Path(os.environ[\"RUNNER_TEMP\"])/\"post/record.json\").read_text()); raise SystemExit(0 if r[\"status\"] == \"PASS\" else \"Hosted acceptance incomplete; follow approved rollback runbook\")'"
+          ],
+          "environment": "Production"
+        }
+      }
+    },
+    {
+      "file": "free-authorization.yml",
+      "name": "Free release authorization",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "qualification_run": {
+              "description": "Exact free-qualification run ID",
+              "type": "string",
+              "required": true
+            },
+            "evidence_digest": {
+              "description": "SHA256 printed by the reviewed qualification run",
+              "type": "string",
+              "required": true
+            },
+            "review_issue": {
+              "description": "Open owner-authored issue binding candidate, digest and reviews",
+              "type": "string",
+              "required": true
+            },
+            "decision": {
+              "description": "Authorize external owner handoff or revoke older approval",
+              "type": "choice",
+              "options": [
+                "revoke",
+                "approve"
+              ],
+              "default": "revoke",
+              "required": true
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "issues": "read",
+        "pull-requests": "read"
+      },
+      "installed_remotely": false,
+      "remote_state": null,
+      "sample_completed_runs": 0,
+      "sample_failures": 0,
+      "average_elapsed_seconds": null,
+      "jobs": {
+        "authorization": {
+          "runner": "ubuntu-latest",
+          "needs": null,
+          "if": "github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/main'",
+          "permissions": {
+            "contents": "read",
+            "actions": "read",
+            "issues": "read",
+            "pull-requests": "read"
+          },
+          "timeout_minutes": 15,
+          "secrets": [],
+          "commands": [
+            "python3 scripts/release/free_gate.py authorize --output \"$RUNNER_TEMP/free-release/record.json\""
+          ],
+          "environment": null
+        }
+      }
+    },
+    {
+      "file": "free-qualification.yml",
+      "name": "Free release qualification",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "staging_run": {
+              "description": "Successful exact-commit isolated staging run",
+              "type": "string",
+              "required": true
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "issues": "read",
+        "pull-requests": "read"
+      },
+      "installed_remotely": false,
+      "remote_state": null,
+      "sample_completed_runs": 0,
+      "sample_failures": 0,
+      "average_elapsed_seconds": null,
+      "jobs": {
+        "qualification": {
+          "runner": "ubuntu-latest",
+          "needs": null,
+          "if": "github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/main'",
+          "permissions": {
+            "contents": "read",
+            "actions": "read",
+            "issues": "read",
+            "pull-requests": "read"
+          },
+          "timeout_minutes": 15,
+          "secrets": [],
+          "commands": [
+            "python3 scripts/release/free_gate.py qualify --output \"$RUNNER_TEMP/free-release/record.json\""
+          ],
+          "environment": null
+        }
+      }
+    },
+    {
+      "file": "inspect-hosting.yml",
+      "name": "Inspect hosting configuration",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "portal_scope": {
+              "description": "Read only the production targets or the owner-identified staging targets",
+              "type": "choice",
+              "default": "production",
+              "options": [
+                "production",
+                "staging"
+              ]
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read"
+      },
+      "installed_remotely": true,
+      "remote_state": "active",
+      "sample_completed_runs": 7,
+      "sample_failures": 1,
+      "average_elapsed_seconds": 226.1,
+      "jobs": {
+        "inspect": {
+          "runner": "ubuntu-latest",
+          "needs": null,
+          "if": "${{ github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')))) }}",
+          "permissions": {
+            "contents": "read"
+          },
+          "timeout_minutes": 10,
+          "secrets": [
+            "RENDER_API_KEY",
+            "RENDER_BACKEND_SERVICE_ID",
+            "RENDER_WORKER_SERVICE_ID",
+            "VERCEL_ORG_ID",
+            "VERCEL_PROJECT_ID",
+            "VERCEL_TOKEN"
+          ],
+          "commands": [
+            "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n",
+            "python scripts/inspect_hosting.py"
+          ],
+          "environment": null
+        }
+      }
+    },
+    {
+      "file": "release-build.yml",
+      "name": "Reviewed production frontend build",
+      "trigger": {
+        "workflow_dispatch": {}
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read"
+      },
+      "installed_remotely": false,
+      "remote_state": null,
+      "sample_completed_runs": 0,
+      "sample_failures": 0,
+      "average_elapsed_seconds": null,
+      "jobs": {
+        "build": {
+          "runner": "ubuntu-latest",
+          "needs": null,
+          "if": "${{ github.event.repository.private == false && (always() && true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}",
+          "permissions": {
+            "contents": "read",
+            "actions": "read"
+          },
+          "timeout_minutes": 40,
+          "secrets": [
+            "RELEASE_BUILD_KEY",
+            "VERCEL_ORG_ID",
+            "VERCEL_PROJECT_ID",
+            "VERCEL_TOKEN"
+          ],
+          "commands": [
+            "python3 scripts/release/evidence.py build-preflight --output \"$RUNNER_TEMP/build-preflight/record.json\"",
+            "npm install --global vercel@63.1.0\nvercel pull --yes --environment=production --token=\"$VERCEL_TOKEN\"\nvercel build --prod --token=\"$VERCEL_TOKEN\"",
+            "git diff --quiet HEAD --\nSOURCE_SHA256=$(python3 scripts/release/evidence.py source-hash) node scripts/release/bundle.mjs pack \"$RUNNER_TEMP/reviewed-build\"",
+            "rm -rf -- \"$GITHUB_WORKSPACE/.vercel\" \"$RUNNER_TEMP/reviewed-build\""
+          ],
+          "environment": "Production"
+        }
+      }
+    },
+    {
+      "file": "release-qualification.yml",
+      "name": "Release qualification evidence",
+      "trigger": {
+        "workflow_run": {
+          "workflows": [
+            "Portal verification",
+            "Repository hygiene",
+            "Reviewed production frontend build",
+            "Approved staging qualification"
+          ],
+          "types": [
+            "completed"
+          ],
+          "branches": [
+            "main",
+            "audit/portal-master-acceptance"
+          ]
+        },
+        "workflow_dispatch": {
+          "inputs": {
+            "staging_run": {
+              "description": "Optional exact-candidate successful release-staging run ID",
+              "type": "string",
+              "required": false
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read"
+      },
+      "installed_remotely": false,
+      "remote_state": null,
+      "sample_completed_runs": 0,
+      "sample_failures": 0,
+      "average_elapsed_seconds": null,
+      "jobs": {
+        "qualify": {
+          "runner": "ubuntu-latest",
+          "needs": null,
+          "if": "always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name == 'workflow_dispatch' || ((github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_sha == github.sha)))",
+          "permissions": {
+            "contents": "read",
+            "actions": "read"
+          },
+          "timeout_minutes": 10,
+          "secrets": [],
+          "commands": [
+            "python3 scripts/release/evidence.py generate --output \"$RUNNER_TEMP/qualification/record.json\""
+          ],
+          "environment": null
+        }
+      }
+    },
+    {
+      "file": "release-review.yml",
+      "name": "Owner release review",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "qualification_run": {
+              "description": "Exact qualification run reviewed",
+              "type": "string",
+              "required": true
+            },
+            "evidence_digest": {
+              "description": "Canonical JSON SHA256 from qualification summary",
+              "type": "string",
+              "required": true
+            },
+            "decision": {
+              "description": "Approve production or revoke a prior approval",
+              "type": "choice",
+              "options": [
+                "revoke",
+                "approve"
+              ],
+              "default": "revoke",
+              "required": true
+            },
+            "operations_review": {
+              "description": "Owner reviewed monitoring, alerts, recovery, limits, worker, rollback evidence",
+              "type": "choice",
+              "options": [
+                "blocked",
+                "approved"
+              ],
+              "default": "blocked",
+              "required": true
+            },
+            "legal_review": {
+              "description": "Owner explicitly approves candidate content/legal/business version",
+              "type": "choice",
+              "options": [
+                "blocked",
+                "approved"
+              ],
+              "default": "blocked",
+              "required": true
+            },
+            "review_url": {
+              "description": "Open owner-authored repository issue/PR documenting reviewed evidence",
+              "type": "string",
+              "required": true
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "issues": "read"
+      },
+      "installed_remotely": false,
+      "remote_state": null,
+      "sample_completed_runs": 0,
+      "sample_failures": 0,
+      "average_elapsed_seconds": null,
+      "jobs": {
+        "review": {
+          "runner": "ubuntu-latest",
+          "needs": null,
+          "if": "always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main')",
+          "permissions": {
+            "contents": "read",
+            "actions": "read",
+            "issues": "read"
+          },
+          "timeout_minutes": 10,
+          "secrets": [],
+          "commands": [
+            "python3 scripts/release/evidence.py review --output \"$RUNNER_TEMP/approval/record.json\""
+          ],
+          "environment": null
+        }
+      }
+    },
+    {
+      "file": "release-staging.yml",
+      "name": "Approved staging qualification",
+      "trigger": {
+        "workflow_dispatch": {}
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read"
+      },
+      "installed_remotely": false,
+      "remote_state": null,
+      "sample_completed_runs": 0,
+      "sample_failures": 0,
+      "average_elapsed_seconds": null,
+      "jobs": {
+        "staging": {
+          "runner": "ubuntu-latest",
+          "needs": null,
+          "if": "always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/audit/portal-master-acceptance')",
+          "permissions": {
+            "contents": "read",
+            "actions": "read"
+          },
+          "timeout_minutes": 55,
+          "secrets": [
+            "STAGING_FIXTURES_JSON",
+            "STAGING_RENDER_API_KEY",
+            "STAGING_RENDER_SERVICE_ID",
+            "STAGING_VERCEL_AUTOMATION_BYPASS_SECRET",
+            "STAGING_VERCEL_ORG_ID",
+            "STAGING_VERCEL_PROJECT_ID",
+            "STAGING_VERCEL_TOKEN"
+          ],
+          "commands": [
+            "python3 scripts/release/evidence.py stage-preflight --output \"$RUNNER_TEMP/technical/record.json\"\npython3 scripts/release/hosted.py preflight",
+            "npm install --global vercel@63.1.0\nvercel pull --yes --environment=preview --git-branch=\"$STAGING_BRANCH\" --token=\"$VERCEL_TOKEN\"\nVERCEL=1 vercel build --token=\"$VERCEL_TOKEN\"\nvercel deploy --prebuilt --token=\"$VERCEL_TOKEN\" --meta githubCommitRef=\"$STAGING_BRANCH\" --meta githubCommitSha=\"$GITHUB_SHA\" > /tmp/vercel-url.txt",
+            "python3 scripts/release/hosted.py bind-staging-origin",
+            "python3 scripts/deploy_render.py",
+            "python3 scripts/release/hosted_suite.py",
+            "python3 scripts/release/hosted.py stage --evidence \"$RUNNER_TEMP/technical/record.json\" --render-receipt \"$RUNNER_TEMP/render/record.json\" --output \"$RUNNER_TEMP/staging/record.json\"",
+            "python3 -c 'import json,os; from pathlib import Path; r=json.loads((Path(os.environ[\"RUNNER_TEMP\"])/\"staging/record.json\").read_text()); print(\"Hosted qualification:\",r[\"status\"]); print(json.dumps(r[\"checks\"],indent=2))'"
+          ],
+          "environment": null
+        }
+      }
+    },
+    {
+      "file": "release.yml",
+      "name": "Approved release artifacts",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "application": {
+              "description": "Application to package independently",
+              "type": "choice",
+              "options": [
+                "frontend",
+                "backend"
+              ],
+              "required": true
+            },
+            "authorization": {
+              "description": "Type approved after reviewing release gates",
+              "required": true
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "checks": "read"
+      },
+      "installed_remotely": true,
+      "remote_state": "active",
+      "sample_completed_runs": 0,
+      "sample_failures": 0,
+      "average_elapsed_seconds": null,
+      "jobs": {
+        "release-artifacts": {
+          "runner": "ubuntu-latest",
+          "needs": null,
+          "if": "${{ always() && true && (inputs.authorization == 'approved') }}",
+          "permissions": {
+            "contents": "read",
+            "checks": "read"
+          },
+          "timeout_minutes": 45,
+          "secrets": [],
+          "commands": [
+            "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }",
+            "docker build -t \"portal-${APPLICATION}:${GITHUB_SHA}\" \"./onesa-company-portal-${APPLICATION}\"\ndocker save \"portal-${APPLICATION}:${GITHUB_SHA}\" | gzip > portal-images.tar.gz\n"
+          ],
+          "environment": null
+        }
+      }
+    },
+    {
+      "file": "repair-hosting.yml",
+      "name": "Repair existing hosting configuration",
+      "trigger": {
+        "workflow_dispatch": {
+          "inputs": {
+            "portal_action": {
+              "description": "Targeted Portal database role operation (never deploys)",
+              "type": "choice",
+              "default": "inspect-role",
+              "options": [
+                "inspect-role",
+                "inspect-confirmed-target",
+                "initialize-confirmed-target",
+                "repair-role",
+                "repair-layout",
+                "repair-staging-layout"
+              ]
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "actions": "read"
+      },
+      "installed_remotely": true,
+      "remote_state": "active",
+      "sample_completed_runs": 6,
+      "sample_failures": 1,
+      "average_elapsed_seconds": 22.0,
+      "jobs": {
+        "inspect": {
+          "runner": "ubuntu-latest",
+          "needs": null,
+          "if": "${{ github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && inputs.portal_action != 'repair-staging-layout' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')))) }}",
+          "permissions": {
+            "contents": "read",
+            "actions": "read"
+          },
+          "timeout_minutes": 10,
+          "secrets": [
+            "PORTAL_APP_DB_PASSWORD",
+            "PORTAL_MIGRATION_DATABASE_URL",
+            "RENDER_API_KEY",
+            "RENDER_BACKEND_SERVICE_ID",
+            "RENDER_WORKER_SERVICE_ID",
+            "VERCEL_ORG_ID",
+            "VERCEL_PROJECT_ID",
+            "VERCEL_TOKEN"
+          ],
+          "commands": [
+            "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n",
+            "npm ci",
+            "node --import tsx src/services/render-role-repair.ts",
+            "node --import tsx src/services/render-role-repair.ts --inspect-confirmed-target",
+            "node --import tsx src/services/render-role-repair.ts --apply",
+            "node --import tsx src/services/render-role-repair.ts --initialize-confirmed-target",
+            "python scripts/repair_hosting.py\npython scripts/inspect_hosting.py\n"
+          ],
+          "environment": null
+        },
+        "staging-layout": {
+          "runner": "ubuntu-latest",
+          "needs": null,
+          "if": "${{ github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && inputs.portal_action == 'repair-staging-layout')) }}",
+          "permissions": {
+            "contents": "read",
+            "actions": "read"
+          },
+          "timeout_minutes": 10,
+          "secrets": [
+            "RENDER_API_KEY"
+          ],
+          "commands": [
+            "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n",
+            "python scripts/repair_hosting.py"
+          ],
+          "environment": null
+        }
+      }
+    },
+    {
+      "file": "repository-hygiene.yml",
+      "name": "Repository hygiene",
+      "trigger": {
+        "push": null,
+        "pull_request": {
+          "branches": [
+            "main"
+          ]
+        },
+        "workflow_dispatch": null
+      },
+      "permissions": {
+        "contents": "read"
+      },
+      "installed_remotely": true,
+      "remote_state": "active",
+      "sample_completed_runs": 44,
+      "sample_failures": 6,
+      "average_elapsed_seconds": 106.4,
+      "jobs": {
+        "publication-hygiene": {
+          "runner": "ubuntu-latest",
+          "needs": null,
+          "if": "${{ always() && true }}",
+          "permissions": {
+            "contents": "read"
+          },
+          "timeout_minutes": 45,
+          "secrets": [],
+          "commands": [
+            "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n",
+            "python scripts/repository_hygiene.py --history"
+          ],
+          "environment": null
+        }
+      }
+    },
+    {
+      "file": "verify.yml",
+      "name": "Portal verification",
+      "trigger": {
+        "push": null,
+        "pull_request": {
+          "branches": [
+            "main"
+          ]
+        },
+        "workflow_dispatch": null
+      },
+      "permissions": {
+        "contents": "read"
+      },
+      "installed_remotely": true,
+      "remote_state": "active",
+      "sample_completed_runs": 43,
+      "sample_failures": 6,
+      "average_elapsed_seconds": 333.0,
+      "jobs": {
+        "verify": {
+          "runner": "ubuntu-latest",
+          "needs": null,
+          "if": "${{ always() && true }}",
+          "permissions": {
+            "contents": "read"
+          },
+          "timeout_minutes": 45,
+          "secrets": [],
+          "commands": [
+            "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n",
+            "database_url=\"postgresql://portal_test:ci-only-test-password@127.0.0.1:${POSTGRES_PORT}/onesa_portal_test\"\nprintf 'DATABASE_URL=%s\\nTEST_DATABASE_URL=%s\\n' \"$database_url\" \"$database_url\" >> \"$GITHUB_ENV\"\n",
+            "python3 -m unittest discover -s scripts/release -p 'test_*.py'",
+            "npm ci",
+            "npm ci",
+            "python3 scripts/check-contracts.py && python3 scripts/test-contract-break.py",
+            "python3 -m unittest discover -s scripts -p test_inspect_hosting.py",
+            "python3 -m unittest discover -s scripts/runner -p 'test_*.py'",
+            "npm run lint && npm run build && npm test && npm audit --audit-level=high",
+            "npm run lint && npm run typecheck && npm run test:domains && npm run build && npm audit --audit-level=high",
+            "npm run documents",
+            "npm run seed",
+            "npx playwright install --with-deps chromium firefox webkit",
+            "cleanup() { kill \"$backend_pid\" \"$frontend_pid\" 2>/dev/null || true; wait \"$backend_pid\" \"$frontend_pid\" 2>/dev/null || true; }\nnode onesa-company-portal-backend/dist/src/server.js > \"$RUNNER_TEMP/portal-backend.log\" 2>&1 &\nbackend_pid=$!\n(cd onesa-company-portal-frontend && npm start) > \"$RUNNER_TEMP/portal-frontend.log\" 2>&1 &\nfrontend_pid=$!\ntrap cleanup EXIT\nfor attempt in $(seq 1 30); do\n  if curl -fsS http://localhost:3300/en > /dev/null; then break; fi\n  echo \"Waiting for frontend: $attempt\"\n  sleep 1\ndone\ncurl -fsS http://localhost:3300/en > /dev/null\nnpm --prefix onesa-company-portal-frontend run test:e2e\n",
+            "NODE_ENV=production SITE_URL=https://onesa.eu PORTAL_URL=https://portal.onesa.eu PUBLIC_ORIGIN=https://portal.onesa.eu BACKEND_URL=http://127.0.0.1:8362 node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3362 > \"$RUNNER_TEMP/portal-domain-frontend.log\" 2>&1 &\ndomain_frontend_pid=$!\ntrap 'kill \"$domain_frontend_pid\" 2>/dev/null || true' EXIT\nfor attempt in $(seq 1 30); do\n  if curl -s http://127.0.0.1:3362/ > /dev/null; then break; fi\n  echo \"Waiting for domain frontend: $attempt\"\n  sleep 1\ndone\nnpm run test:domain-http\n",
+            "python3 scripts/validate-docs.py && python3 scripts/scan-secrets.py",
+            "docker build -t portal-backend-ci ./onesa-company-portal-backend && docker build -t portal-frontend-ci ./onesa-company-portal-frontend",
+            "python3 scripts/startup_smoke.py portal-backend-ci"
+          ],
+          "environment": null
+        },
+        "image-security": {
+          "runner": "ubuntu-latest",
+          "needs": null,
+          "if": "${{ always() && true }}",
+          "permissions": {
+            "contents": "read"
+          },
+          "timeout_minutes": 25,
+          "secrets": [],
+          "commands": [
+            "test \"$RUNNER_ENVIRONMENT\" = github-hosted\nactual=$(gh api \"repos/$GITHUB_REPOSITORY\" --jq '.private')\ntest \"$actual\" = \"$EXPECTED_PRIVATE\" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }\n",
+            "docker build -t onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }} ./${{ matrix.application }}",
+            "mkdir -p data/security\nchmod 700 data/security\ndocker save onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }} -o data/security/runtime.tar\ndocker run --rm --user \"$(id -u):$(id -g)\" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v \"$PWD/data/security:/reports\" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar\nchmod 600 data/security/runtime.json\npython3 scripts/release/image_gate.py data/security/runtime.json\n",
+            "python3 scripts/release/evidence.py manifest --image \"onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }}\" --output \"$RUNNER_TEMP/runtime/record.json\"",
+            "rm -rf -- \"$GITHUB_WORKSPACE/data/security\""
+          ],
+          "environment": null
+        }
+      }
+    }
+  ],
+  "run_sample": [
+    {
+      "id": 38142392113,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T13:14:36Z",
+      "run_started_at": "2026-10-11T13:14:36Z",
+      "updated_at": "2026-10-11T13:14:46Z"
+    },
+    {
+      "id": 38142392037,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T13:14:35Z",
+      "run_started_at": "2026-10-11T13:14:35Z",
+      "updated_at": "2026-10-11T13:20:39Z"
+    },
+    {
+      "id": 38142387947,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T13:14:32Z",
+      "run_started_at": "2026-10-11T13:14:32Z",
+      "updated_at": "2026-10-11T13:14:43Z"
+    },
+    {
+      "id": 38142387875,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T13:14:32Z",
+      "run_started_at": "2026-10-11T13:14:32Z",
+      "updated_at": "2026-10-11T13:21:21Z"
+    },
+    {
+      "id": 38139563677,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "release/automated-qualification",
+      "created_at": "2026-10-11T12:31:07Z",
+      "run_started_at": "2026-10-11T12:31:07Z",
+      "updated_at": "2026-10-11T12:31:21Z"
+    },
+    {
+      "id": 38139563666,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "release/automated-qualification",
+      "created_at": "2026-10-11T12:31:07Z",
+      "run_started_at": "2026-10-11T12:31:07Z",
+      "updated_at": "2026-10-11T12:35:37Z"
+    },
+    {
+      "id": 38138304478,
+      "path": ".github/workflows/repair-hosting.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T12:11:07Z",
+      "run_started_at": "2026-10-11T12:11:07Z",
+      "updated_at": "2026-10-11T12:11:32Z"
+    },
+    {
+      "id": 38138300887,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "security/main-branch-governance",
+      "created_at": "2026-10-11T12:11:04Z",
+      "run_started_at": "2026-10-11T12:11:04Z",
+      "updated_at": "2026-10-11T12:16:08Z"
+    },
+    {
+      "id": 38138300777,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "security/main-branch-governance",
+      "created_at": "2026-10-11T12:11:04Z",
+      "run_started_at": "2026-10-11T12:11:04Z",
+      "updated_at": "2026-10-11T12:11:15Z"
+    },
+    {
+      "id": 38138278427,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T12:10:42Z",
+      "run_started_at": "2026-10-11T12:10:42Z",
+      "updated_at": "2026-10-11T12:17:00Z"
+    },
+    {
+      "id": 38138278412,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T12:10:42Z",
+      "run_started_at": "2026-10-11T12:10:42Z",
+      "updated_at": "2026-10-11T12:10:54Z"
+    },
+    {
+      "id": 38138276221,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T12:10:40Z",
+      "run_started_at": "2026-10-11T12:10:40Z",
+      "updated_at": "2026-10-11T12:10:51Z"
+    },
+    {
+      "id": 38138275337,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T12:10:39Z",
+      "run_started_at": "2026-10-11T12:10:39Z",
+      "updated_at": "2026-10-11T12:16:46Z"
+    },
+    {
+      "id": 38137241090,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "main",
+      "created_at": "2026-10-11T11:53:54Z",
+      "run_started_at": "2026-10-11T11:53:54Z",
+      "updated_at": "2026-10-11T11:58:19Z"
+    },
+    {
+      "id": 38137241089,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "main",
+      "created_at": "2026-10-11T11:53:54Z",
+      "run_started_at": "2026-10-11T11:53:54Z",
+      "updated_at": "2026-10-11T11:54:07Z"
+    },
+    {
+      "id": 38137127572,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "security/main-branch-governance",
+      "created_at": "2026-10-11T11:52:02Z",
+      "run_started_at": "2026-10-11T11:52:02Z",
+      "updated_at": "2026-10-11T11:56:22Z"
+    },
+    {
+      "id": 38137127542,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "security/main-branch-governance",
+      "created_at": "2026-10-11T11:52:02Z",
+      "run_started_at": "2026-10-11T11:52:02Z",
+      "updated_at": "2026-10-11T11:52:13Z"
+    },
+    {
+      "id": 38137088070,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:51:21Z",
+      "run_started_at": "2026-10-11T11:51:21Z",
+      "updated_at": "2026-10-11T11:55:50Z"
+    },
+    {
+      "id": 38137088046,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:51:21Z",
+      "run_started_at": "2026-10-11T11:51:21Z",
+      "updated_at": "2026-10-11T11:51:31Z"
+    },
+    {
+      "id": 38137085455,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:51:18Z",
+      "run_started_at": "2026-10-11T11:51:18Z",
+      "updated_at": "2026-10-11T11:57:12Z"
+    },
+    {
+      "id": 38137085389,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:51:18Z",
+      "run_started_at": "2026-10-11T11:51:18Z",
+      "updated_at": "2026-10-11T11:51:29Z"
+    },
+    {
+      "id": 38136905181,
+      "path": ".github/workflows/inspect-hosting.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:48:22Z",
+      "run_started_at": "2026-10-11T11:48:22Z",
+      "updated_at": "2026-10-11T11:49:12Z"
+    },
+    {
+      "id": 38136847305,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T11:47:24Z",
+      "run_started_at": "2026-10-11T11:47:24Z",
+      "updated_at": "2026-10-11T11:53:08Z"
+    },
+    {
+      "id": 38136847255,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T11:47:24Z",
+      "run_started_at": "2026-10-11T11:47:24Z",
+      "updated_at": "2026-10-11T11:47:36Z"
+    },
+    {
+      "id": 38136845130,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T11:47:22Z",
+      "run_started_at": "2026-10-11T11:47:22Z",
+      "updated_at": "2026-10-11T11:53:01Z"
+    },
+    {
+      "id": 38136845090,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T11:47:22Z",
+      "run_started_at": "2026-10-11T11:47:22Z",
+      "updated_at": "2026-10-11T11:47:32Z"
+    },
+    {
+      "id": 38136781194,
+      "path": ".github/workflows/repair-hosting.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:46:18Z",
+      "run_started_at": "2026-10-11T11:46:18Z",
+      "updated_at": "2026-10-11T11:46:30Z"
+    },
+    {
+      "id": 38136736923,
+      "path": ".github/workflows/repair-hosting.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:45:34Z",
+      "run_started_at": "2026-10-11T11:45:34Z",
+      "updated_at": "2026-10-11T11:45:58Z"
+    },
+    {
+      "id": 38136666284,
+      "path": ".github/workflows/inspect-hosting.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:44:29Z",
+      "run_started_at": "2026-10-11T11:44:29Z",
+      "updated_at": "2026-10-11T11:45:57Z"
+    },
+    {
+      "id": 38136664678,
+      "path": ".github/workflows/inspect-hosting.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:44:27Z",
+      "run_started_at": "2026-10-11T11:44:27Z",
+      "updated_at": "2026-10-11T11:45:09Z"
+    },
+    {
+      "id": 38136350334,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T11:39:18Z",
+      "run_started_at": "2026-10-11T11:39:18Z",
+      "updated_at": "2026-10-11T11:39:28Z"
+    },
+    {
+      "id": 38136350329,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T11:39:18Z",
+      "run_started_at": "2026-10-11T11:39:18Z",
+      "updated_at": "2026-10-11T11:44:42Z"
+    },
+    {
+      "id": 38136347961,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T11:39:16Z",
+      "run_started_at": "2026-10-11T11:39:16Z",
+      "updated_at": "2026-10-11T11:44:53Z"
+    },
+    {
+      "id": 38136347915,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T11:39:16Z",
+      "run_started_at": "2026-10-11T11:39:16Z",
+      "updated_at": "2026-10-11T11:39:29Z"
+    },
+    {
+      "id": 38136130357,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "security/main-branch-governance",
+      "created_at": "2026-10-11T11:35:36Z",
+      "run_started_at": "2026-10-11T11:35:36Z",
+      "updated_at": "2026-10-11T11:39:56Z"
+    },
+    {
+      "id": 38136130279,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "security/main-branch-governance",
+      "created_at": "2026-10-11T11:35:36Z",
+      "run_started_at": "2026-10-11T11:35:36Z",
+      "updated_at": "2026-10-11T11:35:46Z"
+    },
+    {
+      "id": 38136035676,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:34:04Z",
+      "run_started_at": "2026-10-11T11:34:04Z",
+      "updated_at": "2026-10-11T11:34:16Z"
+    },
+    {
+      "id": 38136035668,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:34:04Z",
+      "run_started_at": "2026-10-11T11:34:04Z",
+      "updated_at": "2026-10-11T11:38:41Z"
+    },
+    {
+      "id": 38136033373,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:34:02Z",
+      "run_started_at": "2026-10-11T11:34:02Z",
+      "updated_at": "2026-10-11T11:34:14Z"
+    },
+    {
+      "id": 38136033370,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:34:02Z",
+      "run_started_at": "2026-10-11T11:34:02Z",
+      "updated_at": "2026-10-11T11:39:53Z"
+    },
+    {
+      "id": 38134558307,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "security/main-branch-governance",
+      "created_at": "2026-10-11T11:09:56Z",
+      "run_started_at": "2026-10-11T11:09:56Z",
+      "updated_at": "2026-10-11T11:18:23Z"
+    },
+    {
+      "id": 38134558276,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "security/main-branch-governance",
+      "created_at": "2026-10-11T11:09:56Z",
+      "run_started_at": "2026-10-11T11:09:56Z",
+      "updated_at": "2026-10-11T11:15:04Z"
+    },
+    {
+      "id": 38134061020,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:01:37Z",
+      "run_started_at": "2026-10-11T11:01:37Z",
+      "updated_at": "2026-10-11T11:11:27Z"
+    },
+    {
+      "id": 38134061006,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:01:37Z",
+      "run_started_at": "2026-10-11T11:01:37Z",
+      "updated_at": "2026-10-11T11:15:22Z"
+    },
+    {
+      "id": 38134058864,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:01:35Z",
+      "run_started_at": "2026-10-11T11:01:35Z",
+      "updated_at": "2026-10-11T11:08:34Z"
+    },
+    {
+      "id": 38134058863,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T11:01:35Z",
+      "run_started_at": "2026-10-11T11:01:35Z",
+      "updated_at": "2026-10-11T11:10:13Z"
+    },
+    {
+      "id": 38133821541,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "security/main-branch-governance",
+      "created_at": "2026-10-11T10:57:42Z",
+      "run_started_at": "2026-10-11T10:57:42Z",
+      "updated_at": "2026-10-11T11:07:21Z"
+    },
+    {
+      "id": 38133821526,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "security/main-branch-governance",
+      "created_at": "2026-10-11T10:57:42Z",
+      "run_started_at": "2026-10-11T10:57:42Z",
+      "updated_at": "2026-10-11T11:03:54Z"
+    },
+    {
+      "id": 38133192686,
+      "path": ".github/workflows/inspect-hosting.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T10:47:13Z",
+      "run_started_at": "2026-10-11T10:47:13Z",
+      "updated_at": "2026-10-11T10:58:59Z"
+    },
+    {
+      "id": 38133191131,
+      "path": ".github/workflows/inspect-hosting.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T10:47:12Z",
+      "run_started_at": "2026-10-11T10:47:12Z",
+      "updated_at": "2026-10-11T10:57:57Z"
+    },
+    {
+      "id": 38133164880,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T10:46:46Z",
+      "run_started_at": "2026-10-11T10:46:46Z",
+      "updated_at": "2026-10-11T10:48:31Z"
+    },
+    {
+      "id": 38133164863,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T10:46:46Z",
+      "run_started_at": "2026-10-11T10:46:46Z",
+      "updated_at": "2026-10-11T10:58:13Z"
+    },
+    {
+      "id": 38133161606,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T10:46:42Z",
+      "run_started_at": "2026-10-11T10:46:42Z",
+      "updated_at": "2026-10-11T10:59:30Z"
+    },
+    {
+      "id": 38133161563,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T10:46:42Z",
+      "run_started_at": "2026-10-11T10:46:42Z",
+      "updated_at": "2026-10-11T10:53:05Z"
+    },
+    {
+      "id": 38132022531,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T10:27:39Z",
+      "run_started_at": "2026-10-11T10:27:39Z",
+      "updated_at": "2026-10-11T10:35:04Z"
+    },
+    {
+      "id": 38132001806,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T10:27:17Z",
+      "run_started_at": "2026-10-11T10:27:17Z",
+      "updated_at": "2026-10-11T10:34:30Z"
+    },
+    {
+      "id": 38132001800,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T10:27:17Z",
+      "run_started_at": "2026-10-11T10:27:17Z",
+      "updated_at": "2026-10-11T10:27:55Z"
+    },
+    {
+      "id": 38131999545,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T10:27:14Z",
+      "run_started_at": "2026-10-11T10:27:14Z",
+      "updated_at": "2026-10-11T10:30:41Z"
+    },
+    {
+      "id": 38131999541,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T10:27:14Z",
+      "run_started_at": "2026-10-11T10:27:14Z",
+      "updated_at": "2026-10-11T10:30:54Z"
+    },
+    {
+      "id": 38131855138,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "security/main-branch-governance",
+      "created_at": "2026-10-11T10:24:47Z",
+      "run_started_at": "2026-10-11T10:24:47Z",
+      "updated_at": "2026-10-11T10:24:51Z"
+    },
+    {
+      "id": 38131855133,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "security/main-branch-governance",
+      "created_at": "2026-10-11T10:24:47Z",
+      "run_started_at": "2026-10-11T10:24:47Z",
+      "updated_at": "2026-10-11T10:24:50Z"
+    },
+    {
+      "id": 38131800272,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T10:23:51Z",
+      "run_started_at": "2026-10-11T10:23:51Z",
+      "updated_at": "2026-10-11T10:23:55Z"
+    },
+    {
+      "id": 38131800249,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T10:23:51Z",
+      "run_started_at": "2026-10-11T10:23:51Z",
+      "updated_at": "2026-10-11T10:23:55Z"
+    },
+    {
+      "id": 38131798067,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T10:23:48Z",
+      "run_started_at": "2026-10-11T10:23:48Z",
+      "updated_at": "2026-10-11T10:23:52Z"
+    },
+    {
+      "id": 38131798031,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T10:23:48Z",
+      "run_started_at": "2026-10-11T10:23:48Z",
+      "updated_at": "2026-10-11T10:23:52Z"
+    },
+    {
+      "id": 38131178868,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T10:13:29Z",
+      "run_started_at": "2026-10-11T10:13:29Z",
+      "updated_at": "2026-10-11T10:21:17Z"
+    },
+    {
+      "id": 38131178763,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T10:13:29Z",
+      "run_started_at": "2026-10-11T10:13:29Z",
+      "updated_at": "2026-10-11T10:18:01Z"
+    },
+    {
+      "id": 38131161041,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T10:13:12Z",
+      "run_started_at": "2026-10-11T10:13:12Z",
+      "updated_at": "2026-10-11T10:14:42Z"
+    },
+    {
+      "id": 38131161012,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T10:13:12Z",
+      "run_started_at": "2026-10-11T10:13:12Z",
+      "updated_at": "2026-10-11T10:17:48Z"
+    },
+    {
+      "id": 38131160962,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "ci/isolated-local-runner",
+      "created_at": "2026-10-11T10:13:12Z",
+      "run_started_at": "2026-10-11T10:13:12Z",
+      "updated_at": "2026-10-11T10:21:37Z"
+    },
+    {
+      "id": 38124838394,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "security/main-branch-governance",
+      "created_at": "2026-10-11T08:27:02Z",
+      "run_started_at": "2026-10-11T08:27:02Z",
+      "updated_at": "2026-10-11T08:27:06Z"
+    },
+    {
+      "id": 38124838317,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "security/main-branch-governance",
+      "created_at": "2026-10-11T08:27:02Z",
+      "run_started_at": "2026-10-11T08:27:02Z",
+      "updated_at": "2026-10-11T08:27:06Z"
+    },
+    {
+      "id": 38124051794,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T08:13:30Z",
+      "run_started_at": "2026-10-11T08:13:30Z",
+      "updated_at": "2026-10-11T08:13:33Z"
+    },
+    {
+      "id": 38124051789,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T08:13:30Z",
+      "run_started_at": "2026-10-11T08:13:30Z",
+      "updated_at": "2026-10-11T08:13:34Z"
+    },
+    {
+      "id": 38124048011,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T08:13:26Z",
+      "run_started_at": "2026-10-11T08:13:26Z",
+      "updated_at": "2026-10-11T08:13:30Z"
+    },
+    {
+      "id": 38124047916,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T08:13:26Z",
+      "run_started_at": "2026-10-11T08:13:26Z",
+      "updated_at": "2026-10-11T08:13:30Z"
+    },
+    {
+      "id": 38123763975,
+      "path": ".github/workflows/inspect-hosting.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T08:08:33Z",
+      "run_started_at": "2026-10-11T08:08:33Z",
+      "updated_at": "2026-10-11T08:08:38Z"
+    },
+    {
+      "id": 38123582791,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T08:05:21Z",
+      "run_started_at": "2026-10-11T08:05:21Z",
+      "updated_at": "2026-10-11T08:11:13Z"
+    },
+    {
+      "id": 38123582790,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T08:05:21Z",
+      "run_started_at": "2026-10-11T08:05:21Z",
+      "updated_at": "2026-10-11T08:05:32Z"
+    },
+    {
+      "id": 38123580082,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T08:05:19Z",
+      "run_started_at": "2026-10-11T08:05:19Z",
+      "updated_at": "2026-10-11T08:12:07Z"
+    },
+    {
+      "id": 38123580073,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T08:05:19Z",
+      "run_started_at": "2026-10-11T08:05:19Z",
+      "updated_at": "2026-10-11T08:05:30Z"
+    },
+    {
+      "id": 38122997227,
+      "path": ".github/workflows/inspect-hosting.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:55:11Z",
+      "run_started_at": "2026-10-11T07:55:11Z",
+      "updated_at": "2026-10-11T07:55:58Z"
+    },
+    {
+      "id": 38122682388,
+      "path": ".github/workflows/repair-hosting.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:49:39Z",
+      "run_started_at": "2026-10-11T07:49:39Z",
+      "updated_at": "2026-10-11T07:50:12Z"
+    },
+    {
+      "id": 38122225882,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:41:37Z",
+      "run_started_at": "2026-10-11T07:41:37Z",
+      "updated_at": "2026-10-11T07:48:49Z"
+    },
+    {
+      "id": 38122225877,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:41:37Z",
+      "run_started_at": "2026-10-11T07:41:37Z",
+      "updated_at": "2026-10-11T07:41:50Z"
+    },
+    {
+      "id": 38122223457,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:41:34Z",
+      "run_started_at": "2026-10-11T07:41:34Z",
+      "updated_at": "2026-10-11T07:41:46Z"
+    },
+    {
+      "id": 38122223429,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:41:34Z",
+      "run_started_at": "2026-10-11T07:41:34Z",
+      "updated_at": "2026-10-11T07:49:13Z"
+    },
+    {
+      "id": 38121266961,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:24:36Z",
+      "run_started_at": "2026-10-11T07:24:36Z",
+      "updated_at": "2026-10-11T07:31:48Z"
+    },
+    {
+      "id": 38121266949,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:24:36Z",
+      "run_started_at": "2026-10-11T07:24:36Z",
+      "updated_at": "2026-10-11T07:24:46Z"
+    },
+    {
+      "id": 38121265037,
+      "path": ".github/workflows/repair-hosting.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:24:34Z",
+      "run_started_at": "2026-10-11T07:24:34Z",
+      "updated_at": "2026-10-11T07:24:51Z"
+    },
+    {
+      "id": 38121264884,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:24:34Z",
+      "run_started_at": "2026-10-11T07:24:34Z",
+      "updated_at": "2026-10-11T07:24:48Z"
+    },
+    {
+      "id": 38121264881,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:24:34Z",
+      "run_started_at": "2026-10-11T07:24:34Z",
+      "updated_at": "2026-10-11T07:31:44Z"
+    },
+    {
+      "id": 38121122341,
+      "path": ".github/workflows/repair-hosting.yml",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:22:03Z",
+      "run_started_at": "2026-10-11T07:22:03Z",
+      "updated_at": "2026-10-11T07:22:24Z"
+    },
+    {
+      "id": 38121111588,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:21:51Z",
+      "run_started_at": "2026-10-11T07:21:51Z",
+      "updated_at": "2026-10-11T07:28:43Z"
+    },
+    {
+      "id": 38121111538,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:21:51Z",
+      "run_started_at": "2026-10-11T07:21:51Z",
+      "updated_at": "2026-10-11T07:22:04Z"
+    },
+    {
+      "id": 38121109279,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:21:48Z",
+      "run_started_at": "2026-10-11T07:21:48Z",
+      "updated_at": "2026-10-11T07:28:37Z"
+    },
+    {
+      "id": 38121109275,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T07:21:48Z",
+      "run_started_at": "2026-10-11T07:21:48Z",
+      "updated_at": "2026-10-11T07:22:00Z"
+    },
+    {
+      "id": 38106788464,
+      "path": ".github/workflows/verify.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T02:56:51Z",
+      "run_started_at": "2026-10-11T02:56:51Z",
+      "updated_at": "2026-10-11T03:05:11Z"
+    },
+    {
+      "id": 38106788444,
+      "path": ".github/workflows/repository-hygiene.yml",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T02:56:51Z",
+      "run_started_at": "2026-10-11T02:56:51Z",
+      "updated_at": "2026-10-11T02:57:22Z"
+    },
+    {
+      "id": 38106785603,
+      "path": ".github/workflows/verify.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "audit/portal-master-acceptance",
+      "created_at": "2026-10-11T02:56:48Z",
+      "run_started_at": "2026-10-11T02:56:48Z",
+      "updated_at": "2026-10-11T03:02:00Z"
+    }
+  ]
+}

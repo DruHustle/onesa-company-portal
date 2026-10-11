@@ -1,5 +1,305 @@
-# Public: hosted only. Private: full local validation precedes cloud execution.
 name: Deploy from GitHub
+permissions:
+  contents: read
+  actions: read
+  issues: read
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+jobs:
+  verify:
+    name: deploy-qualification
+    if: ${{ github.event.repository.private == false && ((always() && true && (github.repository == 'DruHustle/onesa-company-portal'
+      && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name
+      == github.repository && github.event.pull_request.user.login == 'DruHustle')))) && github.repository == 'DruHustle/onesa-company-portal'
+      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+    - name: Verify GitHub-hosted execution and actual visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
+
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
+
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Repository visibility changed; start fresh validation''; exit 1;
+        }
+
+        '
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
+    - name: Verify immutable qualification and owner approval
+      env:
+        GH_TOKEN: ${{ github.token }}
+        APPROVAL_RUN: ${{ inputs.approval_run }}
+        MIGRATION_VERIFIED: ${{ vars.AUTOMATED_QUALIFICATION_ENABLED }}
+      run: 'test "$MIGRATION_VERIFIED" = true || { echo "Automated migration has not been verified"; exit 1; }
+
+        python3 scripts/release/evidence.py promote --output "$RUNNER_TEMP/promotion/record.json"'
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      if: inputs.approval_run != ''
+      with:
+        name: production-qualification
+        path: ${{ runner.temp }}/promotion/record.json
+        retention-days: 7
+        if-no-files-found: error
+    - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+      with:
+        script: "if (context.ref !== 'refs/heads/main') throw new Error('Deployments require main');\nconst {owner, repo}\
+          \ = context.repo;\nconst main = await github.rest.git.getRef({owner, repo, ref: 'heads/main'});\nif (main.data.object.sha\
+          \ !== context.sha) throw new Error('Dispatch the current main commit');\nfor (const workflow_id of ['verify.yml',\
+          \ 'repository-hygiene.yml']) {\n  const runs = await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id,\
+          \ head_sha: context.sha, event: 'push', per_page: 20});\n  const run = runs.data.workflow_runs[0];\n  if (!run ||\
+          \ run.status !== 'completed' || run.conclusion !== 'success') {\n    throw new Error(`${workflow_id} must pass on\
+          \ ${context.sha} before deployment`);\n  }\n}\n"
+  frontend:
+    name: deploy-frontend
+    needs:
+    - verify
+    - backend
+    - worker
+    if: ${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor
+      == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.user.login == 'DruHustle')) && (always() && needs.verify.result == 'success' && (inputs.application
+      == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success' && needs.worker.result == 'success'))))
+      && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+    - name: Verify GitHub-hosted execution and actual visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
+
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
+
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Repository visibility changed; start fresh validation''; exit 1;
+        }
+
+        '
+    - name: Require Vercel configuration
+      run: "missing_configuration=0\nfor name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do\n  if [ -z \"${!name}\"\
+        \ ]; then\n    echo \"::error::Missing GitHub Actions secret: $name\"\n    missing_configuration=1\n  fi\ndone\nexit\
+        \ \"$missing_configuration\"\n"
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
+    - name: Revalidate approval before provider changes
+      if: inputs.approval_run != ''
+      env:
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        GH_TOKEN: ${{ github.token }}
+        APPROVAL_RUN: ${{ inputs.approval_run }}
+        STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+      run: 'python3 scripts/release/evidence.py promote --output "$RUNNER_TEMP/promotion/record.json"
+
+        python3 scripts/release/hosted.py recheck --evidence "$RUNNER_TEMP/promotion/record.json"'
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: '24'
+    - run: npm install --global vercel@63.1.0
+    - run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+    - name: Restore the exact owner-reviewed production build
+      if: inputs.approval_run != ''
+      env:
+        APPROVAL_RUN: ${{ inputs.approval_run }}
+        RELEASE_BUILD_KEY: ${{ secrets.RELEASE_BUILD_KEY }}
+      run: 'python3 scripts/release/evidence.py fetch-build --output "$RUNNER_TEMP/reviewed-build/record.json"
+
+        node scripts/release/bundle.mjs unpack "$RUNNER_TEMP/reviewed-build"'
+    - run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" --meta githubCommitRef=main --meta githubCommitSha="$GITHUB_SHA"
+        > /tmp/vercel-url.txt
+    - name: Record deployed frontend
+      run: cat /tmp/vercel-url.txt >> "$GITHUB_STEP_SUMMARY"
+    - name: Record frontend deployment metadata
+      if: inputs.approval_run != ''
+      run: python3 scripts/release/hosted.py frontend-receipt --environment Production --output "$RUNNER_TEMP/frontend/record.json"
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      if: inputs.approval_run != ''
+      with:
+        name: production-frontend-deployment
+        path: ${{ runner.temp }}/frontend/record.json
+        retention-days: 7
+        if-no-files-found: error
+    - name: Remove private restored build
+      if: always()
+      run: rm -rf -- "$GITHUB_WORKSPACE/.vercel" "$RUNNER_TEMP/reviewed-build"
+    environment: Production
+  backend:
+    name: deploy-backend
+    needs: verify
+    if: ${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor
+      == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application ==
+      'both')) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+    - name: Verify GitHub-hosted execution and actual visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
+
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
+
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Repository visibility changed; start fresh validation''; exit 1;
+        }
+
+        '
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
+    - name: Revalidate approval before provider changes
+      if: inputs.approval_run != ''
+      env:
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        GH_TOKEN: ${{ github.token }}
+        APPROVAL_RUN: ${{ inputs.approval_run }}
+        STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+      run: 'python3 scripts/release/evidence.py promote --output "$RUNNER_TEMP/promotion/record.json"
+
+        python3 scripts/release/hosted.py recheck --evidence "$RUNNER_TEMP/promotion/record.json"'
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+      with:
+        python-version: '3.11'
+    - run: python scripts/deploy_render.py
+      env:
+        RENDER_RECEIPT_PATH: ${{ runner.temp }}/render/record.json
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      if: inputs.approval_run != '' && success()
+      with:
+        name: production-backend-deployment
+        path: ${{ runner.temp }}/render/record.json
+        retention-days: 7
+        if-no-files-found: error
+    environment: Production
+  worker:
+    name: deploy-worker
+    needs:
+    - verify
+    - backend
+    if: ${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor
+      == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application ==
+      'both')) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+      RENDER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+    - name: Verify GitHub-hosted execution and actual visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
+
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
+
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Repository visibility changed; start fresh validation''; exit 1;
+        }
+
+        '
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
+    - name: Revalidate approval before provider changes
+      if: inputs.approval_run != ''
+      env:
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        GH_TOKEN: ${{ github.token }}
+        APPROVAL_RUN: ${{ inputs.approval_run }}
+        STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+      run: 'python3 scripts/release/evidence.py promote --output "$RUNNER_TEMP/promotion/record.json"
+
+        python3 scripts/release/hosted.py recheck --evidence "$RUNNER_TEMP/promotion/record.json"'
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+      with:
+        python-version: '3.11'
+    - run: python scripts/deploy_render.py
+      env:
+        RENDER_RECEIPT_PATH: ${{ runner.temp }}/render/record.json
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      if: inputs.approval_run != '' && success()
+      with:
+        name: production-worker-deployment
+        path: ${{ runner.temp }}/render/record.json
+        retention-days: 7
+        if-no-files-found: error
+    environment: Production
+  post-deployment:
+    if: ${{ github.event.repository.private == false && ((always() && (inputs.approval_run != '' && needs.verify.result ==
+      'success' && (inputs.application == 'frontend' && needs.frontend.result == 'success' || inputs.application == 'backend'
+      && needs.backend.result == 'success' && needs.worker.result == 'success' || inputs.application == 'both' && needs.frontend.result
+      == 'success' && needs.backend.result == 'success' && needs.worker.result == 'success'))) && github.repository == 'DruHustle/onesa-company-portal'
+      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}
+    needs:
+    - verify
+    - frontend
+    - backend
+    - worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVAL_RUN: ${{ inputs.approval_run }}
+      APPLICATION: ${{ inputs.application }}
+      RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+      RENDER_BACKEND_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
+      RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
+      VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+      STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+      PRODUCTION_FIXTURES_JSON: ${{ secrets.PRODUCTION_FIXTURES_JSON }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Revalidate authorized release before hosted checks
+      run: python3 scripts/release/evidence.py promote --output "$RUNNER_TEMP/promotion/record.json"
+    - name: Record actual provider revisions, readiness and remaining hosted acceptance
+      run: python3 scripts/release/hosted.py production --output "$RUNNER_TEMP/post/record.json"
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      if: always()
+      with:
+        name: post-deployment-verification
+        path: ${{ runner.temp }}/post/record.json
+        retention-days: 7
+        if-no-files-found: error
+    - name: Require hosted acceptance; provider builds alone are insufficient
+      run: python3 -c 'import json,os; from pathlib import Path; r=json.loads((Path(os.environ["RUNNER_TEMP"])/"post/record.json").read_text());
+        raise SystemExit(0 if r["status"] == "PASS" else "Hosted acceptance incomplete; follow approved rollback runbook")'
+    environment: Production
 'on':
   workflow_dispatch:
     inputs:
@@ -12,164 +312,7 @@ name: Deploy from GitHub
         - frontend
         - backend
         - both
-permissions:
-  contents: read
-  actions: read
-concurrency:
-  group: production-deployment
-  cancel-in-progress: false
-jobs:
-  local-validation:
-    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    uses: ./.github/workflows/_local-validation.yml
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Verify GitHub-hosted execution and actual visibility
-      env:
-        GH_TOKEN: ${{ github.token }}
-        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
-      run: |-
-        test "$RUNNER_ENVIRONMENT" = github-hosted
-        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
-        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
-        ref: ${{ github.sha }}
-    - name: Require reviewed release qualification for this exact commit
-      env:
-        RELEASE_QUALIFICATION_JSON: ${{ secrets.RELEASE_QUALIFICATION_JSON }}
-      run: |
-        python3 - <<'PYTHON'
-        import json, os
-        from pathlib import Path
-        raw = os.environ.get('RELEASE_QUALIFICATION_JSON', '')
-        if not raw:
-            raise SystemExit('Release qualification is missing; production deployment remains blocked')
-        record = json.loads(raw)
-        if record.get('reviewed_commit') != os.environ['GITHUB_SHA']:
-            raise SystemExit('Release qualification does not match the selected commit')
-        path = Path('docs/internal/release-audit/evidence/gates.json')
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(record))
-        PYTHON
-        python3 scripts/release/qualify.py decision
-    - uses: actions/github-script@v7
-      with:
-        script: |
-          if (context.ref !== 'refs/heads/main') throw new Error('Deployments require main');
-          const {owner, repo} = context.repo;
-          const main = await github.rest.git.getRef({owner, repo, ref: 'heads/main'});
-          if (main.data.object.sha !== context.sha) throw new Error('Dispatch the current main commit');
-          for (const workflow_id of ['verify.yml', 'repository-hygiene.yml']) {
-            const runs = await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id, head_sha: context.sha, event: 'push', per_page: 20});
-            const run = runs.data.workflow_runs[0];
-            if (!run || run.status !== 'completed' || run.conclusion !== 'success') {
-              throw new Error(`${workflow_id} must pass on ${context.sha} before deployment`);
-            }
-          }
-    needs:
-    - local-validation
-    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
-    timeout-minutes: 45
-  frontend:
-    needs:
-    - local-validation
-    - verify
-    - backend
-    - worker
-    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && (always() && needs.verify.result == 'success' && (inputs.application == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success' && needs.worker.result == 'success'))) }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-    steps:
-    - name: Verify GitHub-hosted execution and actual visibility
-      env:
-        GH_TOKEN: ${{ github.token }}
-        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
-      run: |-
-        test "$RUNNER_ENVIRONMENT" = github-hosted
-        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
-        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
-    - name: Require Vercel configuration
-      run: |
-        missing_configuration=0
-        for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
-          if [ -z "${!name}" ]; then
-            echo "::error::Missing GitHub Actions secret: $name"
-            missing_configuration=1
-          fi
-        done
-        exit "$missing_configuration"
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
-        ref: ${{ github.sha }}
-    - uses: actions/setup-node@v4
-      with:
-        node-version: '24'
-    - run: npm install --global vercel@63.1.0
-    - run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-    - run: vercel build --prod --token="$VERCEL_TOKEN"
-    - run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" > /tmp/vercel-url.txt
-    - name: Record deployed frontend
-      run: cat /tmp/vercel-url.txt >> "$GITHUB_STEP_SUMMARY"
-  backend:
-    needs:
-    - local-validation
-    - verify
-    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && (inputs.application == 'backend' || inputs.application == 'both') && needs.verify.result == 'success' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    env:
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
-    steps:
-    - name: Verify GitHub-hosted execution and actual visibility
-      env:
-        GH_TOKEN: ${{ github.token }}
-        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
-      run: |-
-        test "$RUNNER_ENVIRONMENT" = github-hosted
-        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
-        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
-        ref: ${{ github.sha }}
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-    - run: python scripts/deploy_render.py
-  worker:
-    needs:
-    - local-validation
-    - verify
-    - backend
-    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && (inputs.application == 'backend' || inputs.application == 'both') && needs.verify.result == 'success' && needs.backend.result == 'success' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    env:
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
-    steps:
-    - name: Verify GitHub-hosted execution and actual visibility
-      env:
-        GH_TOKEN: ${{ github.token }}
-        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
-      run: |-
-        test "$RUNNER_ENVIRONMENT" = github-hosted
-        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
-        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
-        ref: ${{ github.sha }}
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-    - run: python scripts/deploy_render.py
+      approval_run:
+        description: Latest exact-commit owner release-review approval run; no JSON fallback
+        type: string
+        required: true

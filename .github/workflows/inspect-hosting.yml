@@ -1,20 +1,28 @@
-# Public: hosted only. Private: full local validation precedes cloud execution.
 name: Inspect hosting configuration
 'on':
-  workflow_dispatch: null
+  workflow_dispatch:
+    inputs:
+      portal_scope:
+        description: Read only the production targets or the owner-identified staging targets
+        type: choice
+        default: production
+        options:
+        - production
+        - staging
 permissions:
   contents: read
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  local-validation:
-    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    uses: ./.github/workflows/_local-validation.yml
   inspect:
+    if: ${{ github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal'
+      && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name
+      == github.repository && github.event.pull_request.user.login == 'DruHustle')))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
+      PORTAL_INSPECTION_SCOPE: ${{ inputs.portal_scope }}
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_BACKEND_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
       RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
@@ -26,19 +34,19 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         EXPECTED_PRIVATE: ${{ github.event.repository.private }}
-      run: |-
-        test "$RUNNER_ENVIRONMENT" = github-hosted
-        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
-        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
-    - uses: actions/checkout@v4
+      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
+
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
+
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Repository visibility changed; start fresh validation''; exit 1;
+        }
+
+        '
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
         persist-credentials: false
-        ref: ${{ github.sha }}
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
       with:
         python-version: '3.11'
     - name: Read configuration and deployment status without revealing credentials
       run: python scripts/inspect_hosting.py
-    needs:
-    - local-validation
-    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}

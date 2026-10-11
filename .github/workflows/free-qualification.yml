@@ -1,0 +1,45 @@
+name: Free release qualification
+'on': # zizmor: ignore[dangerous-triggers] -- Exact owner main SHA; CI and artifact provenance checked before use; see CI_CD_PIPELINE_REPORT.md
+  workflow_dispatch:
+    inputs:
+      staging_run:
+        description: Successful exact-commit isolated staging run
+        type: string
+        required: true
+  workflow_run:
+    workflows:
+    - Approved staging qualification
+    types:
+    - completed
+permissions:
+  contents: read
+  actions: read
+  issues: read
+  pull-requests: read
+concurrency:
+  group: free-production-authorization
+  cancel-in-progress: false
+jobs:
+  qualification:
+    if: github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor ==
+      'DruHustle' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.head_repository.full_name
+      == github.repository && github.event.workflow_run.head_sha == github.sha && github.event.workflow_run.conclusion ==
+      'success'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Derive and verify exact-commit evidence; no production credentials
+      env:
+        GH_TOKEN: ${{ github.token }}
+        STAGING_RUN: ${{ inputs.staging_run || github.event.workflow_run.id }}
+      run: python3 scripts/release/free_gate.py qualify --output "$RUNNER_TEMP/free-release/record.json"
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: free-release-qualification
+        path: ${{ runner.temp }}/free-release/record.json
+        retention-days: 7
+        if-no-files-found: error

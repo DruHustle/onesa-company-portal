@@ -104,6 +104,40 @@ provider/data-handling configuration; retain the existing release approval gates
 
 ## Local verification
 
+### Search and Facebook previews
+
+The English homepage canonical is `https://onesa.eu/`; `/en` serves its alias.
+German uses `/de`. Homepage hreflang and sitemap entries use those same destinations,
+including x-default. Sections keep their locale prefix. Published detail records enter
+the sitemap with their actual updated_at dates; translations are advertised only for
+the shared static routes. Search pages and administration remain noindex.
+
+SITE_URL must be an exact origin without credentials, path, query or fragment.
+HTTPS is mandatory on Vercel and for public release; loopback HTTP is limited to local
+previews. Missing SITE_URL uses the known company origin rather than localhost.
+The existing PUBLIC_RELEASE_ENABLED and backend release_ready approval checks still
+govern indexing and the sitemap. An empty sitemap before approval is intentional.
+
+The unreleased robots response permits facebookexternalhit and Facebot only for `/`,
+`/en`, `/de` and the PNG social card, preserving the disallow-all rule for other
+crawlers. The released robots file excludes `/admin` and `/api/`. Robots rules are
+crawler guidance; authentication and hostname isolation continue to protect data.
+
+After an authorized deployment, verify anonymous GET responses for `/en`,
+`/robots.txt` and `/social/onesa-social-card.png` using both a browser and Facebook
+user agent. The HTML head must contain one set of Open Graph tags, an absolute
+canonical and og:url, and the 1200×630 PNG. Run the Facebook Sharing Debugger's
+Scrape Again to confirm Meta's own network access; a simulated user agent cannot
+prove that. If Meta still gets 403 while ordinary GETs succeed, inspect Vercel Firewall
+events at the scrape time and distinguish deployment protection from WAF/platform
+mitigation. Preserve Preview protection and application authorization; do not add a
+global user-agent bypass or disable the firewall without matching evidence.
+
+See [Vercel bot management](https://vercel.com/docs/bot-management) and
+[firewall concepts](https://vercel.com/docs/vercel-firewall/firewall-concepts).
+
+### Commands
+
 Backend: `npm run lint`, `npm run typecheck`, `npm run build`, and `npm test` against
 an isolated `_test` database. Mail tests use an injected fake transport and send no mail.
 Frontend: `npm run lint`, `npm run typecheck`, `npm run build`, and `npm run test:domains`.

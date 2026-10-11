@@ -9,7 +9,7 @@ export function proxy(request: NextRequest) {
   if(destination){const target=new URL(destination);target.search=request.nextUrl.search;return NextResponse.redirect(target,307);}
   // The public file permits crawling only after the existing publication gate opens.
   if(request.nextUrl.pathname==='/robots.txt'&&process.env.PUBLIC_RELEASE_ENABLED!=='true'){
-    return new NextResponse('User-agent: *\nDisallow: /\n\nUser-agent: facebookexternalhit\nDisallow: /\nAllow: /$\nAllow: /en$\nAllow: /social/onesa-social-card.png$\n',{
+    return new NextResponse('User-agent: *\nDisallow: /\n\nUser-agent: facebookexternalhit\nUser-agent: Facebot\nDisallow: /\nAllow: /$\nAllow: /en$\nAllow: /de$\nAllow: /social/onesa-social-card.png$\n',{
       headers:{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'},
     });
   }

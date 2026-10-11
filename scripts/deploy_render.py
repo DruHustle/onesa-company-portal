@@ -6,6 +6,8 @@ import re
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
+from pathlib import Path
 
 
 def request(path, token, payload=None):
@@ -59,6 +61,21 @@ def main():
             if deployment.get("commit", {}).get("id") != sha:
                 raise SystemExit(
                     "Render deployed a different commit; deployment verification failed"
+                )
+            receipt_path = os.environ.get("RENDER_RECEIPT_PATH")
+            if receipt_path:
+                path = Path(receipt_path)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(
+                    json.dumps(
+                        {
+                            "service_id": service,
+                            "deployment_id": identifier,
+                            "commit": sha,
+                            "status": "live",
+                            "verified_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                    )
                 )
             print("Exact-commit Render deployment is live")
             return
