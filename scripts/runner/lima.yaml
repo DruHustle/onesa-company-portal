@@ -1,6 +1,11 @@
 minimumLimaVersion: 2.0.0
 vmType: vz
 arch: aarch64
+vmOpts:
+  vz:
+    rosetta:
+      enabled: true
+      binfmt: true
 cpus: 4
 memory: 6GiB
 disk: 60GiB

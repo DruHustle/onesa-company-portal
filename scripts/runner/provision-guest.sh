@@ -16,7 +16,4 @@ rm "/tmp/${archive}" /tmp/onesa-node-checksums
 export PATH="/opt/onesa-node/bin:$PATH"
 # Version supplied from the committed frontend lockfile by setup.py.
 npx --yes "playwright@$1" install-deps chromium firefox webkit
-cd /opt/onesa-actions-runner
-if [[ ! -f .service ]]; then ./svc.sh install portalci; fi
-systemctl enable "$(cat .service)"
-./svc.sh start
+# Registration and service activation require shared-setup.py privacy checks.

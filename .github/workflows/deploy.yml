@@ -1,5 +1,6 @@
+# Public: hosted only. Private: full local validation precedes cloud execution.
 name: Deploy from GitHub
-on:
+'on':
   workflow_dispatch:
     inputs:
       application:
@@ -7,7 +8,10 @@ on:
         required: true
         default: both
         type: choice
-        options: [frontend, backend, both]
+        options:
+        - frontend
+        - backend
+        - both
 permissions:
   contents: read
   actions: read
@@ -15,105 +19,157 @@ concurrency:
   group: production-deployment
   cancel-in-progress: false
 jobs:
+  local-validation:
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    uses: ./.github/workflows/_local-validation.yml
   verify:
-    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - name: Require reviewed release qualification for this exact commit
-        env:
-          RELEASE_QUALIFICATION_JSON: ${{ secrets.RELEASE_QUALIFICATION_JSON }}
-        run: |
-          python3 - <<'PYTHON'
-          import json, os
-          from pathlib import Path
-          raw = os.environ.get('RELEASE_QUALIFICATION_JSON', '')
-          if not raw:
-              raise SystemExit('Release qualification is missing; production deployment remains blocked')
-          record = json.loads(raw)
-          if record.get('reviewed_commit') != os.environ['GITHUB_SHA']:
-              raise SystemExit('Release qualification does not match the selected commit')
-          path = Path('docs/internal/release-audit/evidence/gates.json')
-          path.parent.mkdir(parents=True, exist_ok=True)
-          path.write_text(json.dumps(record))
-          PYTHON
-          python3 scripts/release/qualify.py decision
-      - uses: actions/github-script@v7
-        with:
-          script: |
-            if (context.ref !== 'refs/heads/main') throw new Error('Deployments require main');
-            const {owner, repo} = context.repo;
-            const main = await github.rest.git.getRef({owner, repo, ref: 'heads/main'});
-            if (main.data.object.sha !== context.sha) throw new Error('Dispatch the current main commit');
-            for (const workflow_id of ['verify.yml', 'repository-hygiene.yml']) {
-              const runs = await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id, head_sha: context.sha, event: 'push', per_page: 20});
-              const run = runs.data.workflow_runs[0];
-              if (!run || run.status !== 'completed' || run.conclusion !== 'success') {
-                throw new Error(`${workflow_id} must pass on ${context.sha} before deployment`);
-              }
-            }
-  frontend:
-    needs: [verify, backend, worker]
-    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (always() && needs.verify.result == 'success' && (inputs.application == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success' && needs.worker.result == 'success'))) }}
     runs-on: ubuntu-latest
-    # Prebuilt native dependencies need x86-64; local emulation failed full builds.
+    steps:
+    - name: Verify GitHub-hosted execution and actual visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: |-
+        test "$RUNNER_ENVIRONMENT" = github-hosted
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Require reviewed release qualification for this exact commit
+      env:
+        RELEASE_QUALIFICATION_JSON: ${{ secrets.RELEASE_QUALIFICATION_JSON }}
+      run: |
+        python3 - <<'PYTHON'
+        import json, os
+        from pathlib import Path
+        raw = os.environ.get('RELEASE_QUALIFICATION_JSON', '')
+        if not raw:
+            raise SystemExit('Release qualification is missing; production deployment remains blocked')
+        record = json.loads(raw)
+        if record.get('reviewed_commit') != os.environ['GITHUB_SHA']:
+            raise SystemExit('Release qualification does not match the selected commit')
+        path = Path('docs/internal/release-audit/evidence/gates.json')
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(record))
+        PYTHON
+        python3 scripts/release/qualify.py decision
+    - uses: actions/github-script@v7
+      with:
+        script: |
+          if (context.ref !== 'refs/heads/main') throw new Error('Deployments require main');
+          const {owner, repo} = context.repo;
+          const main = await github.rest.git.getRef({owner, repo, ref: 'heads/main'});
+          if (main.data.object.sha !== context.sha) throw new Error('Dispatch the current main commit');
+          for (const workflow_id of ['verify.yml', 'repository-hygiene.yml']) {
+            const runs = await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id, head_sha: context.sha, event: 'push', per_page: 20});
+            const run = runs.data.workflow_runs[0];
+            if (!run || run.status !== 'completed' || run.conclusion !== 'success') {
+              throw new Error(`${workflow_id} must pass on ${context.sha} before deployment`);
+            }
+          }
+    needs:
+    - local-validation
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
+    timeout-minutes: 45
+  frontend:
+    needs:
+    - local-validation
+    - verify
+    - backend
+    - worker
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && (always() && needs.verify.result == 'success' && (inputs.application == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success' && needs.worker.result == 'success'))) }}
+    runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
-      - name: Require Vercel configuration
-        run: |
-          missing_configuration=0
-          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
-            if [ -z "${!name}" ]; then
-              echo "::error::Missing GitHub Actions secret: $name"
-              missing_configuration=1
-            fi
-          done
-          exit "$missing_configuration"
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with: {node-version: '24'}
-      - run: npm install --global vercel@63.1.0
-      - run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-      - run: vercel build --prod --token="$VERCEL_TOKEN"
-      - run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" > /tmp/vercel-url.txt
-      - name: Record deployed frontend
-        run: cat /tmp/vercel-url.txt >> "$GITHUB_STEP_SUMMARY"
+    - name: Verify GitHub-hosted execution and actual visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: |-
+        test "$RUNNER_ENVIRONMENT" = github-hosted
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
+    - name: Require Vercel configuration
+      run: |
+        missing_configuration=0
+        for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+          if [ -z "${!name}" ]; then
+            echo "::error::Missing GitHub Actions secret: $name"
+            missing_configuration=1
+          fi
+        done
+        exit "$missing_configuration"
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - run: npm install --global vercel@63.1.0
+    - run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+    - run: vercel build --prod --token="$VERCEL_TOKEN"
+    - run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" > /tmp/vercel-url.txt
+    - name: Record deployed frontend
+      run: cat /tmp/vercel-url.txt >> "$GITHUB_STEP_SUMMARY"
   backend:
-    needs: verify
-    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application == 'both') }}
-    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
+    needs:
+    - local-validation
+    - verify
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && (inputs.application == 'backend' || inputs.application == 'both') && needs.verify.result == 'success' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@v5
-        with: {python-version: '3.11'}
-      - run: python scripts/deploy_render.py
+    - name: Verify GitHub-hosted execution and actual visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: |-
+        test "$RUNNER_ENVIRONMENT" = github-hosted
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - run: python scripts/deploy_render.py
   worker:
-    needs: [verify, backend]
-    if: ${{ github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application == 'both') }}
-    runs-on: [self-hosted, Linux, ARM64, onesa-portal-local]
+    needs:
+    - local-validation
+    - verify
+    - backend
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && (inputs.application == 'backend' || inputs.application == 'both') && needs.verify.result == 'success' && needs.backend.result == 'success' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@v5
-        with: {python-version: '3.11'}
-      - run: python scripts/deploy_render.py
+    - name: Verify GitHub-hosted execution and actual visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: |-
+        test "$RUNNER_ENVIRONMENT" = github-hosted
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - run: python scripts/deploy_render.py

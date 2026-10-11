@@ -28,8 +28,12 @@ Source publication and infrastructure preparation alone do not complete this che
   [publication hygiene](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131161041)
   and [manual smoke](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131160962)
   passed at `09a5bc6`; job metadata identifies `onesa-portal-local-arm64` (ID 21).
-- Before merge, verify fresh checks on the final [PR revision](https://github.com/DruHustle/onesa-company-portal/pull/4), including retention of the two incompatible x86 jobs.
+- Before merge, verify fresh checks on the final [PR revision](https://github.com/DruHustle/onesa-company-portal/pull/4), including fresh ARM and x86 build/scan results for the completed migration.
   ARM CI/security images do not establish x86 runtime security equivalence. Production commands remain untested against providers; no
   production workflow was dispatched. Existing release gates still apply.
-- Owner must authorize the PR merge to change default-branch routing; real Mac
+- CI-only merges are owner-authorized after current checks and routing pass; real Mac
   reboot/login and sleep recovery remain owner acceptance tasks.
+
+## Current public runner policy — 2026-10-11
+
+This supersedes private-runner routing above: all three repositories are now public. Portal runner registration/service/credentials were removed while idle; VM and login startup are stopped. CI-only policy merges are authorized after current cloud checks pass. Private local-first ordering is prepared but not active. Production qualification and actual host reboot/GPU/hardware remain separately unverified.

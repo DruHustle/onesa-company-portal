@@ -36,4 +36,4 @@ Configuration is prepared; account provisioning and remote acceptance are not ye
 
 [Domain routing, Zoho Mail and Resend setup](docs/engineering/DOMAINS_AND_EMAIL.md).
 
-[Local Actions runner setup and maintenance](docs/engineering/SELF_HOSTED_RUNNER.md).
+[Actions visibility policy and runner maintenance](docs/engineering/SELF_HOSTED_RUNNER.md).
