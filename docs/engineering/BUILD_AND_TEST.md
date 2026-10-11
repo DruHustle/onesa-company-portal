@@ -45,6 +45,11 @@ with `TEST_DATABASE_URL` ending `_test`; it truncates test tables. Never point i
 application data. Browser tests need an isolated seeded stack and installed Chromium:
 `npm --prefix onesa-company-portal-frontend run test:e2e`.
 
+Backend test files run serially because their shared fixture performs grants,
+migrations, truncation and sequence writes. The initialization regression creates
+and removes only its uniquely named disposable `_test` database and test role;
+it verifies rollback, strict refusal of existing objects and restricted permissions.
+
 Existing `verify.yml` runs lint/build/contracts/database/browser/docs/container checks
 under the `verify` job. Require `verify` and `publication-hygiene`. Local preparation
 only runs non-database unit tests; full CI is a separate gate and has not run remotely.

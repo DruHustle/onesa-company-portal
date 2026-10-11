@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-11 — Confirmed empty Portal database initialization
+
+- Added a separate operator action for the owner-confirmed empty autumn-glade
+  database. Exact-commit CI, database identity and verified client TLS are required;
+  occupied schemas and existing role passwords are preserved by refusal.
+- Seven unchanged migrations and a dedicated restricted login are created in one
+  transaction, using a private pre-saved application credential. The login's schema
+  checksums and permissions are verified before any proposed runtime cutover.
+  This operation never changes Render settings, connects to dark-boat or deploys.
+- The shared migration executor does not load runtime environment files. Added a
+  disposable-database rollback/permissions regression. Database test files run
+  serially because shared-fixture grants and sequence writes reproduced a catalog
+  update race; all tests remain enabled.
+
 ## 2026-10-11 — Read-only database diagnostics
 
 Identify runtime URL, migration URL, schema, authentication and permission failures

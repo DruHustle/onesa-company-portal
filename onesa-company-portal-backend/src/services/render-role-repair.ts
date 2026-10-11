@@ -1,9 +1,10 @@
-/** Operator-only repair: no migrations, data resets, deployments or secret output. */
+/** Operator-only operations: never reset data, deploy or emit credentials. */
 import pg from 'pg';
 import { randomBytes, createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import type { TLSSocket } from 'node:tls';
 import { provisionApplicationRole, applicationRoleStatus } from './database-role.js';
+import { applyMigrationPlan } from './migration-plan.js';
 
 class PortalRepairError extends Error {}
 let diagnosticPhase='target-verification';
@@ -17,7 +18,7 @@ export function safeDiagnostic(error:unknown,phase:string) {
 
 const repository = 'https://github.com/DruHustle/onesa-company-portal';
 const runtimeHost = 'ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech';
-// Owner-confirmed on 2026-10-11. Inspection does not authorize a database cutover.
+// Owner-confirmed on 2026-10-11. Neither inspection nor initialization cuts over runtime.
 const confirmedDirectHost = 'ep-autumn-glade-b9760olg.c-7.eu-central-1.aws.neon.tech';
 const database = 'neondb';
 const applicationRole = 'onesa_portal_app';
@@ -63,7 +64,7 @@ export async function confirmedTargetInventory(connection:Pick<pg.Pool,'query'>)
  return {schema_state:'verified_portal',contains_application_rows:populated};
 }
 
-export async function inspectConfirmedPortalTarget() {
+async function confirmedTargetContext() {
  if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-company-portal'||process.env.GITHUB_REF!=='refs/heads/audit/portal-master-acceptance')throw new PortalRepairError('Reviewed Portal inspection branch required');
  diagnosticPhase='confirmed-migration-url-validation';
  const owner=confirmedPortalDatabaseURL(process.env.PORTAL_MIGRATION_DATABASE_URL||'');
@@ -77,6 +78,11 @@ export async function inspectConfirmedPortalTarget() {
  if(!Array.isArray(entries)||entries.length>=100)throw new PortalRepairError('Incomplete Portal environment inventory');
  const runtimeValue=entries.map(item=>item.envVar||item).find(item=>item.key==='DATABASE_URL')?.value||'';
  const runtime=portalDatabaseURL(runtimeValue);
+ return {owner,runtime};
+}
+
+export async function inspectConfirmedPortalTarget() {
+ const {owner,runtime}=await confirmedTargetContext();
  diagnosticPhase='confirmed-target-read-only-inventory';
  const pool=new pg.Pool({connectionString:owner.toString(),max:1,connectionTimeoutMillis:5000,statement_timeout:10000,enableChannelBinding:true});
  try {
@@ -92,6 +98,47 @@ export async function inspectConfirmedPortalTarget() {
  }finally{await pool.end();}
 }
 
+/** Caller must identify the database and own the transaction. Existing objects/roles are preserved. */
+export async function initializeEmptyPortalSchema(client:Pick<pg.Pool,'query'>,password:string,role=applicationRole) {
+ if(!/^[A-Za-z0-9_-]{64}$/.test(password))throw new PortalRepairError('A dedicated generated application password must be saved privately before initialization');
+ await client.query('SELECT pg_advisory_xact_lock(757830)');
+ await client.query('SELECT pg_advisory_xact_lock(757831)');
+ const objects=await client.query("SELECT EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public') OR EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public') AS occupied");
+ if(objects.rows[0]?.occupied!==false)throw new PortalRepairError('Confirmed Portal schema is not empty; preserve it for operator review');
+ const existing=await client.query('SELECT 1 FROM pg_roles WHERE rolname=$1',[role]);
+ if(existing.rowCount)throw new PortalRepairError('Existing application role must be preserved; initialization cannot replace its password');
+ await client.query('SET LOCAL search_path TO public, pg_catalog');
+ const applied=await applyMigrationPlan(client);
+ if(await verifiedSchema(client)!==applied)throw new PortalRepairError('Initialization migration verification failed');
+ await provisionApplicationRole(client,password,role);
+ return applied;
+}
+
+export async function initializeConfirmedPortalTarget() {
+ const {owner,runtime}=await confirmedTargetContext();
+ const password=process.env.PORTAL_APP_DB_PASSWORD||'';
+ if(!/^[A-Za-z0-9_-]{64}$/.test(password))throw new PortalRepairError('Save the dedicated application password as PORTAL_APP_DB_PASSWORD before initialization');
+ const pool=new pg.Pool({connectionString:owner.toString(),max:1,connectionTimeoutMillis:5000,statement_timeout:10000,enableChannelBinding:true});
+ let applied=0;
+ try {
+  const client=await pool.connect();
+  try {
+   diagnosticPhase='confirmed-target-initialization';
+   assertConfirmedClientTLS(client.connection.stream as Partial<TLSSocket>);
+   await client.query('BEGIN');
+   const identity=await client.query('SELECT current_database() AS database');
+   if(identity.rows[0]?.database!==database)throw new PortalRepairError('Confirmed Portal target database identity mismatch');
+   applied=await initializeEmptyPortalSchema(client,password);
+   await client.query('COMMIT');
+  }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+ }finally{await pool.end();}
+ // Verify the new login directly; do not change any Render setting or deploy an old image.
+ diagnosticPhase='confirmed-application-role-verification';
+ const candidate=new URL(owner.toString());candidate.username=applicationRole;candidate.password=password;
+ const verified=await verifyRuntime(candidate);
+ return {read_only:false,client_tls_verified:true,confirmed_direct_host:confirmedDirectHost,database,existing_runtime_direct_host:runtime.hostname.replace('-pooler.','.'),schema_state:'verified_portal',migrations_applied:applied,application_role_created:true,...verified,database_cutover:false,render_database_url_updated:false,existing_runtime_untouched:true,worker_modified:false,deployment_requested:false};
+}
+
 async function provider(path:string, method='GET', payload?:unknown) {
  const token=process.env.RENDER_API_KEY;
  if(!token)throw new PortalRepairError('Missing Render access');
@@ -104,11 +151,11 @@ export async function verifiedSchema(connection:Pick<pg.Pool,'query'>) {
  const names=(await readdir('migrations')).filter(name=>name.endsWith('.sql')).sort();
  const expectedTables=new Set(['schema_migrations']);
  const applied=await connection.query('SELECT name,checksum FROM public.schema_migrations');
- if(applied.rows.length!==names.length)throw new PortalRepairError('Portal migration inventory mismatch; no migrations applied');
+ if(applied.rows.length!==names.length)throw new PortalRepairError('Portal migration inventory mismatch');
  for(const name of names) {
   const source=await readFile('migrations/'+name,'utf8');
   const checksum=createHash('sha256').update(source).digest('hex');
-  if(!applied.rows.some(row=>row.name===name&&row.checksum===checksum))throw new PortalRepairError('Portal schema checksum mismatch; no migrations applied');
+  if(!applied.rows.some(row=>row.name===name&&row.checksum===checksum))throw new PortalRepairError('Portal schema checksum mismatch');
   for(const match of source.matchAll(/CREATE TABLE\s+([a-z_]+)/g))expectedTables.add(match[1]);
  }
  const tables=await connection.query("SELECT tablename FROM pg_tables WHERE schemaname='public'");
@@ -119,13 +166,17 @@ export async function verifiedSchema(connection:Pick<pg.Pool,'query'>) {
 async function verifyRuntime(url:URL,requireSafe=true) {
  const pool=new pg.Pool({connectionString:url.toString(),max:1,connectionTimeoutMillis:5000,statement_timeout:10000,enableChannelBinding:true});
  try {
-  const status=await applicationRoleStatus(pool);
+  const client=await pool.connect();
+  try {
+  assertConfirmedClientTLS(client.connection.stream as Partial<TLSSocket>);
+  const status=await applicationRoleStatus(client);
   if(requireSafe&&!status.safe)throw new PortalRepairError('Runtime database role remains unsafe');
-  const migrationCount=await verifiedSchema(pool);
-  const tables=await pool.query("SELECT bool_and(has_table_privilege(current_user,c.oid,'SELECT') AND has_table_privilege(current_user,c.oid,'INSERT') AND has_table_privilege(current_user,c.oid,'UPDATE') AND has_table_privilege(current_user,c.oid,'DELETE')) AS allowed FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relname<>'schema_migrations'");
-  const sequences=await pool.query("SELECT bool_and(has_sequence_privilege(current_user,c.oid,'USAGE') AND has_sequence_privilege(current_user,c.oid,'SELECT')) AS allowed FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='S'");
+  const migrationCount=await verifiedSchema(client);
+  const tables=await client.query("SELECT bool_and(has_table_privilege(current_user,c.oid,'SELECT') AND has_table_privilege(current_user,c.oid,'INSERT') AND has_table_privilege(current_user,c.oid,'UPDATE') AND has_table_privilege(current_user,c.oid,'DELETE')) AS allowed FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relname<>'schema_migrations'");
+  const sequences=await client.query("SELECT bool_and(has_sequence_privilege(current_user,c.oid,'USAGE') AND has_sequence_privilege(current_user,c.oid,'SELECT')) AS allowed FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='S'");
   if(tables.rows[0]?.allowed!==true||sequences.rows[0]?.allowed===false)throw new PortalRepairError('Incomplete runtime database permissions');
-  return {runtime_connection_verified:true,runtime_role_safe:status.safe,runtime_role_reasons:status.reasons,application_permissions_verified:true,migration_checksums_verified:migrationCount};
+  return {runtime_connection_verified:true,runtime_tls_verified:true,runtime_role_safe:status.safe,runtime_role_reasons:status.reasons,application_permissions_verified:true,migration_checksums_verified:migrationCount};
+  }finally{client.release();}
  }finally{await pool.end();}
 }
 
@@ -183,8 +234,9 @@ export async function repairPortalRole(apply=false) {
 
 if(process.argv[1]?.endsWith('render-role-repair.ts')||process.argv[1]?.endsWith('render-role-repair.js')) {
  try {
-  if(process.argv.includes('--inspect-confirmed-target')&&process.argv.includes('--apply'))throw new PortalRepairError('Confirmed target inspection cannot apply changes');
-  const report=process.argv.includes('--inspect-confirmed-target')?await inspectConfirmedPortalTarget():await repairPortalRole(process.argv.includes('--apply'));
+  const flags=process.argv.slice(2);
+  if(flags.length>1||flags.some(flag=>!['--apply','--inspect-confirmed-target','--initialize-confirmed-target'].includes(flag)))throw new PortalRepairError('Choose exactly one recognized Portal operator action');
+  const report=flags.includes('--inspect-confirmed-target')?await inspectConfirmedPortalTarget():flags.includes('--initialize-confirmed-target')?await initializeConfirmedPortalTarget():await repairPortalRole(flags.includes('--apply'));
   console.log(JSON.stringify(report,null,2));
  }
  catch(error){

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import pg from 'pg';
 import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
-import { portalDatabaseURL, confirmedPortalDatabaseURL, assertConfirmedClientTLS, confirmedTargetInventory, inspectConfirmedPortalTarget, verifiedSchema, repairPortalRole, safeDiagnostic } from '../src/services/render-role-repair.js';
+import { portalDatabaseURL, confirmedPortalDatabaseURL, assertConfirmedClientTLS, confirmedTargetInventory, inspectConfirmedPortalTarget, initializeConfirmedPortalTarget, initializeEmptyPortalSchema, verifiedSchema, repairPortalRole, safeDiagnostic } from '../src/services/render-role-repair.js';
 
 const host='ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech';
 const fixture='postgresql://fixture:synthetic-password@'+host+'/neondb?sslmode=require';
@@ -54,7 +54,7 @@ test('Operator diagnostics identify the failed phase without disclosing database
  assert.ok(!safeDiagnostic(null,'target-verification').includes('null'));
 });
 
-test('Owner-confirmed target is inspection-only and does not relax existing repair identity',async()=>{
+test('Owner-confirmed target does not relax existing repair identity or allow another product',async()=>{
  const confirmed=fixture.replace(host,'ep-autumn-glade-b9760olg.c-7.eu-central-1.aws.neon.tech');
  assert.equal(confirmedPortalDatabaseURL(confirmed).hostname,'ep-autumn-glade-b9760olg.c-7.eu-central-1.aws.neon.tech');
  assert.throws(()=>portalDatabaseURL(confirmed,true));
@@ -64,7 +64,17 @@ test('Owner-confirmed target is inspection-only and does not relax existing repa
  try {
   process.env.GITHUB_REPOSITORY='DruHustle/onesa-ai-platform';process.env.GITHUB_REF='refs/heads/audit/portal-master-acceptance';
   await assert.rejects(inspectConfirmedPortalTarget(),/Reviewed Portal/);
+  await assert.rejects(initializeConfirmedPortalTarget(),/Reviewed Portal/);
  }finally{process.env=previous;}
+});
+
+test('Initialization refuses occupied schemas and existing roles before migration or password changes',async()=>{
+ const queries:string[]=[];let occupied=true;let roleExists=false;
+ const connection={query:async(sql:string)=>{queries.push(sql);return {rows:sql.includes('AS occupied')?[{occupied}]:[],rowCount:sql.includes('pg_roles')&&roleExists?1:0};}} as unknown as Pick<pg.Pool,'query'>;
+ await assert.rejects(initializeEmptyPortalSchema(connection,'x'.repeat(64)),/schema is not empty/);
+ occupied=false;roleExists=true;
+ await assert.rejects(initializeEmptyPortalSchema(connection,'x'.repeat(64)),/Existing application role/);
+ assert.ok(queries.every(sql=>sql.startsWith('SELECT ')));
 });
 
 test('Confirmed target inspection reports empty or unknown schemas using SELECT only',async()=>{

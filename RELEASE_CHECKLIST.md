@@ -36,7 +36,11 @@ and CHANGELOG.md; ongoing policies are consolidated in root AGENTS.md.
 
 ## Portal runtime acceptance
 
-Local and CI image/readiness checks pass. Hosted acceptance is blocked by migration secret identity mismatch, missing frontend proxy settings and an unverified worker target. See docs/engineering/VERCEL_RENDER.md.
+Local and CI image/readiness checks pass. The owner-confirmed autumn-glade target
+was verified empty; runtime still points to dark-boat. Guarded initialization and
+restricted-role verification are distinct from a qualified runtime cutover. Hosted
+acceptance still needs that cutover, frontend proxy settings and a verified worker
+target. See docs/engineering/VERCEL_RENDER.md.
 
 ## Branch protection acceptance — 2026-10-10
 
