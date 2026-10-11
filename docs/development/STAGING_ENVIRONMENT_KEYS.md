@@ -26,6 +26,6 @@ Leave automatic staging disabled until provider isolation, configuration and exa
 
 Remote branches are standardized as `dev`, `staging`, `main`. Dev work is reviewed through a PR. Source Vercel configuration enables staging Git previews and disables automatic dev/main deployments. Applying this file to a branch changes only that branch's configuration; inspect actual provider settings and hooks before claiming production is protected. Branch preview success does not substitute for exact-main staging qualification required by the existing production gate.
 
-The configured project-ID aliases and staging Render service ID are real identifiers. Remaining newly created names are empty and require owner values; existing staging secrets are preserved. The Org/Team ID is still pending.
+The configured project-ID aliases and staging Render service ID are real identifiers. Remaining newly created names are empty and require owner values; existing staging secrets are preserved. The matching Org/Team ID is configured. Current credential readiness belongs in the restricted release audit; secret-name presence alone is not verification.
 
 Branch archives and previous PR records remain in ignored local release-audit storage. Local worktree contents are retained as detached snapshots; deleted branch history is recoverable from the restricted Git bundle. No production branch content is changed by branch cleanup.
