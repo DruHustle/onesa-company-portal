@@ -233,10 +233,16 @@ export async function repairPortalRole(apply=false) {
  diagnosticPhase='runtime-url-validation';
  const runtime=portalDatabaseURL(values.DATABASE_URL||'');
  const rawOwner=process.env.PORTAL_MIGRATION_DATABASE_URL;
- if(!rawOwner) {
-  if(apply)throw new PortalRepairError('Save fresh direct PORTAL_MIGRATION_DATABASE_URL privately before applying');
-  return {read_only:true,render_identity_verified:true,portal_database_identity_verified:true,owner_secret_configured:false,deployment_requested:false};
+ if(!apply) {
+  // Read the deployed login independently of a maintenance credential's database binding.
+  diagnosticPhase='runtime-role-verification';
+  return {read_only:true,render_identity_verified:true,portal_database_identity_verified:true,
+   runtime_database_host:runtime.hostname,database,owner_secret_configured:!!rawOwner,
+   migration_credential_used:false,runtime_is_application_role:decodeURIComponent(runtime.username)===applicationRole,
+   ...await verifyRuntime(runtime,false),permissions_changed:false,migrations_applied:false,
+   render_database_url_updated:false,deployment_requested:false};
  }
+ if(!rawOwner)throw new PortalRepairError('Save fresh direct PORTAL_MIGRATION_DATABASE_URL privately before applying');
  diagnosticPhase='migration-url-validation';
  const owner=portalDatabaseURL(rawOwner,true);
  const pool=new pg.Pool({connectionString:owner.toString(),max:1,connectionTimeoutMillis:5000,statement_timeout:10000,enableChannelBinding:true});
@@ -245,7 +251,6 @@ export async function repairPortalRole(apply=false) {
   const migrationCount=await verifiedSchema(pool);
   const role=(await pool.query('SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=$1',[applicationRole])).rows[0];
   const report={read_only:!apply,render_identity_verified:true,portal_database_identity_verified:true,owner_secret_configured:true,migration_checksums_verified:migrationCount,existing_application_role:!!role,deployment_requested:false};
-  if(!apply){diagnosticPhase='runtime-role-verification';return {...report,runtime_is_application_role:decodeURIComponent(runtime.username)===applicationRole,...await verifyRuntime(runtime,false)};}
   if(role&&Object.values(role).some(Boolean))throw new PortalRepairError('Existing Portal role has elevated privileges; operator review required');
   if(role&&decodeURIComponent(runtime.username)!==applicationRole)throw new PortalRepairError('Existing role password is unknown; preserve it and request private operator configuration');
   diagnosticPhase='permission-repair';

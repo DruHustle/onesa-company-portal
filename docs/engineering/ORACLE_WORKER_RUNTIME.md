@@ -70,6 +70,16 @@ IP. The Render API keeps its initial uploads quarantined; the worker retrieves t
 privately and updates scan status only after the existing bounded scanner protocol
 returns an explicit result. Do not enable publication or manually mark uploads clean.
 
+## Production binding inspection
+
+The existing `repair-hosting.yml` owner action `inspect-role` reads the production
+Render runtime binding and tests its actual login using read-only transactions. It
+does not use `PORTAL_MIGRATION_DATABASE_URL`, apply migrations, change roles or update
+provider settings. A stale maintenance credential is not evidence of a runtime role
+regression. Preserve all credentials; actual TLS/schema/permissions/role results remain
+required before a production worker is bound to that database. This inspection does
+not establish the production bucket identity or authorize a database cutover.
+
 ## Qualified deployment and validation
 
 Use a reviewed archive of the exact staging commit only after current source CI,
