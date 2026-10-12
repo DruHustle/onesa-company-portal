@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-12 — Separate browser startup and action budgets
+
+The retained CI trace shows WebKit spent 28 seconds creating its page in the
+30-second test budget, leaving 1.4 seconds for an ordinary language-link click.
+Allow a 60-second total browser test budget while explicitly limiting individual
+actions to 15 seconds and navigation to 20 seconds. Keep retries disabled, every
+browser/appearance check and exact-source release gates. This changes the CI fixture
+budget, not an application response contract or a failed-check waiver.
+
+
 ## 2026-10-12 — Validate Git staging archive parents
 
 Accept only expected parent directories emitted by Git archive while retaining
