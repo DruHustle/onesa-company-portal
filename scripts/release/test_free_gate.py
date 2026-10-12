@@ -139,6 +139,32 @@ class FreeGateTests(unittest.TestCase):
             self.github, SHA, self.github.run(40), 30, fingerprint, 2, "approve"
         )
 
+    def test_single_owner_dispatch_does_not_need_an_extra_review_document(self):
+        self.github.record = f.qualification(self.github, SHA, self.github.run(30), 20)
+        fingerprint = e.digest(self.github.record)
+        self.github.approval = f.authorize(
+            self.github, SHA, self.github.run(40), 30, fingerprint, None, "approve"
+        )
+        review = self.github.approval["owner_review"]
+        self.assertEqual(review["source"], "owner-workflow-dispatch")
+        self.assertEqual(review["candidate_commit"], SHA)
+        self.assertEqual(review["evidence_sha256"], fingerprint)
+        self.assertEqual(f.verify(self.github, SHA, 40)["status"], "AUTHORIZED_EXTERNAL_HANDOFF")
+        # Authorization does not fabricate operational or legal qualification.
+        self.assertEqual(self.github.record["OPERATIONS_VERIFIED"], "BLOCKED")
+        self.assertEqual(self.github.record["CONTENT_LEGAL_APPROVED"], "BLOCKED")
+
+    def test_single_dispatch_still_rejects_an_untrusted_owner_or_failed_ci(self):
+        self.github.record = f.qualification(self.github, SHA, self.github.run(30), 20)
+        fingerprint = e.digest(self.github.record)
+        run = copy.deepcopy(self.github.run(40))
+        run["actor"]["login"] = "untrusted"
+        with self.assertRaises(e.Rejected):
+            f.authorize(self.github, SHA, run, 30, fingerprint, None, "approve")
+        self.github.ci_jobs[0]["conclusion"] = "failure"
+        with self.assertRaises(e.Rejected):
+            f.authorize(self.github, SHA, self.github.run(40), 30, fingerprint, None, "approve")
+
     def test_automatic_qualification_derives_evidence_without_human_pass(self):
         value = self.github.run(30)
         value["event"] = "workflow_run"

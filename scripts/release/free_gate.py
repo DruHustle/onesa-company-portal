@@ -182,7 +182,17 @@ def authorize(github, sha, run, qualification_run, fingerprint, review_issue, de
             qualification=origin,
             evidence_sha256=fingerprint,
             source_sha256=qualified["source_sha256"],
-            owner_review=owner_issue(github, review_issue, sha, fingerprint),
+            owner_review=(
+                owner_issue(github, review_issue, sha, fingerprint)
+                if review_issue
+                else {
+                    "source": "owner-workflow-dispatch",
+                    "workflow_run_id": run["id"],
+                    "candidate_commit": sha,
+                    "evidence_sha256": fingerprint,
+                    "approver": e.OWNER,
+                }
+            ),
         )
     return record
 
@@ -208,7 +218,7 @@ def verify(github, sha, identifier):
         run,
         approval["qualification"]["run_id"],
         approval["evidence_sha256"],
-        approval["owner_review"]["number"],
+        approval["owner_review"].get("number"),
         "approve",
     )
     e.require(approval == refreshed, "Approval or owner review changed")

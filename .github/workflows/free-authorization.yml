@@ -11,9 +11,9 @@ name: Free release authorization
         type: string
         required: true
       review_issue:
-        description: Open owner-authored issue binding candidate, digest and reviews
+        description: Optional existing owner review issue; owner dispatch records a single release decision
         type: string
-        required: true
+        required: false
       decision:
         description: Authorize external owner handoff or revoke older approval
         type: choice

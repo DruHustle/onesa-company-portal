@@ -2,6 +2,20 @@
 
 > Current pipeline: [automated review, staging qualification and owner activation](CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.
 
+
+## Current single-owner release decision
+
+The owner explicitly authorized the release on 2026-10-12 and waived additional
+discretionary internal signatures. The credential-free authorization workflow now
+accepts one owner dispatch bound to the exact qualified commit and evidence digest;
+an existing review issue is optional. Actor and triggering-actor identity, exact main
+CI and staging artifacts, source/image integrity, freshness and revocation checks
+remain mandatory. This supersedes the historical mandatory-issue procedure below.
+Authorization does not turn unexecuted operations or legal checks into PASS. Actual
+provider controls, backup/restore, monitoring, privacy and material publication checks
+must still be verified before deployment. Keep production credentials outside editable
+repository workflows. Cloud approval never enables physical actuation.
+
 ## Verified state — 2026-10-11
 
 This report supersedes earlier temporary-public runner guidance for the requested

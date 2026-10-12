@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-12 — Single owner authorization and optional scanner configuration
+
+Accept the owner’s single, exact-commit workflow decision without requiring a second
+review issue or discretionary signature. Preserve actual CI/staging artifact, owner
+identity, digest, freshness and revocation checks; no operational/legal PASS is inferred.
+Treat a blank optional ClamAV socket as absent while retaining absolute-path validation
+and quarantine when scanning is unavailable. Preserve restricted release evidence when
+removing obsolete workspace reports; production and real-data qualification remain separate.
+
 ## 2026-10-12 — Preserve pinned SSH paths containing spaces
 
 Quote the existing known-hosts path for OpenSSH configuration parsing. The shared
