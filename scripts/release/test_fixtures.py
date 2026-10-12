@@ -32,6 +32,34 @@ def fixture():
 
 
 class FixtureTests(unittest.TestCase):
+    def test_preview_repair_refuses_wrong_branch_and_actor_before_provider_access(self):
+        import hosted
+
+        env = {"GITHUB_REPOSITORY": hosted.REPOSITORY, "GITHUB_REF": "refs/heads/dev", "GITHUB_ACTOR": "DruHustle", "RUNNER_ENVIRONMENT": "github-hosted"}
+        for key, value in [("GITHUB_REF", "refs/heads/main"), ("GITHUB_REF", "refs/heads/staging"), ("GITHUB_ACTOR", "other"), ("RUNNER_ENVIRONMENT", "self-hosted"), ("GITHUB_REPOSITORY", "other/project")]:
+            with patch.dict(os.environ, {**env, key: value}, clear=True), patch.object(hosted, "preflight") as read:
+                with self.assertRaises(ValueError): hosted.configure_staging_preview()
+                read.assert_not_called()
+
+    def test_preview_repair_changes_only_staging_branch_server_bindings(self):
+        import hosted
+        from unittest.mock import MagicMock
+
+        marker = "synthetic-stage-private-key-" + "x" * 32
+        env = {"GITHUB_REPOSITORY": hosted.REPOSITORY, "GITHUB_REF": "refs/heads/dev", "GITHUB_ACTOR": "DruHustle", "RUNNER_ENVIRONMENT": "github-hosted", "VERCEL_PROJECT_ID": PROJECT, "VERCEL_ORG_ID": "team_synthetic", "VERCEL_TOKEN": "synthetic-token"}
+        production = {"key": "BACKEND_URL", "target": ["production"], "value": "private-production-binding"}
+        after = {"envs": [production, {"key": "BACKEND_URL", "target": ["preview"], "gitBranch": "staging", "value": hosted.BACKEND_ORIGINS[PORTAL]}, {"key": "PROXY_SHARED_KEY", "target": ["preview"], "gitBranch": "staging", "value": marker}]}
+        response = MagicMock();response.__enter__.return_value.status = 200
+        opener = MagicMock();opener.open.return_value = response
+        with patch.dict(os.environ, env, clear=True), patch.object(hosted, "preflight", return_value={"settings": {"PROXY_SHARED_KEY": marker}}), patch.object(hosted, "provider", side_effect=[{"envs": [production]}, after]), patch.object(hosted.urllib.request, "build_opener", return_value=opener):
+            hosted.configure_staging_preview()
+        request = opener.open.call_args.args[0]
+        self.assertEqual(request.get_method(), "POST")
+        payload = json.loads(request.data)
+        self.assertEqual({item["key"] for item in payload}, {"BACKEND_URL", "PROXY_SHARED_KEY"})
+        self.assertTrue(all(item["target"] == ["preview"] and item["gitBranch"] == "staging" for item in payload))
+        self.assertNotIn("private-production-binding", request.data.decode())
+
     def test_valid_credentials_and_unpadded_totp(self):
         self.assertEqual(
             parse_fixtures(json.dumps(fixture()), PROJECT, PORTAL), fixture()

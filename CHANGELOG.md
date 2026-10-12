@@ -2,7 +2,7 @@
 
 ## 2026-10-12 — Read-only Preview routing diagnosis
 
-Compare the effective staging Preview backend and proxy binding with the identified staging API. Branch overrides take precedence; ambiguous values fail validation. Report booleans only, preserving credentials and production.
+Compare the effective staging Preview backend and proxy binding with the identified staging API. Branch overrides take precedence; ambiguous values fail validation. Report booleans only, preserving credentials and production. A hosted owner repair checks current dev/staging CI and isolated provider identity before saving only the staging branch backend URL and existing staging proxy key; production values are read back unchanged, with no deployment requested.
 
 
 ## 2026-10-12 — Exact native staging Preview origin

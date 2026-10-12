@@ -200,9 +200,10 @@ def require_stage_acceptance(record):
     )
 
 
-def preflight():
+def preflight(*, configuration_dev=False):
     require(
         os.environ["GITHUB_REF"] == "refs/heads/" + POLICY["staging_branch"]
+        or (configuration_dev and os.environ["GITHUB_REF"] == "refs/heads/dev")
         or (
             os.environ.get("GITHUB_EVENT_NAME") == "workflow_run"
             and os.environ["GITHUB_REF"] == "refs/heads/main"
@@ -697,6 +698,33 @@ def production():
     return result
 
 
+def configure_staging_preview():
+    """Only the approved staging API's server settings may reach its Git Preview."""
+    require(PRODUCT == "onesa-company-portal" and os.environ.get("GITHUB_REPOSITORY") == REPOSITORY and os.environ.get("GITHUB_REF") == "refs/heads/dev" and os.environ.get("GITHUB_ACTOR") == "DruHustle" and os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted", "Identified hosted development operator required")
+    verified = preflight(configuration_dev=True)
+    proxy = verified["settings"].get("PROXY_SHARED_KEY", "")
+    require(isinstance(proxy, str) and len(proxy) >= 32, "Staging API proxy credential missing")
+    project, team = os.environ["VERCEL_PROJECT_ID"], os.environ["VERCEL_ORG_ID"]
+    query = urllib.parse.urlencode({"teamId": team, "decrypt": "true"})
+    endpoint = "https://api.vercel.com/v9/projects/" + project + "/env?" + query
+    before = provider(endpoint, os.environ["VERCEL_TOKEN"]).get("envs", [])
+    production = [item for item in before if "production" in item.get("target", [])]
+    payload = [{"key": key, "value": value, "type": kind, "target": ["preview"], "gitBranch": "staging"} for key, value, kind in [("BACKEND_URL", BACKEND_ORIGINS[PRODUCT], "plain"), ("PROXY_SHARED_KEY", proxy, "encrypted")]]
+    url = "https://api.vercel.com/v10/projects/" + project + "/env?" + urllib.parse.urlencode({"teamId": team, "upsert": "true"})
+    req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={"Authorization": "Bearer " + os.environ["VERCEL_TOKEN"], "Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.build_opener(NoRedirect()).open(req, timeout=45) as response:
+            require(response.status in {200, 201}, "Preview settings update failed")
+    except (urllib.error.URLError, TimeoutError):
+        raise Rejected("Preview settings update unavailable") from None
+    after = provider(endpoint, os.environ["VERCEL_TOKEN"]).get("envs", [])
+    require([item for item in after if "production" in item.get("target", [])] == production, "Production environment changed during Preview repair")
+    for key, value in [("BACKEND_URL", BACKEND_ORIGINS[PRODUCT]), ("PROXY_SHARED_KEY", proxy)]:
+        matches = [item for item in after if item.get("key") == key and item.get("target") == ["preview"] and item.get("gitBranch") == "staging"]
+        require(len(matches) == 1 and matches[0].get("value") == value, "Preview settings readback failed")
+    print("Staging Preview routing verified; production unchanged; no deployment requested")
+
+
 def bind_staging_origin():
     # The only allowed write: current Preview origin on the already approved staging API.
     # Preflight verifies repository, branch, free plan, native deploy pause and isolated DB.
@@ -750,6 +778,7 @@ def main():
             "recheck",
             "frontend-receipt",
             "bind-staging-origin",
+            "configure-staging-preview",
             "production",
         ],
     )
@@ -770,6 +799,8 @@ def main():
         require_stage_acceptance(record)
     elif args.mode == "bind-staging-origin":
         bind_staging_origin()
+    elif args.mode == "configure-staging-preview":
+        configure_staging_preview()
     elif args.mode == "production":
         save(production(), args.output)
     elif args.mode == "preflight":
