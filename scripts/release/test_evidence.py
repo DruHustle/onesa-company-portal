@@ -173,6 +173,80 @@ class GateTests(unittest.TestCase):
             self.approval, self.evidence, self.origin, self.run, SHA, now=NOW
         )
 
+    def test_hosted_suite_failure_code_preserves_status_without_request_or_secret_data(
+        self,
+    ):
+        import hosted_suite
+
+        self.assertEqual(
+            hosted_suite.safe_suite_failure_code(
+                e.Rejected("Synthetic hosted request failed: POST auth HTTP 401")
+            ),
+            "HTTP_401",
+        )
+        self.assertEqual(
+            hosted_suite.safe_suite_failure_code(
+                e.Rejected("Secure session cookie missing")
+            ),
+            "SESSION_COOKIE",
+        )
+        marker = "private-value-never-log"
+        self.assertEqual(
+            hosted_suite.safe_suite_failure_code(e.Rejected(marker)), "HOSTED_CHECK"
+        )
+        self.assertNotIn(
+            marker, hosted_suite.safe_suite_failure_code(ValueError(marker))
+        )
+
+    def test_hosted_staging_exit_gate_rejects_failure_blocked_and_false_pass_records(
+        self,
+    ):
+        import hosted
+
+        hosted.require_stage_acceptance(self.evidence["staging"]["record"])
+        for status in ["FAIL", "BLOCKED", "NOT TESTED", None]:
+            with self.subTest(status=status), self.assertRaises(e.Rejected):
+                hosted.require_stage_acceptance(
+                    {"status": status, "checks": {"authentication": "PASS"}}
+                )
+        for checks in [
+            {},
+            {"authentication": "PASS"},
+            {"authentication": "FAIL"},
+            {"inference": "BLOCKED"},
+            {"storage": "NOT TESTED"},
+        ]:
+            with self.subTest(checks=checks), self.assertRaises(e.Rejected):
+                hosted.require_stage_acceptance({"status": "PASS", "checks": checks})
+
+    def test_hosted_failure_codes_identify_known_gates_without_private_exception_text(
+        self,
+    ):
+        import hosted
+
+        self.assertEqual(
+            hosted.safe_failure_code(e.Rejected("Render readback unavailable")),
+            "RENDER_ACCESS",
+        )
+        self.assertEqual(
+            hosted.safe_failure_code(
+                e.Rejected(
+                    "Staging synthetic probes require the identified isolated runtime database"
+                )
+            ),
+            "STAGING_DATABASE_BINDING",
+        )
+        marker = "private-provider-value-never-log"
+        for error in [
+            e.Rejected(marker),
+            KeyError(marker),
+            ValueError(marker),
+            TypeError(marker),
+            OSError(marker),
+        ]:
+            self.assertNotIn(marker, hosted.safe_failure_code(error))
+        self.assertEqual(hosted.safe_failure_code(e.Rejected(marker)), "VALIDATION")
+
     def test_registered_staging_entrypoint_keeps_commit_branch_event_and_owner_guards(
         self,
     ):

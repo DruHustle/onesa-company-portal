@@ -10,6 +10,7 @@ import hmac
 import http.cookiejar
 import json
 import os
+import re
 import secrets
 import struct
 import time
@@ -22,6 +23,20 @@ from evidence import PRODUCT, REPOSITORY, Rejected, require
 from hosted import NoRedirect, preview_origin, request
 
 PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/Z1sAAAAASUVORK5CYII="
+
+
+def safe_suite_failure_code(error):
+    match = re.fullmatch(
+        r"Synthetic hosted request failed: [A-Z]+ [a-z-]+ HTTP ([1-5][0-9]{2})",
+        str(error),
+    )
+    if match:
+        return "HTTP_" + match[1]
+    known = {
+        "Secure session cookie missing": "SESSION_COOKIE",
+        "CSRF token missing": "CSRF_TOKEN",
+    }
+    return known.get(str(error), "HOSTED_CHECK")
 
 
 class Session:
@@ -289,9 +304,16 @@ def run_suite(origin):
         record["status"] = (
             "PASS" if all(value == "PASS" for value in checks.values()) else "BLOCKED"
         )
-    except (Rejected, urllib.error.URLError, TimeoutError, ValueError, KeyError):
+    except (
+        Rejected,
+        urllib.error.URLError,
+        TimeoutError,
+        ValueError,
+        KeyError,
+    ) as error:
         checks[active] = "FAIL"
         record["status"] = "FAIL"
+        record["failure_code"] = safe_suite_failure_code(error)
     return record
 
 
@@ -397,6 +419,8 @@ def main():
     record = run_suite(origin)
     Path(os.environ["RUNNER_TEMP"], "hosted-suite.json").write_text(json.dumps(record))
     print("Synthetic hosted suite: " + record["status"])
+    if record.get("failure_code"):
+        print("Hosted check failure: " + record["failure_code"])
 
 
 if __name__ == "__main__":

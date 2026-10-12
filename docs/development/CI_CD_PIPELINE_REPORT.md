@@ -493,3 +493,15 @@ production credential names or blanket secrets: inherit are passed. GitHub silen
 resolved unpassed names to empty strings in the first runtime preflight; source tests
 now compare used, declared and forwarded names to prevent that mismatch. See
 [GitHub reusable workflow secrets](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows).
+
+
+Hosted preflight failures now emit only fixed diagnostic codes (for example RENDER_ACCESS,
+STAGING_DATABASE_BINDING or STAGING_INFERENCE_CONFIGURATION). Unknown errors keep a
+generic code; private values/URLs/responses/exception strings are never emitted. This
+identifies the owner's exact failed requirement without relaxing a release gate.
+
+
+Staging uploads its receipt before the final hosted acceptance requirement. The final
+step now fails for FAIL/BLOCKED/incomplete results, including a false PASS paired with
+nonpassing checks. Provider deployment success remains separately recorded; a green
+workflow cannot conceal authentication, readiness, inference or storage failures.

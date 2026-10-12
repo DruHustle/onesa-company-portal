@@ -19,6 +19,7 @@ from evidence import (
     digest,
     require,
     save,
+    staging_check_names,
     trusted_run,
     verify_stage,
 )
@@ -62,12 +63,52 @@ def request(url, token=None, bypass=None, raw=False):
         return 0, None
 
 
+# Fixed diagnostic codes expose no provider values, URLs, response bodies or exception text.
+FAILURE_CODES = {
+    "Hosted staging acceptance incomplete": "STAGING_ACCEPTANCE",
+    "Provider credential missing": "PROVIDER_CREDENTIAL_MISSING",
+    "Provider readback unavailable": "PROVIDER_ACCESS",
+    "Render credential missing": "RENDER_CREDENTIAL_MISSING",
+    "Render readback unavailable": "RENDER_ACCESS",
+    "Vercel credential missing": "VERCEL_CREDENTIAL_MISSING",
+    "Vercel readback unavailable": "VERCEL_ACCESS",
+    "Unapproved staging branch": "STAGING_BRANCH",
+    "Staging target identity mismatch": "STAGING_RENDER_IDENTITY",
+    "Only the existing free staging target is authorized": "STAGING_FREE_PLAN",
+    "Staging native auto-deploy must be disabled": "STAGING_AUTO_DEPLOY",
+    "Complete staging environment readback required": "STAGING_ENVIRONMENT_INVENTORY",
+    "Staging synthetic probes require the identified isolated runtime database": "STAGING_DATABASE_BINDING",
+    "Portal cloud staging must retain production protections": "STAGING_RUNTIME_MODE",
+    "Full release probes require actual configured inference and semantic embeddings": "STAGING_INFERENCE_CONFIGURATION",
+    "Staging Vercel project missing": "STAGING_VERCEL_BINDING",
+    "Staging frontend repository binding mismatch": "STAGING_FRONTEND_REPOSITORY",
+    "Staging Preview is not access protected": "STAGING_PREVIEW_PROTECTION",
+}
+
+
+def safe_failure_code(error):
+    if isinstance(error, Rejected):
+        return FAILURE_CODES.get(str(error), "VALIDATION")
+    if isinstance(error, KeyError):
+        return "CONFIGURATION_INPUT_MISSING"
+    if isinstance(error, OSError):
+        return "NETWORK_OR_FILE_ACCESS"
+    return "CONFIGURATION_FORMAT"
+
+
 def provider(url, token):
-    require(token, "Provider credential missing")
+    provider_name = (
+        "Render"
+        if url.startswith("https://api.render.com/")
+        else "Vercel"
+        if url.startswith("https://api.vercel.com/")
+        else "Provider"
+    )
+    require(token, provider_name + " credential missing")
     status, data = request(url, token=token)
     require(
         status == 200 and isinstance(data, (dict, list)),
-        "Provider readback unavailable",
+        provider_name + " readback unavailable",
     )
     return data
 
@@ -142,6 +183,17 @@ def render(service, identifier, sha):
         "Staging was replaced by another deployment",
     )
     return data
+
+
+def require_stage_acceptance(record):
+    checks = record.get("checks")
+    require(
+        record.get("status") == "PASS"
+        and isinstance(checks, dict)
+        and staging_check_names() <= checks.keys()
+        and all(value == "PASS" for value in checks.values()),
+        "Hosted staging acceptance incomplete",
+    )
 
 
 def preflight():
@@ -631,6 +683,7 @@ def main():
         choices=[
             "preflight",
             "stage",
+            "stage-result",
             "recheck",
             "frontend-receipt",
             "bind-staging-origin",
@@ -645,7 +698,12 @@ def main():
     parser.add_argument("--url-file", default="/tmp/vercel-url.txt")
     parser.add_argument("--output", default="data/release/record.json")
     args = parser.parse_args()
-    if args.mode == "bind-staging-origin":
+    if args.mode == "stage-result":
+        record = json.loads(Path(args.evidence).read_text())
+        print("Hosted qualification:", record.get("status"))
+        print(json.dumps(record.get("checks", {}), indent=2))
+        require_stage_acceptance(record)
+    elif args.mode == "bind-staging-origin":
         bind_staging_origin()
     elif args.mode == "production":
         save(production(), args.output)
@@ -682,7 +740,9 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (Rejected, OSError, KeyError, ValueError, TypeError):
+    except (Rejected, OSError, KeyError, ValueError, TypeError) as error:
         raise SystemExit(
-            "Hosted qualification blocked; check scoped configuration privately"
+            "Hosted qualification blocked ["
+            + safe_failure_code(error)
+            + "]; check scoped configuration privately"
         ) from None

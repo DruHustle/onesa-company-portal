@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-12 — Fail incomplete hosted staging acceptance
+
+Retain uploaded staging receipts but fail the workflow when hosted acceptance is FAIL,
+BLOCKED, incomplete, or falsely claims PASS with failed checks. A successful provider
+build/deploy is still recorded separately. Production qualification gates are unchanged.
+
+## 2026-10-12 — Safe hosted preflight diagnostics
+
+Report a fixed failure code for provider access, target identity, database binding,
+model configuration and Preview protection without printing values, URLs, provider
+responses or arbitrary exception text. Retain every existing validation/release gate;
+add regression coverage rejecting private exception text from diagnostics.
+
 ## 2026-10-12 — Explicit staging secret forwarding
 
 Declare and forward only the staging secret names used by the reusable qualification

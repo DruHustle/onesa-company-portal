@@ -283,11 +283,12 @@ def trusted_staging_run(github, run, sha, completed=True):
     branches = {POLICY["staging_branch"]} if event == "workflow_dispatch" else {"main"}
     workflow = "release-staging.yml"
     if run["path"] == ".github/workflows/deploy.yml":
-        require(event == "workflow_dispatch", "Staging entry point must be manually dispatched")
+        require(
+            event == "workflow_dispatch",
+            "Staging entry point must be manually dispatched",
+        )
         workflow = "deploy.yml"
-    trusted_run(
-        run, workflow, sha, branches, event=event, completed=completed
-    )
+    trusted_run(run, workflow, sha, branches, event=event, completed=completed)
     require(
         run["actor"]["login"] == OWNER and run["triggering_actor"]["login"] == OWNER,
         "Staging requires owner provenance",
@@ -527,6 +528,22 @@ def generate(github, sha, run, staging_run=None, require_frontend_build=True):
     return record
 
 
+def staging_check_names():
+    required = {
+        "deployed_commit",
+        "backend_readiness",
+        "frontend_availability",
+        "authentication",
+        "database_connectivity",
+        "critical_workflows",
+        "user_data_isolation",
+        "storage_integrations",
+    }
+    if PRODUCT == "onesa-ai-platform":
+        required |= {"streaming", "inference", "embeddings"}
+    return required
+
+
 def verify_stage(stage, sha, fingerprint, builds, now=None):
     require(
         stage["repository"] == REPOSITORY
@@ -542,18 +559,7 @@ def verify_stage(stage, sha, fingerprint, builds, now=None):
         fresh(stage["verified_at"], now or datetime.now(timezone.utc)),
         "Staging evidence stale",
     )
-    required = {
-        "deployed_commit",
-        "backend_readiness",
-        "frontend_availability",
-        "authentication",
-        "database_connectivity",
-        "critical_workflows",
-        "user_data_isolation",
-        "storage_integrations",
-    }
-    if PRODUCT == "onesa-ai-platform":
-        required |= {"streaming", "inference", "embeddings"}
+    required = staging_check_names()
     require(required <= stage["checks"].keys(), "Mandatory staging checks absent")
     require(
         stage.get("render_deployment_id") and stage.get("vercel_deployment_id"),
