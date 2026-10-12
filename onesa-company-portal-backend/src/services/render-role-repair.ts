@@ -22,6 +22,36 @@ const runtimeHost = 'ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech
 const confirmedDirectHost = 'ep-autumn-glade-b9760olg.c-7.eu-central-1.aws.neon.tech';
 const database = 'neondb';
 const applicationRole = 'onesa_portal_app';
+const stagingServiceID = 'srv-db5k5had0e5s73fos4g0';
+
+export function assertPortalStagingService(service:{id?:string;repo?:string;branch?:string;type?:string;rootDir?:string;autoDeployTrigger?:string;serviceDetails?:{runtime?:string;env?:string;plan?:string;region?:string;url?:string}}) {
+ const details=service.serviceDetails||{};
+ if(service.id!==stagingServiceID||service.repo?.replace(/\.git$/,'')!==repository||service.branch!=='staging'||service.type!=='web_service'||(details.runtime||details.env)!=='docker'||details.plan!=='free'||details.region!=='frankfurt'||service.rootDir!=='onesa-company-portal-backend'||details.url!=='https://onesa-company-portal-backend-staging.onrender.com'||service.autoDeployTrigger!=='off')throw new PortalRepairError('Isolated free Portal staging target mismatch');
+}
+
+/** Reuse the saved restricted login; never initialize, grant, rotate, deploy or modify production. */
+export async function repairPortalStagingDatabase() {
+ if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-company-portal'||process.env.GITHUB_REF!=='refs/heads/staging')throw new PortalRepairError('Exact Portal staging operator branch required');
+ const password=process.env.PORTAL_APP_DB_PASSWORD||'';
+ if(!/^[A-Za-z0-9_-]{64}$/.test(password))throw new PortalRepairError('Existing dedicated application password required');
+ diagnosticPhase='staging-provider-identity';
+ const path='services/'+stagingServiceID;
+ assertPortalStagingService(await provider(path));
+ const candidate=new URL('postgresql://'+applicationRole+'@'+confirmedDirectHost.replace('.','-pooler.')+'/'+database+'?sslmode=verify-full&channel_binding=require');
+ candidate.password=password;
+ diagnosticPhase='staging-existing-schema-and-role-verification';
+ const verified=await verifyRuntime(candidate);
+ // Recheck immediately before the single environment write; preserve all other settings.
+ assertPortalStagingService(await provider(path));
+ diagnosticPhase='staging-database-binding-update';
+ await provider(path+'/env-vars/DATABASE_URL','PUT',{value:candidate.toString()});
+ const entries=await provider(path+'/env-vars?limit=100');
+ if(!Array.isArray(entries)||entries.length>=100)throw new PortalRepairError('Incomplete staging environment readback');
+ const saved=entries.map(item=>item.envVar||item).find(item=>item.key==='DATABASE_URL');
+ if(saved?.value!==candidate.toString())throw new PortalRepairError('Staging database binding readback mismatch');
+ assertPortalStagingService(await provider(path));
+ return {...verified,staging_database_binding_verified:true,render_database_url_updated:true,existing_data_preserved:true,migrations_applied:false,permissions_changed:false,password_rotated:false,production_modified:false,worker_modified:false,deployment_requested:false};
+}
 
 function validatedDatabaseURL(raw:string,expectedHost:string) {
  let url:URL;
@@ -173,12 +203,16 @@ async function verifyRuntime(url:URL,requireSafe=true) {
   const client=await pool.connect();
   try {
   assertConfirmedClientTLS(client.connection.stream as Partial<TLSSocket>);
+  await client.query('BEGIN TRANSACTION READ ONLY');
+  const identity=await client.query('SELECT current_database() AS database, current_user AS role');
+  if(identity.rows[0]?.database!==database||requireSafe&&identity.rows[0]?.role!==applicationRole)throw new PortalRepairError('Runtime database login identity mismatch');
   const status=await applicationRoleStatus(client);
   if(requireSafe&&!status.safe)throw new PortalRepairError('Runtime database role remains unsafe');
   const migrationCount=await verifiedSchema(client);
   const tables=await client.query("SELECT bool_and(has_table_privilege(current_user,c.oid,'SELECT') AND has_table_privilege(current_user,c.oid,'INSERT') AND has_table_privilege(current_user,c.oid,'UPDATE') AND has_table_privilege(current_user,c.oid,'DELETE')) AS allowed FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relname<>'schema_migrations'");
   const sequences=await client.query("SELECT bool_and(has_sequence_privilege(current_user,c.oid,'USAGE') AND has_sequence_privilege(current_user,c.oid,'SELECT')) AS allowed FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='S'");
   if(tables.rows[0]?.allowed!==true||sequences.rows[0]?.allowed===false)throw new PortalRepairError('Incomplete runtime database permissions');
+  await client.query('ROLLBACK');
   return {runtime_connection_verified:true,runtime_tls_verified:true,runtime_role_safe:status.safe,runtime_role_reasons:status.reasons,application_permissions_verified:true,migration_checksums_verified:migrationCount};
   }finally{client.release();}
  }finally{await pool.end();}
@@ -239,8 +273,8 @@ export async function repairPortalRole(apply=false) {
 if(process.argv[1]?.endsWith('render-role-repair.ts')||process.argv[1]?.endsWith('render-role-repair.js')) {
  try {
   const flags=process.argv.slice(2);
-  if(flags.length>1||flags.some(flag=>!['--apply','--inspect-confirmed-target','--initialize-confirmed-target'].includes(flag)))throw new PortalRepairError('Choose exactly one recognized Portal operator action');
-  const report=flags.includes('--inspect-confirmed-target')?await inspectConfirmedPortalTarget():flags.includes('--initialize-confirmed-target')?await initializeConfirmedPortalTarget():await repairPortalRole(flags.includes('--apply'));
+  if(flags.length>1||flags.some(flag=>!['--apply','--inspect-confirmed-target','--initialize-confirmed-target','--repair-staging-database'].includes(flag)))throw new PortalRepairError('Choose exactly one recognized Portal operator action');
+  const report=flags.includes('--repair-staging-database')?await repairPortalStagingDatabase():flags.includes('--inspect-confirmed-target')?await inspectConfirmedPortalTarget():flags.includes('--initialize-confirmed-target')?await initializeConfirmedPortalTarget():await repairPortalRole(flags.includes('--apply'));
   console.log(JSON.stringify(report,null,2));
  }
  catch(error){

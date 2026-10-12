@@ -1,5 +1,14 @@
 # CI/CD pipeline implementation and audit — onesa-company-portal
 
+2026-10-12 staging database follow-up: `repair-hosting.yml` action
+`repair-staging-database` runs only on owner-dispatched `staging`, after successful
+exact-source checks, using the Staging environment's Render access and the existing
+private restricted-role password. It verifies the fixed free staging API identity,
+the approved pooled database's TLS/login, all seven migration checksums and restricted
+permissions using a read-only transaction. It changes only staging `DATABASE_URL`,
+verifies readback and requests no deployment. Production, migrations, grants,
+passwords, worker settings and all release approval gates remain untouched.
+
 Audit date: 2026-10-11. Prepared locally on `feature/cicd-review-optimization`; no
 remote push, merge, provider setting change or live deployment occurred. The explicitly
 authorized Dependabot security-update PR setting was enabled and read back on all three
