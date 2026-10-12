@@ -1,7 +1,22 @@
 name: Approved staging qualification
 'on': # zizmor: ignore[dangerous-triggers] -- Owner exact main SHA and complete CI before staging-only credentials; documented in CI_CD_PIPELINE_REPORT.md
   workflow_dispatch: {}
-  workflow_call: {}
+  workflow_call:
+    secrets:
+      STAGING_FIXTURES_JSON:
+        required: true
+      STAGING_RENDER_API_KEY:
+        required: true
+      STAGING_RENDER_SERVICE_ID:
+        required: true
+      STAGING_VERCEL_AUTOMATION_BYPASS_SECRET:
+        required: true
+      STAGING_VERCEL_ORG_ID:
+        required: true
+      STAGING_VERCEL_PROJECT_ID:
+        required: true
+      STAGING_VERCEL_TOKEN:
+        required: true
   workflow_run:
     workflows:
     - Portal verification

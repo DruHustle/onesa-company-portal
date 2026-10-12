@@ -39,22 +39,47 @@ class WorkflowBoundaryTests(unittest.TestCase):
 
     def test_production_never_uses_staging_provider_credentials(self):
         text = (ROOT / ".github/workflows/deploy.yml").read_text()
-        self.assertNotRegex(text, r"secrets\.STAGING_(RENDER_API_KEY|VERCEL_TOKEN|VERCEL_AUTOMATION_BYPASS_SECRET)\b")
+        production = text[text.index("  verify:\n") :]
+        self.assertNotRegex(
+            production,
+            r"secrets\.STAGING_(RENDER_API_KEY|VERCEL_TOKEN|VERCEL_AUTOMATION_BYPASS_SECRET)\b",
+        )
         self.assertIn("secrets.VERCEL_TOKEN", text)
         self.assertIn("secrets.RENDER_API_KEY", text)
 
-    def test_registered_staging_entrypoint_is_guarded_and_does_not_inherit_production_secrets(self):
+    def test_registered_staging_entrypoint_is_guarded_and_does_not_inherit_production_secrets(
+        self,
+    ):
         text = (ROOT / ".github/workflows/deploy.yml").read_text()
         job = text.split("  staging:\n", 1)[1].split("  verify:\n", 1)[0]
-        for guard in ["github.event_name == 'workflow_dispatch'", "github.ref == 'refs/heads/staging'",
-                      "inputs.target == 'staging'", "github.triggering_actor == 'DruHustle'"]:
+        for guard in [
+            "github.event_name == 'workflow_dispatch'",
+            "github.ref == 'refs/heads/staging'",
+            "inputs.target == 'staging'",
+            "github.triggering_actor == 'DruHustle'",
+        ]:
             self.assertIn(guard, job)
         self.assertIn("uses: ./.github/workflows/release-staging.yml", job)
-        self.assertNotIn("secrets:", job)
+        self.assertNotIn("secrets: inherit", job)
+        callee = (ROOT / ".github/workflows/release-staging.yml").read_text()
+        used = set(re.findall(r"secrets\.(STAGING_[A-Z0-9_]+)", callee))
+        passed = set(re.findall(r"^      (STAGING_[A-Z0-9_]+):", job, re.MULTILINE))
+        declared = set(
+            re.findall(
+                r"^      (STAGING_[A-Z0-9_]+):\n        required: true",
+                callee,
+                re.MULTILINE,
+            )
+        )
+        self.assertEqual(passed, used)
+        self.assertEqual(declared, used)
+        self.assertNotRegex(job, r"secrets\.(?!STAGING_)[A-Z0-9_]+")
+        for key in used:
+            self.assertIn(key + ": ${{ secrets." + key + " }}", job)
         for condition in re.findall(r"^    if: (.+)", text, re.MULTILINE):
             if "refs/heads/main" in condition:
                 self.assertIn("inputs.target == 'production'", condition)
-        self.assertIn("workflow_call: {}", (ROOT / ".github/workflows/release-staging.yml").read_text())
+        self.assertIn("workflow_call:", callee)
 
     def test_staging_uses_separate_credentials(self):
         text = (ROOT / ".github/workflows/release-staging.yml").read_text()
