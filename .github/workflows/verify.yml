@@ -72,6 +72,8 @@ jobs:
         cache-dependency-path: 'onesa-company-portal-backend/package-lock.json
 
           onesa-company-portal-frontend/package-lock.json'
+    - name: Verify automatic day and night clock boundaries
+      run: node scripts/test_day_night.mjs
     - name: 'Release requirement: qualification failure-path tests'
       run: python3 -m unittest discover -s scripts/release -p 'test_*.py'
     - run: npm ci
@@ -80,6 +82,10 @@ jobs:
       working-directory: onesa-company-portal-frontend
     - run: python3 scripts/check-contracts.py && python3 scripts/test-contract-break.py
     - run: python3 -m unittest discover -s scripts -p test_inspect_hosting.py
+    - name: Verify Oracle staging deployment guards
+      run: python3 -m unittest discover -s scripts -p test_oracle_worker.py
+    - name: Check Oracle host-hardening script syntax
+      run: sh -n infra/oracle/harden-worker.sh && sh -n infra/oracle/clamav/start.sh && sh -n infra/oracle/clamav/health.sh
     - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'
     - run: python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src tests && python3 ../scripts/ci/analyze.py
         tsc -- node_modules/.bin/tsc --pretty false && npm test && npm audit --audit-level=high
@@ -132,6 +138,7 @@ jobs:
         application:
         - onesa-company-portal-backend
         - onesa-company-portal-frontend
+        - clamav
     steps:
     - name: Verify GitHub-hosted execution and actual visibility
       env:
@@ -149,8 +156,7 @@ jobs:
       with:
         persist-credentials: false
     - name: Build application runtime
-      run: docker build -t onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }} ./${{ matrix.application
-        }}
+      run: docker build -t onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }} ./${{ matrix.application == 'clamav' && 'infra/oracle/clamav' || matrix.application }}
     - name: "${{ matrix.application == 'onesa-company-portal-backend' && 'Release requirement: default backend startup and database readiness' || 'Backend startup applies only to the backend image' }}"
       if: matrix.application == 'onesa-company-portal-backend'
       env:

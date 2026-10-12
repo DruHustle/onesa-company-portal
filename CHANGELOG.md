@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-12 — Private ARM64 executor and automatic day/night
+
+Prepare the existing Portal executor for an owner-provisioned ARM64 staging VM,
+with a nonroot ClamAV image, restricted Unix socket, bounded CPU/memory/logs and
+private heartbeat/scanner health. Production-mode worker startup requires shared
+storage and a restricted application database role. Hosted acceptance waits only
+for its own quarantined synthetic file and still requires an explicit clean result.
+Keep staging Actions credentials at repository-level STAGING_ names for private
+GitHub Free compatibility; record the absence of environment-level isolation.
+Restore automatic visitor-time day/night without a selector or manual preference,
+retaining CSP nonces and testing both appearances. No production promotion or
+hosted scan qualification is implied by local tests or VM runtime installation.
+
+
 ## 2026-10-12 — Explicit hosted scanner diagnostics
 
 Hosted storage acceptance requires an explicit clean scanner result before downloading the synthetic private file. Quarantine, rejected content and invalid scan states fail with fixed diagnostic codes; provider messages and file identifiers are not exposed in failure text. Read-only hosting inspection includes scanner and mail configuration names for API/worker troubleshooting. Existing quarantine, authentication and production release gates remain enforced.

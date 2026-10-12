@@ -10,6 +10,16 @@ import repair_hosting
 
 
 class HostingInspectionTests(unittest.TestCase):
+    def test_database_binding_reports_only_known_metadata_without_connection_credentials(self):
+        marker = "synthetic-private-password"
+        entries = [{"envVar": {"key": "DATABASE_URL", "value": "postgresql://onesa_portal_app:" + marker + "@ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech/neondb?sslmode=require"}}]
+        result = inspect_hosting.portal_database_binding(entries)
+        self.assertEqual(result["endpoint_identifier"], "ep-dark-boat-b91lg22g-pooler")
+        self.assertEqual(result["runtime_role"], "onesa_portal_app")
+        self.assertFalse(result["permissions_verified"])
+        self.assertNotIn(marker, json.dumps(result))
+        self.assertFalse(inspect_hosting.portal_database_binding([])["provider_verified"])
+
     def test_preview_branch_overrides_are_selected_without_exposing_proxy_values(self):
         marker = "synthetic-private-proxy-value"
         expected = "https://onesa-company-portal-backend-staging.onrender.com"

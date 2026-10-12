@@ -89,8 +89,11 @@ class WorkflowBoundaryTests(unittest.TestCase):
             text,
             r"secrets\.(RENDER_API_KEY|VERCEL_TOKEN|VERCEL_PROJECT_ID|VERCEL_AUTOMATION_BYPASS_SECRET)\b",
         )
-        self.assertIn("environment: Staging", text)
-        # Secret scope is useful without assuming private-Free reviewer enforcement.
+        self.assertNotRegex(text, r"(?m)^\s*environment:")
+        # Repository STAGING_ bindings support private Free; they are not environment isolation.
+        references = re.findall(r"secrets\.([A-Z_]+)", text)
+        self.assertTrue(references)
+        self.assertTrue(all(name.startswith("STAGING_") for name in references))
         self.assertNotIn("secrets.VERCEL_PROJECT_ID", text)
 
     def test_git_previews_do_not_enable_native_production_deployment(self):

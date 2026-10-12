@@ -221,6 +221,28 @@ class GateTests(unittest.TestCase):
         self.assertEqual(hosted_suite.safe_suite_failure_code(foreign), "HTTP_409")
         self.assertNotIn(marker, str(foreign))
 
+    def test_private_worker_scanning_polls_only_owned_metadata_and_never_bypasses_quarantine(self):
+        import hosted_suite
+        identifier = "a" * 8 + "-" + "b" * 27
+        class Client:
+            def __init__(self, status):
+                self.status = status
+                self.calls = []
+            def call(self, method, path):
+                self.calls.append((method, path))
+                return {"items": [{"id": identifier, "scan_status": self.status}]}
+        original = {"id": identifier, "scan_status": "quarantine"}
+        with patch("hosted_suite.time.sleep"):
+            client = Client("clean")
+            hosted_suite.await_clean_scan(client, identifier, "Synthetic record", original)
+            self.assertEqual(len(client.calls), 1)
+            self.assertTrue(client.calls[0][1].startswith("/api/v1/admin/files?"))
+            for status in ("quarantine", "rejected", "unverified"):
+                with self.subTest(status=status), self.assertRaises(e.Rejected):
+                    hosted_suite.await_clean_scan(Client(status), identifier, "Synthetic record", original)
+            with self.assertRaises(e.Rejected):
+                hosted_suite.await_clean_scan(Client("clean"), "wrong-id", "Synthetic record", original)
+
     def test_hosted_staging_exit_gate_rejects_failure_blocked_and_false_pass_records(
         self,
     ):

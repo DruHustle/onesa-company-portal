@@ -143,6 +143,27 @@ def log_categories(data):
     return [name for name, pattern in patterns.items() if re.search(pattern, messages)]
 
 
+def portal_database_binding(entries):
+    # Return only known provider metadata from a direct service setting, never its URL.
+    from urllib.parse import urlsplit, unquote
+    direct = next((item.get("envVar", item).get("value", "") for item in entries if isinstance(item, dict) and item.get("envVar", item).get("key") == "DATABASE_URL"), "") if isinstance(entries, list) and len(entries) < 100 else ""
+    try:
+        value = urlsplit(direct)
+        host = value.hostname or ""
+        if value.scheme not in {"postgres", "postgresql"} or not re.fullmatch(r"ep-[a-z0-9-]+\.c-7\.eu-central-1\.aws\.neon\.tech", host):
+            return {"provider_verified": False}
+        role = unquote(value.username or "")
+        return {
+            "provider": "Neon", "endpoint_identifier": host.split(".")[0],
+            "database_name": "neondb" if value.path == "/neondb" else "other",
+            "runtime_role": role if role in {"onesa_portal_app", "neondb_owner"} else "other",
+            "setting_scope": "direct_service", "effective_binding_verified": False,
+            "permissions_verified": False,
+        }
+    except (ValueError, TypeError):
+        return {"provider_verified": False}
+
+
 def startup_override(command):
     # Classify rather than echo a provider command that may contain secrets.
     if command in {None, ""}:
@@ -236,6 +257,7 @@ def render(role, service, required, expected_root, expected_health, expected_bra
         if role == "backend"
         else None,
         "environment_api_http": env_status,
+        **({"database_binding": portal_database_binding(env)} if expected_root == "onesa-company-portal-backend" else {}),
         "required_environment_nonempty": environment_checks(
             env if isinstance(env, list) else [], required, "envVar"
         ),
@@ -441,6 +463,7 @@ def main():
                 "RESEND_API_KEY",
                 "MAIL_FROM",
                 "CLAMAV_HOST",
+                "CLAMAV_SOCKET",
             ],
             backend_root,
             "",

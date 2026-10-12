@@ -1,0 +1,66 @@
+name: onesa-portal-oracle-staging
+services:
+  scanner:
+    image: ${PORTAL_SCANNER_IMAGE:-onesa-portal-clamav:reviewed}
+    build: ./infra/oracle/clamav
+    platform: linux/arm64
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 180s
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    volumes: [staging_signatures:/var/lib/clamav, scanner_socket:/run/onesa-scanner]
+    group_add: ['3000']
+    networks: [signature_updates]
+    mem_limit: 4g
+    cpus: 0.8
+  worker:
+    image: ${PORTAL_WORKER_IMAGE:-onesa-portal-worker:reviewed}
+    build: ./onesa-company-portal-backend
+    platform: linux/arm64
+    command: [node, dist/src/jobs/worker.js]
+    stop_grace_period: 180s
+    profiles: [jobs]
+    env_file:
+      - path: ${PORTAL_ORACLE_ENV_FILE:-/etc/onesa/portal-staging.env}
+        required: false
+    environment:
+      NODE_ENV: production
+      CLAMAV_SOCKET: /run/onesa-scanner/clamd.sock
+      PUBLISH_ENABLED: 'false'
+    restart: unless-stopped
+    init: true
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    volumes: [scanner_socket:/run/onesa-scanner:ro]
+    group_add: ['3000']
+    networks: [worker_egress]
+    depends_on:
+      scanner:
+        condition: service_healthy
+    mem_limit: 768m
+    cpus: 0.2
+    healthcheck:
+      test: [CMD, node, dist/src/jobs/health.js]
+      interval: 30s
+      timeout: 15s
+      start_period: 60s
+      retries: 3
+networks:
+  signature_updates:
+  worker_egress:
+volumes:
+  staging_signatures:
+  scanner_socket:

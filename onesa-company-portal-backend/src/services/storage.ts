@@ -1,5 +1,5 @@
 import { mkdir,writeFile,readFile,unlink } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { resolve,dirname } from 'node:path';
 import { createConnection } from 'node:net';
 import { S3Client,PutObjectCommand,GetObjectCommand,DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { env } from '../config/env.js';
@@ -9,10 +9,14 @@ export async function store(key:string,bytes:Buffer){if(env.S3_BUCKET)await s3.s
 export async function retrieve(key:string){if(env.S3_BUCKET){const response=await s3.send(new GetObjectCommand({Bucket:env.S3_BUCKET,Key:key}));return Buffer.from(await response.Body!.transformToByteArray());}return readFile(local(key));}
 export async function remove(key:string){if(env.S3_BUCKET)await s3.send(new DeleteObjectCommand({Bucket:env.S3_BUCKET,Key:key}));else try{await unlink(local(key));}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}}
 export function pdfSafe(bytes:Buffer){return bytes.subarray(0,5).toString()==='%PDF-'&&bytes.subarray(-1024).includes(Buffer.from('%%EOF'));}
+export async function scannerStatusCurrent():Promise<boolean>{
+ if(!env.CLAMAV_SOCKET)return !!env.CLAMAV_HOST;
+ try{const value=Number((await readFile(resolve(dirname(env.CLAMAV_SOCKET),'scanner-ready'),'utf8')).trim());const age=Date.now()-value*1000;return Number.isInteger(value)&&value>0&&age>=0&&age<90000;}catch{return false;}
+}
 export async function scan(bytes:Buffer):Promise<'clean'|'quarantine'|'rejected'>{
- if(!env.CLAMAV_HOST)return 'quarantine';
+ if(!await scannerStatusCurrent())return 'quarantine';
  return new Promise((resolve,reject)=>{
-  const socket=createConnection({host:env.CLAMAV_HOST!,port:env.CLAMAV_PORT});
+  const socket=createConnection(env.CLAMAV_SOCKET?{path:env.CLAMAV_SOCKET}:{host:env.CLAMAV_HOST!,port:env.CLAMAV_PORT});
   let response='',responseBytes=0;
   // Total elapsed time is bounded even when a daemon trickles diagnostic bytes.
   const deadline=setTimeout(()=>socket.destroy(new Error('Scan timed out')),15000);

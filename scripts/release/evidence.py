@@ -35,6 +35,7 @@ POLICIES = {
             "ci-summary",
             "image-security (onesa-company-portal-backend)",
             "image-security (onesa-company-portal-frontend)",
+            "image-security (clamav)",
         ],
         "staging_branch": "staging",
     },
