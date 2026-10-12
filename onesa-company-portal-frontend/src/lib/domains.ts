@@ -1,5 +1,12 @@
 /** Configure both URLs to separate public pages and administration by hostname. */
+export function stagingOrigin():string|null{
+ if(process.env.VERCEL_ENV!=='preview'||process.env.VERCEL_GIT_COMMIT_REF!=='staging')return null;
+ const host=process.env.VERCEL_URL;
+ if(!host||!/^[a-z0-9][a-z0-9-]*\.vercel\.app$/.test(host))return null;
+ return `https://${host}`;
+}
 export function surface(origin:string):'company'|'portal'|'combined'|'unknown'{
+ if(origin===stagingOrigin())return 'combined';
  const company=process.env.SITE_URL,portal=process.env.PORTAL_URL;
  if(!portal)return 'combined';
  if(!company)throw new Error('PORTAL_URL requires SITE_URL');
@@ -19,6 +26,8 @@ export function routeDestination(origin:string,path:string):string|null{
 }
 /** Match Host against configured authorities; never trust a supplied forwarded host. */
 export function applicationOrigin(host:string|null,fallback:string):string|null{
+ const staging=stagingOrigin();
+ if(staging&&new URL(staging).host===host?.toLowerCase())return staging;
  const company=process.env.SITE_URL,portal=process.env.PORTAL_URL;
  if(!portal)return fallback;
  surface(portal); // Validate all configured boundaries before using either hostname.

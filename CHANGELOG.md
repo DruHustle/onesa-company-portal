@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-12 — Exact native staging Preview origin
+
+- Real staging deployment and temporary identity cleanup succeeded; authenticated acceptance exposed an HTTP 403 from the Preview hostname/origin boundary.
+- Only the exact provider-bound staging Git Preview receives the combined company/administration surface and its own HTTPS mutation origin. Production company/portal separation, unknown-host denial, development origins and forged-host rejection remain enforced.
+- Domain tests now cover the staging binding and reject production/dev/foreign Preview contexts. Hosted auth diagnostics distinguish fixed HOST and ORIGIN failures without exposing response content.
+
 ## 2026-10-12 — Visitor-time appearance, exact-source staging and private synthetic fixtures
 
 - Public EN/DE routes and administration offer Auto/Light/Dark. Auto uses the visitor's local 07:00/19:00 boundaries, survives blocked storage, restores manual preferences, and updates after focus/timezone changes. CSP nonce protection is retained.

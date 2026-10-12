@@ -1,6 +1,6 @@
 import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
-import {surface,routeDestination,applicationOrigin} from '../src/lib/domains.ts';
+import {surface,routeDestination,applicationOrigin,stagingOrigin} from '../src/lib/domains.ts';
 import {companySitemap} from '../src/lib/company-sitemap.ts';
 import {companyOrigin,companyPageUrl,companyLanguages} from '../src/lib/site-origin.mjs';
 import {publicContentPath} from '../src/lib/public-content-url.mjs';
@@ -82,3 +82,15 @@ test('A mismatched authentication origin and credentials in URLs fail configurat
 });
 test('Local single-host operation remains supported without domain splitting',()=>{delete process.env.PORTAL_URL;assert.equal(surface('http://localhost:3300'),'combined');assert.equal(routeDestination('http://localhost:3300','/admin'),null);});
 test('Host selection uses configured origins even when Next.js has an internal server URL',()=>{configure();assert.equal(applicationOrigin('portal.onesa.eu','http://127.0.0.1:3362'),'https://portal.onesa.eu');assert.equal(applicationOrigin('onesa.eu','http://127.0.0.1:3362'),'https://onesa.eu');assert.equal(applicationOrigin('onesa.eu.attacker.invalid','https://onesa.eu'),null);assert.equal(applicationOrigin('onesa.eu:444','https://onesa.eu'),null);assert.equal(applicationOrigin(null,'https://onesa.eu'),null);});
+
+test('only the exact provider-bound staging Preview exposes the combined surface',()=>{
+ process.env.NODE_ENV='production';process.env.SITE_URL='https://onesa.eu';process.env.PORTAL_URL='https://portal.onesa.eu';process.env.PUBLIC_ORIGIN='https://portal.onesa.eu';process.env.VERCEL_ENV='preview';process.env.VERCEL_GIT_COMMIT_REF='staging';process.env.VERCEL_URL='synthetic-staging.vercel.app';
+ assert.equal(stagingOrigin(),'https://synthetic-staging.vercel.app');
+ assert.equal(applicationOrigin('synthetic-staging.vercel.app','http://localhost:3000'),'https://synthetic-staging.vercel.app');
+ assert.equal(surface('https://synthetic-staging.vercel.app'),'combined');
+ assert.equal(surface('https://onesa.eu'),'company');
+ assert.equal(applicationOrigin('attacker.vercel.app','https://synthetic-staging.vercel.app'),null);
+ for(const changes of [{VERCEL_ENV:'production'},{VERCEL_GIT_COMMIT_REF:'dev'},{VERCEL_URL:'attacker.invalid'},{VERCEL_URL:'user:secret@synthetic-staging.vercel.app'}]){
+  const saved={VERCEL_ENV:process.env.VERCEL_ENV,VERCEL_GIT_COMMIT_REF:process.env.VERCEL_GIT_COMMIT_REF,VERCEL_URL:process.env.VERCEL_URL};Object.assign(process.env,changes);assert.equal(stagingOrigin(),null);assert.equal(surface('https://synthetic-staging.vercel.app'),'unknown');Object.assign(process.env,saved);
+ }
+});
