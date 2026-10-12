@@ -173,6 +173,34 @@ class GateTests(unittest.TestCase):
             self.approval, self.evidence, self.origin, self.run, SHA, now=NOW
         )
 
+    def test_hosted_failure_codes_identify_known_gates_without_private_exception_text(
+        self,
+    ):
+        import hosted
+
+        self.assertEqual(
+            hosted.safe_failure_code(e.Rejected("Render readback unavailable")),
+            "RENDER_ACCESS",
+        )
+        self.assertEqual(
+            hosted.safe_failure_code(
+                e.Rejected(
+                    "Staging synthetic probes require the identified isolated runtime database"
+                )
+            ),
+            "STAGING_DATABASE_BINDING",
+        )
+        marker = "private-provider-value-never-log"
+        for error in [
+            e.Rejected(marker),
+            KeyError(marker),
+            ValueError(marker),
+            TypeError(marker),
+            OSError(marker),
+        ]:
+            self.assertNotIn(marker, hosted.safe_failure_code(error))
+        self.assertEqual(hosted.safe_failure_code(e.Rejected(marker)), "VALIDATION")
+
     def test_registered_staging_entrypoint_keeps_commit_branch_event_and_owner_guards(
         self,
     ):
