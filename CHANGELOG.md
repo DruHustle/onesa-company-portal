@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-12 — Complete published detail route QA
+
+Exercise each implemented product/article/job/research detail in EN/DE at mobile/desktop widths in both themes against isolated real PostgreSQL fixtures. Check rendering, overflow and axe, then verify the privacy alias and absent detail. Both local Chromium/WebKit cases pass across 64 detail combinations; no hosted/public data is created.
+
+
 ## 2026-10-12 — Read-only Preview routing diagnosis
 
 Compare the effective staging Preview backend and proxy binding with the identified staging API. Branch overrides take precedence; ambiguous values fail validation. Report booleans only, preserving credentials and production. A hosted owner repair checks current dev/staging CI and isolated provider identity before saving only the staging branch backend URL and existing staging proxy key; production values are read back unchanged, with no deployment requested.
