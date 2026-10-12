@@ -476,3 +476,11 @@ Corrected public production jobs use their production provider secret names, whi
 release-staging keeps STAGING names. A name alone does not prove provider least
 privilege; remote rotation/isolation and private production credential custody remain
 owner acceptance requirements. No production environment values were changed.
+
+
+The first registered staging run38188027645 was denied before provider credentials:
+the frontend image matrix inherited the backend-only startup requirement's mandatory
+label. Scope that label to the backend matrix entry, preserving the successful backend
+startup check and both mandatory runtime digests. The release verifier still rejects
+skipped, failed or cancelled required evidence. This was a pipeline labeling defect,
+not a runtime readiness success or an exception to release qualification.

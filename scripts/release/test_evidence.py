@@ -173,12 +173,18 @@ class GateTests(unittest.TestCase):
             self.approval, self.evidence, self.origin, self.run, SHA, now=NOW
         )
 
-    def test_registered_staging_entrypoint_keeps_commit_branch_event_and_owner_guards(self):
+    def test_registered_staging_entrypoint_keeps_commit_branch_event_and_owner_guards(
+        self,
+    ):
         stage = run(11, "deploy.yml", branch="staging")
         e.trusted_staging_run(None, stage, SHA)
-        for key, value in [("head_branch", "main"), ("head_branch", "dev"),
-                           ("head_sha", "f" * 40), ("event", "workflow_run"),
-                           ("path", ".github/workflows/repair-hosting.yml")]:
+        for key, value in [
+            ("head_branch", "main"),
+            ("head_branch", "dev"),
+            ("head_sha", "f" * 40),
+            ("event", "workflow_run"),
+            ("path", ".github/workflows/repair-hosting.yml"),
+        ]:
             rejected = dict(stage, **{key: value})
             with self.subTest(key=key, value=value), self.assertRaises(e.Rejected):
                 e.trusted_staging_run(None, rejected, SHA)
@@ -284,6 +290,64 @@ class GateTests(unittest.TestCase):
         data = archive("../../script.py", self.evidence)
         with self.assertRaises(e.Rejected):
             e.decode_artifact(data, "sha256:" + hashlib.sha256(data).hexdigest())
+
+    def test_ci_scopes_startup_to_backend_but_still_requires_every_runtime_digest(self):
+        backend = "image-security (onesa-company-portal-backend)"
+        frontend = "image-security (onesa-company-portal-frontend)"
+
+        class API:
+            startup = "success"
+            digest = "success"
+
+            def runs(self, workflow, sha):
+                return [run(10, workflow, event="push")]
+
+            def jobs(self, workflow):
+                names = (
+                    e.POLICY["jobs"]
+                    if workflow["path"].endswith(e.POLICY["ci"])
+                    else ["publication-hygiene"]
+                )
+                jobs = []
+                for name in names:
+                    steps = []
+                    if name == backend:
+                        steps.append(
+                            {
+                                "name": "Release requirement: default backend startup and database readiness",
+                                "conclusion": self.startup,
+                            }
+                        )
+                    if name == frontend:
+                        steps.extend(
+                            [
+                                {
+                                    "name": "Backend startup applies only to the backend image",
+                                    "conclusion": "skipped",
+                                },
+                                {
+                                    "name": "Release requirement: record tested runtime digest",
+                                    "conclusion": self.digest,
+                                },
+                            ]
+                        )
+                    jobs.append(
+                        {
+                            "name": name,
+                            "conclusion": "success",
+                            "html_url": "https://github.com/synthetic",
+                            "steps": steps,
+                        }
+                    )
+                return jobs
+
+        self.assertEqual(e.checked_ci(API(), SHA)[0], "PASS")
+        for key in ["startup", "digest"]:
+            for value in ["skipped", "failure", "cancelled"]:
+                api = API()
+                setattr(api, key, value)
+                with self.subTest(key=key, value=value), self.assertRaises(e.Rejected):
+                    e.checked_ci(api, SHA)
 
     def test_ci_failure_missing_security_not_pass(self):
         class API:

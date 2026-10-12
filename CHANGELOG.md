@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-12 — Scope mandatory startup evidence to its image
+
+Name the backend-only startup requirement as mandatory only for the backend matrix
+entry. Its intentional frontend skip no longer blocks otherwise complete release
+qualification. Backend startup, both runtime digests and image/security checks remain
+mandatory; regression cases reject skipped, failed and cancelled required evidence.
+
 ## 2026-10-12 — Staging workflow registration and credential scopes
 
 - Add a staging-only dispatch through the already registered deploy.yml entry point,

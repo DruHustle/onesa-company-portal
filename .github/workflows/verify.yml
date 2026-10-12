@@ -151,7 +151,7 @@ jobs:
     - name: Build application runtime
       run: docker build -t onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }} ./${{ matrix.application
         }}
-    - name: 'Release requirement: default backend startup and database readiness'
+    - name: "${{ matrix.application == 'onesa-company-portal-backend' && 'Release requirement: default backend startup and database readiness' || 'Backend startup applies only to the backend image' }}"
       if: matrix.application == 'onesa-company-portal-backend'
       env:
         APPLICATION: ${{ matrix.application }}
