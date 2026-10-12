@@ -10,6 +10,21 @@ import repair_hosting
 
 
 class HostingInspectionTests(unittest.TestCase):
+    def test_preview_branch_overrides_are_selected_without_exposing_proxy_values(self):
+        marker = "synthetic-private-proxy-value"
+        expected = "https://onesa-company-portal-backend-staging.onrender.com"
+        entries = [
+            {"key": "BACKEND_URL", "target": ["preview"], "value": "https://wrong.example"},
+            {"key": "BACKEND_URL", "target": ["preview"], "gitBranch": "staging", "value": expected},
+            {"key": "PROXY_SHARED_KEY", "target": ["preview"], "gitBranch": "staging", "value": marker},
+            {"key": "PROXY_SHARED_KEY", "target": ["production"], "value": "production-private"},
+        ]
+        result = inspect_hosting.preview_routing_checks(entries, {"PROXY_SHARED_KEY": marker})
+        self.assertTrue(all(result.values()))
+        self.assertNotIn(marker, json.dumps(result))
+        entries.append(dict(entries[1]))
+        self.assertFalse(inspect_hosting.preview_routing_checks(entries, {"PROXY_SHARED_KEY": marker})["preview_backend_matches_staging"])
+
     @staticmethod
     def staging_service():
         return {"id": repair_hosting.PORTAL_STAGING_SERVICE,

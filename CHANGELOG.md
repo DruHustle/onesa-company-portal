@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-12 — Read-only Preview routing diagnosis
+
+Compare the effective staging Preview backend and proxy binding with the identified staging API. Branch overrides take precedence; ambiguous values fail validation. Report booleans only, preserving credentials and production.
+
+
 ## 2026-10-12 — Exact native staging Preview origin
 
 - Real staging deployment and temporary identity cleanup succeeded; authenticated acceptance exposed an HTTP 403 from the Preview hostname/origin boundary.
