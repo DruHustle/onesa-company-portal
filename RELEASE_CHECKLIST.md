@@ -2,7 +2,7 @@
 
 ## Repeat audit — 2026-10-12
 
-Local verification: 57 backend tests, 62 release guard/fixture/Preview tests and 20 Chromium/WebKit browser cases pass, including 316 route/theme/viewport accessibility checks. Firefox native launch is blocked on this workstation; it remains required in hosted CI. Source adds visitor-time appearance, private temporary staging identities, validated fixture schema and reuse of the exact protected Git Preview. New dev and merged staging CI plus actual hosted acceptance must pass before release. Production publication, operations and legal approval remain unqualified. Historical evidence below does not approve this new source.
+The Auto/Light/Dark feature has been removed; fixed light styling is the current source. Verified staging authentication, database readiness and user isolation pass at fc4af11d97a4cbdbc10990232701a2ecdb1ba062 (run38232302545). Storage/scanner acceptance returns409, and full business acceptance remains blocked. New scanner diagnostics and configuration inventory require fresh exact-source CI and staging verification; historical appearance counts below do not describe the current interface. Production publication, worker/mail delivery, operations and legal approval remain unqualified.
 
 ## Search and sharing acceptance
 

@@ -198,6 +198,29 @@ class GateTests(unittest.TestCase):
             marker, hosted_suite.safe_suite_failure_code(ValueError(marker))
         )
 
+    def test_hosted_storage_failure_reports_fixed_codes_without_private_body(self):
+        import hosted_suite
+
+        marker = "private-storage-provider-diagnostic"
+        path = "/api/v1/admin/files/" + "a" * 8 + "-" + "b" * 27 + "/download"
+        error = hosted_suite.HostedRequestFailure(
+            409, path, json.dumps({"error": {"code": "QUARANTINE", "message": marker}}).encode()
+        )
+        self.assertEqual(error.phase, "file-download")
+        self.assertEqual(hosted_suite.safe_suite_failure_code(error), "STORAGE_QUARANTINE")
+        self.assertNotIn(marker, str(error))
+        for message, code in [
+            ("Synthetic file remains quarantined", "STORAGE_QUARANTINE"),
+            ("Synthetic file scanner rejected content", "STORAGE_SCAN_REJECTED"),
+            ("Synthetic file scan state invalid", "STORAGE_SCAN_STATE"),
+        ]:
+            self.assertEqual(hosted_suite.safe_suite_failure_code(e.Rejected(message)), code)
+        foreign = hosted_suite.HostedRequestFailure(
+            409, path, json.dumps({"error": {"code": marker}}).encode()
+        )
+        self.assertEqual(hosted_suite.safe_suite_failure_code(foreign), "HTTP_409")
+        self.assertNotIn(marker, str(foreign))
+
     def test_hosted_staging_exit_gate_rejects_failure_blocked_and_false_pass_records(
         self,
     ):

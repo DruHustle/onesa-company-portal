@@ -8,6 +8,8 @@ Vercel native Git owns the protected staging frontend Preview. The release workf
 
 The staging routing operator saves only branch-specific server bindings and verifies production metadata unchanged. Private proxy readback uses Vercel's individual-variable endpoint and requires `decrypted: true` plus exact variable identity and staging scope; list ciphertext is never treated as the credential. An unverified readback blocks qualification even when the provider accepted the write.
 
+Hosted scanner troubleshooting uses only fixed failure codes: `STORAGE_QUARANTINE`, `STORAGE_SCAN_REJECTED`, or `STORAGE_SCAN_STATE`. Acceptance requires `scan_status=clean` before download. Check the read-only API/worker `CLAMAV_HOST` and mail key-presence inventory privately, then verify the approved scanner endpoint is reachable from the actual runtime. A present host or successful upload is not a clean scan or delivered mail. Keep quarantined objects private and use an approved executor; do not substitute a web service or fake scanner result.
+
 > Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
 
 The frontend and backend have separate Docker build contexts and versioned images.

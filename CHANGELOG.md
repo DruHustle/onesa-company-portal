@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-12 — Explicit hosted scanner diagnostics
+
+Hosted storage acceptance requires an explicit clean scanner result before downloading the synthetic private file. Quarantine, rejected content and invalid scan states fail with fixed diagnostic codes; provider messages and file identifiers are not exposed in failure text. Read-only hosting inspection includes scanner and mail configuration names for API/worker troubleshooting. Existing quarantine, authentication and production release gates remain enforced.
+
 ## 2026-10-12 — Remove appearance switching
 
 Remove Auto/Light/Dark controls, browser preference logic, timers and custom palette switching at the owner’s request. Retain the existing fixed light surfaces and navy/cyan brand elements; authenticated content and responsive accessibility checks remain in place. Remove only tests and assets belonging to the retired feature.

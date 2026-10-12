@@ -364,6 +364,10 @@ def main():
             "S3_ENDPOINT",
             "AWS_ACCESS_KEY_ID",
             "AWS_SECRET_ACCESS_KEY",
+            "CLAMAV_HOST",
+            "MAIL_PROVIDER",
+            "RESEND_API_KEY",
+            "MAIL_FROM",
         ]
         if portal
         else [
@@ -436,6 +440,7 @@ def main():
                 "MAIL_PROVIDER",
                 "RESEND_API_KEY",
                 "MAIL_FROM",
+                "CLAMAV_HOST",
             ],
             backend_root,
             "",
