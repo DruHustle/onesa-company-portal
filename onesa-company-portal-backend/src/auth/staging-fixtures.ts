@@ -11,7 +11,7 @@ type Connection=Pick<pg.PoolClient,'query'>;
 
 export function stagingDatabaseURL(raw:string) {
  const value=new URL(raw);
- if(!['postgres:','postgresql:'].includes(value.protocol)||value.hostname!=='ep-autumn-glade-b9760olg-pooler.c-7.eu-central-1.aws.neon.tech'||decodeURIComponent(value.username)!=='onesa_portal_app'||value.pathname!=='/neondb'||!value.password||value.hash||value.port&&value.port!=='5432')throw new Error('STAGING_FIXTURE_DATABASE');
+ if(!['postgres:','postgresql:'].includes(value.protocol)||value.hostname!=='ep-morning-shadow-b9jkzgsz-pooler.c-7.eu-central-1.aws.neon.tech'||decodeURIComponent(value.username)!=='onesa_portal_app'||value.pathname!=='/neondb'||!value.password||value.hash||value.port&&value.port!=='5432')throw new Error('STAGING_FIXTURE_DATABASE');
  if(!['require','verify-full'].includes(value.searchParams.get('sslmode')||'')||value.searchParams.getAll('sslmode').length!==1)throw new Error('STAGING_FIXTURE_TLS');
  value.searchParams.set('sslmode','verify-full');
  return value;

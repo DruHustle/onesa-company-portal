@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-12 — Approved company details and verified Neon scope
+
+Use the owner-confirmed legal name, registered address, director, register court/number and contact links consistently across legal/privacy/contact pages, metadata, CMS seeding, document templates and idempotent mail signatures. Preserve CMS revisions and all privacy/publication approvals. Generate independent snapshots from the maintained private record, without committing unapproved records or coupling product builds. Correct staging SQL/fixture guards to the verified *-staging project and production initialization to its actual runtime target; reject the obsolete migrations project. No production or real-data acceptance is implied.
+
 ## 2026-10-12 — Registered private-Free staging entry point
 
 Allow the existing manual, owner-only staging bridge on private repositories so the repository-secret fallback is usable before new workflows reach main. Keep production guards, exact-source qualification, named staging secrets and protected Preview checks; test rejection of untrusted actors/events, main refs and production targets.

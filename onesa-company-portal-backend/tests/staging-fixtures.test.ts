@@ -4,9 +4,9 @@ import type pg from 'pg';
 import {createFixtureAccounts,revokeFixtureAccounts,stagingDatabaseURL} from '../src/auth/staging-fixtures.js';
 
 test('Temporary fixture database binding rejects production, owner roles and non-TLS targets',()=>{
- const value='postgresql://onesa_portal_app:synthetic-password@ep-autumn-glade-b9760olg-pooler.c-7.eu-central-1.aws.neon.tech/neondb?sslmode=require';
+ const value='postgresql://onesa_portal_app:synthetic-password@ep-morning-shadow-b9jkzgsz-pooler.c-7.eu-central-1.aws.neon.tech/neondb?sslmode=require';
  assert.equal(stagingDatabaseURL(value).searchParams.get('sslmode'),'verify-full');
- for(const changed of [value.replace('autumn-glade-b9760olg','dark-boat-b91lg22g'),value.replace('onesa_portal_app:','neondb_owner:'),value.replace('/neondb','/customer'),value.replace('sslmode=require','sslmode=disable'),value+'&sslmode=disable',value+'#private'])assert.throws(()=>stagingDatabaseURL(changed));
+ for(const changed of [value.replace('morning-shadow-b9jkzgsz','dark-boat-b91lg22g'),value.replace('onesa_portal_app:','neondb_owner:'),value.replace('/neondb','/customer'),value.replace('sslmode=require','sslmode=disable'),value+'&sslmode=disable',value+'#private'])assert.throws(()=>stagingDatabaseURL(changed));
 });
 
 test('Temporary fixtures create distinct synthetic identities and revoke only exact owned IDs/emails',async()=>{

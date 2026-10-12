@@ -65,8 +65,8 @@ Create `/etc/onesa/portal-staging.env` through the approved private SSH session 
 The `jobs` Compose profile is disabled by default, allowing scanner-only validation
 without application credentials. Missing worker configuration is never a successful
 startup. Compose supplies `NODE_ENV=production`, `PUBLISH_ENABLED=false` and
-`CLAMAV_SOCKET=/run/onesa-scanner/clamd.sock`. Do not set `CLAMAV_HOST` to this public
-IP. The Render API keeps its initial uploads quarantined; the worker retrieves them
+`CLAMAV_SOCKET=/run/onesa-scanner/clamd.sock`. Leave `CLAMAV_HOST` and `CLAMAV_PORT` unset; the Unix socket has no TCP port.
+Do not expose the scanner at this public IP. The Render API keeps its initial uploads quarantined; the worker retrieves them
 privately and updates scan status only after the existing bounded scanner protocol
 returns an explicit result. Do not enable publication or manually mark uploads clean.
 
@@ -209,3 +209,15 @@ It uses the actual compiled Portal scanner client with synthetic bytes and EICAR
 without a database connection, object access or email provider. It checks benign
 clean, infected rejected, unavailable scanner denial and unconfigured quarantine.
 Its receipt explicitly leaves database jobs/private uploads/production unqualified.
+
+## Current staging SQL scope correction
+
+The verified runtime target is Neon project `gentle-mud-16323345`
+(`onesa-ai-company-portal-backend-db-staging`), branch `br-little-boat-b9fg0rqq`, pooled
+SQL host `ep-morning-shadow-b9jkzgsz-pooler.c-7.eu-central-1.aws.neon.tech`, database
+`neondb`, role `onesa_portal_app`. This matches the existing staging bucket namespace.
+The previous autumn-glade SQL project is a non-staging migrations project and must
+not be used by fixture or worker activation guards. Historical tests on it were real
+but do not qualify the corrected staging binding. Jobs remain stopped until fresh
+bucket provenance/isolation and exact-source qualification pass. Production uses the
+separate morning-mode project/dark-boat endpoint; no production worker is activated.

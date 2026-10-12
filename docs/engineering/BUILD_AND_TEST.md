@@ -79,3 +79,28 @@ On Linux CI it uses host networking; for a dedicated Docker test database use
 `--network container:<isolated-test-db>`. It exercises the production image's default
 CMD at PORT=10000, health, owner-role 503, restricted-role 200, unavailable DB 503,
 authentication and SIGTERM. Never supply an application database to this test.
+
+## Approved company particulars and CMS
+
+The maintained private owner record is `onesa-company-portal-backend/records/company-facts.v1.json`.
+Only its eight expressly approved public fields are generated into independent product
+snapshots; unapproved business claims, private records and identifiers remain excluded.
+Run `python3 scripts/sync_company_details.py --workspace --check` when all three local
+repositories are available, or omit `--workspace` for the independent Portal build.
+The generated snapshots are committed, so CI and deployments require no private record
+or sibling checkout. Never commit the private record simply to make a check pass.
+
+`npm --prefix onesa-company-portal-backend run seed` is an explicit operator command,
+never an application startup action. It synchronizes the approved company particulars
+and EN/DE legal-notice CMS text transactionally, preserving previous CMS revisions.
+New pages remain drafts; existing publication states and all legal/privacy settings
+are preserved. Owner confirmation is identified as the source, not an independent
+register extract. Company approval does not approve processors, retention, transfers,
+recruitment or privacy disclosures. Check any assigned W-IdNr against the actual tax
+notification; [DDG section 5](https://www.gesetze-im-internet.de/ddg/__5.html) requires
+publication of assigned applicable identifiers. Do not invent an identifier or DPO.
+
+Run the mail and company-publication unit tests and the public legal-page browser
+checks, including contact links, exact EN/DE particulars, mobile layout and contrast.
+Mail signatures retain stable provider idempotency keys and are not duplicated on
+retries. Do not send actual email merely to execute the transport unit tests.

@@ -12,7 +12,7 @@ inspection job before startup with an account billing/spending-limit restriction
 No provider environment values, service commands or deployments were changed.
 
 After GitHub Actions is available, run **Inspect hosting configuration** on
-`audit/portal-master-acceptance`, selecting `portal_scope=staging`:
+`staging`, selecting `portal_scope=staging`:
 
 ```sh
 gh workflow run inspect-hosting.yml --repo DruHustle/onesa-company-portal \
@@ -28,12 +28,13 @@ If included minutes are exhausted, wait for their reset or separately approve an
 existing private self-hosted runner. Do not raise a spending limit automatically
 or repeatedly retry a rejected workflow without resolving its cause.
 
-The autumn-glade Portal database is already initialized with seven reviewed
-migrations and a verified restricted `onesa_portal_app` login. Its fresh password
-is saved as private repository Actions secret `PORTAL_APP_DB_PASSWORD`; GitHub
-does not reveal saved secret values. Do not reset that role or use `neondb_owner`
-as the API login. An operator workflow can transfer its credential privately once
-the actual staging service is identified. Do not copy production credentials.
+The authoritative staging target is the existing `onesa-ai-company-portal-backend-db-staging`
+project (`gentle-mud-16323345`), branch `br-little-boat-b9fg0rqq`, endpoint
+`ep-morning-shadow-b9jkzgsz`. It has seven reviewed migrations and an actual restricted
+`onesa_portal_app` login. Credentials are held privately in Render and Oracle; no secret
+value is published. The prior autumn-glade project is a separate non-staging migrations
+project and is preserved, never copied into staging or used by new fixture tests.
+See [the verified target inventory](VERCEL_RENDER.md#verified-portal-database-targets--2026-10-12).
 
 For the supplied API, check **Render → service → Settings** against:
 
@@ -41,7 +42,7 @@ For the supplied API, check **Render → service → Settings** against:
 |---|---|
 | Name | Owner-created `onesa-company-portal-backend_staging` |
 | Repository | `DruHustle/onesa-company-portal` |
-| Branch | `audit/portal-master-acceptance` |
+| Branch | `staging` |
 | Root Directory | `onesa-company-portal-backend` |
 | Runtime | Docker |
 | Dockerfile / context | `./Dockerfile` / `.` relative to the root directory |
@@ -59,7 +60,7 @@ The verified restricted credential still needs a guarded private transfer;
 do not paste it into chat or use the Neon owner connection as the API runtime.
 
 Staging API configuration uses `NODE_ENV=production` for hosted security,
-`PUBLISH_ENABLED=false`, a restricted pooled `DATABASE_URL` for autumn-glade,
+`PUBLISH_ENABLED=false`, a restricted pooled `DATABASE_URL` for morning-shadow,
 a fresh independent `SESSION_KEY` of 64 hex characters, and a fresh independent
 `PROXY_SHARED_KEY`. `PUBLIC_ORIGIN` must be the actual protected staging frontend
 origin; a separate company origin is optional and must be distinct if configured.
@@ -72,7 +73,7 @@ For Vercel, retain the existing portal project and frontend root
 `onesa-company-portal-frontend`, with production branch `main`. Enable Vercel
 Authentication for Preview deployments. Keep native Git deployments disabled;
 deployment will use GitHub Actions/CLI. Use Preview-only variables scoped to
-`audit/portal-master-acceptance`, with server-only `BACKEND_URL` set to the verified
+`staging`, with server-only `BACKEND_URL` set to the verified
 new API and the matching fresh `PROXY_SHARED_KEY`. The actual protected Preview
 origin must be coordinated with `PUBLIC_ORIGIN`, `SITE_URL` and `PORTAL_URL`; do
 not guess a Vercel hostname or reuse public production origins.
@@ -291,7 +292,7 @@ Read-only Actions inspection verified the owner-created API
 `srv-db5k5had0e5s73fos4g0` is a Frankfurt Free Docker web service in this repository,
 but uses main, the wrong root/health path, native auto-deploy and missing runtime
 variables. After `verify.yml` and `repository-hygiene.yml` pass on the exact reviewed
-`audit/portal-master-acceptance` revision, run **Repair existing hosting configuration**
+`staging` revision, run **Repair existing hosting configuration**
 with `portal_action=repair-staging-layout` on that branch. This pauses native
 auto-deploy, sets the audit branch, backend root, Dockerfile/context, Node server
 CMD and `/api/v1/ready`, then verifies readback. It does not deploy, initialize a
