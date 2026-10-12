@@ -38,7 +38,7 @@ def ssh():
             "Existing private SSH key must have owner-only permissions")
     require(known.is_file() and not known.is_symlink(), "Existing pinned SSH host record required")
     return ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=12", "-o", "StrictHostKeyChecking=yes",
-            "-o", "UserKnownHostsFile=" + str(known), "-i", str(key), "ubuntu@" + HOST]
+            "-o", "UserKnownHostsFile=" + json.dumps(str(known)), "-i", str(key), "ubuntu@" + HOST]
 
 
 def qualified_source(sha, github):

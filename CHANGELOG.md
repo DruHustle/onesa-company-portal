@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-12 — Preserve pinned SSH paths containing spaces
+
+Quote the existing known-hosts path for OpenSSH configuration parsing. The shared
+workspace contains a space, which otherwise splits the filename and makes strict
+verification reject the host. Keep strict checking, the owner-held identity and
+existing host record; verify the owner operator through a real read-only SSH call.
+
+
 ## 2026-10-12 — Separate browser startup and action budgets
 
 The retained CI trace shows WebKit spent 28 seconds creating its page in the
