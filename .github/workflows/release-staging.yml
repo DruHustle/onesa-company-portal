@@ -43,15 +43,10 @@ concurrency:
   cancel-in-progress: false
 jobs:
   staging:
-    if: github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor ==
-      'DruHustle' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/staging')
-      || (github.event_name == 'workflow_run' && github.event.repository.private == true && vars.STAGING_AUTOMATION_ENABLED
-      == 'true' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name
-      == github.repository && github.event.workflow_run.head_sha == github.sha && github.event.workflow_run.conclusion ==
-      'success'))
+    if: (vars.STAGING_SECRET_SCOPE != 'environment' || github.event.repository.private == true) && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/staging') || (github.event_name == 'workflow_run' && github.event.repository.private == true && vars.STAGING_AUTOMATION_ENABLED == 'true' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_sha == github.sha && github.event.workflow_run.conclusion == 'success')))
     runs-on: ubuntu-latest
     timeout-minutes: 55
-    steps:
+    steps: &staging_steps
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         persist-credentials: false
@@ -152,6 +147,14 @@ jobs:
         VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
         STAGING_FIXTURES_JSON: ${{ secrets.STAGING_FIXTURES_JSON }}
-    env:
+    env: &staging_env
       GH_TOKEN: ${{ github.token }}
       STAGING_FIXTURE_MODE: ${{ inputs.fixture_mode || 'temporary' }}
+  staging-environment:
+    # Optional verified public-environment binding; private Free always uses repository secrets.
+    if: (vars.STAGING_SECRET_SCOPE == 'environment' && github.event.repository.private == false) && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/staging') || (github.event_name == 'workflow_run' && github.event.repository.private == true && vars.STAGING_AUTOMATION_ENABLED == 'true' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_sha == github.sha && github.event.workflow_run.conclusion == 'success')))
+    environment: Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps: *staging_steps
+    env: *staging_env

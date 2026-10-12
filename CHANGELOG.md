@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-10-12 — Managed legal publication fallback
+
+Render draft legal/privacy fallback text only when no published managed notice exists. A published notice previously received an additional contradictory draft block. Missing notices remain explicitly incomplete; this change does not supply or approve company/legal particulars.
+
+## 2026-10-12 — verified staging secret scope
+
+- Select the verified public `Staging` environment through the non-secret `STAGING_SECRET_SCOPE` variable while keeping repository-level `STAGING_*` secrets as the private-Free fallback.
+- Share one deployment sequence between mutually exclusive owner-only jobs; preserve source qualification, target checks and production separation.
+- Test both scope selections, private fallback and untrusted actor rejection; diagnostics disclose only availability booleans.
+
+## 2026-10-12 — Verify configured staging secret injection
+
+Add trusted owner-only environment and repository availability modes to the existing
+hosting inspector. Test required names as booleans, without checking out code, calling
+providers or displaying values. Preserve the Staging entries and independently verify
+usable injection and actual repository entitlement. Private-Free repository fallback
+remains documented; secret names alone never prove authentication or data isolation.
+Exercise real diagnostic code with synthetic sentinel values and assert they are never
+logged. Oracle configuration remains independent of GitHub secret entry.
+
+
 ## 2026-10-12 — Single owner authorization and optional scanner configuration
 
 Accept the owner’s single, exact-commit workflow decision without requiring a second

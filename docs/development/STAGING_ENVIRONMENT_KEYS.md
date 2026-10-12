@@ -2,9 +2,53 @@
 
 Each product uses its own Vercel project. Within this product, `STAGING_VERCEL_PROJECT_ID` equals its production `VERCEL_PROJECT_ID`; the Org/Team ID must match that project's owner. Staging is a Preview deployment of `staging`; production remains separately authorized.
 
-Create staging-only secrets at https://github.com/DruHustle/onesa-company-portal/settings/secrets/actions → **Repository secrets → New repository secret**. This is the GitHub Free private-compatible binding. Manual staging jobs use repository-level `STAGING_` names and do not declare the GitHub Staging environment, so older environment values cannot shadow the owner's repository entries. Repository secrets do **not** provide environment-level isolation: repository writers can modify Actions to access them. Keep production credentials outside editable Actions; use a separately controlled staging-only broker when provider token capabilities cannot be limited sufficiently. Exact source/actor/ref checks remain necessary but do not establish server-enforced secret isolation.
+The existing secrets are configured under **Environment secrets → Staging**. Verify
+actual injection with the trusted diagnostic below before selecting that deployment
+binding. For private GitHub Free, the supported fallback is **Repository secrets →
+New repository secret** at https://github.com/DruHustle/onesa-company-portal/settings/secrets/actions,
+using the same staging-only names. Repository secrets do **not** provide environment-level
+isolation: repository writers can modify Actions to access them. Keep production credentials
+outside editable Actions; restrict repository write access and use a separately controlled
+staging-only broker when provider capabilities cannot be limited sufficiently. Exact
+source/actor/ref checks do not establish server-enforced secret isolation.
 
-The owner's account/provider setup and secret-entry work are pending. Current authenticated repository readback still reports public; do not change visibility or claim private enforcement from the selected strategy. Secret metadata alone cannot prove a usable value. Enter actual values privately, without blank placeholder secrets or credential output.
+The owner has entered the 7/8 required names under the existing Staging environment (7 for Portal, 8 for AI/Robot), confirmed by API metadata and screenshots. Actual injection and authentication are checked separately. Current authenticated repository readback reports public; the selected private-Free strategy does not establish current entitlement. Do not print, copy to chat or replace existing credentials.
+
+## Verify the actual configured secret scope
+
+The owner confirms that the existing entries are under the exact GitHub environment
+`Staging`. Name metadata and usable workflow injection are separate checks. The
+registered owner-only inspection workflow offers boolean-only diagnostics with no
+checkout, provider requests or secret-value output:
+
+```sh
+gh secret list --env Staging -R DruHustle/onesa-company-portal
+gh workflow run inspect-hosting.yml --repo DruHustle/onesa-company-portal --ref dev -f secret_scope=environment
+gh workflow run inspect-hosting.yml --repo DruHustle/onesa-company-portal --ref dev -f secret_scope=repository
+```
+
+The environment diagnostic explicitly declares `environment: Staging`. A missing or
+empty value fails with its exact name; a successful availability check does not prove
+that a token authenticates, an operator password matches or targets are isolated.
+Inspect actual repository visibility and account entitlement. Public readback currently
+reports `private:false`; an absent account-plan API field is not proof of Free or Pro.
+Private GitHub Free must retain the repository-level fallback with the same names.
+Only the owner re-enters actual values privately; do not copy production credentials,
+print values or expose deployment secrets to untrusted PR code. Oracle's root-only
+worker environment file is a separate configuration requirement.
+
+## Supported deployment scope selection
+
+`STAGING_SECRET_SCOPE` is a non-secret repository Actions variable. Leave it unset
+or set it to `repository` for the private GitHub Free fallback. Set it to `environment`
+only after the trusted environment diagnostic proves usable injection on the current
+public repository. The selected public job declares `environment: Staging`; the private
+job has no environment dependency and uses repository `STAGING_*` names. If repository
+visibility changes to private, repository mode is selected regardless of the variable.
+Both modes share one anchored deployment step sequence and mutually exclusive guards;
+there is one staging deployment authority and no secret values in outputs between jobs.
+Ordinary PR checks do not invoke these owner-only deployment jobs. Availability never
+establishes provider credential isolation; verify target/scope/authentication separately.
 
 ## Required workflow secret names
 

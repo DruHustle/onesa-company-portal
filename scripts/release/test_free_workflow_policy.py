@@ -2,6 +2,7 @@
 
 import json
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -89,12 +90,46 @@ class WorkflowBoundaryTests(unittest.TestCase):
             text,
             r"secrets\.(RENDER_API_KEY|VERCEL_TOKEN|VERCEL_PROJECT_ID|VERCEL_AUTOMATION_BYPASS_SECRET)\b",
         )
-        self.assertNotRegex(text, r"(?m)^\s*environment:")
-        # Repository STAGING_ bindings support private Free; they are not environment isolation.
+        repository_job, environment_job = text.split("  staging-environment:\n", 1)
+        self.assertNotRegex(repository_job, r"(?m)^\s*environment:")
+        self.assertIn("github.event.repository.private == true", repository_job)
+        self.assertIn("github.event.repository.private == false", environment_job)
+        self.assertIn("vars.STAGING_SECRET_SCOPE == 'environment'", environment_job)
+        self.assertIn("environment: Staging", environment_job)
+        self.assertIn("steps: *staging_steps", environment_job)
+        # The single shared step sequence is selected once; private Free has no environment dependency.
         references = re.findall(r"secrets\.([A-Z_]+)", text)
         self.assertTrue(references)
         self.assertTrue(all(name.startswith("STAGING_") for name in references))
         self.assertNotIn("secrets.VERCEL_PROJECT_ID", text)
+
+    def test_staging_scope_selects_one_trusted_job_and_private_fallback(self):
+        text = (ROOT / ".github/workflows/release-staging.yml").read_text()
+        conditions = re.findall(r"^    if: (.+)", text, re.MULTILINE)
+        self.assertEqual(len(conditions), 2)
+        program = r"""
+const conditions = JSON.parse(process.argv[1]);
+const repository = process.argv[2];
+for (const privateRepo of [false, true]) {
+  for (const scope of ['', 'repository', 'environment']) {
+    for (const trusted of [false, true]) {
+      const github = {repository, actor: trusted ? 'DruHustle' : 'outsider',
+        triggering_actor: 'DruHustle', event_name: 'workflow_dispatch',
+        ref: 'refs/heads/staging', event: {repository: {private: privateRepo}}};
+      const vars = {STAGING_SECRET_SCOPE: scope, STAGING_AUTOMATION_ENABLED: 'false'};
+      const selected = conditions.map(condition =>
+        new Function('github', 'vars', 'return (' + condition + ')')(github, vars));
+      const expected = trusted ? (privateRepo || scope !== 'environment' ? [true, false] : [false, true]) : [false, false];
+      if (JSON.stringify(selected) !== JSON.stringify(expected)) process.exit(1);
+    }
+  }
+}
+"""
+        result = subprocess.run(
+            ["node", "-e", program, json.dumps(conditions), "DruHustle/" + ROOT.name],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_git_previews_do_not_enable_native_production_deployment(self):
         config = json.loads(
