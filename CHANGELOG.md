@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-12 — Verify configured staging secret injection
+
+Add trusted owner-only environment and repository availability modes to the existing
+hosting inspector. Test required names as booleans, without checking out code, calling
+providers or displaying values. Preserve the Staging entries and independently verify
+usable injection and actual repository entitlement. Private-Free repository fallback
+remains documented; secret names alone never prove authentication or data isolation.
+Exercise real diagnostic code with synthetic sentinel values and assert they are never
+logged. Oracle configuration remains independent of GitHub secret entry.
+
+
 ## 2026-10-12 — Single owner authorization and optional scanner configuration
 
 Accept the owner’s single, exact-commit workflow decision without requiring a second

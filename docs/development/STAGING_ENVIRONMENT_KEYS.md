@@ -6,6 +6,29 @@ Create staging-only secrets at https://github.com/DruHustle/onesa-company-portal
 
 The owner's account/provider setup and secret-entry work are pending. Current authenticated repository readback still reports public; do not change visibility or claim private enforcement from the selected strategy. Secret metadata alone cannot prove a usable value. Enter actual values privately, without blank placeholder secrets or credential output.
 
+## Verify the actual configured secret scope
+
+The owner confirms that the existing entries are under the exact GitHub environment
+`Staging`. Name metadata and usable workflow injection are separate checks. The
+registered owner-only inspection workflow offers boolean-only diagnostics with no
+checkout, provider requests or secret-value output:
+
+```sh
+gh secret list --env Staging -R DruHustle/onesa-company-portal
+gh workflow run inspect-hosting.yml --repo DruHustle/onesa-company-portal --ref dev -f secret_scope=environment
+gh workflow run inspect-hosting.yml --repo DruHustle/onesa-company-portal --ref dev -f secret_scope=repository
+```
+
+The environment diagnostic explicitly declares `environment: Staging`. A missing or
+empty value fails with its exact name; a successful availability check does not prove
+that a token authenticates, an operator password matches or targets are isolated.
+Inspect actual repository visibility and account entitlement. Public readback currently
+reports `private:false`; an absent account-plan API field is not proof of Free or Pro.
+Private GitHub Free must retain the repository-level fallback with the same names.
+Only the owner re-enters actual values privately; do not copy production credentials,
+print values or expose deployment secrets to untrusted PR code. Oracle's root-only
+worker environment file is a separate configuration requirement.
+
 ## Required workflow secret names
 
 - `STAGING_FIXTURES_JSON`
