@@ -149,9 +149,20 @@ jobs:
       with:
         node-version: '24'
     - name: Require successful exact-source checks before staging credentials
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: python3 scripts/release/evidence.py stage-preflight --output "$RUNNER_TEMP/staging-source.json"
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+      with:
+        script: |
+          if (process.env.RUNNER_ENVIRONMENT !== 'github-hosted' || context.ref !== 'refs/heads/staging') throw new Error('Identified hosted staging operator required');
+          const {owner, repo} = context.repo;
+          const repository = await github.rest.repos.get({owner, repo});
+          if (repository.data.private !== false) throw new Error('Repository visibility changed; qualify fresh operator execution');
+          const ref = await github.rest.git.getRef({owner, repo, ref: 'heads/staging'});
+          if (ref.data.object.sha !== context.sha) throw new Error('Staging source changed');
+          for (const workflow_id of ['verify.yml', 'repository-hygiene.yml']) {
+            const runs = await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id, head_sha: context.sha, event: 'push', per_page: 20});
+            const run = runs.data.workflow_runs[0];
+            if (!run || run.head_sha !== context.sha || run.head_branch !== 'staging' || run.head_repository.full_name !== context.payload.repository.full_name || run.status !== 'completed' || run.conclusion !== 'success') throw new Error(`${workflow_id} must pass on this exact staging revision`);
+          }
     - run: npm ci
       working-directory: onesa-company-portal-backend
     - name: Bind only the existing restricted database login to verified free staging
