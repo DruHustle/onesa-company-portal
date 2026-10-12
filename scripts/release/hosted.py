@@ -19,6 +19,7 @@ from evidence import (
     digest,
     require,
     save,
+    staging_check_names,
     trusted_run,
     verify_stage,
 )
@@ -64,6 +65,7 @@ def request(url, token=None, bypass=None, raw=False):
 
 # Fixed diagnostic codes expose no provider values, URLs, response bodies or exception text.
 FAILURE_CODES = {
+    "Hosted staging acceptance incomplete": "STAGING_ACCEPTANCE",
     "Provider credential missing": "PROVIDER_CREDENTIAL_MISSING",
     "Provider readback unavailable": "PROVIDER_ACCESS",
     "Render credential missing": "RENDER_CREDENTIAL_MISSING",
@@ -181,6 +183,17 @@ def render(service, identifier, sha):
         "Staging was replaced by another deployment",
     )
     return data
+
+
+def require_stage_acceptance(record):
+    checks = record.get("checks")
+    require(
+        record.get("status") == "PASS"
+        and isinstance(checks, dict)
+        and staging_check_names() <= checks.keys()
+        and all(value == "PASS" for value in checks.values()),
+        "Hosted staging acceptance incomplete",
+    )
 
 
 def preflight():
@@ -670,6 +683,7 @@ def main():
         choices=[
             "preflight",
             "stage",
+            "stage-result",
             "recheck",
             "frontend-receipt",
             "bind-staging-origin",
@@ -684,7 +698,12 @@ def main():
     parser.add_argument("--url-file", default="/tmp/vercel-url.txt")
     parser.add_argument("--output", default="data/release/record.json")
     args = parser.parse_args()
-    if args.mode == "bind-staging-origin":
+    if args.mode == "stage-result":
+        record = json.loads(Path(args.evidence).read_text())
+        print("Hosted qualification:", record.get("status"))
+        print(json.dumps(record.get("checks", {}), indent=2))
+        require_stage_acceptance(record)
+    elif args.mode == "bind-staging-origin":
         bind_staging_origin()
     elif args.mode == "production":
         save(production(), args.output)

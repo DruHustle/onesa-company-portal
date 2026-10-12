@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-12 — Fail incomplete hosted staging acceptance
+
+Retain uploaded staging receipts but fail the workflow when hosted acceptance is FAIL,
+BLOCKED, incomplete, or falsely claims PASS with failed checks. A successful provider
+build/deploy is still recorded separately. Production qualification gates are unchanged.
+
 ## 2026-10-12 — Safe hosted preflight diagnostics
 
 Report a fixed failure code for provider access, target identity, database binding,

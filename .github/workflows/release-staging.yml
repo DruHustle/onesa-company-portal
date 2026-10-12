@@ -120,8 +120,7 @@ jobs:
         path: ${{ runner.temp }}/staging/record.json
         retention-days: 7
         if-no-files-found: error
-    - name: Report outstanding acceptance honestly
-      run: python3 -c 'import json,os; from pathlib import Path; r=json.loads((Path(os.environ["RUNNER_TEMP"])/"staging/record.json").read_text());
-        print("Hosted qualification:",r["status"]); print(json.dumps(r["checks"],indent=2))'
+    - name: 'Release requirement: actual hosted staging acceptance'
+      run: python3 scripts/release/hosted.py stage-result --evidence "$RUNNER_TEMP/staging/record.json"
     env:
       GH_TOKEN: ${{ github.token }}

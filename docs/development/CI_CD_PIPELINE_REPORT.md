@@ -499,3 +499,9 @@ Hosted preflight failures now emit only fixed diagnostic codes (for example REND
 STAGING_DATABASE_BINDING or STAGING_INFERENCE_CONFIGURATION). Unknown errors keep a
 generic code; private values/URLs/responses/exception strings are never emitted. This
 identifies the owner's exact failed requirement without relaxing a release gate.
+
+
+Staging uploads its receipt before the final hosted acceptance requirement. The final
+step now fails for FAIL/BLOCKED/incomplete results, including a false PASS paired with
+nonpassing checks. Provider deployment success remains separately recorded; a green
+workflow cannot conceal authentication, readiness, inference or storage failures.
