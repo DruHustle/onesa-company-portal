@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -20,6 +21,48 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class PipelineTests(unittest.TestCase):
+    @unittest.skipUnless(
+        shutil.which("node"), "Node is required for the real operator workflow guard"
+    )
+    def test_staging_operator_guard_rejects_unqualified_or_changed_sources(self):
+        workflow = (ROOT / ".github/workflows/repair-hosting.yml").read_text()
+        step = workflow.split(
+            "- name: Require successful exact-source checks before staging credentials\n",
+            1,
+        )[1].split("    - run: npm ci", 1)[0]
+        script = textwrap.dedent(step.split("script: |\n", 1)[1])
+        harness = r"""
+const mode=process.argv[1], script=process.argv[2], sha='a'.repeat(40), repository='DruHustle/onesa-company-portal';
+process.env.RUNNER_ENVIRONMENT=mode==='local'?'self-hosted':'github-hosted';
+const context={ref:mode==='main'?'refs/heads/main':'refs/heads/staging',sha,repo:{owner:'DruHustle',repo:'onesa-company-portal'},payload:{repository:{full_name:repository}}};
+const run={head_sha:mode==='wrong-ci-sha'?'b'.repeat(40):sha,head_branch:mode==='wrong-ci-branch'?'dev':'staging',head_repository:{full_name:mode==='foreign-repo'?'other/portal':repository},status:mode==='pending'?'in_progress':'completed',conclusion:mode==='failed'?'failure':'success'};
+const github={rest:{repos:{get:async()=>({data:{private:mode==='private'}})},git:{getRef:async()=>({data:{object:{sha:mode==='changed'?'c'.repeat(40):sha}}})},actions:{listWorkflowRuns:async()=>({data:{workflow_runs:mode==='missing'?[]:[run]}})}}};
+const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+new AsyncFunction('context','github',script)(context,github).then(()=>process.exit(mode==='valid'?0:1)).catch(()=>process.exit(mode==='valid'?1:0));
+"""
+        for mode in [
+            "valid",
+            "local",
+            "main",
+            "private",
+            "changed",
+            "missing",
+            "pending",
+            "failed",
+            "wrong-ci-sha",
+            "wrong-ci-branch",
+            "foreign-repo",
+        ]:
+            with self.subTest(mode=mode):
+                result = subprocess.run(
+                    ["node", "-e", harness, mode, script],
+                    cwd=ROOT,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_release_sources_always_run_every_critical_check(self):
         for product in ("onesa-company-portal", "onesa-ai-platform", "onesa-ai-robot"):
             selection = paths.classify(product, ["docs/readme.md"], full=True)

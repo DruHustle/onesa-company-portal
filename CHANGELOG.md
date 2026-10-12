@@ -6,6 +6,8 @@ Add an owner-only staging repair using the privately saved restricted applicatio
 password. Verify free Render identity, TLS, existing migration checksums, login and
 least-privilege grants before updating only staging DATABASE_URL and reading it back.
 Never initialize data, change grants/passwords, deploy, or modify production.
+Use the existing operator's current-head/visibility/full-CI gate; release preflight
+continues to accept only deployment workflow paths, excluding this operator.
 
 ## 2026-10-12 — Fail incomplete hosted staging acceptance
 
