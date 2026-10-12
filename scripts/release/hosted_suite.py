@@ -32,6 +32,10 @@ class HostedRequestFailure(Rejected):
             "/api/v1/auth/login": "login",
             "/api/v1/auth/me": "current-user",
         }.get(path, "workflow-request")
+        if re.fullmatch(r"/api/v1/admin/files/[a-f0-9-]{36}/scan", path):
+            self.phase = "file-scan"
+        elif re.fullmatch(r"/api/v1/admin/files/[a-f0-9-]{36}/download", path):
+            self.phase = "file-download"
         self.code = "HTTP_" + str(status)
         try:
             candidate = json.loads(body).get("error", {}).get("code")
@@ -44,6 +48,7 @@ class HostedRequestFailure(Rejected):
             "ORIGIN": "ORIGIN_REJECTED",
             "HOST": "HOST_REJECTED",
             "invitation_required": "INVITATION_REQUIRED",
+            "QUARANTINE": "STORAGE_QUARANTINE",
         }
         if isinstance(candidate, str) and candidate in known:
             self.code = known[candidate]
@@ -62,6 +67,9 @@ def safe_suite_failure_code(error):
     known = {
         "Secure session cookie missing": "SESSION_COOKIE",
         "CSRF token missing": "CSRF_TOKEN",
+        "Synthetic file remains quarantined": "STORAGE_QUARANTINE",
+        "Synthetic file scanner rejected content": "STORAGE_SCAN_REJECTED",
+        "Synthetic file scan state invalid": "STORAGE_SCAN_STATE",
     }
     return known.get(str(error), "HOSTED_CHECK")
 
@@ -316,7 +324,14 @@ def run_suite(origin):
                 data["sha256"] == hashlib.sha256(base64.b64decode(PNG)).hexdigest(),
                 "Stored synthetic content digest differs",
             )
-            clients[0].call("POST", "/api/v1/admin/files/" + identifier + "/scan", {})
+            scanned = clients[0].call("POST", "/api/v1/admin/files/" + identifier + "/scan", {})
+            require(
+                isinstance(scanned, dict)
+                and scanned.get("scan_status") in {"clean", "quarantine", "rejected"},
+                "Synthetic file scan state invalid",
+            )
+            require(scanned["scan_status"] != "quarantine", "Synthetic file remains quarantined")
+            require(scanned["scan_status"] == "clean", "Synthetic file scanner rejected content")
             content = clients[0].call(
                 "GET", "/api/v1/admin/files/" + identifier + "/download"
             )
