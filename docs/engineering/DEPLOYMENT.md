@@ -1,5 +1,11 @@
 # Deployment and independent releases
 
+## Reviewed staging path — 2026-10-12
+
+After dev PR and exact merged staging CI pass, use the already registered owner workflow: `gh workflow run deploy.yml --ref staging -f target=staging -f fixture_mode=temporary`. Staging-only credentials and the existing approved synthetic scope/project JSON are required. The fixture helper creates two random identities through the verified restricted staging application role, keeps credentials only in a 0600 runner file, then disables those exact identities and revokes sessions on cleanup. Provided fixtures remain available with `fixture_mode=provided`; production accounts are never created by this helper.
+
+Vercel native Git owns the protected staging frontend Preview. The release workflow waits for and verifies its exact SHA/project/ref instead of deploying a second frontend. Actions owns the manually deployed exact-source backend. Actual API/auth/workflow/storage/browser acceptance remains mandatory; FAIL/BLOCKED receipts cannot qualify. No migration, production approval, visibility or paid change is implied.
+
 > Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
 
 The frontend and backend have separate Docker build contexts and versioned images.

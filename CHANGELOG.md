@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-12 — Visitor-time appearance, exact-source staging and private synthetic fixtures
+
+- Public EN/DE routes and administration offer Auto/Light/Dark. Auto uses the visitor's local 07:00/19:00 boundaries, survives blocked storage, restores manual preferences, and updates after focus/timezone changes. CSP nonce protection is retained.
+- Staging validates fixture project/synthetic scope before deploy. Owner-only temporary accounts use random private credentials and MFA; cleanup disables only exact run-owned identities and revokes their sessions. Existing accounts and production remain unchanged.
+- The staging frontend reuses the protected native Git Preview for the exact SHA; Actions deploys only the backend. Ambiguous, foreign-source, production or failed Previews cannot qualify.
+- Updated official GitHub Actions to reviewed immutable Node 24-compatible releases. Expanded two-theme route/browser acceptance; repaired mobile theme visibility and dark-panel contrast.
+- Local backend: 57 tests pass. Release fixtures and Preview negative tests pass. Production publication, legal approval, worker/scanner/mail integration and actual hosted acceptance remain separate release gates.
+
 ## 2026-10-12 — Correct only the verified staging database binding
 
 Add an owner-only staging repair using the privately saved restricted application

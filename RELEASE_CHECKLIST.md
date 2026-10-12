@@ -1,5 +1,9 @@
 # Production release checklist
 
+## Repeat audit — 2026-10-12
+
+Local verification: 57 backend tests, 62 release guard/fixture/Preview tests and 20 Chromium/WebKit browser cases pass, including 316 route/theme/viewport accessibility checks. Firefox native launch is blocked on this workstation; it remains required in hosted CI. Source adds visitor-time appearance, private temporary staging identities, validated fixture schema and reuse of the exact protected Git Preview. New dev and merged staging CI plus actual hosted acceptance must pass before release. Production publication, operations and legal approval remain unqualified. Historical evidence below does not approve this new source.
+
 ## Search and sharing acceptance
 
 - Verify `/`, `/en`, `/de`, `/robots.txt` and the 1200×630 PNG on the deployed

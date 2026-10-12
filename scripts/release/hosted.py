@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -23,6 +24,7 @@ from evidence import (
     trusted_run,
     verify_stage,
 )
+from fixtures import FixtureError, parse_fixtures
 
 STAGING_SERVICES = {
     "onesa-company-portal": "srv-db5k5had0e5s73fos4g0",
@@ -87,6 +89,8 @@ FAILURE_CODES = {
 
 
 def safe_failure_code(error):
+    if isinstance(error, FixtureError):
+        return error.code
     if isinstance(error, Rejected):
         return FAILURE_CODES.get(str(error), "VALIDATION")
     if isinstance(error, KeyError):
@@ -270,6 +274,15 @@ def preflight():
             and settings.get("ONESA_EMBEDDING_BACKEND") == "http",
             "Full release probes require actual configured inference and semantic embeddings",
         )
+    fixture_input = os.environ.get("STAGING_FIXTURES_JSON")
+    if fixture_input:
+        parse_fixtures(
+            fixture_input,
+            os.environ.get("VERCEL_PROJECT_ID", ""),
+            PRODUCT,
+            credentials=os.environ.get("STAGING_FIXTURE_MODE", "provided")
+            != "temporary",
+        )
     project_id = os.environ.get("VERCEL_PROJECT_ID", "")
     require(
         re.fullmatch(r"prj_[A-Za-z0-9]+", project_id) is not None,
@@ -296,6 +309,55 @@ def preflight():
         "Staging Preview is not access protected",
     )
     # Preflight does not change configuration; origin binding is a separately scoped operation.
+    return {"service": service, "settings": settings, "project": project}
+
+
+def resolve_preview(output, *, attempts=60):
+    """Reuse the exact native Git Preview; never create a competing deployment."""
+    preflight()
+    query = urllib.parse.urlencode(
+        {
+            "projectId": os.environ["VERCEL_PROJECT_ID"],
+            "teamId": os.environ["VERCEL_ORG_ID"],
+            "limit": 100,
+        }
+    )
+    for attempt in range(attempts):
+        data = provider(
+            "https://api.vercel.com/v6/deployments?" + query, os.environ["VERCEL_TOKEN"]
+        )
+        candidates = [
+            item
+            for item in data.get("deployments", [])
+            if item.get("meta", {}).get("githubCommitSha") == os.environ["GITHUB_SHA"]
+            and item.get("meta", {}).get("githubCommitRef") == "staging"
+            and item.get("target") in {None, "preview"}
+        ]
+        ready = [
+            item
+            for item in candidates
+            if item.get("readyState", item.get("state")) == "READY"
+        ]
+        if ready:
+            require(
+                len(ready) == 1,
+                "Multiple native staging Previews for the same source; reconcile deployment authorities",
+            )
+            origin = "https://" + ready[0]["url"]
+            frontend(origin, os.environ["GITHUB_SHA"], "Staging")
+            Path(output).write_text(origin + "\n")
+            print("Verified exact-source native Git staging Preview")
+            return origin
+        require(
+            not any(
+                item.get("readyState", item.get("state")) in {"ERROR", "CANCELED"}
+                for item in candidates
+            ),
+            "Native staging Preview build failed",
+        )
+        if attempt + 1 < attempts:
+            time.sleep(5)
+    raise Rejected("No ready native Git staging Preview for the exact candidate")
 
 
 def stage(qualification, render_receipt, origin):
@@ -375,7 +437,7 @@ def stage(qualification, render_receipt, origin):
         "frontend_origin": origin,
         "backend_origin": backend,
         "limitations": [
-            "Authenticated critical workflows, user isolation and storage require a reviewed hosted acceptance adapter; readiness alone cannot qualify a release"
+            "Complete authenticated, integration and dependency acceptance is required; see the individual hosted check results"
         ],
     }
 
@@ -684,6 +746,7 @@ def main():
             "preflight",
             "stage",
             "stage-result",
+            "resolve-preview",
             "recheck",
             "frontend-receipt",
             "bind-staging-origin",
@@ -698,7 +761,9 @@ def main():
     parser.add_argument("--url-file", default="/tmp/vercel-url.txt")
     parser.add_argument("--output", default="data/release/record.json")
     args = parser.parse_args()
-    if args.mode == "stage-result":
+    if args.mode == "resolve-preview":
+        resolve_preview(args.url_file)
+    elif args.mode == "stage-result":
         record = json.loads(Path(args.evidence).read_text())
         print("Hosted qualification:", record.get("status"))
         print(json.dumps(record.get("checks", {}), indent=2))

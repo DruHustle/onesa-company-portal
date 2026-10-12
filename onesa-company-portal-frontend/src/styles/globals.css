@@ -14,3 +14,27 @@
 @media(max-width:760px){.admin-grid{grid-template-columns:minmax(0,1fr)}}
 
 .admin-header span { min-width:0; max-width:100%; overflow-wrap:anywhere; }
+
+/* Auto resolves from visitor time; manual choices use the same semantic palette. */
+html[data-theme=light],html[data-theme=light] body{color-scheme:light}
+html[data-theme=dark],html[data-theme=dark] body{color-scheme:dark;--ink:#e5edf6;--muted:#b4c4d6;--line:#557a9e;--paper:#14243a;--blue:#83baff;background:#0b1523;color:var(--ink)}
+html[data-theme=dark] :is(.site-header,.capability,.content-card,.admin-card,.admin-login,.admin-list button,.admin-tabs button,.admin-actions button,.mobile-toggle){background:#14243a;color:var(--ink)}
+html[data-theme=dark] :is(input,textarea,select){background:#0f2034;color:var(--ink);border-color:var(--line)}
+html[data-theme=dark] :is(input,textarea)::placeholder{color:var(--muted);opacity:1}
+html[data-theme=dark] :is(.preview-banner,.admin-notice){background:#173249;color:#d6edf9}
+html[data-theme=dark] .product-window{box-shadow:20px 20px 0 #20344a}
+html[data-theme=dark] .admin-tabs button[aria-pressed=true]{background:#294766;color:#fff}
+.appearance-control{display:inline-flex;align-items:center;gap:8px;font-size:.75rem;white-space:nowrap;max-width:100%}
+.appearance-control select{min-height:36px;min-width:88px;padding:6px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:inherit}
+.admin-appearance{display:flex;justify-content:flex-end;padding:10px 4vw;background:var(--paper)}
+.site-header nav{gap:16px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:760px){.site-header nav .appearance-control{padding-block:9px}}
+
+.appearance-control select{appearance:none;padding-right:26px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%2352789b' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+
+html[data-theme=dark] .cta{background:#14243a;color:#e5edf6}
+
+html[data-theme=dark] .legal-draft{background:#382b16;color:#fff7e9}
+html[data-theme=dark] .skip-link{background:#14243a;color:#e5edf6}
+
+h1,h2,h3{overflow-wrap:anywhere;hyphens:auto}

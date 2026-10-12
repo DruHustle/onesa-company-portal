@@ -1,7 +1,18 @@
 name: Approved staging qualification
 'on': # zizmor: ignore[dangerous-triggers] -- Owner exact main SHA and complete CI before staging-only credentials; documented in CI_CD_PIPELINE_REPORT.md
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      fixture_mode:
+        type: choice
+        default: temporary
+        options:
+        - temporary
+        - provided
   workflow_call:
+    inputs:
+      fixture_mode:
+        type: string
+        default: temporary
     secrets:
       STAGING_FIXTURES_JSON:
         required: true
@@ -42,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
-    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         persist-credentials: false
         ref: ${{ github.sha }}
@@ -60,23 +71,19 @@ jobs:
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
         STAGING_FIXTURES_JSON: ${{ secrets.STAGING_FIXTURES_JSON }}
       run: python3 scripts/release/hosted.py preflight
-    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
       with:
         node-version: '24'
-    - name: Build protected staging Preview with existing branch settings
+    - name: Reuse the exact-source protected native Git Preview
       env:
-        STAGING_BRANCH: staging
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
         VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
         VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
         VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
-      run: 'npm install --global vercel@63.1.0
-
-        vercel pull --yes --environment=preview --git-branch="$STAGING_BRANCH" --token="$VERCEL_TOKEN"
-
-        VERCEL=1 vercel build --token="$VERCEL_TOKEN"
-
-        vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta githubCommitRef="$STAGING_BRANCH" --meta githubCommitSha="$GITHUB_SHA"
-        > /tmp/vercel-url.txt'
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+        STAGING_FIXTURES_JSON: ${{ secrets.STAGING_FIXTURES_JSON }}
+      run: python3 scripts/release/hosted.py resolve-preview --url-file /tmp/vercel-url.txt
     - name: Bind only the approved staging API origin to this verified Preview
       run: python3 scripts/release/hosted.py bind-staging-origin
       env:
@@ -93,6 +100,19 @@ jobs:
         RENDER_RECEIPT_PATH: ${{ runner.temp }}/render/record.json
         RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
         RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+    - name: Install locked staging fixture tooling
+      run: npm ci --prefix onesa-company-portal-backend
+    - name: Create only temporary approved synthetic staging identities
+      if: inputs.fixture_mode != 'provided'
+      run: python3 scripts/release/fixture_lifecycle.py create
+      env:
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+        STAGING_FIXTURES_JSON: ${{ secrets.STAGING_FIXTURES_JSON }}
     - name: Verify authenticated synthetic workflows, storage and actual inference where applicable
       run: python3 scripts/release/hosted_suite.py
       env:
@@ -114,7 +134,7 @@ jobs:
         VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
         STAGING_FIXTURES_JSON: ${{ secrets.STAGING_FIXTURES_JSON }}
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
         name: staging-verification
         path: ${{ runner.temp }}/staging/record.json
@@ -122,5 +142,17 @@ jobs:
         if-no-files-found: error
     - name: 'Release requirement: actual hosted staging acceptance'
       run: python3 scripts/release/hosted.py stage-result --evidence "$RUNNER_TEMP/staging/record.json"
+    - name: Disable only this run's synthetic identities and remove private credentials
+      if: always() && inputs.fixture_mode != 'provided'
+      run: python3 scripts/release/fixture_lifecycle.py cleanup
+      env:
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+        STAGING_FIXTURES_JSON: ${{ secrets.STAGING_FIXTURES_JSON }}
     env:
       GH_TOKEN: ${{ github.token }}
+      STAGING_FIXTURE_MODE: ${{ inputs.fixture_mode || 'temporary' }}

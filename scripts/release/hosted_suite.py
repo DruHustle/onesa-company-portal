@@ -20,12 +20,37 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from evidence import PRODUCT, REPOSITORY, Rejected, require
+from fixtures import FixtureError, decode_totp, parse_fixtures
 from hosted import NoRedirect, preview_origin, request
 
 PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/Z1sAAAAASUVORK5CYII="
 
 
+class HostedRequestFailure(Rejected):
+    def __init__(self, status, path, body):
+        self.phase = {
+            "/api/v1/auth/login": "login",
+            "/api/v1/auth/me": "current-user",
+        }.get(path, "workflow-request")
+        self.code = "HTTP_" + str(status)
+        try:
+            candidate = json.loads(body).get("error", {}).get("code")
+        except (ValueError, AttributeError, TypeError):
+            candidate = None
+        known = {
+            "CREDENTIALS": "FIXTURE_CREDENTIALS_REJECTED",
+            "MFA": "FIXTURE_MFA_REJECTED",
+            "origin_rejected": "ORIGIN_REJECTED",
+            "invitation_required": "INVITATION_REQUIRED",
+        }
+        if isinstance(candidate, str) and candidate in known:
+            self.code = known[candidate]
+        super().__init__(self.code)
+
+
 def safe_suite_failure_code(error):
+    if isinstance(error, (FixtureError, HostedRequestFailure)):
+        return error.code
     match = re.fullmatch(
         r"Synthetic hosted request failed: [A-Z]+ [a-z-]+ HTTP ([1-5][0-9]{2})",
         str(error),
@@ -73,16 +98,9 @@ class Session:
                 content = response.read(1024 * 1024 + 1)
                 require(len(content) <= 1024 * 1024, "Probe response exceeds bound")
         except urllib.error.HTTPError as error:
-            status, content = error.code, b""
-        require(
-            status == expected,
-            "Synthetic hosted request failed: "
-            + method
-            + " "
-            + path.split("/")[3]
-            + " HTTP "
-            + str(status),
-        )
+            status, content = error.code, error.read(4096)
+        if status != expected:
+            raise HostedRequestFailure(status, path, content)
         try:
             return json.loads(content)
         except ValueError:
@@ -91,7 +109,7 @@ class Session:
     def login(self, user):
         payload = {"email": user["email"], "password": user["password"]}
         if PRODUCT.endswith("portal"):
-            key = base64.b32decode(user["totp_secret"].upper(), casefold=True)
+            key = decode_totp(user.get("totp_secret"))
             message = struct.pack(">Q", int(time.time()) // 30)
             value = hmac.new(key, message, hashlib.sha1).digest()
             offset = value[-1] & 15
@@ -143,21 +161,29 @@ def run_suite(origin):
         "status": "BLOCKED",
     }
     raw = os.environ.get("STAGING_FIXTURES_JSON")
+    if os.environ.get("STAGING_FIXTURE_MODE") == "temporary":
+        from fixture_lifecycle import file_path, validate_owned
+
+        path = file_path()
+        require(
+            path.is_file() and path.stat().st_mode & 0o077 == 0,
+            "Private temporary fixture file required",
+        )
+        raw = path.read_text()
+        validate_owned(json.loads(raw))
     if not raw:
         return record
-    config = json.loads(raw)
-    require(
-        config["scope"] == "approved-synthetic-staging"
-        and config["project_id"] == os.environ["VERCEL_PROJECT_ID"],
-        "Synthetic fixture scope mismatch",
-    )
+    try:
+        config = parse_fixtures(raw, os.environ["VERCEL_PROJECT_ID"], PRODUCT)
+    except FixtureError as error:
+        if error.code == "FIXTURE_BINDING":
+            raise Rejected("Synthetic fixture scope mismatch") from None
+        checks["authentication"] = "FAIL"
+        record.update(
+            status="FAIL", failure_code=error.code, failure_phase="fixture-validation"
+        )
+        return record
     users = config["users"]
-    require(
-        len(users) == 2
-        and len({user["email"] for user in users}) == 2
-        and all(user["email"].endswith("@example.com") for user in users),
-        "Two separate synthetic fixture identities required",
-    )
     clients = [Session(origin), Session(origin)]
     active = "authentication"
     try:
@@ -314,6 +340,9 @@ def run_suite(origin):
         checks[active] = "FAIL"
         record["status"] = "FAIL"
         record["failure_code"] = safe_suite_failure_code(error)
+        record["failure_phase"] = (
+            error.phase if isinstance(error, HostedRequestFailure) else active
+        )
     return record
 
 
@@ -327,18 +356,13 @@ def production_probes(origin):
     raw = os.environ.get("PRODUCTION_FIXTURES_JSON")
     if not raw:
         return checks
-    fixture = json.loads(raw)
-    require(
-        fixture["scope"] == "approved-synthetic-production"
-        and fixture["project_id"] == os.environ["VERCEL_PROJECT_ID"],
-        "Production smoke fixture binding mismatch",
+    fixture = parse_fixtures(
+        raw,
+        os.environ["VERCEL_PROJECT_ID"],
+        PRODUCT,
+        scope="approved-synthetic-production",
     )
     users = fixture["users"]
-    require(
-        len(users) == 2
-        and all(user["email"].endswith("@example.com") for user in users),
-        "Synthetic production identities required",
-    )
     clients = [Session(origin), Session(origin)]
     active = "authenticated_critical_workflows"
     try:
@@ -421,6 +445,9 @@ def main():
     print("Synthetic hosted suite: " + record["status"])
     if record.get("failure_code"):
         print("Hosted check failure: " + record["failure_code"])
+        print(
+            "Hosted failure phase: " + record.get("failure_phase", "workflow-request")
+        )
 
 
 if __name__ == "__main__":
