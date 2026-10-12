@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-12 — Managed legal publication fallback
+
+Render draft legal/privacy fallback text only when no published managed notice exists. A published notice previously received an additional contradictory draft block. Missing notices remain explicitly incomplete; this change does not supply or approve company/legal particulars.
+
 ## 2026-10-12 — verified staging secret scope
 
 - Select the verified public `Staging` environment through the non-secret `STAGING_SECRET_SCOPE` variable while keeping repository-level `STAGING_*` secrets as the private-Free fallback.
