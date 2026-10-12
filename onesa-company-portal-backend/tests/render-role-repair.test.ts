@@ -3,10 +3,55 @@ import assert from 'node:assert/strict';
 import pg from 'pg';
 import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
-import { portalDatabaseURL, confirmedPortalDatabaseURL, assertConfirmedClientTLS, confirmedTargetInventory, inspectConfirmedPortalTarget, initializeConfirmedPortalTarget, initializeEmptyPortalSchema, verifiedSchema, repairPortalRole, safeDiagnostic } from '../src/services/render-role-repair.js';
+import { portalDatabaseURL, confirmedPortalDatabaseURL, assertConfirmedClientTLS, confirmedTargetInventory, inspectConfirmedPortalTarget, initializeConfirmedPortalTarget, initializeEmptyPortalSchema, verifiedSchema, repairPortalRole, safeDiagnostic, assertPortalStagingService, repairPortalStagingDatabase } from '../src/services/render-role-repair.js';
 
 const host='ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech';
 const fixture='postgresql://fixture:synthetic-password@'+host+'/neondb?sslmode=require';
+const stagingService={id:'srv-db5k5had0e5s73fos4g0',repo:'https://github.com/DruHustle/onesa-company-portal',branch:'staging',type:'web_service',rootDir:'onesa-company-portal-backend',autoDeployTrigger:'off',serviceDetails:{runtime:'docker',plan:'free',region:'frankfurt',url:'https://onesa-company-portal-backend-staging.onrender.com'}};
+
+test('Staging database binding refuses production, foreign services, paid targets and auto deploy',async()=>{
+ assert.doesNotThrow(()=>assertPortalStagingService(stagingService));
+ for(const changed of [{id:'srv-production'},{branch:'main'},{repo:'https://github.com/DruHustle/onesa-ai-platform'},{autoDeployTrigger:'commit'},{serviceDetails:{...stagingService.serviceDetails,plan:'starter'}},{serviceDetails:{...stagingService.serviceDetails,url:'https://onesa-company-portal-backend.onrender.com'}}])assert.throws(()=>assertPortalStagingService({...stagingService,...changed}));
+ const previous={...process.env};
+ try {
+  process.env.GITHUB_REPOSITORY='DruHustle/onesa-company-portal';
+  for(const branch of ['main','dev']){process.env.GITHUB_REF='refs/heads/'+branch;await assert.rejects(repairPortalStagingDatabase(),/staging operator branch/);}
+ }finally{process.env=previous;}
+});
+
+test('Staging binding verifies existing restricted role and schema before one environment write',async()=>{
+ const previous={...process.env};const originalFetch=globalThis.fetch;const connect=pg.Pool.prototype.connect;const end=pg.Pool.prototype.end;
+ const migrations:{name:string;checksum:string}[]=[];const tables=new Set(['schema_migrations']);
+ for(const name of (await readdir('migrations')).filter(name=>name.endsWith('.sql'))){
+  const source=await readFile('migrations/'+name,'utf8');migrations.push({name,checksum:createHash('sha256').update(source).digest('hex')});
+  for(const match of source.matchAll(/CREATE TABLE\s+([a-z_]+)/g))tables.add(match[1]);
+ }
+ const requests:{url:string;method:string}[]=[];const queries:string[]=[];let saved='';let unsafe=true;
+ try {
+  process.env.GITHUB_REPOSITORY='DruHustle/onesa-company-portal';process.env.GITHUB_REF='refs/heads/staging';process.env.RENDER_API_KEY='synthetic-render-token';process.env.PORTAL_APP_DB_PASSWORD='x'.repeat(64);
+  pg.Pool.prototype.connect=(async()=>({connection:{stream:{encrypted:true,authorized:true}},release(){},async query(sql:string){
+   queries.push(sql);
+   if(sql.includes('current_database()'))return {rows:[{database:'neondb',role:'onesa_portal_app'}]};
+   if(sql.includes('AS elevated_role'))return {rowCount:1,rows:[{elevated_role:unsafe,schema_create:false,relation_owner:false,migration_write:false,elevated_membership:false}]};
+   if(sql.includes('SELECT name,checksum'))return {rows:migrations};
+   if(sql.includes('pg_tables'))return {rows:[...tables].map(tablename=>({tablename}))};
+   return {rows:[{allowed:true}]};
+  }})) as unknown as typeof connect;
+  pg.Pool.prototype.end=(async()=>{}) as typeof end;
+  globalThis.fetch=async(input,init)=>{
+   const url=String(input);const method=init?.method||'GET';requests.push({url,method});
+   if(method==='PUT'){saved=JSON.parse(String(init?.body)).value;return new Response(null,{status:204});}
+   return new Response(JSON.stringify(url.includes('/env-vars?')?[{envVar:{key:'DATABASE_URL',value:saved}}]:stagingService));
+  };
+  await assert.rejects(repairPortalStagingDatabase(),/role remains unsafe/);
+  assert.ok(requests.every(request=>request.method==='GET'));requests.length=0;unsafe=false;
+  const report=await repairPortalStagingDatabase();
+  assert.equal(report.migration_checksums_verified,7);assert.equal(report.production_modified,false);assert.equal(report.deployment_requested,false);assert.equal(report.permissions_changed,false);
+  assert.deepEqual(requests.filter(request=>request.method!=='GET'),[{url:'https://api.render.com/v1/services/'+stagingService.id+'/env-vars/DATABASE_URL',method:'PUT'}]);
+  const candidate=new URL(saved);assert.equal(candidate.hostname,'ep-autumn-glade-b9760olg-pooler.c-7.eu-central-1.aws.neon.tech');assert.equal(candidate.username,'onesa_portal_app');assert.equal(candidate.searchParams.get('sslmode'),'verify-full');
+  assert.ok(queries.every(sql=>sql.startsWith('SELECT ')||sql==='BEGIN TRANSACTION READ ONLY'||sql==='ROLLBACK'));
+ }finally{process.env=previous;globalThis.fetch=originalFetch;pg.Pool.prototype.connect=connect;pg.Pool.prototype.end=end;}
+});
 test('Operator repair accepts only the established Portal database and correct pooling scope',()=>{
  assert.equal(portalDatabaseURL(fixture).hostname,host);
  assert.equal(portalDatabaseURL(fixture.replace('-pooler.','.'),true).hostname,host.replace('-pooler.','.'));

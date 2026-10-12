@@ -13,6 +13,7 @@ name: Repair existing hosting configuration
         - repair-role
         - repair-layout
         - repair-staging-layout
+        - repair-staging-database
 permissions:
   contents: read
   actions: read
@@ -22,7 +23,7 @@ concurrency:
 jobs:
   inspect:
     if: ${{ github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal'
-      && github.actor == 'DruHustle' && inputs.portal_action != 'repair-staging-layout' && (github.event_name != 'pull_request'
+      && github.actor == 'DruHustle' && inputs.portal_action != 'repair-staging-layout' && inputs.portal_action != 'repair-staging-database' && (github.event_name != 'pull_request'
       || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle'))))
       }}
     runs-on: ubuntu-latest
@@ -135,3 +136,27 @@ jobs:
         PORTAL_REPAIR_SCOPE: staging
         RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       run: python scripts/repair_hosting.py
+  staging-database:
+    if: github.event.repository.private == false && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/staging' && inputs.portal_action == 'repair-staging-database'
+    environment: Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: '24'
+    - name: Require successful exact-source checks before staging credentials
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: python3 scripts/release/evidence.py stage-preflight --output "$RUNNER_TEMP/staging-source.json"
+    - run: npm ci
+      working-directory: onesa-company-portal-backend
+    - name: Bind only the existing restricted database login to verified free staging
+      working-directory: onesa-company-portal-backend
+      env:
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        PORTAL_APP_DB_PASSWORD: ${{ secrets.PORTAL_APP_DB_PASSWORD }}
+      run: node --import tsx src/services/render-role-repair.ts --repair-staging-database
