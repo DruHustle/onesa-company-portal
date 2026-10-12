@@ -85,6 +85,12 @@ FAILURE_CODES = {
     "Staging Vercel project missing": "STAGING_VERCEL_BINDING",
     "Staging frontend repository binding mismatch": "STAGING_FRONTEND_REPOSITORY",
     "Staging Preview is not access protected": "STAGING_PREVIEW_PROTECTION",
+    "Identified hosted development operator required": "PREVIEW_OWNER_CONTEXT",
+    "Staging API proxy credential missing": "STAGING_PROXY_CREDENTIAL",
+    "Preview settings update failed": "PREVIEW_SETTINGS_WRITE",
+    "Preview settings update unavailable": "PREVIEW_SETTINGS_PROVIDER",
+    "Production environment changed during Preview repair": "PREVIEW_PRODUCTION_READBACK",
+    "Preview settings readback failed": "PREVIEW_SETTINGS_READBACK",
 }
 
 
@@ -706,7 +712,7 @@ def configure_staging_preview():
     require(isinstance(proxy, str) and len(proxy) >= 32, "Staging API proxy credential missing")
     project, team = os.environ["VERCEL_PROJECT_ID"], os.environ["VERCEL_ORG_ID"]
     query = urllib.parse.urlencode({"teamId": team, "decrypt": "true"})
-    endpoint = "https://api.vercel.com/v9/projects/" + project + "/env?" + query
+    endpoint = "https://api.vercel.com/v10/projects/" + project + "/env?" + query
     before = provider(endpoint, os.environ["VERCEL_TOKEN"]).get("envs", [])
     production = [item for item in before if "production" in item.get("target", [])]
     payload = [{"key": key, "value": value, "type": kind, "target": ["preview"], "gitBranch": "staging"} for key, value, kind in [("BACKEND_URL", BACKEND_ORIGINS[PRODUCT], "plain"), ("PROXY_SHARED_KEY", proxy, "encrypted")]]

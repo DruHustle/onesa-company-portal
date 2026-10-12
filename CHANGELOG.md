@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-12 — Decrypted Preview environment readback
+
+Use the current Vercel v10 environment-list endpoint for decrypted private server-value comparisons. The older endpoint returned encrypted values, so a successful scoped write could not be verified. Preserve production snapshots and fixed diagnostic codes; never log private values.
+
+
 ## 2026-10-12 — Complete published detail route QA
 
 Exercise each implemented product/article/job/research detail in EN/DE at mobile/desktop widths in both themes against isolated real PostgreSQL fixtures. Check rendering, overflow and axe, then verify the privacy alias and absent detail. Both local Chromium/WebKit cases pass across 64 detail combinations; no hosted/public data is created. Preserve word spacing between the headline’s visual lines so accessible names and extracted content read naturally in EN/DE.

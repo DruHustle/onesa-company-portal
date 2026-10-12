@@ -321,7 +321,7 @@ def staging_frontend_routing():
     if service_status != 200 or service.get("repo", "").removesuffix(".git") != "https://github.com/DruHustle/onesa-company-portal" or service.get("branch") != "staging":
         return {"target_verified": False}
     env_query = "?" + urlencode({"teamId": team, "decrypt": "true"})
-    env, env_status = get_json("https://api.vercel.com/v9/", "projects/" + project + "/env" + env_query, token)
+    env, env_status = get_json("https://api.vercel.com/v10/", "projects/" + project + "/env" + env_query, token)
     entries, render_status = get_json("https://api.render.com/v1/", "services/" + service_id + "/env-vars?limit=100", render_token)
     if env_status != 200 or render_status != 200 or not isinstance(entries, list) or len(entries) >= 100:
         return {"target_verified": True, "complete": False}
