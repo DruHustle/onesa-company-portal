@@ -464,7 +464,7 @@ GitHub refused release-staging.yml dispatch while that new file existed only on 
 and staging. Use the existing registered entry point before main installation:
 `gh workflow run deploy.yml --ref staging -f target=staging`.
 The entry point calls the same release-staging.yml at the dispatch source revision,
-uses the called job's Staging environment, and passes no inherited provider secrets.
+uses the called job's Staging environment, and passes only an explicit allowlist of STAGING secret names.
 Manual staging provenance accepts only those two known workflow paths on staging,
 with exact source and owner checks; all original CI, target/database isolation and
 hosted acceptance gates remain mandatory. Production jobs require target=production
@@ -484,3 +484,12 @@ label. Scope that label to the backend matrix entry, preserving the successful b
 startup check and both mandatory runtime digests. The release verifier still rejects
 skipped, failed or cancelled required evidence. This was a pipeline labeling defect,
 not a runtime readiness success or an exception to release qualification.
+
+
+The reusable staging caller must forward every used STAGING secret by name, even when
+its value exists only in the called Staging environment. The called workflow declares
+those names required; value/target validation still occurs before deployment. No
+production credential names or blanket secrets: inherit are passed. GitHub silently
+resolved unpassed names to empty strings in the first runtime preflight; source tests
+now compare used, declared and forwarded names to prevent that mismatch. See
+[GitHub reusable workflow secrets](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows).

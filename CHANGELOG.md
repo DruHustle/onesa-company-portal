@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-12 — Explicit staging secret forwarding
+
+Declare and forward only the staging secret names used by the reusable qualification
+workflow. GitHub otherwise resolves environment-only secrets to empty strings. Retain
+Staging environment precedence, preflight value/isolation checks and production gates;
+add contract coverage for missing mappings and prevent production credential forwarding.
+
 ## 2026-10-12 — Scope mandatory startup evidence to its image
 
 Name the backend-only startup requirement as mandatory only for the backend matrix
