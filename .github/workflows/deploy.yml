@@ -7,12 +7,16 @@ concurrency:
   group: production-deployment
   cancel-in-progress: false
 jobs:
+  staging:
+    if: ${{ github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/staging' && inputs.target == 'staging' }}
+    uses: ./.github/workflows/release-staging.yml
+    # Credentials come only from the called job's Staging environment.
   verify:
     name: deploy-qualification
     if: ${{ github.event.repository.private == false && ((always() && true && (github.repository == 'DruHustle/onesa-company-portal'
       && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name
       == github.repository && github.event.pull_request.user.login == 'DruHustle')))) && github.repository == 'DruHustle/onesa-company-portal'
-      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}
+      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -65,7 +69,7 @@ jobs:
       == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository
       && github.event.pull_request.user.login == 'DruHustle')) && (always() && needs.verify.result == 'success' && (inputs.application
       == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success' && needs.worker.result == 'success'))))
-      && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main')
+      && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production')
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -97,13 +101,13 @@ jobs:
     - name: Revalidate approval before provider changes
       if: inputs.approval_run != ''
       env:
-        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
-        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
         GH_TOKEN: ${{ github.token }}
         APPROVAL_RUN: ${{ inputs.approval_run }}
         STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
-        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
-        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       run: 'python3 scripts/release/evidence.py promote --output "$RUNNER_TEMP/promotion/record.json"
 
         python3 scripts/release/hosted.py recheck --evidence "$RUNNER_TEMP/promotion/record.json"'
@@ -144,7 +148,7 @@ jobs:
     if: ${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor
       == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository
       && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application ==
-      'both')) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main')
+      'both')) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production')
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -171,13 +175,13 @@ jobs:
     - name: Revalidate approval before provider changes
       if: inputs.approval_run != ''
       env:
-        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
-        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
         GH_TOKEN: ${{ github.token }}
         APPROVAL_RUN: ${{ inputs.approval_run }}
         STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
-        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
-        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       run: 'python3 scripts/release/evidence.py promote --output "$RUNNER_TEMP/promotion/record.json"
 
         python3 scripts/release/hosted.py recheck --evidence "$RUNNER_TEMP/promotion/record.json"'
@@ -203,12 +207,12 @@ jobs:
     if: ${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor
       == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository
       && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application ==
-      'both')) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main')
+      'both')) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production')
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -230,13 +234,13 @@ jobs:
     - name: Revalidate approval before provider changes
       if: inputs.approval_run != ''
       env:
-        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
-        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
         GH_TOKEN: ${{ github.token }}
         APPROVAL_RUN: ${{ inputs.approval_run }}
         STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
-        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
-        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       run: 'python3 scripts/release/evidence.py promote --output "$RUNNER_TEMP/promotion/record.json"
 
         python3 scripts/release/hosted.py recheck --evidence "$RUNNER_TEMP/promotion/record.json"'
@@ -259,7 +263,7 @@ jobs:
       'success' && (inputs.application == 'frontend' && needs.frontend.result == 'success' || inputs.application == 'backend'
       && needs.backend.result == 'success' && needs.worker.result == 'success' || inputs.application == 'both' && needs.frontend.result
       == 'success' && needs.backend.result == 'success' && needs.worker.result == 'success'))) && github.repository == 'DruHustle/onesa-company-portal'
-      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}
+      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production') }}
     needs:
     - verify
     - frontend
@@ -271,15 +275,15 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       APPROVAL_RUN: ${{ inputs.approval_run }}
       APPLICATION: ${{ inputs.application }}
-      RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_BACKEND_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
       RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
-      VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
       PRODUCTION_FIXTURES_JSON: ${{ secrets.PRODUCTION_FIXTURES_JSON }}
-      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
@@ -303,6 +307,13 @@ jobs:
 'on':
   workflow_dispatch:
     inputs:
+      target:
+        description: Qualified staging or approved production
+        type: choice
+        default: production
+        options:
+        - production
+        - staging
       application:
         description: Application to deploy after CI passes
         required: true
@@ -313,6 +324,6 @@ jobs:
         - backend
         - both
       approval_run:
-        description: Latest exact-commit owner release-review approval run; no JSON fallback
+        description: Required for production; latest exact-commit owner release-review approval run
         type: string
-        required: true
+        required: false

@@ -281,8 +281,12 @@ def trusted_staging_run(github, run, sha, completed=True):
     event = run["event"]
     require(event in {"workflow_dispatch", "workflow_run"}, "Untrusted staging event")
     branches = {POLICY["staging_branch"]} if event == "workflow_dispatch" else {"main"}
+    workflow = "release-staging.yml"
+    if run["path"] == ".github/workflows/deploy.yml":
+        require(event == "workflow_dispatch", "Staging entry point must be manually dispatched")
+        workflow = "deploy.yml"
     trusted_run(
-        run, "release-staging.yml", sha, branches, event=event, completed=completed
+        run, workflow, sha, branches, event=event, completed=completed
     )
     require(
         run["actor"]["login"] == OWNER and run["triggering_actor"]["login"] == OWNER,

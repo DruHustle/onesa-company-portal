@@ -456,3 +456,23 @@ private-Free safeguards through their branch ancestry. No branch was pushed or P
 The backend image startup job now creates, migrates and cleans up its own disposable PostgreSQL fixture, using the exact image under security review. This preserves restricted-role readiness and shutdown checks after separating image verification from the application test job.
 
 GitHub pull-request validation found and prompted this correction before any authorized deployment. Production/staging provider prerequisites and owner approvals remain separately required.
+
+
+## Initial staging workflow registration — 2026-10-12
+
+GitHub refused release-staging.yml dispatch while that new file existed only on dev
+and staging. Use the existing registered entry point before main installation:
+`gh workflow run deploy.yml --ref staging -f target=staging`.
+The entry point calls the same release-staging.yml at the dispatch source revision,
+uses the called job's Staging environment, and passes no inherited provider secrets.
+Manual staging provenance accepts only those two known workflow paths on staging,
+with exact source and owner checks; all original CI, target/database isolation and
+hosted acceptance gates remain mandatory. Production jobs require target=production
+on main plus the existing authorization. No default-branch or production promotion
+is needed merely to dispatch staging. The bootstrap caller is for the currently public
+repository; normal release-staging dispatch remains available after main installation.
+
+Corrected public production jobs use their production provider secret names, while
+release-staging keeps STAGING names. A name alone does not prove provider least
+privilege; remote rotation/isolation and private production credential custody remain
+owner acceptance requirements. No production environment values were changed.
