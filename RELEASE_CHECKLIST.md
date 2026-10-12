@@ -1,5 +1,16 @@
 # Production release checklist
 
+## 2026-10-12 — Oracle staging runtime qualification
+
+The existing owner-provisioned ARM64 VM has separate hardening and runtime receipts.
+Deploy only exact staging source after full CI/hygiene and the new scanner image gate.
+Run the private native scanner/EICAR acceptance script before qualifying scanning.
+Worker startup, private upload processing, queue/mail/retry/restart and hosted resource
+qualification remain BLOCKED until the owner configures the staging-only environment
+and confirms a wholly synthetic staging database/bucket. Preserve publication and
+production release approvals. No local test supplies an external hosted PASS.
+
+
 ## Repeat audit — 2026-10-12
 
 The Auto/Light/Dark feature has been removed; fixed light styling is the current source. Verified staging authentication, database readiness and user isolation pass at fc4af11d97a4cbdbc10990232701a2ecdb1ba062 (run38232302545). Storage/scanner acceptance returns409, and full business acceptance remains blocked. New scanner diagnostics and configuration inventory require fresh exact-source CI and staging verification; historical appearance counts below do not describe the current interface. Production publication, worker/mail delivery, operations and legal approval remain unqualified.

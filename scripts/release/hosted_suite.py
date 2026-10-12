@@ -18,6 +18,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlencode
 
 from evidence import PRODUCT, REPOSITORY, Rejected, require
 from fixtures import FixtureError, decode_totp, parse_fixtures
@@ -144,6 +145,29 @@ class Session:
         )
         require(self.csrf, "CSRF token missing")
         self.call("GET", "/api/v1/auth/me")
+
+
+def await_clean_scan(client, identifier, title, scanned):
+    # The approved Oracle worker scans privately; the Render API has no public scanner port.
+    for attempt in range(21):
+        require(
+            isinstance(scanned, dict)
+            and scanned.get("id") == identifier
+            and scanned.get("scan_status") in {"clean", "quarantine", "rejected"},
+            "Synthetic file scan state invalid",
+        )
+        require(scanned["scan_status"] != "rejected", "Synthetic file scanner rejected content")
+        if scanned["scan_status"] == "clean":
+            return
+        if attempt == 20:
+            break
+        time.sleep(3)
+        page = client.call("GET", "/api/v1/admin/files?" + urlencode({"search": title, "limit": 20}))
+        require(isinstance(page, dict) and isinstance(page.get("items"), list), "Synthetic file scan state invalid")
+        matches = [row for row in page["items"] if isinstance(row, dict) and row.get("id") == identifier]
+        require(len(matches) == 1, "Synthetic file scan state invalid")
+        scanned = matches[0]
+    require(False, "Synthetic file remains quarantined")
 
 
 def run_suite(origin):
@@ -325,13 +349,7 @@ def run_suite(origin):
                 "Stored synthetic content digest differs",
             )
             scanned = clients[0].call("POST", "/api/v1/admin/files/" + identifier + "/scan", {})
-            require(
-                isinstance(scanned, dict)
-                and scanned.get("scan_status") in {"clean", "quarantine", "rejected"},
-                "Synthetic file scan state invalid",
-            )
-            require(scanned["scan_status"] != "quarantine", "Synthetic file remains quarantined")
-            require(scanned["scan_status"] == "clean", "Synthetic file scanner rejected content")
+            await_clean_scan(clients[0], identifier, data["title"], scanned)
             content = clients[0].call(
                 "GET", "/api/v1/admin/files/" + identifier + "/download"
             )

@@ -1,5 +1,54 @@
 # Changelog
 
+## 2026-10-12 — Preserve pinned SSH paths containing spaces
+
+Quote the existing known-hosts path for OpenSSH configuration parsing. The shared
+workspace contains a space, which otherwise splits the filename and makes strict
+verification reject the host. Keep strict checking, the owner-held identity and
+existing host record; verify the owner operator through a real read-only SSH call.
+
+
+## 2026-10-12 — Separate browser startup and action budgets
+
+The retained CI trace shows WebKit spent 28 seconds creating its page in the
+30-second test budget, leaving 1.4 seconds for an ordinary language-link click.
+Allow a 60-second total browser test budget while explicitly limiting individual
+actions to 15 seconds and navigation to 20 seconds. Keep retries disabled, every
+browser/appearance check and exact-source release gates. This changes the CI fixture
+budget, not an application response contract or a failed-check waiver.
+
+
+## 2026-10-12 — Validate Git staging archive parents
+
+Accept only expected parent directories emitted by Git archive while retaining
+regular-file, path and private-file restrictions. Add a real source archive
+regression so deployment preparation validates the exact Git artifact before SSH.
+
+
+## 2026-10-12 — Scanner dependency security remediation
+
+The new full scanner image gate rejected the Debian candidate with HIGH/CRITICAL
+advisories. Replace it with the pinned official Alpine 3.24.2 ARM64 profile and
+signed ClamAV 1.4.6-r0 packages, retaining documentation and the identical private
+socket, signature-freshness and resource controls. Keep the full vulnerability and
+secret gate enforced for CI and actual native hosted images; no vendor findings
+are suppressed and no failed candidate is deployed.
+
+
+## 2026-10-12 — Private ARM64 executor and automatic day/night
+
+Prepare the existing Portal executor for an owner-provisioned ARM64 staging VM,
+with a nonroot ClamAV image, restricted Unix socket, bounded CPU/memory/logs and
+private heartbeat/scanner health. Production-mode worker startup requires shared
+storage and a restricted application database role. Hosted acceptance waits only
+for its own quarantined synthetic file and still requires an explicit clean result.
+Keep staging Actions credentials at repository-level STAGING_ names for private
+GitHub Free compatibility; record the absence of environment-level isolation.
+Restore automatic visitor-time day/night without a selector or manual preference,
+retaining CSP nonces and testing both appearances. No production promotion or
+hosted scan qualification is implied by local tests or VM runtime installation.
+
+
 ## 2026-10-12 — Explicit hosted scanner diagnostics
 
 Hosted storage acceptance requires an explicit clean scanner result before downloading the synthetic private file. Quarantine, rejected content and invalid scan states fail with fixed diagnostic codes; provider messages and file identifiers are not exposed in failure text. Read-only hosting inspection includes scanner and mail configuration names for API/worker troubleshooting. Existing quarantine, authentication and production release gates remain enforced.

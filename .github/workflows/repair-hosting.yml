@@ -139,7 +139,6 @@ jobs:
       run: python scripts/repair_hosting.py
   staging-database:
     if: github.event.repository.private == false && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/staging' && inputs.portal_action == 'repair-staging-database'
-    environment: Staging
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -175,7 +174,6 @@ jobs:
 
   staging-preview:
     if: github.event.repository.private == false && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/dev' && inputs.portal_action == 'repair-staging-preview'
-    environment: Staging
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

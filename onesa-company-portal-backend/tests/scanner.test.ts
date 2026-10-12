@@ -2,6 +2,9 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:net';
 import {performance} from 'node:perf_hooks';
+import {mkdtemp,rm,writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 process.env.DATABASE_URL='postgresql://unit:unit@127.0.0.1:1/unit';
 process.env.SESSION_KEY='scanner-test-only-session-key-1234567890';
 process.env.NODE_ENV='test';
@@ -49,4 +52,21 @@ test('Trickling scanner traffic cannot extend the total deadline',{timeout:18000
  const began=performance.now();
  try{await assert.rejects(scan(Buffer.from('synthetic content')),/Scan timed out/);assert.ok(performance.now()-began<17000);}
  finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});
+
+
+test('Oracle worker scans over its private Unix socket and preserves framing',async()=>{
+ const folder=await mkdtemp(join(tmpdir(),'onesa-scan-socket-'));
+ const path=join(folder,'clamd.sock');
+ const server=createServer(socket=>socket.once('data',data=>{assert.equal(data.subarray(0,10).toString(),'zINSTREAM\0');socket.end('stream: OK\0');}));
+ await new Promise<void>(resolve=>server.listen(path,resolve));
+ const previous=env.CLAMAV_SOCKET;env.CLAMAV_SOCKET=path;
+ try{
+  assert.equal(await scan(Buffer.from('synthetic private socket content')),'quarantine');
+  await writeFile(join(folder,'scanner-ready'),String(Math.floor(Date.now()/1000)-180));
+  assert.equal(await scan(Buffer.from('synthetic private socket content')),'quarantine');
+  await writeFile(join(folder,'scanner-ready'),String(Math.floor(Date.now()/1000)));
+  assert.equal(await scan(Buffer.from('synthetic private socket content')),'clean');
+ }
+ finally{env.CLAMAV_SOCKET=previous;await new Promise<void>(resolve=>server.close(()=>resolve()));await rm(folder,{recursive:true});}
 });

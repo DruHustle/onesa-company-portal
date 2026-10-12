@@ -2,7 +2,9 @@
 
 Each product uses its own Vercel project. Within this product, `STAGING_VERCEL_PROJECT_ID` equals its production `VERCEL_PROJECT_ID`; the Org/Team ID must match that project's owner. Staging is a Preview deployment of `staging`; production remains separately authorized.
 
-Create real secrets at https://github.com/DruHustle/onesa-company-portal/settings/environments → **Staging → Environment secrets → Add environment secret**. The staging workflow declares `environment: Staging`. This scopes credentials; it does not imply private GitHub Free approval protection. Required names without supplied values are created as genuinely empty entries, never dummy tokens. Empty entries remain unconfigured and cannot authenticate; secret-name presence is not readiness evidence. Existing repository production deployment tokens must not be reused as staging tokens.
+Create staging-only secrets at https://github.com/DruHustle/onesa-company-portal/settings/secrets/actions → **Repository secrets → New repository secret**. This is the GitHub Free private-compatible binding. Manual staging jobs use repository-level `STAGING_` names and do not declare the GitHub Staging environment, so older environment values cannot shadow the owner's repository entries. Repository secrets do **not** provide environment-level isolation: repository writers can modify Actions to access them. Keep production credentials outside editable Actions; use a separately controlled staging-only broker when provider token capabilities cannot be limited sufficiently. Exact source/actor/ref checks remain necessary but do not establish server-enforced secret isolation.
+
+The owner's account/provider setup and secret-entry work are pending. Current authenticated repository readback still reports public; do not change visibility or claim private enforcement from the selected strategy. Secret metadata alone cannot prove a usable value. Enter actual values privately, without blank placeholder secrets or credential output.
 
 ## Required workflow secret names
 
