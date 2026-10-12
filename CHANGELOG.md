@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-12 — Staging workflow registration and credential scopes
+
+- Add a staging-only dispatch through the already registered deploy.yml entry point,
+  reusing the same exact-source release-staging workflow and Staging environment.
+  This permits initial staging qualification before new workflows are installed on main.
+- Keep owner, branch, event, commit, provider isolation and hosted acceptance gates.
+  Production jobs require the production target and existing exact-commit approval;
+  the staging caller does not inherit production credentials.
+- Correct legacy public production jobs to use production provider secret names.
+  Staging tokens must never be paired with production services or --prod commands.
+  Private production jobs remain disabled pending the external credential procedure.
+
 ## 2026-10-12 — Company search and social metadata
 
 - Use validated canonical origins without a production localhost fallback. Align the
