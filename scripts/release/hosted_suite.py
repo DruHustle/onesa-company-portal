@@ -41,6 +41,8 @@ class HostedRequestFailure(Rejected):
             "CREDENTIALS": "FIXTURE_CREDENTIALS_REJECTED",
             "MFA": "FIXTURE_MFA_REJECTED",
             "origin_rejected": "ORIGIN_REJECTED",
+            "ORIGIN": "ORIGIN_REJECTED",
+            "HOST": "HOST_REJECTED",
             "invitation_required": "INVITATION_REQUIRED",
         }
         if isinstance(candidate, str) and candidate in known:

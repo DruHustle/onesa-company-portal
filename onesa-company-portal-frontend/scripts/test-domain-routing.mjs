@@ -70,3 +70,12 @@ const sitemap = await request('onesa.eu', '/sitemap.xml');
 assert.equal(sitemap.status, 200);
 assert.ok(!sitemap.body.toString().includes('<loc>'), 'Unapproved content must not enter the sitemap');
 console.log('PASS search noindex and unreleased empty sitemap');
+if(process.env.TEST_STAGING_PREVIEW_HOST){
+ const host=process.env.TEST_STAGING_PREVIEW_HOST;
+ assert.equal((await request(host,'/admin')).status,200);
+ assert.equal((await request('foreign.vercel.app','/')).status,421);
+ const post=(originHeader)=>new Promise((resolve,reject)=>{const req=http.request(new URL('/api/v1/auth/login',origin),{method:'POST',headers:{Host:host,Origin:originHeader,'Content-Type':'application/json'}},res=>{res.resume();res.on('end',()=>resolve(res.statusCode));});req.on('error',reject);req.end('{}');});
+ assert.equal(await post(`https://${host}`),503,'Exact Preview origin reaches the isolated unavailable backend');
+ assert.equal(await post('https://foreign.invalid'),403,'Foreign origins must be rejected before forwarding');
+ console.log('PASS exact staging Preview administration and mutation origin; forged hosts/origins denied');
+}
