@@ -15,8 +15,11 @@ staging database, encrypted job payloads and private object bucket. Production w
 startup rejects a missing shared bucket or an unsafe database application role.
 Do not bind this runtime to a production database or copy production credentials.
 
-The pinned Debian ARM64 scanner image installs maintained distribution ClamAV packages;
-the reviewed official `stable_base` image was AMD64 only. Preserve the image digest,
+The pinned Alpine 3.24.2 ARM64 scanner image installs signed ClamAV 1.4.6-r0
+distribution packages (daemon, clamdscan, Freshclam and retained documentation);
+the reviewed official `stable_base` image was AMD64 only. Alpine
+[package provenance](https://pkgs.alpinelinux.org/package/v3.24/community/aarch64/clamav)
+and [release support](https://alpinelinux.org/releases/) are independently verifiable. Preserve the image digest,
 package provenance and licenses, and run vulnerability checks on every built image.
 The scanner uses one scan thread, a 4 GB memory limit and 0.8 CPU; the worker has
 768 MB and 0.2 CPU. These limits leave memory for the host and avoid assigning more

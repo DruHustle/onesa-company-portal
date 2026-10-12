@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-12 — Scanner dependency security remediation
+
+The new full scanner image gate rejected the Debian candidate with HIGH/CRITICAL
+advisories. Replace it with the pinned official Alpine 3.24.2 ARM64 profile and
+signed ClamAV 1.4.6-r0 packages, retaining documentation and the identical private
+socket, signature-freshness and resource controls. Keep the full vulnerability and
+secret gate enforced for CI and actual native hosted images; no vendor findings
+are suppressed and no failed candidate is deployed.
+
+
 ## 2026-10-12 — Private ARM64 executor and automatic day/night
 
 Prepare the existing Portal executor for an owner-provisioned ARM64 staging VM,
