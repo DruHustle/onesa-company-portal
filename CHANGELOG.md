@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-10-12 — Remove appearance switching
+
+Remove Auto/Light/Dark controls, browser preference logic, timers and custom palette switching at the owner’s request. Retain the existing fixed light surfaces and navy/cyan brand elements; authenticated content and responsive accessibility checks remain in place. Remove only tests and assets belonging to the retired feature.
+
+
+## 2026-10-12 — Decrypted Preview environment readback
+
+Use the current Vercel v10 environment-list endpoint for metadata and the individual v1 variable endpoint for private server-value readback. Require an explicitly decrypted response with the exact variable ID, key, Preview target and staging branch before comparing the credential. Ciphertext, a foreign scope or a mismatched value cannot qualify a successful write. Preserve production snapshots and fixed diagnostic codes; never log private values.
+
+
+## 2026-10-12 — Complete published detail route QA
+
+Exercise each implemented product/article/job/research detail in EN/DE at mobile/desktop widths in both themes against isolated real PostgreSQL fixtures. Check rendering, overflow and axe, then verify the privacy alias and absent detail. Both local Chromium/WebKit cases pass across 64 detail combinations; no hosted/public data is created. Preserve word spacing between the headline’s visual lines so accessible names and extracted content read naturally in EN/DE.
+
+
+## 2026-10-12 — Read-only Preview routing diagnosis
+
+Compare the effective staging Preview backend and proxy binding with the identified staging API. Branch overrides take precedence; ambiguous values fail validation. Report booleans only, preserving credentials and production. A hosted owner repair checks current dev/staging CI and isolated provider identity before saving only the staging branch backend URL and existing staging proxy key; production values are read back unchanged, with no deployment requested.
+
+
 ## 2026-10-12 — Exact native staging Preview origin
 
 - Real staging deployment and temporary identity cleanup succeeded; authenticated acceptance exposed an HTTP 403 from the Preview hostname/origin boundary.

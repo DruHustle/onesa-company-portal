@@ -290,6 +290,55 @@ def vercel(expected_root, required):
     }
 
 
+def preview_routing_checks(entries, backend):
+    """Select branch overrides; report only comparisons, never private values."""
+    selected = {}
+    for key in ("BACKEND_URL", "PROXY_SHARED_KEY"):
+        candidates = [entry for entry in entries if entry.get("key") == key and "preview" in entry.get("target", []) and entry.get("gitBranch") in (None, "", "staging")]
+        branch = [entry for entry in candidates if entry.get("gitBranch") == "staging"]
+        candidates = branch or candidates
+        selected[key] = candidates[0].get("value") if len(candidates) == 1 else None
+    return {
+        "preview_backend_matches_staging": selected.get("BACKEND_URL") == "https://onesa-company-portal-backend-staging.onrender.com",
+        "preview_proxy_key_nonempty": bool(selected.get("PROXY_SHARED_KEY")),
+        "preview_proxy_key_matches_staging": bool(backend.get("PROXY_SHARED_KEY")) and selected.get("PROXY_SHARED_KEY") == backend["PROXY_SHARED_KEY"],
+    }
+
+
+def staging_frontend_routing():
+    token, project = os.environ.get("VERCEL_TOKEN", ""), os.environ.get("VERCEL_PROJECT_ID", "")
+    if not token or not re.fullmatch(r"prj_[A-Za-z0-9]+", project):
+        return {"configured": False}
+    team = os.environ.get("VERCEL_ORG_ID", "")
+    query = "?" + urlencode({"teamId": team}) if team.startswith("team_") else ""
+    project_data, status = get_json("https://api.vercel.com/v9/", "projects/" + project + query, token)
+    link = project_data.get("link", {})
+    if status != 200 or link.get("org") != "DruHustle" or link.get("repo") != "onesa-company-portal":
+        return {"target_verified": False}
+    service_id = "srv-db5k5had0e5s73fos4g0"
+    render_token = os.environ.get("RENDER_API_KEY", "")
+    service, service_status = get_json("https://api.render.com/v1/", "services/" + service_id, render_token)
+    if service_status != 200 or service.get("repo", "").removesuffix(".git") != "https://github.com/DruHustle/onesa-company-portal" or service.get("branch") != "staging":
+        return {"target_verified": False}
+    env_query = "?" + urlencode({"teamId": team, "decrypt": "true"})
+    env, env_status = get_json("https://api.vercel.com/v10/", "projects/" + project + "/env" + env_query, token)
+    entries, render_status = get_json("https://api.render.com/v1/", "services/" + service_id + "/env-vars?limit=100", render_token)
+    if env_status != 200 or render_status != 200 or not isinstance(entries, list) or len(entries) >= 100:
+        return {"target_verified": True, "complete": False}
+    selected = [entry for entry in env.get("envs", []) if entry.get("key") == "PROXY_SHARED_KEY" and entry.get("target") == ["preview"] and entry.get("gitBranch") == "staging"]
+    private_value_verified = False
+    if len(selected) == 1 and isinstance(selected[0].get("id"), str) and re.fullmatch(r"[A-Za-z0-9_-]+", selected[0]["id"]):
+        item = selected[0]
+        private, private_status = get_json("https://api.vercel.com/v1/", "projects/" + project + "/env/" + item["id"] + query, token)
+        private_value_verified = private_status == 200 and private.get("decrypted") is True and all(private.get(key) == item.get(key) for key in ("id", "key", "target", "gitBranch"))
+        item["value"] = private.get("value") if private_value_verified else None
+    else:
+        for item in selected:
+            item["value"] = None
+    backend = {entry["envVar"]["key"]: entry["envVar"]["value"] for entry in entries}
+    return {"target_verified": True, "complete": True, "preview_proxy_value_decrypted": private_value_verified, **preview_routing_checks(env.get("envs", []), backend)}
+
+
 def main():
     portal = os.environ.get("GITHUB_REPOSITORY", "").endswith("/onesa-company-portal")
     scope = os.environ.get("PORTAL_INSPECTION_SCOPE") or "production"
@@ -392,6 +441,8 @@ def main():
             "",
             expected_branch,
         )
+    if portal and scope == "staging":
+        report["staging_frontend_routing"] = staging_frontend_routing()
     print(json.dumps(report, indent=2))
 
 

@@ -85,6 +85,13 @@ FAILURE_CODES = {
     "Staging Vercel project missing": "STAGING_VERCEL_BINDING",
     "Staging frontend repository binding mismatch": "STAGING_FRONTEND_REPOSITORY",
     "Staging Preview is not access protected": "STAGING_PREVIEW_PROTECTION",
+    "Identified hosted development operator required": "PREVIEW_OWNER_CONTEXT",
+    "Staging API proxy credential missing": "STAGING_PROXY_CREDENTIAL",
+    "Preview settings update failed": "PREVIEW_SETTINGS_WRITE",
+    "Preview settings update unavailable": "PREVIEW_SETTINGS_PROVIDER",
+    "Production environment changed during Preview repair": "PREVIEW_PRODUCTION_READBACK",
+    "Preview settings readback failed": "PREVIEW_SETTINGS_READBACK",
+    "Preview private value is not decrypted": "PREVIEW_SETTINGS_UNDECRYPTED",
 }
 
 
@@ -200,9 +207,10 @@ def require_stage_acceptance(record):
     )
 
 
-def preflight():
+def preflight(*, configuration_dev=False):
     require(
         os.environ["GITHUB_REF"] == "refs/heads/" + POLICY["staging_branch"]
+        or (configuration_dev and os.environ["GITHUB_REF"] == "refs/heads/dev")
         or (
             os.environ.get("GITHUB_EVENT_NAME") == "workflow_run"
             and os.environ["GITHUB_REF"] == "refs/heads/main"
@@ -697,6 +705,41 @@ def production():
     return result
 
 
+def configure_staging_preview():
+    """Only the approved staging API's server settings may reach its Git Preview."""
+    require(PRODUCT == "onesa-company-portal" and os.environ.get("GITHUB_REPOSITORY") == REPOSITORY and os.environ.get("GITHUB_REF") == "refs/heads/dev" and os.environ.get("GITHUB_ACTOR") == "DruHustle" and os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted", "Identified hosted development operator required")
+    verified = preflight(configuration_dev=True)
+    proxy = verified["settings"].get("PROXY_SHARED_KEY", "")
+    require(isinstance(proxy, str) and len(proxy) >= 32, "Staging API proxy credential missing")
+    project, team = os.environ["VERCEL_PROJECT_ID"], os.environ["VERCEL_ORG_ID"]
+    query = urllib.parse.urlencode({"teamId": team, "decrypt": "true"})
+    endpoint = "https://api.vercel.com/v10/projects/" + project + "/env?" + query
+    before = provider(endpoint, os.environ["VERCEL_TOKEN"]).get("envs", [])
+    production = [item for item in before if "production" in item.get("target", [])]
+    payload = [{"key": key, "value": value, "type": kind, "target": ["preview"], "gitBranch": "staging"} for key, value, kind in [("BACKEND_URL", BACKEND_ORIGINS[PRODUCT], "plain"), ("PROXY_SHARED_KEY", proxy, "encrypted")]]
+    url = "https://api.vercel.com/v10/projects/" + project + "/env?" + urllib.parse.urlencode({"teamId": team, "upsert": "true"})
+    req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={"Authorization": "Bearer " + os.environ["VERCEL_TOKEN"], "Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.build_opener(NoRedirect()).open(req, timeout=45) as response:
+            require(response.status in {200, 201}, "Preview settings update failed")
+    except (urllib.error.URLError, TimeoutError):
+        raise Rejected("Preview settings update unavailable") from None
+    after = provider(endpoint, os.environ["VERCEL_TOKEN"]).get("envs", [])
+    require([item for item in after if "production" in item.get("target", [])] == production, "Production environment changed during Preview repair")
+    for key, value in [("BACKEND_URL", BACKEND_ORIGINS[PRODUCT]), ("PROXY_SHARED_KEY", proxy)]:
+        matches = [item for item in after if item.get("key") == key and item.get("target") == ["preview"] and item.get("gitBranch") == "staging"]
+        require(len(matches) == 1, "Preview settings readback failed")
+        entry = matches[0]
+        if key == "PROXY_SHARED_KEY":
+            identifier = entry.get("id", "")
+            require(isinstance(identifier, str) and re.fullmatch(r"[A-Za-z0-9_-]+", identifier), "Preview settings readback failed")
+            entry = provider("https://api.vercel.com/v1/projects/" + project + "/env/" + identifier + "?" + urllib.parse.urlencode({"teamId": team}), os.environ["VERCEL_TOKEN"])
+            require(entry.get("id") == identifier and entry.get("key") == key and entry.get("target") == ["preview"] and entry.get("gitBranch") == "staging", "Preview settings readback failed")
+            require(entry.get("decrypted") is True, "Preview private value is not decrypted")
+        require(entry.get("value") == value, "Preview settings readback failed")
+    print("Staging Preview routing verified; production unchanged; no deployment requested")
+
+
 def bind_staging_origin():
     # The only allowed write: current Preview origin on the already approved staging API.
     # Preflight verifies repository, branch, free plan, native deploy pause and isolated DB.
@@ -750,6 +793,7 @@ def main():
             "recheck",
             "frontend-receipt",
             "bind-staging-origin",
+            "configure-staging-preview",
             "production",
         ],
     )
@@ -770,6 +814,8 @@ def main():
         require_stage_acceptance(record)
     elif args.mode == "bind-staging-origin":
         bind_staging_origin()
+    elif args.mode == "configure-staging-preview":
+        configure_staging_preview()
     elif args.mode == "production":
         save(production(), args.output)
     elif args.mode == "preflight":

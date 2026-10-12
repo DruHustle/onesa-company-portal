@@ -14,6 +14,7 @@ name: Repair existing hosting configuration
         - repair-layout
         - repair-staging-layout
         - repair-staging-database
+        - repair-staging-preview
 permissions:
   contents: read
   actions: read
@@ -23,7 +24,7 @@ concurrency:
 jobs:
   inspect:
     if: ${{ github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal'
-      && github.actor == 'DruHustle' && inputs.portal_action != 'repair-staging-layout' && inputs.portal_action != 'repair-staging-database' && (github.event_name != 'pull_request'
+      && github.actor == 'DruHustle' && inputs.portal_action != 'repair-staging-layout' && inputs.portal_action != 'repair-staging-database' && inputs.portal_action != 'repair-staging-preview' && (github.event_name != 'pull_request'
       || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle'))))
       }}
     runs-on: ubuntu-latest
@@ -171,3 +172,42 @@ jobs:
         RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
         PORTAL_APP_DB_PASSWORD: ${{ secrets.PORTAL_APP_DB_PASSWORD }}
       run: node --import tsx src/services/render-role-repair.ts --repair-staging-database
+
+  staging-preview:
+    if: github.event.repository.private == false && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/dev' && inputs.portal_action == 'repair-staging-preview'
+    environment: Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Require current development and staging source checks before settings changes
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+      with:
+        script: |
+          const {owner, repo}=context.repo;
+          if(process.env.RUNNER_ENVIRONMENT !== 'github-hosted') throw new Error('Hosted owner operation required');
+          const repository=await github.rest.repos.get({owner,repo});
+          if(repository.data.private !== false) throw new Error('Visibility changed');
+          for(const branch of ['dev','staging']) {
+            const ref=await github.rest.git.getRef({owner,repo,ref:'heads/'+branch});
+            const sha=ref.data.object.sha;
+            if(branch === 'dev' && sha !== context.sha) throw new Error('Development source changed');
+            for(const workflow_id of ['verify.yml','repository-hygiene.yml']) {
+              const runs=await github.rest.actions.listWorkflowRuns({owner,repo,workflow_id,head_sha:sha,event:'push',per_page:20});
+              const run=runs.data.workflow_runs[0];
+              if(!run || run.head_sha !== sha || run.head_branch !== branch || run.head_repository.full_name !== context.payload.repository.full_name || run.status !== 'completed' || run.conclusion !== 'success') throw new Error('Complete source checks required');
+            }
+          }
+    - name: Save only the identified staging branch API and server proxy bindings
+      env:
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        STAGING_FIXTURES_JSON: ${{ secrets.STAGING_FIXTURES_JSON }}
+        STAGING_FIXTURE_MODE: temporary
+      run: python3 scripts/release/hosted.py configure-staging-preview
