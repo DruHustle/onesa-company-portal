@@ -19,13 +19,13 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
-    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         persist-credentials: false
         ref: ${{ github.sha }}
     - name: Require protected main and exact-candidate CI
       run: python3 scripts/release/evidence.py build-preflight --output "$RUNNER_TEMP/build-preflight/record.json"
-    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
       with:
         node-version: '24'
     - name: Build production candidate without publishing
@@ -40,13 +40,13 @@ jobs:
       run: 'git diff --quiet HEAD --
 
         SOURCE_SHA256=$(python3 scripts/release/evidence.py source-hash) node scripts/release/bundle.mjs pack "$RUNNER_TEMP/reviewed-build"'
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
         name: production-build-manifest
         path: ${{ runner.temp }}/reviewed-build/record.json
         retention-days: 7
         if-no-files-found: error
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
         name: production-build-encrypted
         path: ${{ runner.temp }}/reviewed-build/bundle.enc
