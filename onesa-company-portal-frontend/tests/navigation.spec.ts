@@ -1,0 +1,2 @@
+import {test,expect} from '@playwright/test';
+test('canonical homepage switches between EN and DE',async({page})=>{await page.goto('/');await page.getByRole('button',{name:'Menu',exact:true}).isVisible().then(async visible=>{if(visible)await page.getByRole('button',{name:'Menu',exact:true}).click();});await page.getByRole('link',{name:'DE',exact:true}).click();await expect(page).toHaveURL(/\/de$/);await expect(page.locator('html')).toHaveAttribute('lang','de');});

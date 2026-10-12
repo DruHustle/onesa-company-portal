@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-12 — Remove appearance switching
+
+Remove Auto/Light/Dark controls, browser preference logic, timers and custom palette switching at the owner’s request. Retain the existing fixed light surfaces and navy/cyan brand elements; authenticated content and responsive accessibility checks remain in place. Remove only tests and assets belonging to the retired feature.
+
+
 ## 2026-10-12 — Decrypted Preview environment readback
 
 Use the current Vercel v10 environment-list endpoint for metadata and the individual v1 variable endpoint for private server-value readback. Require an explicitly decrypted response with the exact variable ID, key, Preview target and staging branch before comparing the credential. Ciphertext, a foreign scope or a mismatched value cannot qualify a successful write. Preserve production snapshots and fixed diagnostic codes; never log private values.

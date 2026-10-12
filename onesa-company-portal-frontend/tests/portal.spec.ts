@@ -20,10 +20,11 @@ test('All published detail kinds, locale variants, privacy alias and not-found s
  for(const locale of ['en','de'])for(const [section,kind] of kinds){
   const slug=`detail-${fixture}-${kind}`;
   await db.query("INSERT INTO content(id,kind,slug,locale,title,summary,body,state,author_id) VALUES($1,$2,$3,$4,$5,$6,$7,'published',$8)",[randomUUID(),kind,slug,locale,`Synthetic ${kind} ${locale}`,'Synthetic detail layout fixture','Synthetic content used only in the isolated local test database.',ownerId]);
-  for(const width of [320,1440])for(const mode of ['light','dark']){
-   await page.setViewportSize({width,height:900});await page.goto('/');await page.locator('.appearance-control select').selectOption(mode);
+  for(const width of [320,1440]){
+   const mode='light';
+   await page.setViewportSize({width,height:900});await page.goto('/');
    const response=await page.goto(`/${locale}/${section}/${slug}`);expect(response?.status()).toBe(200);
-   await expect(page.locator('html')).toHaveAttribute('data-theme',mode);await expect(page.getByRole('heading',{level:1})).toHaveText(`Synthetic ${kind} ${locale}`);
+   await expect(page.getByRole('heading',{level:1})).toHaveText(`Synthetic ${kind} ${locale}`);
    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
    expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze()).violations).toEqual([]);
    await page.screenshot({path:info.outputPath(`detail-${locale}-${kind}-${mode}-${width}.png`),fullPage:true});
