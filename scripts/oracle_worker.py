@@ -58,7 +58,9 @@ def archive(sha):
             path = Path(member.name)
             require(not path.is_absolute() and ".." not in path.parts and (member.isfile() or member.isdir()),
                     "Archive must contain only relative regular source files/directories")
-            require(any(member.name == p or member.name.startswith(p + "/") for p in PATHS),
+            name = path.as_posix().rstrip("/")
+            require(any(name == p or name.startswith(p + "/")
+                        or (member.isdir() and p.startswith(name + "/")) for p in PATHS),
                     "Archive escaped the staging runtime allowlist")
             names.append(member.name)
         require("compose.oracle-staging.yaml" in names and "infra/oracle/clamav/Dockerfile" in names,

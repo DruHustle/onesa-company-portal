@@ -1,6 +1,7 @@
 """Deployment guard tests use synthetic GitHub metadata, never a hosted PASS."""
 
 import unittest
+import subprocess
 from unittest.mock import patch
 
 import oracle_worker as worker
@@ -41,6 +42,15 @@ class DeploymentGuards(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Unsupported"):
                 worker.deploy("production", SHA)
             remote.assert_not_called()
+
+    def test_source_archive_accepts_git_parent_directories_and_excludes_private_files(self):
+        sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=worker.ROOT).decode().strip()
+        raw = worker.archive(sha)
+        with worker.tarfile.open(fileobj=worker.io.BytesIO(raw), mode="r:gz") as bundle:
+            names = [entry.name for entry in bundle.getmembers()]
+            self.assertIn("compose.oracle-staging.yaml", names)
+            self.assertIn("infra/oracle/clamav/Dockerfile", names)
+            self.assertFalse(any(name.startswith(("private/", ".git/")) or name.endswith(".env") for name in names))
 
     def test_actual_staging_success_uses_existing_full_evidence_gate(self):
         refs = [{"run_id": 123, "commit": SHA}]

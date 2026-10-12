@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-12 — Validate Git staging archive parents
+
+Accept only expected parent directories emitted by Git archive while retaining
+regular-file, path and private-file restrictions. Add a real source archive
+regression so deployment preparation validates the exact Git artifact before SSH.
+
+
 ## 2026-10-12 — Scanner dependency security remediation
 
 The new full scanner image gate rejected the Debian candidate with HIGH/CRITICAL
