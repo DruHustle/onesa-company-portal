@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-12 — Registered private-Free staging entry point
+
+Allow the existing manual, owner-only staging bridge on private repositories so the repository-secret fallback is usable before new workflows reach main. Keep production guards, exact-source qualification, named staging secrets and protected Preview checks; test rejection of untrusted actors/events, main refs and production targets.
+
+## 2026-10-12 — Independent production runtime inspection
+
+Inspect the actual Render runtime database login through read-only queries without requiring or validating an unrelated migration credential. Retain provider identity, TLS, schema, permissions and role diagnostics; repair actions keep their separate maintenance-credential checks. Never change data, roles, settings or deployments during inspection.
+
 ## 2026-10-12 — Managed legal publication fallback
 
 Render draft legal/privacy fallback text only when no published managed notice exists. A published notice previously received an additional contradictory draft block. Missing notices remain explicitly incomplete; this change does not supply or approve company/legal particulars.

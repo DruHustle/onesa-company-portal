@@ -8,7 +8,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   staging:
-    if: ${{ github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/staging' && inputs.target == 'staging' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/staging' && inputs.target == 'staging' }}
     uses: ./.github/workflows/release-staging.yml
     with:
       fixture_mode: ${{ inputs.fixture_mode || 'temporary' }}

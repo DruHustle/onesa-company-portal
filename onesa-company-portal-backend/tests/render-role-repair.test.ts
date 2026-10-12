@@ -52,6 +52,40 @@ test('Staging binding verifies existing restricted role and schema before one en
   assert.ok(queries.every(sql=>sql.startsWith('SELECT ')||sql==='BEGIN TRANSACTION READ ONLY'||sql==='ROLLBACK'));
  }finally{process.env=previous;globalThis.fetch=originalFetch;pg.Pool.prototype.connect=connect;pg.Pool.prototype.end=end;}
 });
+
+test('Read-only runtime inspection ignores an unrelated migration credential and never changes data or roles',async()=>{
+ const previous={...process.env};const originalFetch=globalThis.fetch;const connect=pg.Pool.prototype.connect;const end=pg.Pool.prototype.end;
+ const migrations:{name:string;checksum:string}[]=[];const tables=new Set(['schema_migrations']);
+ for(const name of (await readdir('migrations')).filter(name=>name.endsWith('.sql'))){
+  const source=await readFile('migrations/'+name,'utf8');migrations.push({name,checksum:createHash('sha256').update(source).digest('hex')});
+  for(const match of source.matchAll(/CREATE TABLE\s+([a-z_]+)/g))tables.add(match[1]);
+ }
+ const methods:string[]=[];const queries:string[]=[];let safe=true;
+ try {
+  process.env.GITHUB_REPOSITORY='DruHustle/onesa-company-portal';process.env.GITHUB_REF='refs/heads/dev';process.env.RENDER_API_KEY='synthetic-render';process.env.RENDER_BACKEND_SERVICE_ID='srv-synthetic';
+  process.env.PORTAL_MIGRATION_DATABASE_URL='postgresql://unrelated:synthetic@unrelated.example.invalid/neondb?sslmode=require';
+  globalThis.fetch=async(input,init)=>{methods.push(init?.method||'GET');return Response.json(String(input).includes('/env-vars?')?[{envVar:{key:'DATABASE_URL',value:fixture}}]:{repo:'https://github.com/DruHustle/onesa-company-portal',branch:'main',type:'web_service',rootDir:'onesa-company-portal-backend',autoDeployTrigger:'off',serviceDetails:{runtime:'docker',url:'https://onesa-company-portal-backend.onrender.com'}});};
+  pg.Pool.prototype.connect=(async function(this:pg.Pool){
+   assert.equal((this as unknown as {options:{connectionString:string}}).options.connectionString,fixture);
+   return {connection:{stream:{encrypted:true,authorized:true}},release(){},async query(sql:string){
+    queries.push(sql);
+    if(sql.includes('current_database()'))return {rows:[{database:'neondb',role:'fixture'}]};
+    if(sql.includes('AS elevated_role'))return {rowCount:1,rows:[{elevated_role:!safe,schema_create:false,relation_owner:false,migration_write:false,elevated_membership:false}]};
+    if(sql.includes('SELECT name,checksum'))return {rows:migrations};
+    if(sql.includes('pg_tables'))return {rows:[...tables].map(tablename=>({tablename}))};
+    return {rows:[{allowed:true}]};
+   }};
+  }) as unknown as typeof connect;
+  pg.Pool.prototype.end=(async()=>{}) as typeof end;
+  const report=await repairPortalRole(false);assert.ok('runtime_database_host' in report);
+  assert.equal(report.runtime_connection_verified,true);assert.equal(report.migration_credential_used,false);assert.equal(report.runtime_database_host,host);assert.equal(report.permissions_changed,false);assert.equal(report.render_database_url_updated,false);assert.equal(report.migrations_applied,false);assert.equal(report.deployment_requested,false);assert.equal(report.runtime_role_safe,true);
+  safe=false;const unsafe=await repairPortalRole(false);assert.ok('runtime_database_host' in unsafe);assert.equal(unsafe.runtime_role_safe,false);
+  assert.ok(methods.every(method=>method==='GET'));
+  assert.ok(queries.every(sql=>sql.startsWith('SELECT ')||sql==='BEGIN TRANSACTION READ ONLY'||sql==='ROLLBACK'));
+  assert.ok(!JSON.stringify(report).includes('synthetic-password'));
+ }finally{process.env=previous;globalThis.fetch=originalFetch;pg.Pool.prototype.connect=connect;pg.Pool.prototype.end=end;}
+});
+
 test('Operator repair accepts only the established Portal database and correct pooling scope',()=>{
  assert.equal(portalDatabaseURL(fixture).hostname,host);
  assert.equal(portalDatabaseURL(fixture.replace('-pooler.','.'),true).hostname,host.replace('-pooler.','.'));
