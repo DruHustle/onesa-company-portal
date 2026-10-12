@@ -48,10 +48,11 @@ class FixtureTests(unittest.TestCase):
         marker = "synthetic-stage-private-key-" + "x" * 32
         env = {"GITHUB_REPOSITORY": hosted.REPOSITORY, "GITHUB_REF": "refs/heads/dev", "GITHUB_ACTOR": "DruHustle", "RUNNER_ENVIRONMENT": "github-hosted", "VERCEL_PROJECT_ID": PROJECT, "VERCEL_ORG_ID": "team_synthetic", "VERCEL_TOKEN": "synthetic-token"}
         production = {"key": "BACKEND_URL", "target": ["production"], "value": "private-production-binding"}
-        after = {"envs": [production, {"key": "BACKEND_URL", "target": ["preview"], "gitBranch": "staging", "value": hosted.BACKEND_ORIGINS[PORTAL]}, {"key": "PROXY_SHARED_KEY", "target": ["preview"], "gitBranch": "staging", "value": marker}]}
+        private = {"id": "env_synthetic", "key": "PROXY_SHARED_KEY", "target": ["preview"], "gitBranch": "staging", "value": marker, "decrypted": True}
+        after = {"envs": [production, {"key": "BACKEND_URL", "target": ["preview"], "gitBranch": "staging", "value": hosted.BACKEND_ORIGINS[PORTAL]}, {**private, "value": "synthetic-ciphertext", "decrypted": False}]}
         response = MagicMock();response.__enter__.return_value.status = 200
         opener = MagicMock();opener.open.return_value = response
-        with patch.dict(os.environ, env, clear=True), patch.object(hosted, "preflight", return_value={"settings": {"PROXY_SHARED_KEY": marker}}), patch.object(hosted, "provider", side_effect=[{"envs": [production]}, after]), patch.object(hosted.urllib.request, "build_opener", return_value=opener):
+        with patch.dict(os.environ, env, clear=True), patch.object(hosted, "preflight", return_value={"settings": {"PROXY_SHARED_KEY": marker}}), patch.object(hosted, "provider", side_effect=[{"envs": [production]}, after, private]), patch.object(hosted.urllib.request, "build_opener", return_value=opener):
             hosted.configure_staging_preview()
         request = opener.open.call_args.args[0]
         self.assertEqual(request.get_method(), "POST")
@@ -59,6 +60,10 @@ class FixtureTests(unittest.TestCase):
         self.assertEqual({item["key"] for item in payload}, {"BACKEND_URL", "PROXY_SHARED_KEY"})
         self.assertTrue(all(item["target"] == ["preview"] and item["gitBranch"] == "staging" for item in payload))
         self.assertNotIn("private-production-binding", request.data.decode())
+
+        for change in [{"decrypted": False}, {"gitBranch": "main"}, {"target": ["production"]}, {"value": "wrong-private-value"}]:
+            with patch.dict(os.environ, env, clear=True), patch.object(hosted, "preflight", return_value={"settings": {"PROXY_SHARED_KEY": marker}}), patch.object(hosted, "provider", side_effect=[{"envs": [production]}, after, {**private, **change}]), patch.object(hosted.urllib.request, "build_opener", return_value=opener), self.assertRaises(ValueError):
+                hosted.configure_staging_preview()
 
     def test_valid_credentials_and_unpadded_totp(self):
         self.assertEqual(

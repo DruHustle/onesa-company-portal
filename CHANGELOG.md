@@ -2,7 +2,7 @@
 
 ## 2026-10-12 — Decrypted Preview environment readback
 
-Use the current Vercel v10 environment-list endpoint for decrypted private server-value comparisons. The older endpoint returned encrypted values, so a successful scoped write could not be verified. Preserve production snapshots and fixed diagnostic codes; never log private values.
+Use the current Vercel v10 environment-list endpoint for metadata and the individual v1 variable endpoint for private server-value readback. Require an explicitly decrypted response with the exact variable ID, key, Preview target and staging branch before comparing the credential. Ciphertext, a foreign scope or a mismatched value cannot qualify a successful write. Preserve production snapshots and fixed diagnostic codes; never log private values.
 
 
 ## 2026-10-12 — Complete published detail route QA

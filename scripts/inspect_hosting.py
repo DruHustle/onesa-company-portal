@@ -325,8 +325,18 @@ def staging_frontend_routing():
     entries, render_status = get_json("https://api.render.com/v1/", "services/" + service_id + "/env-vars?limit=100", render_token)
     if env_status != 200 or render_status != 200 or not isinstance(entries, list) or len(entries) >= 100:
         return {"target_verified": True, "complete": False}
+    selected = [entry for entry in env.get("envs", []) if entry.get("key") == "PROXY_SHARED_KEY" and entry.get("target") == ["preview"] and entry.get("gitBranch") == "staging"]
+    private_value_verified = False
+    if len(selected) == 1 and isinstance(selected[0].get("id"), str) and re.fullmatch(r"[A-Za-z0-9_-]+", selected[0]["id"]):
+        item = selected[0]
+        private, private_status = get_json("https://api.vercel.com/v1/", "projects/" + project + "/env/" + item["id"] + query, token)
+        private_value_verified = private_status == 200 and private.get("decrypted") is True and all(private.get(key) == item.get(key) for key in ("id", "key", "target", "gitBranch"))
+        item["value"] = private.get("value") if private_value_verified else None
+    else:
+        for item in selected:
+            item["value"] = None
     backend = {entry["envVar"]["key"]: entry["envVar"]["value"] for entry in entries}
-    return {"target_verified": True, "complete": True, **preview_routing_checks(env.get("envs", []), backend)}
+    return {"target_verified": True, "complete": True, "preview_proxy_value_decrypted": private_value_verified, **preview_routing_checks(env.get("envs", []), backend)}
 
 
 def main():

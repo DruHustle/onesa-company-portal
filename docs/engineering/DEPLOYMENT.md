@@ -6,6 +6,8 @@ After dev PR and exact merged staging CI pass, use the already registered owner 
 
 Vercel native Git owns the protected staging frontend Preview. The release workflow waits for and verifies its exact SHA/project/ref instead of deploying a second frontend. Actions owns the manually deployed exact-source backend. Actual API/auth/workflow/storage/browser acceptance remains mandatory; FAIL/BLOCKED receipts cannot qualify. No migration, production approval, visibility or paid change is implied.
 
+The staging routing operator saves only branch-specific server bindings and verifies production metadata unchanged. Private proxy readback uses Vercel's individual-variable endpoint and requires `decrypted: true` plus exact variable identity and staging scope; list ciphertext is never treated as the credential. An unverified readback blocks qualification even when the provider accepted the write.
+
 > Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
 
 The frontend and backend have separate Docker build contexts and versioned images.

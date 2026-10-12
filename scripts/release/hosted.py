@@ -91,6 +91,7 @@ FAILURE_CODES = {
     "Preview settings update unavailable": "PREVIEW_SETTINGS_PROVIDER",
     "Production environment changed during Preview repair": "PREVIEW_PRODUCTION_READBACK",
     "Preview settings readback failed": "PREVIEW_SETTINGS_READBACK",
+    "Preview private value is not decrypted": "PREVIEW_SETTINGS_UNDECRYPTED",
 }
 
 
@@ -727,7 +728,15 @@ def configure_staging_preview():
     require([item for item in after if "production" in item.get("target", [])] == production, "Production environment changed during Preview repair")
     for key, value in [("BACKEND_URL", BACKEND_ORIGINS[PRODUCT]), ("PROXY_SHARED_KEY", proxy)]:
         matches = [item for item in after if item.get("key") == key and item.get("target") == ["preview"] and item.get("gitBranch") == "staging"]
-        require(len(matches) == 1 and matches[0].get("value") == value, "Preview settings readback failed")
+        require(len(matches) == 1, "Preview settings readback failed")
+        entry = matches[0]
+        if key == "PROXY_SHARED_KEY":
+            identifier = entry.get("id", "")
+            require(isinstance(identifier, str) and re.fullmatch(r"[A-Za-z0-9_-]+", identifier), "Preview settings readback failed")
+            entry = provider("https://api.vercel.com/v1/projects/" + project + "/env/" + identifier + "?" + urllib.parse.urlencode({"teamId": team}), os.environ["VERCEL_TOKEN"])
+            require(entry.get("id") == identifier and entry.get("key") == key and entry.get("target") == ["preview"] and entry.get("gitBranch") == "staging", "Preview settings readback failed")
+            require(entry.get("decrypted") is True, "Preview private value is not decrypted")
+        require(entry.get("value") == value, "Preview settings readback failed")
     print("Staging Preview routing verified; production unchanged; no deployment requested")
 
 
