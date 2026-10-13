@@ -231,10 +231,6 @@ def main():
         ),
         "frontend": repair_vercel(repo, portal),
     }
-    if portal:
-        report["worker"] = repair_render(
-            repo, os.environ.get("RENDER_WORKER_SERVICE_ID", ""), True, True
-        )
     print(json.dumps(report, indent=2))
 
 

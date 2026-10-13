@@ -79,9 +79,7 @@ def portal_services(scope):
         raise SystemExit(
             "Choose production or staging inspection; no provider request made"
         )
-    return os.environ.get("RENDER_BACKEND_SERVICE_ID", ""), os.environ.get(
-        "RENDER_WORKER_SERVICE_ID", ""
-    )
+    return os.environ.get("RENDER_BACKEND_SERVICE_ID", ""), ""
 
 
 def render_inventory(token):
@@ -604,33 +602,12 @@ def main():
                     worker_ids.append(identifier)
         report["existing_worker_lookup_http"] = candidate_status
         report["matching_existing_worker_ids"] = worker_ids
-        report["worker"] = (
-            {
-                "provider": "Oracle",
-                "render_service_required": False,
-                "hosted_verification_required": True,
-            }
-            if scope == "staging"
-            else render(
-                "worker",
-                worker_id,
-                [
-                    "DATABASE_URL",
-                    "SESSION_KEY",
-                    "S3_BUCKET",
-                    "S3_ENDPOINT",
-                    "AWS_ACCESS_KEY_ID",
-                    "AWS_SECRET_ACCESS_KEY",
-                    "MAIL_PROVIDER",
-                    "RESEND_API_KEY",
-                    "MAIL_FROM",
-                    "CLAMAV_SOCKET",
-                ],
-                backend_root,
-                "",
-                expected_branch,
-            )
-        )
+        report["worker"] = {
+            "provider": "Oracle",
+            "render_service_required": False,
+            "hosted_verification_required": True,
+            "environment": scope,
+        }
     if portal and scope == "staging":
         report["staging_frontend_routing"] = staging_frontend_routing()
     print(json.dumps(report, indent=2))

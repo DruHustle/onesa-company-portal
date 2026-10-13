@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-13 — Retire duplicate production worker deployment
+
+Remove the legacy Render worker job, secret references and hosting-repair target after Oracle production scanning, bounded retries and managed restart qualified. Keep the API deployment separate from external Oracle execution evidence; Render success alone cannot pass the worker gate. Preserve the shared production database, private storage and protected intake settings.
+
 ## 2026-10-13 — Protected privacy governance
 
 Extend the existing Portal CMS with INTERNAL draft documents, structured retention/processor/decision records, insert-only imports, immutable approved revisions and append-only reviews. Add protected owner/admin navigation, formatted documents, private PDFs, search/filter/history/compare and fresh-MFA owner approval. Record Hobby as the current management preference with a future Pro/Enterprise DPA reference; leave policy, contract and publication decisions unapproved. Disable provisional business-data TTL deletion.

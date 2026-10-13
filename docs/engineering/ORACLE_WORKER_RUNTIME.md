@@ -426,3 +426,36 @@ quarantine during failures. The test used the staging Compose resource allocatio
 the separately limited production profile still needs its own observation after
 controlled cutover. Fifteen minutes does not establish multi-day reliability,
 maximum saturation throughput or a verified disk/memory exhaustion event.
+
+## Managed production worker cutover — 2026-10-13
+
+Production uses `onesa-portal-production-worker.service` and the
+`onesa-portal-oracle-production-worker-1` container, with the existing production
+file `/etc/onesa/portal-production.env` (`root:root`, `0600`). The deployment lives
+under `/opt/onesa/portal-production/current`; systemd starts Compose after Docker
+and network availability. Docker `unless-stopped` recovery and a managed service
+restart were exercised; an actual VM reboot was not performed.
+
+The existing private scanner volume serves staging and production without a public
+port. Production data and credentials remain separate from staging. Real applicant
+intake/publication remains gated while privacy policies await approval. Current
+qualification preserves the authenticated governance owner and tests only synthetic
+files/jobs. No customer or applicant records were accessed.
+
+The obsolete Render worker is retired only after the actual Oracle health,
+scan/quarantine/retry, recovery, backup and monitoring receipts pass. Preserve its
+restricted recovery inventory; never delete the database or bucket shared with the
+API. The hosted Render verifier records Oracle verification as a separate mandatory
+external check and cannot infer worker PASS from a successful API deployment.
+
+Operational checks:
+
+```sh
+ssh onesa-portal-worker 'sudo systemctl is-active onesa-portal-production-worker.service'
+ssh onesa-portal-worker 'sudo systemctl is-enabled onesa-portal-production-worker.service'
+ssh onesa-portal-worker 'sudo docker inspect --format "{{.State.Health.Status}}" onesa-portal-oracle-production-worker-1'
+ssh onesa-portal-worker 'sudo systemctl list-timers onesa-portal-backup.timer onesa-portal-monitor.timer'
+```
+
+Keep receipts in the existing restricted `private/oracle/worker` and release-audit
+locations. Do not upload environment files or full container inspection output.
