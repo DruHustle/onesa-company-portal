@@ -1,10 +1,12 @@
 """Failure and isolation tests; never hosted qualification evidence."""
 
 import importlib.util
+import io
 import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import oracle_operations as ops
@@ -127,6 +129,40 @@ class OperationsGuards(unittest.TestCase):
                 self.assertEqual(commands.call_count, 1)
                 self.assertEqual(commands.call_args.args[0][0], "node")
                 self.assertFalse(list(private.glob("independent-restore-*")))
+
+    def test_notification_uses_identified_client_and_does_not_follow_redirects(self):
+        values = {
+            "MAIL_PROVIDER": "resend",
+            "NOTIFY_EMAIL": "andrew@onesa.eu",
+            "MAIL_FROM": "synthetic@example.invalid",
+            "RESEND_API_KEY": "synthetic-only",
+        }
+        captured = []
+
+        def open_request(request, timeout):
+            captured.append(request)
+            return io.BytesIO(b'{"id":"synthetic-receipt"}')
+
+        with (
+            patch.dict(
+                "sys.modules",
+                {"backup": SimpleNamespace(checked_env=lambda: (values, None))},
+            ),
+            patch.object(
+                monitor.urllib.request,
+                "build_opener",
+                return_value=SimpleNamespace(open=open_request),
+            ) as build,
+        ):
+            result = monitor.notify(["backup-failed"], simulation=True)
+        self.assertEqual(
+            captured[0].get_header("User-agent"), "Onesa-Portal-Operations/1.0"
+        )
+        self.assertIsNone(
+            build.call_args.args[0].redirect_request(None, None, None, None, None, None)
+        )
+        self.assertTrue(result["provider_accepted"])
+        self.assertFalse(result["delivery_verified"])
 
     def test_monitor_never_stops_restarts_or_deletes_services(self):
         source = Path(monitor.__file__).read_text()
