@@ -94,6 +94,90 @@ returns an explicit result. Do not enable publication or manually mark uploads c
 
 ## Production binding inspection
 
+Production preparation uses `scripts/oracle_production.py --commit <qualified-staging-SHA>`
+with the owner's private `RENDER_API_KEY` process environment. It accepts only the
+existing production API `srv-db4j1igm7kps73c13s4g`, production database endpoint and
+production branch object endpoint. It refuses owner database logins, unverified TLS,
+staging credential collisions and incomplete provider inventories. It installs only
+the supported inventory above into `/etc/onesa/portal-production.env`, root-owned
+mode `0600`, preserving an existing file rather than silently overwriting it. No
+credential value is displayed, committed or put in an SSH command argument.
+
+If the API has no usable mail profile but the retained production Render worker has
+one, `--reuse-production-mail` reuses that worker's existing Resend identity in the
+Oracle file. It validates the exact production worker and refuses staging token
+reuse. Only a file matching the previously inspected production configuration can
+be atomically extended with those supported mail fields. Unrelated configuration,
+existing configured API mail credentials and all Render settings remain preserved.
+
+The production Compose artifact is `compose.oracle-production.yaml`. It requires an
+exact qualified `PORTAL_WORKER_IMAGE`, the separate production environment file and
+`PORTAL_SCANNER_SOCKET_VOLUME`. On the current VM the already qualified scanner's
+socket volume is `onesa-portal-oracle-staging_scanner_socket`. Reusing this private
+scanner avoids a second 4 GB signature database on the 6 GB VM. Scanning is transient;
+each worker retains its own database, object credentials and egress network. The
+scanner socket is read-only to both workers and has no host TCP binding. Production
+has a 512 MB/0.1 CPU limit; measure combined consumption before long-running use.
+
+Preparation verifies the production schema/role and authenticated bucket metadata
+using a bounded, one-shot process. It does **not** enable the jobs profile, submit
+jobs, grant publication approval or qualify the complete production release.
+Record real synthetic production scan/quarantine, job/retry, restart, mail delivery,
+backup/restore and monitoring results separately. Preserve the existing Render
+production worker until its Oracle replacement passes the actual release gates.
+Never create a second scanner or delete shared database/bucket resources as cleanup.
+
+`scripts/oracle_production.py --action qualify --commit <qualified-staging-SHA>`
+then exercises the real ARM64 executor and private production bucket with disposable
+synthetic UUIDs only. It refuses an existing business dataset, disables email delivery
+inside the test process, verifies anonymous/quarantine/rejected download denial,
+clean download integrity, EICAR detection, scanner failure containment, deduplication,
+actual queue execution and bounded retries. The storage retry test injects a runtime
+transport failure; it does not claim a hosted provider outage. Cleanup removes only
+run-owned records/objects. The private receipt explicitly retains remaining mail,
+backup/restore, rollback, monitoring and long-running restart/capacity checks. A
+successful bounded qualification is never full production acceptance or permission
+to process real applicant documents.
+
+`--action recover` then starts one disposable, two-minute recovery probe with the
+production environment. It refuses business rows before each executor tick, verifies
+the process's own health, restarts that container, verifies fresh health, measures a
+resource sample and checks graceful shutdown/OOM state before removing it. It checks
+Docker boot activation and the restart policy; it does not reboot the shared VM or
+claim sustained production capacity. No permanent production service is enabled.
+
+`--action mail` sends exactly one synthetic qualification notification to the
+approved company inbox `info@onesa.eu` through the real encrypted queue and existing
+production Resend profile. It observes provider acceptance from that Oracle process,
+checks an accepted job is not repeated and removes its own queue row. The application
+credential may be sending-only: HTTP 401/403 when querying the delivery receipt is
+not evidence that the accepted send failed. Record provider acceptance separately
+from inbox delivery; confirm the actual delivery event or owner inbox receipt before
+marking delivery verified. Repeating this command creates a new test notification.
+
+`scripts/oracle_production_backup.py --commit <qualified-staging-SHA>` rehearses
+recovery of the actual production database **only while its business tables are
+empty**. It holds a read-only repeatable-read snapshot while collecting table
+counts/content hashes and running `pg_dump --snapshot`. Verified TLS uses the
+restricted application role; the temporary service file is root-only and removed
+afterward. The official PostgreSQL 18 ARM64 client is pinned by digest in the script.
+It creates an AES-256-GCM encrypted archive without writing plaintext dumps to disk,
+verifies tamper rejection, retains ciphertext locally and on the existing Oracle VM,
+and keeps the encryption key only on the owner's machine at
+`private/oracle/worker/production-backup-encryption.key`, mode `0600`. Preserve that
+key through the owner's existing private recovery custody process; do not commit,
+upload, display or discard it during cleanup.
+
+The restore target is a new disposable, resource-limited container with no external
+network or public ports. Restoration verifies every table's count and content hash,
+the existing migration revision, restricted role/sequence permissions and actual
+application readiness. Only run-owned temporary containers/configuration are removed.
+This proves database recovery for the current empty-business target. It excludes
+object/key recovery, scheduled retention, future business data, a production cutover,
+approved RPO/RTO and sustained operations; never present it as complete operational
+acceptance. PostgreSQL documents [snapshot coordination](https://www.postgresql.org/docs/current/app-pgdump.html)
+and [snapshot export](https://www.postgresql.org/docs/current/functions-admin.html).
+
 The existing `repair-hosting.yml` owner action `inspect-role` reads the production
 Render runtime binding and tests its actual login using read-only transactions. It
 does not use `PORTAL_MIGRATION_DATABASE_URL`, apply migrations, change roles or update

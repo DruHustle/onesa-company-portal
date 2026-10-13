@@ -82,8 +82,8 @@ jobs:
       working-directory: onesa-company-portal-frontend
     - run: python3 scripts/check-contracts.py && python3 scripts/test-contract-break.py
     - run: python3 -m unittest discover -s scripts -p test_inspect_hosting.py
-    - name: Verify Oracle staging deployment guards
-      run: python3 -m unittest discover -s scripts -p test_oracle_worker.py
+    - name: Verify Oracle staging and production preparation guards
+      run: python3 -m unittest discover -s scripts -p 'test_oracle*.py'
     - name: Check Oracle host-hardening script syntax
       run: sh -n infra/oracle/harden-worker.sh && sh -n infra/oracle/clamav/start.sh && sh -n infra/oracle/clamav/health.sh
     - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'

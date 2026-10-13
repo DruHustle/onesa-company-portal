@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-13 — Oracle production preparation and qualification
+
+- Added an isolated production worker profile that reuses the private ClamAV socket without duplicating the scanner.
+- Added strict production database/bucket/credential isolation checks, private configuration installation and bounded synthetic scan/quarantine/queue qualification.
+- Added CI tests for production binding and secret-isolation failure paths; full production release and real-document processing remain gated.
+
+
+- Added a single-notification production Resend acceptance check; use sending-only credentials without falsely treating provider acceptance as inbox delivery.
+- Kept service identifiers distinct from credential identifiers so the full secret scanner passes without an exemption.
+- Added authenticated encrypted production database recovery rehearsal with consistent snapshots, full table/content comparison and restored application readiness; real business datasets and production cutovers remain excluded.
+
 ## 2026-10-13 — Retire editable local release approvals
 
 The legacy qualification decision command now rejects editable gate JSON, including forged PASS values with a matching source fingerprint. Keep the existing trusted workflow evidence and owner authorization path. Forged/malformed approval regressions and the complete release failure-path suite pass; update the build guide without changing application contracts or production data.
