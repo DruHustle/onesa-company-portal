@@ -13642,7 +13642,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/pdf": {
+                    "application/json": {
                         error: {
                             code: string;
                             message: string;
@@ -13657,7 +13657,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/pdf": {
+                    "application/json": {
                         error: {
                             code: string;
                             message: string;
@@ -13672,7 +13672,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/pdf": {
+                    "application/json": {
                         error: {
                             code: string;
                             message: string;
@@ -13687,7 +13687,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/pdf": {
+                    "application/json": {
                         error: {
                             code: string;
                             message: string;
@@ -13702,7 +13702,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/pdf": {
+                    "application/json": {
                         error: {
                             code: string;
                             message: string;
@@ -13717,7 +13717,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/pdf": {
+                    "application/json": {
                         error: {
                             code: string;
                             message: string;
@@ -13732,7 +13732,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/pdf": {
+                    "application/json": {
                         error: {
                             code: string;
                             message: string;
@@ -13747,7 +13747,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/pdf": {
+                    "application/json": {
                         error: {
                             code: string;
                             message: string;

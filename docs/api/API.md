@@ -49,5 +49,5 @@ The `/admin/governance` operations expose protected overview/records/details/his
 revision creation, scoped review, archive/restore, events and revision PDFs. Existing
 session/MFA and CSRF guards apply; only the reauthenticated owner may approve/reject.
 `expectedRevision` rejects lost updates with 409. PDFs use `application/pdf` and
-private/no-store headers. No operation enables business-data deletion or public
+private/no-store headers; authentication and validation errors retain JSON responses. No operation enables business-data deletion or public
 privacy publication. See [the governance architecture](../engineering/PRIVACY_GOVERNANCE.md).

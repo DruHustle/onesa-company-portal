@@ -33293,7 +33293,7 @@
           "400": {
             "description": "Default Response",
             "content": {
-              "application/pdf": {
+              "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
@@ -33329,7 +33329,7 @@
           "401": {
             "description": "Default Response",
             "content": {
-              "application/pdf": {
+              "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
@@ -33365,7 +33365,7 @@
           "403": {
             "description": "Default Response",
             "content": {
-              "application/pdf": {
+              "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
@@ -33401,7 +33401,7 @@
           "404": {
             "description": "Default Response",
             "content": {
-              "application/pdf": {
+              "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
@@ -33437,7 +33437,7 @@
           "409": {
             "description": "Default Response",
             "content": {
-              "application/pdf": {
+              "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
@@ -33473,7 +33473,7 @@
           "429": {
             "description": "Default Response",
             "content": {
-              "application/pdf": {
+              "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
@@ -33509,7 +33509,7 @@
           "500": {
             "description": "Default Response",
             "content": {
-              "application/pdf": {
+              "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
@@ -33545,7 +33545,7 @@
           "503": {
             "description": "Default Response",
             "content": {
-              "application/pdf": {
+              "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
