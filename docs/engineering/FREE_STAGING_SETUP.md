@@ -1,32 +1,23 @@
 # Free-only staging setup — 2026-10-10
 
-## Owner setup for the verified Portal database — 2026-10-11
+## Current existing Portal staging resources — 2026-10-13
 
-The owner has supplied the API `srv-db5k5had0e5s73fos4g0` at
-`https://onesa-company-portal-backend-staging.onrender.com` and the proposed worker
-`srv-db5k4mlckfvc73agdr40` at
-`https://onesa-company-portal-backend-worker-e1j1.onrender.com`.
-Do not create duplicate services. Their repository, branch, runtime, plan,
-environment scope and actual health remain unverified: GitHub refused the new
-inspection job before startup with an account billing/spending-limit restriction.
-No provider environment values, service commands or deployments were changed.
-
-After GitHub Actions is available, run **Inspect hosting configuration** on
-`staging`, selecting `portal_scope=staging`:
+The API is `srv-db5k5had0e5s73fos4g0` at
+`https://onesa-company-portal-backend-staging.onrender.com`.
+The redundant credential-free Render worker web service was deleted after its
+healthy Oracle replacement and absence of database binding were verified.
+Staging inspection selects the API and identifies Oracle as the worker target;
+it must not recreate the deleted Render service. Production's legacy worker is
+retained until its qualified Oracle replacement is verified.
 
 ```sh
 gh workflow run inspect-hosting.yml --repo DruHustle/onesa-company-portal \
-  --ref audit/portal-master-acceptance -f portal_scope=staging
+  --ref staging -f portal_scope=staging
 ```
 
-This action only reads the two supplied service IDs, allowlisted resource inventory
-and existing production frontend configuration; it never deploys or prints
-credential values. Review repository/branch/type mismatches before writes.
-Check **GitHub account → Settings → Billing & licensing → Usage / Budgets and alerts**
-for available included Actions usage and the restriction. Keep paid usage disabled.
-If included minutes are exhausted, wait for their reset or separately approve an
-existing private self-hosted runner. Do not raise a spending limit automatically
-or repeatedly retry a rejected workflow without resolving its cause.
+This action remains read-only and exposes no credential values. Existing public
+Staging environment-secret injection passed; private GitHub Free uses the supported
+repository-secret fallback. Do not change visibility, billing or paid limits.
 
 The authoritative staging target is the existing `onesa-ai-company-portal-backend-db-staging`
 project (`gentle-mud-16323345`), branch `br-little-boat-b9fg0rqq`, endpoint
@@ -212,7 +203,7 @@ ID or add artificial traffic to defeat provider sleep/quotas.
    project. **Never import the entire backend env into frontend settings.**
 5. Create a Render **Free web service** from the relevant GitHub repo, `main`, Docker,
    Frankfurt, root `<repository-name>-backend`, Dockerfile `./Dockerfile`, context `.`.
-   Do not apply the historical paid root `render.yaml`. A web-service-only
+   The root `render.yaml` references only the existing Free API and creates no database or worker. A web-service-only
    [free staging Blueprint](../../infra/deployment/render-free-staging.yaml) is
    prepared separately; it intentionally provisions no database or worker.
    Disable automatic deployment;

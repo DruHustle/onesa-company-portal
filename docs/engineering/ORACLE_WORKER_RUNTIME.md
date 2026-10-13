@@ -7,6 +7,28 @@ receipts stay outside Git. The current target is Ubuntu 24.04 ARM64, 1 OCPU, 6 G
 and a 50 GB boot volume in Frankfurt. Runtime installation is separate from release
 qualification: Docker being available does not prove a working Portal worker.
 
+## Reusable owner SSH connection
+
+The authorized owner's local `~/.ssh/config` defines `onesa-portal-worker` and the
+existing VM IP using the retained private key and pinned known-hosts record. It uses
+`ControlMaster auto`, an owner-only control directory and `ControlPersist 8h` to reuse
+one authenticated transport across terminal sessions. Thirty-second keepalives detect
+a disconnected transport; subsequent connections authenticate using the existing key.
+Password authentication and agent forwarding are disabled. These are local client
+settings; they do not change the VM firewall, Oracle Console sessions or OCI CLI MFA.
+
+```sh
+ssh onesa-portal-worker
+ssh -O check onesa-portal-worker
+ssh -MNf onesa-portal-worker    # start a background transport if none is running
+ssh -O exit onesa-portal-worker # close it after finishing active sessions
+```
+
+The IP entry also lets the existing pinned deployment scripts reuse this connection.
+Keep `~/.ssh/config` at mode `0600` and `~/.ssh/onesa-control` at mode `0700`.
+No application port forwarding is configured. ClamAV continues to use its private
+Unix socket; databases, queues and worker endpoints remain unexposed.
+
 ## Artifact and resource limits
 
 `compose.oracle-staging.yaml` runs only the existing Portal background executor and

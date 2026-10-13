@@ -31,12 +31,11 @@ AI route duration is 150 seconds for bounded streamed generation; verify plan li
 
 ## Render
 
-`render.yaml` configures Docker services with app-only build contexts, private
-PostgreSQL, Frankfurt region, readiness checks and disabled native auto-deploys. Templates
-use paid always-on resources: review actual pricing/capacity before applying. No
-resources or charges are created by storing this file. Databases disable public IP
-access by default; allow only an approved temporary operator address if external
-migration access is needed, and remove it afterwards.
+`render.yaml` references the existing Free Docker API with its independent app
+context, Frankfurt region, readiness check and native auto-deploy disabled. It contains
+no managed database or Render worker declaration. Reuse the verified Neon project and
+private Oracle runtime; do not create duplicate services or regenerate credentials.
+Saving this reference is not a provider deployment or production qualification.
 
 Create/provision database schema with a separate migration-owner identity; then supply
 only a restricted application URL in Render's secret environment settings. Do not use

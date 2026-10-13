@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-13 — Reuse the authorized Oracle SSH connection
+
+Configure the owner's local VM shortcut and an eight-hour idle SSH control connection using the existing private key and pinned host record. Verify two read-only sessions require the running master transport. Document connection status and shutdown commands; preserve provider-console authentication and private scanner/network boundaries.
+
+## 2026-10-13 — Retire redundant staging resources and deployment entries
+
+Delete the credential-free legacy Render staging worker after verifying the healthy Oracle replacement. Remove only the empty, unreferenced migrations-staging Neon project after SQL and bucket inventory; preserve active/shared and populated databases and the production worker pending replacement qualification. Reference only the existing Free API in Render, remove duplicate database/worker declarations and generated-key directives, and omit unused TCP scanner settings from Oracle deployment examples. Read-only inspection distinguishes Oracle staging execution and conditional mail profiles.
+
 ## 2026-10-12 — Approved company details and verified Neon scope
 
 Use the owner-confirmed legal name, registered address, director, register court/number and contact links consistently across legal/privacy/contact pages, metadata, CMS seeding, document templates and idempotent mail signatures. Preserve CMS revisions and all privacy/publication approvals. Generate independent snapshots from the maintained private record, without committing unapproved records or coupling product builds. Correct staging SQL/fixture guards to the verified *-staging project and production initialization to its actual runtime target; reject the obsolete migrations project. No production or real-data acceptance is implied.
