@@ -116,7 +116,7 @@ x86 builds need no translation; private ARM scans never prove x86 runtime compat
 
 Task pushes trigger CI, not production deployment. Production remains separately gated;
 no release qualification is fabricated. Secret names only: `RELEASE_QUALIFICATION_JSON`,
-`RENDER_API_KEY`, `RENDER_BACKEND_SERVICE_ID`, optional `RENDER_WORKER_SERVICE_ID`,
+`RENDER_API_KEY`, `RENDER_BACKEND_SERVICE_ID`,
 `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`; retain each existing staging/docs
 workflow's additional environment secrets. Never publish values or raw private evidence.
 If hosted execution hits a minutes/spending/storage restriction, report cloud validation

@@ -78,40 +78,32 @@ Sources: [Vercel monorepos](https://vercel.com/docs/monorepos),
 [monorepo roots](https://render.com/docs/monorepo-support),
 [pgvector](https://render.com/docs/postgresql-extensions).
 
-## GitHub deployment setup
+## Current owner-controlled deployment setup
 
-One-time provider setup is required: import this private GitHub repository into Vercel,
-configure the frontend root above and its production environment, and create the
-Render Blueprint services, private database and backend secrets described above.
-Disable Vercel Git auto-deploys and retain Render `autoDeployTrigger: off` so GitHub
-Actions owns releases. Initial provider provisioning may create an initial deploy;
-keep it access-protected until target checks pass.
+Use the existing Vercel frontend and Free Render API. The private job executor and
+scanner run on the already qualified Oracle VM; there is no Render worker target
+or worker Actions secret. Do not create another database, worker or provider project.
 
-Store the following secrets in each repository's Actions secrets. The organization
-currently uses GitHub Free; private repositories cannot consume organization secrets
-or deployment environment secrets on that plan. These commands prompt privately; never put credential values in command
-history or chat. Vercel IDs must belong to the configured project/team. Render API
-access must belong to the service owner's workspace.
+Follow the existing `dev → staging → main` source path, full exact-commit CI,
+protected staging acceptance, `free-qualification.yml`, `free-authorization.yml`
+and the external owner-hosted verifier described in
+[the pipeline report](../development/CI_CD_PIPELINE_REPORT.md). Production
+credentials remain in the authorized private provider/local configuration. Do not
+add production credentials to editable repository workflows merely to deploy.
 
-```sh
-gh secret set VERCEL_TOKEN --repo onesa-ug/onesa-company-portal
-gh secret set VERCEL_ORG_ID --repo onesa-ug/onesa-company-portal
-gh secret set VERCEL_PROJECT_ID --repo onesa-ug/onesa-company-portal
-gh secret set RENDER_API_KEY --repo onesa-ug/onesa-company-portal
-gh secret set RENDER_BACKEND_SERVICE_ID --repo onesa-ug/onesa-company-portal
-gh secret set RENDER_WORKER_SERVICE_ID --repo onesa-ug/onesa-company-portal
-gh workflow run deploy.yml --repo onesa-ug/onesa-company-portal --ref main -f application=both
-gh run list --repo onesa-ug/onesa-company-portal --workflow deploy.yml
-gh run watch RUN_ID --repo onesa-ug/onesa-company-portal --exit-status
-```
+For staging, use only the implemented `STAGING_*` names. Verify actual repository
+visibility and whether environment secrets are injected: private GitHub Free uses
+repository-level staging secrets; a visible setting alone does not prove availability.
+Neither scope provides isolation from a trusted writer who can change workflows.
+Provider inspection is read-only and does not establish release qualification.
 
-The workflow refuses a branch other than main or a commit without successful push CI
-and publication-hygiene checks. Frontend and backend jobs remain independently selectable.
-Vercel builds the checked-out commit with production provider settings; Render receives
-that exact SHA and is polled until live, with commit verification. Render deploy failure
-or timeout fails the workflow. Check service logs and health before retrying; roll back
-using provider controls to a previously qualified release if needed. No provider tokens,
-database URLs or application secrets belong in the repository.
+Render receives the exact qualified main SHA with automatic deployment disabled.
+Vercel publishes its reviewed production build only after the external handoff.
+The worker uses its private root-owned production file and managed service; consult
+[Oracle runtime](ORACLE_WORKER_RUNTIME.md) for health and recovery checks.
+Provider success does not approve privacy disclosures or activate applicant intake.
+Preserve existing keys that encrypt stored data, staging separation and rollback
+receipts. Never put credentials in command history or chat.
 
 ## Final release qualification — 2026-10-09
 
