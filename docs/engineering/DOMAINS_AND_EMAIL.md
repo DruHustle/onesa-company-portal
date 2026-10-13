@@ -3,6 +3,16 @@
 Owner-requested mapping (2026-10-10). This configuration is prepared locally;
 provider assignments, DNS changes, TLS and real delivery are not yet completed.
 
+Current mail evidence, 2026-10-13: authoritative DNS is now Cloudflare and staff MX
+points to Zoho EU. The existing Ireland Resend domain is verified. Missing sending
+authentication records after the nameserver migration caused a real Zoho DMARC
+bounce. The exact Resend DKIM TXT plus `rsend.mail` and `send.mail` CNAME records were
+restored and verified on both authoritative nameservers and two public resolvers.
+Zoho MX, website records and strict DMARC were preserved. Subsequent explicitly
+authorized synthetic messages show Delivered in Resend, with owner inbox receipt
+confirmed. Historical setup intentions below do not supersede this evidence or
+establish unrelated application deployment/processing approval.
+
 | Hostname | Application | Vercel project / root |
 | --- | --- | --- |
 | `onesa.eu` | Public bilingual company site | `onesa-company-portal` / `onesa-company-portal-frontend` |
