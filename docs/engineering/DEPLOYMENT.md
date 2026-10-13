@@ -1,5 +1,143 @@
 # Deployment and independent releases
 
+## Oracle Always Free worker VM through OCI CLI — 2026-10-12
+
+The owner selected the local OCI CLI for provisioning `onesa-portal-worker` after
+Cloud Shell browser control was unavailable. The standalone
+[provisioning script](../../infra/oracle/provision-worker.py) supports both local
+CLI sessions and Cloud Shell. Authenticate into the ignored private directory,
+preserving the existing `~/.oci/config`:
+
+```sh
+mkdir -p private/oracle/session
+chmod 700 private/oracle private/oracle/session
+oci session authenticate --region eu-frankfurt-1 --profile-name onesa-portal-worker --config-location "$PWD/private/oracle/config" --token-location "$PWD/private/oracle/session"
+export OCI_CLI_CONFIG_FILE="$PWD/private/oracle/config"
+export OCI_CLI_PROFILE=onesa-portal-worker
+export OCI_CLI_AUTH=security_token
+python3 infra/oracle/provision-worker.py --ssh-cidr YOUR_PUBLIC_IPV4/32 --output-dir private/oracle/worker
+python3 infra/oracle/provision-worker.py --apply --ssh-cidr YOUR_PUBLIC_IPV4/32 --output-dir private/oracle/worker
+```
+
+The final command creates resources only after all checks pass. Local keys and the
+instance receipt remain in `private/oracle/worker/`; the existing default CLI
+profile is preserved. Treat the private session/key files as credentials, never
+source or upload artifacts. Sign-in is browser-based and must be completed by the
+account owner.
+
+For the Cloud Shell alternative, upload the standalone provisioning script
+using the Cloud Shell menu's **Upload** action. It uses Cloud Shell's existing
+authenticated OCI CLI, including its config-file/profile/auth environment variables;
+no Mac CLI session renewal, API key or token upload is needed. Select Frankfurt
+before opening Cloud Shell; the script refuses provisioning unless the chosen region
+is the tenancy's home region.
+
+Run these commands from the directory containing the uploaded file:
+
+```sh
+python3 provision-worker.py
+python3 provision-worker.py --apply
+```
+
+The first command only reads inventory and reports a plan. The second rechecks
+inventory, asks for **your Mac's public IPv4 address**, generates a dedicated SSH
+key if none was supplied, then creates the VM and its isolated network. Find the
+Mac address with `curl -4 https://api.ipify.org` in **Mac Terminal**, not in Cloud
+Shell. Alternatively, use `--ssh-cidr YOUR_PUBLIC_IPV4/32` and
+`--ssh-public-key-file ./your-public-key.pub` to supply an existing public key.
+Never upload that key's private half. `--compartment-id` selects an existing active
+compartment; the default is the tenancy root. No IAM policies are created.
+
+The fixed VM is `VM.Standard.A1.Flex`, 1 OCPU, 6 GB RAM, a 50 GB Balanced boot
+volume, and the latest available official Ubuntu 24.04 ARM64 platform image
+(Ubuntu 22.04 ARM64 fallback). The worker subnet uses only a dedicated security
+list: TCP 22 from the supplied public `/32`, plus ICMP fragmentation-needed for
+path MTU discovery. Stateful outbound internet traffic is permitted. HTTP, HTTPS
+and ClamAV ports have no inbound rules. The VCN's default security list is unused.
+Cloud-init disables password/root SSH and enables Ubuntu security-update tooling;
+it does not install or start the Portal worker.
+
+The script reads instances in all active compartments and subscribed ready regions,
+and all home-region boot/block volumes, including stopped instances and unattached
+volumes. It bounds the resulting allocation to 2 A1 OCPUs, 12 GB RAM and 200 GB
+storage. It also reads current-month A1 CPU/memory usage and checks a projection
+through month end, allowing 48 hours for delayed reporting on existing allocation.
+Inaccessible inventory, unknown A1 usage units/SKUs, an existing same-name instance,
+or a conflicting network resource stop the operation. Usage reporting can lag;
+these bounds do not replace checking the tenancy's Always Free eligibility and
+actual current-month usage in the Console. Do not upgrade the account or use paid
+resources to resolve a capacity/permission failure.
+
+It tries each home-region availability domain once only after explicit
+`Out of host capacity`; other errors/timeouts stop without automatic relaunch.
+Tagged network resources and the key remain for a later retry. Existing resources
+are reused only when their configuration matches; there is no deletion, takeover,
+SSH-rule widening or paid-shape fallback. A created instance immediately gets a
+receipt at `~/onesa-portal-worker/instance.json`, with verified configuration/IP
+added only after successful running-state, shape, volume, VNIC and network readback.
+The receipt's OCID can be used to inspect an instance if later verification fails.
+
+If a key was generated, download
+`onesa-portal-worker/onesa-portal-worker.pem` through **Cloud Shell → Download** and
+retain it securely. On the Mac, using the IP from the verified receipt:
+
+```sh
+chmod 600 ~/Downloads/onesa-portal-worker.pem
+ssh -i ~/Downloads/onesa-portal-worker.pem ubuntu@ORACLE_PUBLIC_IP
+sudo cloud-init status --wait
+```
+
+The existing `compose.oracle-staging.yaml` is a separate, locally prepared
+outbound-only ARM64 worker/ClamAV deployment. The worker polls the existing
+PostgreSQL queue with authenticated outbound database access and retrieves private
+S3 objects; it does not expose a public scanning API. Privately supply the approved
+isolated staging database/storage/mail bindings and existing encryption key before
+installation. Keep publication disabled. ClamAV signature updates, clean/rejected
+scan checks, job consumption, mail delivery, restart/health checks and capacity
+testing remain required; creating a VM does not qualify these integrations.
+
+Status on 2026-10-12: separate local browser authentication succeeded, the home
+region was verified as Frankfurt, and authenticated instance/volume/monthly usage
+inventory completed. The owner explicitly authorized resizing `basyx-server` from
+2 OCPUs/12 GB to 1 OCPU/6 GB, then creating the separate worker. BaSyx returned to
+RUNNING at the approved size; its instance/image identity, IP addresses, VNICs,
+boot-volume attachment, tags and metadata were read back unchanged. Its resize
+receipt is retained in ignored `private/oracle/basyx-resize.json`.
+
+`onesa-portal-worker` was created in Frankfurt AD-2 after AD-1 reported out of host
+capacity: official Ubuntu 24.04 ARM64, A1 Flex, 1 OCPU, 6 GB RAM and 50 GB Balanced
+boot volume. The running state, exact shape/volume, public VNIC, dedicated network
+and restricted SSH rules passed provider readback. Both VMs together allocate
+2 OCPUs/12 GB RAM and 100 GB boot storage. The real OCID, assigned IP, SSH source
+CIDR and key path are retained in ignored `private/oracle/worker/instance.json`;
+the generated local private key is `private/oracle/worker/onesa-portal-worker.pem`
+with permissions 0600. Known-host verification uses `private/oracle/known_hosts`.
+Do not commit these private artifacts.
+
+The first launch attempt was rejected locally because the CLI requires a top-level
+`subnetId`; no worker existed before the corrected retry. The first-boot SSH reload
+failed because Ubuntu 24.04 uses socket activation. The source bootstrap now
+validates sshd and uses `try-reload-or-restart`; the VM's generated bootstrap script
+was repaired in place. Oracle's reserved launch `user_data` is immutable and was
+preserved. After an ordinary reboot, cloud-init reports `done`, SSH succeeds using
+the same known host key, ARM64/1 CPU/6 GB resources are confirmed, the security-update
+timer is active, and root/password/keyboard-interactive logins are disabled. Final
+SSH/cloud-init/reboot verification is recorded in the private instance receipt.
+Portal worker/ClamAV deployment and hosted integration acceptance
+remain pending; VM creation does not close the business release gates.
+
+Offline validation:
+
+```sh
+python3 -m unittest discover -s infra/oracle -p 'test_*.py' -v
+python3 scripts/repository_hygiene.py
+```
+
+Sources: [Cloud Shell authentication and file transfer](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/devcloudshellgettingstarted.htm),
+[current Always Free resources](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm),
+[official Ubuntu 24.04 images](https://docs.oracle.com/en-us/iaas/images/ubuntu-2404/index.htm),
+[OCI Usage API](https://docs.oracle.com/en-us/iaas/tools/oci-cli/latest/oci_cli_docs/cmdref/usage-api/usage-summary/request-summarized-usages.html).
+
 ## Reviewed staging path — 2026-10-12
 
 After dev PR and exact merged staging CI pass, use the already registered owner workflow: `gh workflow run deploy.yml --ref staging -f target=staging -f fixture_mode=temporary`. Staging-only credentials and the existing approved synthetic scope/project JSON are required. The fixture helper creates two random identities through the verified restricted staging application role, keeps credentials only in a 0600 runner file, then disables those exact identities and revokes sessions on cleanup. Provided fixtures remain available with `fixture_mode=provided`; production accounts are never created by this helper.
