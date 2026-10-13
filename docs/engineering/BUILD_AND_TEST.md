@@ -5,6 +5,18 @@
 Run from the repository root with Node 24, Python 3 and Docker when building images.
 Commit lockfiles; `npm ci` installs their exact dependency resolutions.
 
+Dependabot version updates target `dev` and follow `dev → staging → main`.
+Keep the Portal frontend on TypeScript 5.9.3 while `openapi-typescript` 7.13.0
+requires `^5.x` and the installed typescript-eslint 8.71.1 peers require
+`>=4.8.4 <6.1.0`. The TypeScript 7.0.2 update in PR #28 failed `npm ci`
+with `ERESOLVE`; it must not enter a release. Dependabot ignores compiler major
+version updates until the generator, lint tooling and compiler can be upgraded
+together and pass contract generation, lint, type checks and builds. Do not use
+`--force` or `--legacy-peer-deps` to hide peer conflicts. Minor/patch version
+updates continue. Security updates remain on the default branch under
+[GitHub's documented target-branch behavior](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#target-branch)
+and still require compatibility checks and the qualified release path.
+
 ## Frontend
 
 ```sh
