@@ -46,7 +46,7 @@ test('Staging binding verifies existing restricted role and schema before one en
   await assert.rejects(repairPortalStagingDatabase(),/role remains unsafe/);
   assert.ok(requests.every(request=>request.method==='GET'));requests.length=0;unsafe=false;
   const report=await repairPortalStagingDatabase();
-  assert.equal(report.migration_checksums_verified,7);assert.equal(report.production_modified,false);assert.equal(report.deployment_requested,false);assert.equal(report.permissions_changed,false);
+  assert.equal(report.migration_checksums_verified,migrations.length);assert.equal(report.production_modified,false);assert.equal(report.deployment_requested,false);assert.equal(report.permissions_changed,false);
   assert.deepEqual(requests.filter(request=>request.method!=='GET'),[{url:'https://api.render.com/v1/services/'+stagingService.id+'/env-vars/DATABASE_URL',method:'PUT'}]);
   const candidate=new URL(saved);assert.equal(candidate.hostname,'ep-morning-shadow-b9jkzgsz-pooler.c-7.eu-central-1.aws.neon.tech');assert.equal(candidate.username,'onesa_portal_app');assert.equal(candidate.searchParams.get('sslmode'),'verify-full');
   assert.ok(queries.every(sql=>sql.startsWith('SELECT ')||sql==='BEGIN TRANSACTION READ ONLY'||sql==='ROLLBACK'));
@@ -102,7 +102,7 @@ test('Schema repair refuses missing, changed, extra migrations and unknown table
  let migrations=rows;let tableNames=[...tables];
  const queries:string[]=[];
  const connection={query:async(sql:string)=>{queries.push(sql);return {rows:sql.includes('schema_migrations')?migrations:tableNames.map(tablename=>({tablename}))};}} as unknown as Pick<pg.Pool,'query'>;
- assert.equal(await verifiedSchema(connection),7);
+ assert.equal(await verifiedSchema(connection),rows.length);
  migrations=rows.slice(1);await assert.rejects(verifiedSchema(connection),/migration inventory/);
  migrations=rows.map((row,index)=>index?row:{...row,checksum:'changed'});await assert.rejects(verifiedSchema(connection),/checksum mismatch/);
  migrations=[...rows,{name:'unknown.sql',checksum:'unknown'}];await assert.rejects(verifiedSchema(connection),/migration inventory/);

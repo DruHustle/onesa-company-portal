@@ -19,7 +19,8 @@
     "documents": "node --import tsx src/documents/export.ts",
     "test:contracts": "node --import tsx --test tests/contracts.test.ts",
     "api:export": "node --import tsx src/api/export.ts",
-    "seed": "node --env-file-if-exists=../.env --import tsx src/services/seed.ts"
+    "seed": "node --env-file-if-exists=../.env --import tsx src/services/seed.ts",
+    "privacy:import": "node --env-file-if-exists=../.env --import tsx src/governance/import.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.940.0",

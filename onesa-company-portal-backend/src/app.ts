@@ -19,6 +19,7 @@ import { store,retrieve,remove,pdfSafe,scan,detectMime } from './services/storag
 import { generatePDF } from './documents/pdf.js';
 import {transfers} from './services/transfers.js';
 import {metrics} from './services/metrics.js';
+import {registerGovernance} from './governance/routes.js';
 declare module 'fastify' {interface FastifyRequest {actor?:Actor;}}
 const dummyPasswordHash=passwordHash('unusable-account-timing-fixture');
 const errors={400:C.error,401:C.error,403:C.error,404:C.error,409:C.error,413:C.error,429:C.error,500:C.error,503:C.error};
@@ -36,7 +37,13 @@ async function ensurePublication(legalPage=false){if(env.NODE_ENV==='production'
 export async function buildApp(options:{logging?:boolean}={}){
  const app=Fastify({logger:options.logging!==false?{redact:['req.headers.cookie','req.headers.authorization','req.headers.x-portal-proxy-key','req.body'],level:'info'}:false,bodyLimit:15*1024*1024,requestTimeout:20000,genReqId:()=>randomUUID()}).withTypeProvider<ZodTypeProvider>();
  app.setValidatorCompiler(validatorCompiler);app.setSerializerCompiler(serializerCompiler);
- await app.register(swagger,{openapi:{openapi:'3.0.3',info:{title:'Onesa Company Portal',version:'1.0.0',description:'Generated from the Fastify route schemas. Uploads use validated JSON/base64 PDFs. Administration requires MFA and a session cookie; mutation requests additionally require X-CSRF-Token.'},servers:[{url:'/'}],components:{securitySchemes:{sessionCookie:{type:'apiKey',in:'cookie',name:'onesa_session'}}}},transform:jsonSchemaTransform});
+ await app.register(swagger,{openapi:{openapi:'3.0.3',info:{title:'Onesa Company Portal',version:'1.0.0',description:'Generated from the Fastify route schemas. Uploads use validated JSON/base64 PDFs. Administration requires MFA and a session cookie; mutation requests additionally require X-CSRF-Token.'},servers:[{url:'/'}],components:{securitySchemes:{sessionCookie:{type:'apiKey',in:'cookie',name:'onesa_session'}}}},transform:jsonSchemaTransform,transformObject:(document)=>{
+  if('openapiObject' in document){
+   const responses=document.openapiObject.paths?.['/api/v1/admin/governance/records/{stableId}/pdf']?.get?.responses;
+   for(const [code,response] of Object.entries(responses||{}))if(Number(code)>=400&&'content' in response&&response.content?.['application/pdf'])response.content={'application/json':response.content['application/pdf']};
+  }
+  return 'openapiObject' in document?document.openapiObject:document.swaggerObject;
+ }});
  await app.register(cookie);await app.register(helmet,{global:true});
  app.addHook('onRequest',async(req,reply)=>{reply.header('X-Request-ID',req.id).header('Cache-Control','no-store');if(!['GET','HEAD','OPTIONS'].includes(req.method)){const origin=req.headers.origin;if((req.cookies.onesa_session&&!origin)||(origin&&origin!==env.PUBLIC_ORIGIN&&!(companyOrigin&&origin===companyOrigin&&req.url.split('?')[0].startsWith('/api/v1/public/'))))throw new HttpError(403,'ORIGIN','Untrusted origin');if(req.headers['sec-fetch-site']==='cross-site')throw new HttpError(403,'ORIGIN','Cross-site requests denied');}});
  app.setErrorHandler((err,req,reply)=>{const e=err as Error & {statusCode?:number;code?:string;validation?:unknown};const status=err instanceof HttpError?err.status:e.validation?400:e.statusCode&&e.statusCode<500?e.statusCode:e.code==='23505'?409:500;if(status>=500)req.log.error({err:{name:e.name,code:e.code},requestId:req.id},'Request failed');reply.code(status).send({error:{code:err instanceof HttpError?err.code:status===400?'VALIDATION':status===409?'CONFLICT':'REQUEST_FAILED',message:status>=500?'Service unavailable':err instanceof HttpError?err.message:status===409?'Record conflict':status===400?'Invalid request': 'Request denied',requestId:req.id}});});
@@ -96,5 +103,6 @@ export async function buildApp(options:{logging?:boolean}={}){
  metrics(app);
  transfers(app,{allow,fileRoles:permissions.files,address:clientAddress,publication:ensurePublication,limit});
  for(const visibility of ['admin','public'] as const){app.get(`/api/v1/${visibility}/files/:id/chunks/:index`,{schema:{... (visibility==='admin'?adminSchema('privateFileChunk','Documents'):publicSchema('publicFileChunk','Documents')),params:z.object({id,index:z.coerce.number().int().min(0).max(10)}),response:{200:z.string().meta({format:'binary'}),...errors}}},async(req,reply)=>{const f=normalize<z.infer<typeof C.file>&{storage_key:string;sha256:string}>(required((await db.query('SELECT * FROM files WHERE id=$1',[req.params.id])).rows[0]));if(visibility==='admin')await filePermission(req,f);else{if(f.classification!=='public'||f.approval!=='approved'||f.archived)throw new HttpError(404,'FILE','Document unavailable');await ensurePublication();}if(f.scan_status!=='clean')throw new HttpError(409,'QUARANTINE','Document is awaiting a clean malware scan');const bytes=await retrieve(f.storage_key);const start=req.params.index*1024*1024;if(start>=bytes.length)throw new HttpError(400,'FILE_RANGE','Invalid document chunk');reply.type(f.mime).header('X-File-Size',String(bytes.length)).header('X-File-Sha256',f.sha256).header('X-Content-Type-Options','nosniff');return (reply as FastifyReply).send(bytes.subarray(start,start+1024*1024));});}
+ await app.register(async instance=>{await registerGovernance(instance,allow);});
  return app;
 }
