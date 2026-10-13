@@ -3,6 +3,7 @@
 import argparse
 import base64
 import datetime
+import hmac
 import json
 import os
 import subprocess
@@ -71,6 +72,10 @@ def recover(sha):
             json.dumps(request).encode(),
             cwd=ops.worker.ROOT / "onesa-company-portal-backend",
         )
+    )
+    ops.worker.require(
+        hmac.compare_digest(recovered["session_key"], values["SESSION_KEY"]),
+        "Recovered application key differs from the approved runtime key",
     )
     name = "onesa-independent-restore-" + uuid.uuid4().hex
     folder = ops.PRIVATE / ("independent-restore-" + uuid.uuid4().hex)

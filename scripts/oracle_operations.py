@@ -162,9 +162,13 @@ def install(sha):
     run(
         "sudo install -m 644 "
         + release
-        + "/infra/oracle/operations/*.service "
+        + "/infra/oracle/operations/onesa-portal-backup.service "
         + release
-        + "/infra/oracle/operations/*.timer /etc/systemd/system/\nsudo systemctl daemon-reload\nsudo systemd-analyze verify /etc/systemd/system/onesa-portal-backup.service /etc/systemd/system/onesa-portal-backup.timer /etc/systemd/system/onesa-portal-monitor.service /etc/systemd/system/onesa-portal-monitor.timer"
+        + "/infra/oracle/operations/onesa-portal-backup.timer "
+        + release
+        + "/infra/oracle/operations/onesa-portal-monitor.service "
+        + release
+        + "/infra/oracle/operations/onesa-portal-monitor.timer /etc/systemd/system/\nsudo systemctl daemon-reload\nsudo systemd-analyze verify /etc/systemd/system/onesa-portal-backup.service /etc/systemd/system/onesa-portal-backup.timer /etc/systemd/system/onesa-portal-monitor.service /etc/systemd/system/onesa-portal-monitor.timer"
     )
     # Run before enabling either timer. A failed backup must not be labelled operational.
     fixture = str(uuid.uuid4())

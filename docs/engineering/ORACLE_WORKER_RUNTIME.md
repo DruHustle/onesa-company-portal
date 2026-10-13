@@ -393,6 +393,23 @@ These services are prepared until exact-source CI, real execution, independent
 DB/object/key restoration, timer readback and recipient delivery have passed.
 Their receipts live under `private/oracle/worker/`; do not publish secrets or raw logs.
 
+### Recovery execution verified on 2026-10-13
+
+The first real encrypted archive contained all 20 database tables and one run-owned
+synthetic object. Independent recovery retrieved the archive and encrypted RSA key
+from private storage without Oracle access or the original private-key file. All
+table counts/content hashes and object hashes matched; authenticated tampering was
+rejected. The measured isolated database restore took 11.761 seconds. These small
+synthetic results do not establish recovery time for a populated production dataset.
+
+Both managed timers are active. A subsequent hourly timer-triggered backup completed
+successfully at 10:01:56 UTC, with the monitor reporting no current incidents.
+Installation uses explicit unit paths because the unprivileged SSH shell cannot
+expand globs inside the root-only release directory. Independent recovery also
+compares the recovered application key with the approved runtime key before starting
+the disposable database. Production worker cutover and delivered failure alerts
+remain separate requirements; timer activation does not enable job processing.
+
 ## Measured synthetic staging capacity
 
 On 2026-10-13, a 901-second workload processed 150 synthetic 256 KiB PDFs in 30

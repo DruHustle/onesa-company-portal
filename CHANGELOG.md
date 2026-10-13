@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-13 — Verify recovery installation and application key
+
+Use explicit service paths for root-owned releases, avoid snapshot pipe buffering, and reject recovered application keys that differ from the approved runtime before database restore. Record actual independent recovery and scheduled backup execution; preserve separate alert delivery and production cutover gates.
+
 ## 2026-10-13 — Simplify the contact page
 
 Remove the repeated address, email and telephone block from the English and German contact page introduction. Keep the contact form, partnership page details, footer and legal notices.

@@ -1,11 +1,14 @@
 """Failure and isolation tests; never hosted qualification evidence."""
 
 import importlib.util
+import json
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 import oracle_operations as ops
+import oracle_recovery as recovery
 
 SPEC = importlib.util.spec_from_file_location(
     "private_monitor", Path(__file__).parents[1] / "infra/oracle/operations/monitor.py"
@@ -73,6 +76,57 @@ class OperationsGuards(unittest.TestCase):
                 ops.install("a" * 40)
             remote.assert_not_called()
             keys.assert_not_called()
+
+    def test_wrong_recovered_application_key_cannot_start_database_restore(self):
+        with tempfile.TemporaryDirectory() as directory:
+            private = Path(directory)
+            master = private / "production-backup-encryption.key"
+            master.write_bytes(b"m" * 32)
+            master.chmod(0o600)
+            (private / "production-operations-installation.json").write_text(
+                json.dumps(
+                    {
+                        "source_commit": "a" * 40,
+                        "backup": {
+                            "object_count": 1,
+                            "object_key": "synthetic-backup",
+                            "key_id": "synthetic-key",
+                            "ciphertext_sha256": "b" * 64,
+                        },
+                    }
+                )
+            )
+            values = {
+                "DATABASE_URL": "postgresql://synthetic@"
+                + ops.production.DATABASE_HOST
+                + "/neondb",
+                "S3_ENDPOINT": "https://" + ops.production.BUCKET_HOST,
+                "S3_REGION": "synthetic-region",
+                "S3_BUCKET": "synthetic-bucket",
+                "AWS_ACCESS_KEY_ID": "synthetic-access",
+                "AWS_SECRET_ACCESS_KEY": "synthetic-secret",
+                "SESSION_KEY": "approved-synthetic-key",
+            }
+            with (
+                patch.object(ops, "PRIVATE", private),
+                patch.object(ops.worker, "qualified_source"),
+                patch.object(ops.production, "provider", return_value=[]),
+                patch.object(ops.production, "inventory", return_value=values),
+                patch.object(
+                    recovery,
+                    "run",
+                    return_value=json.dumps(
+                        {"session_key": "wrong-synthetic-key"}
+                    ).encode(),
+                ) as commands,
+            ):
+                with self.assertRaisesRegex(
+                    ValueError, "Recovered application key differs"
+                ):
+                    recovery.recover("a" * 40)
+                self.assertEqual(commands.call_count, 1)
+                self.assertEqual(commands.call_args.args[0][0], "node")
+                self.assertFalse(list(private.glob("independent-restore-*")))
 
     def test_monitor_never_stops_restarts_or_deletes_services(self):
         source = Path(monitor.__file__).read_text()
