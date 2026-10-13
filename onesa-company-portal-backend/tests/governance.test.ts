@@ -7,6 +7,7 @@ import {join} from 'node:path';
 import {governanceSeed} from './governance-fixture.js';
 import {normalizeSeed} from '../src/governance/seed.js';
 import {governanceTarget} from '../src/governance/target.js';
+import {reference} from '../src/governance/schemas.js';
 if(!process.env.TEST_DATABASE_URL||!new URL(process.env.TEST_DATABASE_URL).pathname.endsWith('_test'))throw new Error('Governance tests require an isolated _test database');
 process.env.DATABASE_URL=process.env.TEST_DATABASE_URL;process.env.NODE_ENV='test';process.env.COMPANY_ORIGIN='';
 process.env.SESSION_KEY=randomBytes(32).toString('hex');process.env.PUBLIC_ORIGIN='http://localhost:3300';
@@ -98,4 +99,10 @@ test('Import target guards distinguish Portal staging, production and isolated l
  assert.throws(()=>governanceTarget(uri(staging).replace(staging,'unrelated.example.invalid'),'unrelated.example.invalid','neondb'));
  assert.equal(governanceTarget('postgresql://synthetic:synthetic@127.0.0.1:55440/onesa_portal_test','127.0.0.1','onesa_portal_test').port,'55440');
  assert.throws(()=>governanceTarget('postgresql://synthetic:synthetic@127.0.0.1:55440/onesa_portal','127.0.0.1','onesa_portal'));
+});
+
+test('Evidence links cannot carry signed-storage credentials or OAuth authorization codes',()=>{
+ for(const query of ['X-Amz-Signature=synthetic-signature','X-Amz-Credential=synthetic-credential','AWSAccessKeyId=synthetic-identifier','signature=synthetic','code=synthetic-authorization-code'])assert.equal(reference.safeParse('https://storage.example.invalid/evidence?'+query).success,false);
+ assert.equal(reference.safeParse('https://vercel.com/legal/dpa').success,true);
+ assert.equal(reference.safeParse('docs/internal/release-audit/evidence/receipt.json').success,true);
 });
