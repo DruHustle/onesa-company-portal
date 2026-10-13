@@ -42,3 +42,12 @@ When `SITE_URL` and `PORTAL_URL` configure the split, the company BFF exposes on
 `PUBLIC_ORIGIN` is the portal origin; optional `COMPANY_ORIGIN` permits only public
 API mutations from the company site. Existing body/response schemas are unchanged.
 Resend integration affects the private worker, not the public HTTP contracts.
+
+## Internal governance contracts
+
+The `/admin/governance` operations expose protected overview/records/details/history,
+revision creation, scoped review, archive/restore, events and revision PDFs. Existing
+session/MFA and CSRF guards apply; only the reauthenticated owner may approve/reject.
+`expectedRevision` rejects lost updates with 409. PDFs use `application/pdf` and
+private/no-store headers. No operation enables business-data deletion or public
+privacy publication. See [the governance architecture](../engineering/PRIVACY_GOVERNANCE.md).

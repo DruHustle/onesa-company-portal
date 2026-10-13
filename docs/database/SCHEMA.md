@@ -17,3 +17,12 @@ unavailable to the managed owner; grant equivalent privileges and verify readine
 Never run integration tests on application data: TEST_DATABASE_URL must end `_test`.
 Backups and restore targets remain private and outside Git. Use an isolated restore
 and approved retention/key custody before production migration or rollback.
+
+## Internal privacy governance
+
+Migration 008 adds `governance_records`, `governance_versions` and
+`governance_events` to the existing Portal schema. Current/effective revision foreign
+keys are deferred until transaction completion; version payloads are immutable
+snapshots. Approved versions and append-only review events cannot be altered or
+deleted. Restrict access through the existing owner/admin API roles and preserve
+these records during restores. See [the governance architecture](../engineering/PRIVACY_GOVERNANCE.md).

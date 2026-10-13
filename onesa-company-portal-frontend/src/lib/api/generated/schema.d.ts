@@ -921,6 +921,159 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/governance/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description INTERNAL. Owner/administrator access only; no public CMS or cache. Mutations require CSRF; final decisions require owner reauthentication. */
+        get: operations["privacyGovernanceOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/governance/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description INTERNAL. Owner/administrator access only; no public CMS or cache. Mutations require CSRF; final decisions require owner reauthentication. */
+        get: operations["listGovernanceRecords"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/governance/records/{stableId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description INTERNAL. Owner/administrator access only; no public CMS or cache. Mutations require CSRF; final decisions require owner reauthentication. */
+        get: operations["getGovernanceRecord"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/governance/records/{stableId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description INTERNAL. Owner/administrator access only; no public CMS or cache. Mutations require CSRF; final decisions require owner reauthentication. */
+        get: operations["governanceVersionHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/governance/records/{stableId}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description INTERNAL. Owner/administrator access only; no public CMS or cache. Mutations require CSRF; final decisions require owner reauthentication. */
+        post: operations["amendGovernanceRecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/governance/records/{stableId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description INTERNAL. Owner/administrator access only; no public CMS or cache. Mutations require CSRF; final decisions require owner reauthentication. */
+        post: operations["reviewGovernanceRecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/governance/records/{stableId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description INTERNAL. Owner/administrator access only; no public CMS or cache. Mutations require CSRF; final decisions require owner reauthentication. */
+        patch: operations["archiveGovernanceRecord"];
+        trace?: never;
+    };
+    "/api/v1/admin/governance/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description INTERNAL. Owner/administrator access only; no public CMS or cache. Mutations require CSRF; final decisions require owner reauthentication. */
+        get: operations["governanceReviewEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/governance/records/{stableId}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description INTERNAL. Owner/administrator access only; no public CMS or cache. Mutations require CSRF; final decisions require owner reauthentication. */
+        get: operations["downloadGovernancePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -11555,6 +11708,2046 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    privacyGovernanceOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        documents: number;
+                        draftDocuments: number;
+                        approvedDocuments: number;
+                        decisionsAwaitingReview: number;
+                        processorAssessmentsPending: number;
+                        upcomingReviews: number;
+                        missingEvidence: number;
+                        /** @enum {boolean} */
+                        automaticDeletionEnabled: false;
+                        /** @enum {boolean} */
+                        publicPublicationEnabled: false;
+                        restrictions: string[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    listGovernanceRecords: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                search?: string;
+                kind?: "document" | "retention" | "processor" | "decision";
+                status?: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected";
+                product?: "portal" | "ai" | "robot" | "shared" | "corporate";
+                archived?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            stableId: string;
+                            /** @enum {string} */
+                            kind: "document" | "retention" | "processor" | "decision";
+                            documentId: string | null;
+                            /** @enum {string} */
+                            classification: "INTERNAL";
+                            currentRevision: number;
+                            effectiveRevision: number | null;
+                            archived: boolean;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** Format: date-time */
+                            lastReviewedAt: string | null;
+                            version: {
+                                title: string;
+                                owner: string;
+                                productScopes: ("portal" | "ai" | "robot" | "shared" | "corporate")[];
+                                versionLabel: string;
+                                /** Format: date-time */
+                                reviewDueAt: string | null;
+                                evidenceRefs: string[];
+                                payload: {
+                                    /** @enum {string} */
+                                    type: "document";
+                                    /** @enum {string} */
+                                    documentType: "retention_policy" | "processor_register" | "decision_record";
+                                    /** @enum {string} */
+                                    locale: "en" | "de";
+                                    markdown: string;
+                                } | {
+                                    /** @enum {string} */
+                                    type: "retention";
+                                    dataClass: string;
+                                    purpose: string;
+                                    proposedPeriod: number | null;
+                                    periodUnit: string;
+                                    expiryTrigger: string;
+                                    deletionMethod: string;
+                                    exceptions: string;
+                                    notes: string;
+                                    /** @enum {boolean} */
+                                    automaticDeletionEnabled: false;
+                                } | {
+                                    /** @enum {string} */
+                                    type: "processor";
+                                    provider: string;
+                                    legalEntity: string | null;
+                                    serviceScope: string;
+                                    purpose: string;
+                                    dataCategories: string[];
+                                    relationship: string | null;
+                                    accountPlan: string | null;
+                                    /** Format: date-time */
+                                    planVerifiedAt: string | null;
+                                    /** @enum {string} */
+                                    planEligibility: "unverified" | "subject_to_terms_review" | "confirmed_eligible" | "ineligible";
+                                    businessStage: string | null;
+                                    accountIdentifier: string | null;
+                                    processingGeography: string | null;
+                                    remoteAccess: string | null;
+                                    dpaReference: string | null;
+                                    termsReference: string | null;
+                                    /** @enum {string} */
+                                    dpaApplicability: "unverified" | "not_established" | "applicable" | "not_applicable";
+                                    dpaAcceptanceEvidence: string | null;
+                                    /** Format: date-time */
+                                    dpaAcceptedAt: string | null;
+                                    subprocessorReference: string | null;
+                                    transferAssessment: string | null;
+                                    transferMechanism: string | null;
+                                    vendorLogging: string | null;
+                                    vendorRetention: string | null;
+                                    technicalSafeguards: string;
+                                    assessmentStage: string;
+                                    managementStatement: string;
+                                    futurePlan: string | null;
+                                    reviewTriggers: string[];
+                                    discoveredProviders: {
+                                        name: string;
+                                        service: string;
+                                        accountIdentifier: string | null;
+                                        plan: string | null;
+                                        evidenceRefs: string[];
+                                    }[];
+                                } | {
+                                    /** @enum {string} */
+                                    type: "decision";
+                                    requiredDecision: string;
+                                    proposedPosition: string;
+                                    itemReferences: string[];
+                                    /** @enum {boolean} */
+                                    processingEnabled: false;
+                                };
+                                recordId: string;
+                                revision: number;
+                                /** @enum {string} */
+                                status: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected";
+                                sourceFingerprint: string;
+                                sourceFile: string | null;
+                                createdBy: string | null;
+                                createdAt: string;
+                                /** Format: date-time */
+                                effectiveAt: string | null;
+                                approvedBy: string | null;
+                                approvedEmail: string | null;
+                                /** @enum {string|null} */
+                                approvedRole: "owner" | null;
+                                /** Format: date-time */
+                                approvedAt: string | null;
+                                approvalScope: string | null;
+                                approvalEvidenceRefs: string[] | null;
+                                /** @enum {string} */
+                                displayStatus: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected" | "superseded" | "archived";
+                            };
+                        }[];
+                        page: number;
+                        limit: number;
+                        total: number;
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getGovernanceRecord: {
+        parameters: {
+            query?: {
+                revision?: number;
+            };
+            header?: never;
+            path: {
+                stableId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        stableId: string;
+                        /** @enum {string} */
+                        kind: "document" | "retention" | "processor" | "decision";
+                        documentId: string | null;
+                        /** @enum {string} */
+                        classification: "INTERNAL";
+                        currentRevision: number;
+                        effectiveRevision: number | null;
+                        archived: boolean;
+                        createdAt: string;
+                        updatedAt: string;
+                        /** Format: date-time */
+                        lastReviewedAt: string | null;
+                        version: {
+                            title: string;
+                            owner: string;
+                            productScopes: ("portal" | "ai" | "robot" | "shared" | "corporate")[];
+                            versionLabel: string;
+                            /** Format: date-time */
+                            reviewDueAt: string | null;
+                            evidenceRefs: string[];
+                            payload: {
+                                /** @enum {string} */
+                                type: "document";
+                                /** @enum {string} */
+                                documentType: "retention_policy" | "processor_register" | "decision_record";
+                                /** @enum {string} */
+                                locale: "en" | "de";
+                                markdown: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "retention";
+                                dataClass: string;
+                                purpose: string;
+                                proposedPeriod: number | null;
+                                periodUnit: string;
+                                expiryTrigger: string;
+                                deletionMethod: string;
+                                exceptions: string;
+                                notes: string;
+                                /** @enum {boolean} */
+                                automaticDeletionEnabled: false;
+                            } | {
+                                /** @enum {string} */
+                                type: "processor";
+                                provider: string;
+                                legalEntity: string | null;
+                                serviceScope: string;
+                                purpose: string;
+                                dataCategories: string[];
+                                relationship: string | null;
+                                accountPlan: string | null;
+                                /** Format: date-time */
+                                planVerifiedAt: string | null;
+                                /** @enum {string} */
+                                planEligibility: "unverified" | "subject_to_terms_review" | "confirmed_eligible" | "ineligible";
+                                businessStage: string | null;
+                                accountIdentifier: string | null;
+                                processingGeography: string | null;
+                                remoteAccess: string | null;
+                                dpaReference: string | null;
+                                termsReference: string | null;
+                                /** @enum {string} */
+                                dpaApplicability: "unverified" | "not_established" | "applicable" | "not_applicable";
+                                dpaAcceptanceEvidence: string | null;
+                                /** Format: date-time */
+                                dpaAcceptedAt: string | null;
+                                subprocessorReference: string | null;
+                                transferAssessment: string | null;
+                                transferMechanism: string | null;
+                                vendorLogging: string | null;
+                                vendorRetention: string | null;
+                                technicalSafeguards: string;
+                                assessmentStage: string;
+                                managementStatement: string;
+                                futurePlan: string | null;
+                                reviewTriggers: string[];
+                                discoveredProviders: {
+                                    name: string;
+                                    service: string;
+                                    accountIdentifier: string | null;
+                                    plan: string | null;
+                                    evidenceRefs: string[];
+                                }[];
+                            } | {
+                                /** @enum {string} */
+                                type: "decision";
+                                requiredDecision: string;
+                                proposedPosition: string;
+                                itemReferences: string[];
+                                /** @enum {boolean} */
+                                processingEnabled: false;
+                            };
+                            recordId: string;
+                            revision: number;
+                            /** @enum {string} */
+                            status: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected";
+                            sourceFingerprint: string;
+                            sourceFile: string | null;
+                            createdBy: string | null;
+                            createdAt: string;
+                            /** Format: date-time */
+                            effectiveAt: string | null;
+                            approvedBy: string | null;
+                            approvedEmail: string | null;
+                            /** @enum {string|null} */
+                            approvedRole: "owner" | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            approvalScope: string | null;
+                            approvalEvidenceRefs: string[] | null;
+                            /** @enum {string} */
+                            displayStatus: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected" | "superseded" | "archived";
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    governanceVersionHistory: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                stableId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            title: string;
+                            owner: string;
+                            productScopes: ("portal" | "ai" | "robot" | "shared" | "corporate")[];
+                            versionLabel: string;
+                            /** Format: date-time */
+                            reviewDueAt: string | null;
+                            evidenceRefs: string[];
+                            recordId: string;
+                            revision: number;
+                            /** @enum {string} */
+                            status: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected";
+                            sourceFingerprint: string;
+                            sourceFile: string | null;
+                            createdBy: string | null;
+                            createdAt: string;
+                            /** Format: date-time */
+                            effectiveAt: string | null;
+                            approvedBy: string | null;
+                            approvedEmail: string | null;
+                            /** @enum {string|null} */
+                            approvedRole: "owner" | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            approvalScope: string | null;
+                            approvalEvidenceRefs: string[] | null;
+                            /** @enum {string} */
+                            displayStatus: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected" | "superseded" | "archived";
+                        }[];
+                        page: number;
+                        limit: number;
+                        total: number;
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    amendGovernanceRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stableId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    owner: string;
+                    productScopes: ("portal" | "ai" | "robot" | "shared" | "corporate")[];
+                    versionLabel: string;
+                    /** Format: date-time */
+                    reviewDueAt: string | null;
+                    evidenceRefs: string[];
+                    payload: {
+                        /** @enum {string} */
+                        type: "document";
+                        /** @enum {string} */
+                        documentType: "retention_policy" | "processor_register" | "decision_record";
+                        /** @enum {string} */
+                        locale: "en" | "de";
+                        markdown: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "retention";
+                        dataClass: string;
+                        purpose: string;
+                        proposedPeriod: number | null;
+                        periodUnit: string;
+                        expiryTrigger: string;
+                        deletionMethod: string;
+                        exceptions: string;
+                        notes: string;
+                        /** @enum {boolean} */
+                        automaticDeletionEnabled: false;
+                    } | {
+                        /** @enum {string} */
+                        type: "processor";
+                        provider: string;
+                        legalEntity: string | null;
+                        serviceScope: string;
+                        purpose: string;
+                        dataCategories: string[];
+                        relationship: string | null;
+                        accountPlan: string | null;
+                        /** Format: date-time */
+                        planVerifiedAt: string | null;
+                        /** @enum {string} */
+                        planEligibility: "unverified" | "subject_to_terms_review" | "confirmed_eligible" | "ineligible";
+                        businessStage: string | null;
+                        accountIdentifier: string | null;
+                        processingGeography: string | null;
+                        remoteAccess: string | null;
+                        dpaReference: string | null;
+                        termsReference: string | null;
+                        /** @enum {string} */
+                        dpaApplicability: "unverified" | "not_established" | "applicable" | "not_applicable";
+                        dpaAcceptanceEvidence: string | null;
+                        /** Format: date-time */
+                        dpaAcceptedAt: string | null;
+                        subprocessorReference: string | null;
+                        transferAssessment: string | null;
+                        transferMechanism: string | null;
+                        vendorLogging: string | null;
+                        vendorRetention: string | null;
+                        technicalSafeguards: string;
+                        assessmentStage: string;
+                        managementStatement: string;
+                        futurePlan: string | null;
+                        reviewTriggers: string[];
+                        discoveredProviders: {
+                            name: string;
+                            service: string;
+                            accountIdentifier: string | null;
+                            plan: string | null;
+                            evidenceRefs: string[];
+                        }[];
+                    } | {
+                        /** @enum {string} */
+                        type: "decision";
+                        requiredDecision: string;
+                        proposedPosition: string;
+                        itemReferences: string[];
+                        /** @enum {boolean} */
+                        processingEnabled: false;
+                    };
+                    expectedRevision: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        stableId: string;
+                        /** @enum {string} */
+                        kind: "document" | "retention" | "processor" | "decision";
+                        documentId: string | null;
+                        /** @enum {string} */
+                        classification: "INTERNAL";
+                        currentRevision: number;
+                        effectiveRevision: number | null;
+                        archived: boolean;
+                        createdAt: string;
+                        updatedAt: string;
+                        /** Format: date-time */
+                        lastReviewedAt: string | null;
+                        version: {
+                            title: string;
+                            owner: string;
+                            productScopes: ("portal" | "ai" | "robot" | "shared" | "corporate")[];
+                            versionLabel: string;
+                            /** Format: date-time */
+                            reviewDueAt: string | null;
+                            evidenceRefs: string[];
+                            payload: {
+                                /** @enum {string} */
+                                type: "document";
+                                /** @enum {string} */
+                                documentType: "retention_policy" | "processor_register" | "decision_record";
+                                /** @enum {string} */
+                                locale: "en" | "de";
+                                markdown: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "retention";
+                                dataClass: string;
+                                purpose: string;
+                                proposedPeriod: number | null;
+                                periodUnit: string;
+                                expiryTrigger: string;
+                                deletionMethod: string;
+                                exceptions: string;
+                                notes: string;
+                                /** @enum {boolean} */
+                                automaticDeletionEnabled: false;
+                            } | {
+                                /** @enum {string} */
+                                type: "processor";
+                                provider: string;
+                                legalEntity: string | null;
+                                serviceScope: string;
+                                purpose: string;
+                                dataCategories: string[];
+                                relationship: string | null;
+                                accountPlan: string | null;
+                                /** Format: date-time */
+                                planVerifiedAt: string | null;
+                                /** @enum {string} */
+                                planEligibility: "unverified" | "subject_to_terms_review" | "confirmed_eligible" | "ineligible";
+                                businessStage: string | null;
+                                accountIdentifier: string | null;
+                                processingGeography: string | null;
+                                remoteAccess: string | null;
+                                dpaReference: string | null;
+                                termsReference: string | null;
+                                /** @enum {string} */
+                                dpaApplicability: "unverified" | "not_established" | "applicable" | "not_applicable";
+                                dpaAcceptanceEvidence: string | null;
+                                /** Format: date-time */
+                                dpaAcceptedAt: string | null;
+                                subprocessorReference: string | null;
+                                transferAssessment: string | null;
+                                transferMechanism: string | null;
+                                vendorLogging: string | null;
+                                vendorRetention: string | null;
+                                technicalSafeguards: string;
+                                assessmentStage: string;
+                                managementStatement: string;
+                                futurePlan: string | null;
+                                reviewTriggers: string[];
+                                discoveredProviders: {
+                                    name: string;
+                                    service: string;
+                                    accountIdentifier: string | null;
+                                    plan: string | null;
+                                    evidenceRefs: string[];
+                                }[];
+                            } | {
+                                /** @enum {string} */
+                                type: "decision";
+                                requiredDecision: string;
+                                proposedPosition: string;
+                                itemReferences: string[];
+                                /** @enum {boolean} */
+                                processingEnabled: false;
+                            };
+                            recordId: string;
+                            revision: number;
+                            /** @enum {string} */
+                            status: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected";
+                            sourceFingerprint: string;
+                            sourceFile: string | null;
+                            createdBy: string | null;
+                            createdAt: string;
+                            /** Format: date-time */
+                            effectiveAt: string | null;
+                            approvedBy: string | null;
+                            approvedEmail: string | null;
+                            /** @enum {string|null} */
+                            approvedRole: "owner" | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            approvalScope: string | null;
+                            approvalEvidenceRefs: string[] | null;
+                            /** @enum {string} */
+                            displayStatus: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected" | "superseded" | "archived";
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    reviewGovernanceRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stableId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedRevision: number;
+                    /** @enum {string} */
+                    verdict: "pending_review" | "approved" | "needs_changes" | "rejected";
+                    note: string;
+                    scope: string;
+                    evidenceRefs: string[];
+                    /** Format: date-time */
+                    effectiveAt: string | null;
+                    /** Format: date-time */
+                    reviewDueAt: string | null;
+                    stepUp?: {
+                        password: string;
+                        code: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        stableId: string;
+                        /** @enum {string} */
+                        kind: "document" | "retention" | "processor" | "decision";
+                        documentId: string | null;
+                        /** @enum {string} */
+                        classification: "INTERNAL";
+                        currentRevision: number;
+                        effectiveRevision: number | null;
+                        archived: boolean;
+                        createdAt: string;
+                        updatedAt: string;
+                        /** Format: date-time */
+                        lastReviewedAt: string | null;
+                        version: {
+                            title: string;
+                            owner: string;
+                            productScopes: ("portal" | "ai" | "robot" | "shared" | "corporate")[];
+                            versionLabel: string;
+                            /** Format: date-time */
+                            reviewDueAt: string | null;
+                            evidenceRefs: string[];
+                            payload: {
+                                /** @enum {string} */
+                                type: "document";
+                                /** @enum {string} */
+                                documentType: "retention_policy" | "processor_register" | "decision_record";
+                                /** @enum {string} */
+                                locale: "en" | "de";
+                                markdown: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "retention";
+                                dataClass: string;
+                                purpose: string;
+                                proposedPeriod: number | null;
+                                periodUnit: string;
+                                expiryTrigger: string;
+                                deletionMethod: string;
+                                exceptions: string;
+                                notes: string;
+                                /** @enum {boolean} */
+                                automaticDeletionEnabled: false;
+                            } | {
+                                /** @enum {string} */
+                                type: "processor";
+                                provider: string;
+                                legalEntity: string | null;
+                                serviceScope: string;
+                                purpose: string;
+                                dataCategories: string[];
+                                relationship: string | null;
+                                accountPlan: string | null;
+                                /** Format: date-time */
+                                planVerifiedAt: string | null;
+                                /** @enum {string} */
+                                planEligibility: "unverified" | "subject_to_terms_review" | "confirmed_eligible" | "ineligible";
+                                businessStage: string | null;
+                                accountIdentifier: string | null;
+                                processingGeography: string | null;
+                                remoteAccess: string | null;
+                                dpaReference: string | null;
+                                termsReference: string | null;
+                                /** @enum {string} */
+                                dpaApplicability: "unverified" | "not_established" | "applicable" | "not_applicable";
+                                dpaAcceptanceEvidence: string | null;
+                                /** Format: date-time */
+                                dpaAcceptedAt: string | null;
+                                subprocessorReference: string | null;
+                                transferAssessment: string | null;
+                                transferMechanism: string | null;
+                                vendorLogging: string | null;
+                                vendorRetention: string | null;
+                                technicalSafeguards: string;
+                                assessmentStage: string;
+                                managementStatement: string;
+                                futurePlan: string | null;
+                                reviewTriggers: string[];
+                                discoveredProviders: {
+                                    name: string;
+                                    service: string;
+                                    accountIdentifier: string | null;
+                                    plan: string | null;
+                                    evidenceRefs: string[];
+                                }[];
+                            } | {
+                                /** @enum {string} */
+                                type: "decision";
+                                requiredDecision: string;
+                                proposedPosition: string;
+                                itemReferences: string[];
+                                /** @enum {boolean} */
+                                processingEnabled: false;
+                            };
+                            recordId: string;
+                            revision: number;
+                            /** @enum {string} */
+                            status: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected";
+                            sourceFingerprint: string;
+                            sourceFile: string | null;
+                            createdBy: string | null;
+                            createdAt: string;
+                            /** Format: date-time */
+                            effectiveAt: string | null;
+                            approvedBy: string | null;
+                            approvedEmail: string | null;
+                            /** @enum {string|null} */
+                            approvedRole: "owner" | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            approvalScope: string | null;
+                            approvalEvidenceRefs: string[] | null;
+                            /** @enum {string} */
+                            displayStatus: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected" | "superseded" | "archived";
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    archiveGovernanceRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stableId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedRevision: number;
+                    archived: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        stableId: string;
+                        /** @enum {string} */
+                        kind: "document" | "retention" | "processor" | "decision";
+                        documentId: string | null;
+                        /** @enum {string} */
+                        classification: "INTERNAL";
+                        currentRevision: number;
+                        effectiveRevision: number | null;
+                        archived: boolean;
+                        createdAt: string;
+                        updatedAt: string;
+                        /** Format: date-time */
+                        lastReviewedAt: string | null;
+                        version: {
+                            title: string;
+                            owner: string;
+                            productScopes: ("portal" | "ai" | "robot" | "shared" | "corporate")[];
+                            versionLabel: string;
+                            /** Format: date-time */
+                            reviewDueAt: string | null;
+                            evidenceRefs: string[];
+                            payload: {
+                                /** @enum {string} */
+                                type: "document";
+                                /** @enum {string} */
+                                documentType: "retention_policy" | "processor_register" | "decision_record";
+                                /** @enum {string} */
+                                locale: "en" | "de";
+                                markdown: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "retention";
+                                dataClass: string;
+                                purpose: string;
+                                proposedPeriod: number | null;
+                                periodUnit: string;
+                                expiryTrigger: string;
+                                deletionMethod: string;
+                                exceptions: string;
+                                notes: string;
+                                /** @enum {boolean} */
+                                automaticDeletionEnabled: false;
+                            } | {
+                                /** @enum {string} */
+                                type: "processor";
+                                provider: string;
+                                legalEntity: string | null;
+                                serviceScope: string;
+                                purpose: string;
+                                dataCategories: string[];
+                                relationship: string | null;
+                                accountPlan: string | null;
+                                /** Format: date-time */
+                                planVerifiedAt: string | null;
+                                /** @enum {string} */
+                                planEligibility: "unverified" | "subject_to_terms_review" | "confirmed_eligible" | "ineligible";
+                                businessStage: string | null;
+                                accountIdentifier: string | null;
+                                processingGeography: string | null;
+                                remoteAccess: string | null;
+                                dpaReference: string | null;
+                                termsReference: string | null;
+                                /** @enum {string} */
+                                dpaApplicability: "unverified" | "not_established" | "applicable" | "not_applicable";
+                                dpaAcceptanceEvidence: string | null;
+                                /** Format: date-time */
+                                dpaAcceptedAt: string | null;
+                                subprocessorReference: string | null;
+                                transferAssessment: string | null;
+                                transferMechanism: string | null;
+                                vendorLogging: string | null;
+                                vendorRetention: string | null;
+                                technicalSafeguards: string;
+                                assessmentStage: string;
+                                managementStatement: string;
+                                futurePlan: string | null;
+                                reviewTriggers: string[];
+                                discoveredProviders: {
+                                    name: string;
+                                    service: string;
+                                    accountIdentifier: string | null;
+                                    plan: string | null;
+                                    evidenceRefs: string[];
+                                }[];
+                            } | {
+                                /** @enum {string} */
+                                type: "decision";
+                                requiredDecision: string;
+                                proposedPosition: string;
+                                itemReferences: string[];
+                                /** @enum {boolean} */
+                                processingEnabled: false;
+                            };
+                            recordId: string;
+                            revision: number;
+                            /** @enum {string} */
+                            status: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected";
+                            sourceFingerprint: string;
+                            sourceFile: string | null;
+                            createdBy: string | null;
+                            createdAt: string;
+                            /** Format: date-time */
+                            effectiveAt: string | null;
+                            approvedBy: string | null;
+                            approvedEmail: string | null;
+                            /** @enum {string|null} */
+                            approvedRole: "owner" | null;
+                            /** Format: date-time */
+                            approvedAt: string | null;
+                            approvalScope: string | null;
+                            approvalEvidenceRefs: string[] | null;
+                            /** @enum {string} */
+                            displayStatus: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected" | "superseded" | "archived";
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    governanceReviewEvents: {
+        parameters: {
+            query?: {
+                stableId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            id: number;
+                            recordId: string;
+                            revision: number;
+                            actorId: string | null;
+                            actorEmail: string | null;
+                            actorRole: string | null;
+                            action: string;
+                            note: string;
+                            scope: string;
+                            evidenceRefs: string[];
+                            createdAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    downloadGovernancePdf: {
+        parameters: {
+            query?: {
+                revision?: number;
+            };
+            header?: never;
+            path: {
+                stableId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": {
                         error: {
                             code: string;
                             message: string;
