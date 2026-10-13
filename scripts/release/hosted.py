@@ -583,9 +583,12 @@ def production():
         application = os.environ["APPLICATION"]
         smoke_origin = None
         if application in {"both", "backend"}:
-            for unit in (
-                ["backend", "worker"] if PRODUCT.endswith("portal") else ["backend"]
-            ):
+            # Oracle execution is qualified separately through owner-hosted receipts.
+            # Render can prove only the API deployment, never the worker's health.
+            if PRODUCT.endswith("portal"):
+                result["checks"]["oracle_worker"] = "BLOCKED"
+                result["oracle_worker_evidence"] = "Verify the managed Oracle worker through the external production release path"
+            for unit in ["backend"]:
                 receipt, origin = github.artifact(
                     current, "production-" + unit + "-deployment"
                 )

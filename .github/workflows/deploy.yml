@@ -74,11 +74,10 @@ jobs:
     needs:
     - verify
     - backend
-    - worker
     if: ${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor
       == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository
       && github.event.pull_request.user.login == 'DruHustle')) && (always() && needs.verify.result == 'success' && (inputs.application
-      == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success' && needs.worker.result == 'success'))))
+      == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success'))))
       && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production')
       }}
     runs-on: ubuntu-latest
@@ -209,76 +208,16 @@ jobs:
         retention-days: 7
         if-no-files-found: error
     environment: Production
-  worker:
-    name: deploy-worker
-    needs:
-    - verify
-    - backend
-    if: ${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor
-      == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository
-      && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application ==
-      'both')) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production')
-      }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    env:
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
-      GH_TOKEN: ${{ github.token }}
-    steps:
-    - name: Verify GitHub-hosted execution and actual visibility
-      env:
-        GH_TOKEN: ${{ github.token }}
-        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
-      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
-
-        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
-
-        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Repository visibility changed; start fresh validation''; exit 1;
-        }
-
-        '
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        persist-credentials: false
-    - name: Revalidate approval before provider changes
-      if: inputs.approval_run != ''
-      env:
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-        GH_TOKEN: ${{ github.token }}
-        APPROVAL_RUN: ${{ inputs.approval_run }}
-        STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
-        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      run: 'python3 scripts/release/evidence.py promote --output "$RUNNER_TEMP/promotion/record.json"
-
-        python3 scripts/release/hosted.py recheck --evidence "$RUNNER_TEMP/promotion/record.json"'
-    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-      with:
-        python-version: '3.11'
-    - run: python scripts/deploy_render.py
-      env:
-        RENDER_RECEIPT_PATH: ${{ runner.temp }}/render/record.json
-    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-      if: inputs.approval_run != '' && success()
-      with:
-        name: production-worker-deployment
-        path: ${{ runner.temp }}/render/record.json
-        retention-days: 7
-        if-no-files-found: error
-    environment: Production
   post-deployment:
     if: ${{ github.event.repository.private == false && ((always() && (inputs.approval_run != '' && needs.verify.result ==
       'success' && (inputs.application == 'frontend' && needs.frontend.result == 'success' || inputs.application == 'backend'
-      && needs.backend.result == 'success' && needs.worker.result == 'success' || inputs.application == 'both' && needs.frontend.result
-      == 'success' && needs.backend.result == 'success' && needs.worker.result == 'success'))) && github.repository == 'DruHustle/onesa-company-portal'
+      && needs.backend.result == 'success' || inputs.application == 'both' && needs.frontend.result
+      == 'success' && needs.backend.result == 'success'))) && github.repository == 'DruHustle/onesa-company-portal'
       && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production') }}
     needs:
     - verify
     - frontend
     - backend
-    - worker
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -287,7 +226,6 @@ jobs:
       APPLICATION: ${{ inputs.application }}
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_BACKEND_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
-      RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

@@ -199,12 +199,11 @@ class HostingInspectionTests(unittest.TestCase):
             "os.environ",
             {
                 "RENDER_BACKEND_SERVICE_ID": "srv-productionapi",
-                "RENDER_WORKER_SERVICE_ID": "srv-productionworker",
             },
         ):
             self.assertEqual(
                 inspect_hosting.portal_services("production"),
-                ("srv-productionapi", "srv-productionworker"),
+                ("srv-productionapi", ""),
             )
             self.assertEqual(
                 inspect_hosting.portal_services("staging"),

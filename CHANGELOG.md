@@ -1,9 +1,12 @@
 # Changelog
 
+## 2026-10-13 — Retire duplicate production worker deployment
+
+Remove the legacy Render worker job, secret references and hosting-repair target after Oracle production scanning, bounded retries and managed restart qualified. Keep the API deployment separate from external Oracle execution evidence; Render success alone cannot pass the worker gate. Preserve the shared production database, private storage and protected intake settings.
+
 ## 2026-10-13 — Protected privacy governance
 
 Extend the existing Portal CMS with INTERNAL draft documents, structured retention/processor/decision records, insert-only imports, immutable approved revisions and append-only reviews. Add protected owner/admin navigation, formatted documents, private PDFs, search/filter/history/compare and fresh-MFA owner approval. Record Hobby as the current management preference with a future Pro/Enterprise DPA reference; leave policy, contract and publication decisions unapproved. Disable provisional business-data TTL deletion.
-
 
 ## 2026-10-13 — Keep compiler updates compatible
 
@@ -27,13 +30,11 @@ Remove the repeated address, email and telephone block from the English and Germ
 - Add owner-host independent restoration, private aggregate monitoring and nine controlled failure simulations; retain production worker cutover gates until hosted checks pass.
 - Record the real DMARC repair and delivered mail checks, and the measured 15-minute synthetic staging scan/queue workload.
 
-
 ## 2026-10-13 — Oracle production preparation and qualification
 
 - Added an isolated production worker profile that reuses the private ClamAV socket without duplicating the scanner.
 - Added strict production database/bucket/credential isolation checks, private configuration installation and bounded synthetic scan/quarantine/queue qualification.
 - Added CI tests for production binding and secret-isolation failure paths; full production release and real-document processing remain gated.
-
 
 - Added a single-notification production Resend acceptance check; use sending-only credentials without falsely treating provider acceptance as inbox delivery.
 - Kept service identifiers distinct from credential identifiers so the full secret scanner passes without an exemption.
@@ -127,7 +128,6 @@ socket, signature-freshness and resource controls. Keep the full vulnerability a
 secret gate enforced for CI and actual native hosted images; no vendor findings
 are suppressed and no failed candidate is deployed.
 
-
 ## 2026-10-12 — Private ARM64 executor and automatic day/night
 
 Prepare the existing Portal executor for an owner-provisioned ARM64 staging VM,
@@ -141,6 +141,22 @@ Restore automatic visitor-time day/night without a selector or manual preference
 retaining CSP nonces and testing both appearances. No production promotion or
 hosted scan qualification is implied by local tests or VM runtime installation.
 
+## 2026-10-12 — Oracle OCI worker provisioning
+
+Prepare a standalone, read-only-by-default local CLI/Cloud Shell script for the owner-selected
+Always Free worker VM: official Ubuntu ARM64, A1 Flex, 1 OCPU, 6 GB RAM and 50 GB
+boot storage. Check home-region identity, tenancy-wide allocations and reported
+monthly A1 usage before creation. Restrict SSH to the Mac's public `/32`, preserve
+conflicting resources, and retry only explicit capacity failures across home-region
+availability domains. Save the created OCID immediately and report configuration
+success only after remote readback. With explicit owner approval, resize BaSyx to
+1 OCPU/6 GB, verify it returns to RUNNING with identity/network/storage preserved,
+and create the separate 1 OCPU/6 GB/50 GB Ubuntu 24.04 ARM64 worker in Frankfurt
+AD-2. Correct the CLI's required top-level subnet field and Ubuntu socket-activated
+SSH bootstrap handling. Provider resource/network readback, SSH and reboot recovery
+pass; cloud-init reports done and the security-update timer is active. The private
+receipt records these checks. Offline safety tests pass. Actual
+Portal worker/scanner deployment and hosted acceptance remain pending.
 
 ## 2026-10-12 — Explicit hosted scanner diagnostics
 
