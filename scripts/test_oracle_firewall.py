@@ -70,6 +70,19 @@ class SourceValidation(unittest.TestCase):
             with self.assertRaises(OSError):
                 sources.read_sources(link)
 
+    def test_fifo_is_rejected_without_waiting_for_a_writer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sources"
+            os.mkfifo(path, 0o600)
+            with self.assertRaises(ValueError):
+                sources.read_sources(path)
+
+    def test_invalid_content_is_not_copied_into_validation_errors(self):
+        sentinel = "synthetic-private-value-not-an-address"
+        with self.assertRaises(ValueError) as error:
+            sources.normalize([sentinel])
+        self.assertNotIn(sentinel, str(error.exception))
+
 
 class FirewallCommands(unittest.TestCase):
     def execute(self, content, mode=0o600):

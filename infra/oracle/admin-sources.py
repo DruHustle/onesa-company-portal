@@ -10,7 +10,10 @@ import stat
 def normalize(values):
     sources = []
     for value in values:
-        network = ipaddress.ip_network(value, strict=True)
+        try:
+            network = ipaddress.ip_network(value, strict=True)
+        except ValueError:
+            raise ValueError("Administrative sources must be public IPv4 /32 addresses") from None
         if network.version != 4 or network.prefixlen != 32 or not network.network_address.is_global:
             raise ValueError("Administrative sources must be public IPv4 /32 addresses")
         source = str(network)
@@ -22,7 +25,7 @@ def normalize(values):
 
 
 def read_sources(path):
-    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     with os.fdopen(descriptor) as stream:
         metadata = os.fstat(stream.fileno())
         if metadata.st_uid != 0 or not stat.S_ISREG(metadata.st_mode) or stat.S_IMODE(metadata.st_mode) != 0o600:
