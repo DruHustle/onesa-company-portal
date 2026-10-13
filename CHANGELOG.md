@@ -7,6 +7,8 @@
 - Added CI tests for production binding and secret-isolation failure paths; full production release and real-document processing remain gated.
 
 
+- Added a single-notification production Resend acceptance check; use sending-only credentials without falsely treating provider acceptance as inbox delivery.
+- Kept service identifiers distinct from credential identifiers so the full secret scanner passes without an exemption.
 
 ## 2026-10-13 — Retire editable local release approvals
 

@@ -10,7 +10,7 @@ import oracle_production as production
 class ProductionBindingGuards(unittest.TestCase):
     def setUp(self):
         self.service = {
-            "id": production.API,
+            "id": production.SERVICE,
             "branch": "main",
             "autoDeployTrigger": "off",
             "repo": "https://github.com/DruHustle/onesa-company-portal",
@@ -81,7 +81,7 @@ class ProductionBindingGuards(unittest.TestCase):
 
     def test_wrong_service_branch_or_auto_deploy_never_passes(self):
         for key, value in [
-            ("id", production.STAGING_API),
+            ("id", production.STAGING_SERVICE),
             ("branch", "staging"),
             ("autoDeployTrigger", "commit"),
             ("repo", "https://github.com/other/repo"),
@@ -125,7 +125,7 @@ class ProductionBindingGuards(unittest.TestCase):
         selected = production.legacy_mail_profile(service, mail, self.staging)
         self.assertNotIn("UNUSED_SETTING", selected)
         for target, values, staging in [
-            ({**service, "id": production.STAGING_API}, mail, self.staging),
+            ({**service, "id": production.STAGING_SERVICE}, mail, self.staging),
             (service, {**mail, "RESEND_API_KEY": ""}, self.staging),
             (service, mail, {"RESEND_API_KEY": mail["RESEND_API_KEY"]}),
         ]:

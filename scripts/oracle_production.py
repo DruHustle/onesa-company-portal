@@ -17,8 +17,8 @@ from urllib.parse import parse_qs, urlsplit
 
 import oracle_worker as worker
 
-API = "srv-db4j1igm7kps73c13s4g"
-STAGING_API = "srv-db5k5had0e5s73fos4g0"
+SERVICE = "srv-db4j1igm7kps73c13s4g"
+STAGING_SERVICE = "srv-db5k5had0e5s73fos4g0"
 LEGACY_WORKER = "srv-db4jar7avr4c73ffcvpg"
 DATABASE_HOST = "ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech"
 BUCKET_HOST = "br-red-morning-b9d1sxnz.storage.c-7.eu-central-1.aws.neon.tech"
@@ -84,7 +84,7 @@ def inventory(entries):
 
 def production_values(service, values, staging):
     worker.require(
-        service.get("id") == API
+        service.get("id") == SERVICE
         and service.get("branch") == "main"
         and service.get("repo", "").removesuffix(".git")
         == "https://github.com/DruHustle/onesa-company-portal"
@@ -232,15 +232,15 @@ def prepare(sha, *, github=None, call=provider, reuse_production_mail=False):
         and build.get("action") == "prepare",
         "Exact ARM64 image/security preparation required",
     )
-    service = call("services/" + API)
-    values = inventory(call("services/" + API + "/env-vars?limit=100"))
-    staging = inventory(call("services/" + STAGING_API + "/env-vars?limit=100"))
+    service = call("services/" + SERVICE)
+    values = inventory(call("services/" + SERVICE + "/env-vars?limit=100"))
+    staging = inventory(call("services/" + STAGING_SERVICE + "/env-vars?limit=100"))
     selected = production_values(service, values, staging)
     previous = dict(selected)
     if reuse_production_mail:
         worker.require(
             not selected.get("SMTP_HOST") and not selected.get("RESEND_API_KEY"),
-            "Preserve already configured API mail profile",
+            "Preserve already configured SERVICE mail profile",
         )
         mail = legacy_mail_profile(
             call("services/" + LEGACY_WORKER),
@@ -480,10 +480,43 @@ def recover(sha, *, github=None):
     return record
 
 
+def mail(sha, *, github=None):
+    refs = worker.qualified_source(sha, github or worker.evidence.GitHub())
+    qualification = json.loads(
+        (worker.PRIVATE / "production-synthetic-qualification.json").read_text()
+    )
+    worker.require(
+        qualification.get("commit") == sha
+        and qualification.get("checks", {}).get("passed") is True,
+        "Matching successful bounded runtime qualification required",
+    )
+    output = run(
+        container(sha),
+        data=(worker.ROOT / "scripts/oracle_production_mail.mjs").read_bytes(),
+        timeout=120,
+    )
+    checks = json.loads(output.decode().splitlines()[-1])
+    worker.require(
+        checks.get("passed") is True and checks.get("run_owned_job_removed") is True,
+        "Production provider acceptance incomplete",
+    )
+    record = {
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+        "commit": sha,
+        "source_checks": refs,
+        "checks": checks,
+        "production_release_qualified": False,
+    }
+    path = worker.PRIVATE / "production-mail-qualification.json"
+    path.write_text(json.dumps(record, indent=2) + "\n")
+    path.chmod(0o600)
+    return record
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--action", choices=["prepare", "qualify", "recover"], default="prepare"
+        "--action", choices=["prepare", "qualify", "recover", "mail"], default="prepare"
     )
     parser.add_argument("--reuse-production-mail", action="store_true")
     parser.add_argument("--commit", required=True)
@@ -499,8 +532,10 @@ def main():
             )
         elif args.action == "qualify":
             record = qualify(args.commit)
-        else:
+        elif args.action == "recover":
             record = recover(args.commit)
+        else:
+            record = mail(args.commit)
         print(json.dumps(record))
     except (ValueError, KeyError, OSError, subprocess.SubprocessError):
         print(

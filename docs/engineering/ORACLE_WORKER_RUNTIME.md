@@ -146,6 +146,15 @@ resource sample and checks graceful shutdown/OOM state before removing it. It ch
 Docker boot activation and the restart policy; it does not reboot the shared VM or
 claim sustained production capacity. No permanent production service is enabled.
 
+`--action mail` sends exactly one synthetic qualification notification to the
+approved company inbox `info@onesa.eu` through the real encrypted queue and existing
+production Resend profile. It observes provider acceptance from that Oracle process,
+checks an accepted job is not repeated and removes its own queue row. The application
+credential may be sending-only: HTTP 401/403 when querying the delivery receipt is
+not evidence that the accepted send failed. Record provider acceptance separately
+from inbox delivery; confirm the actual delivery event or owner inbox receipt before
+marking delivery verified. Repeating this command creates a new test notification.
+
 The existing `repair-hosting.yml` owner action `inspect-role` reads the production
 Render runtime binding and tests its actual login using read-only transactions. It
 does not use `PORTAL_MIGRATION_DATABASE_URL`, apply migrations, change roles or update
