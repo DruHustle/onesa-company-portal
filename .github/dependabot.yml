@@ -2,6 +2,7 @@ version: 2
 updates:
 - package-ecosystem: github-actions
   directory: /
+  target-branch: dev
   schedule:
     interval: monthly
   open-pull-requests-limit: 2
@@ -17,6 +18,7 @@ updates:
     default-days: 7
 - package-ecosystem: npm
   directory: /onesa-company-portal-backend
+  target-branch: dev
   schedule:
     interval: monthly
   open-pull-requests-limit: 2
@@ -32,6 +34,12 @@ updates:
     default-days: 7
 - package-ecosystem: npm
   directory: /onesa-company-portal-frontend
+  target-branch: dev
+  # Upgrade the compiler together with its API generator and lint peers.
+  ignore:
+  - dependency-name: typescript
+    update-types:
+    - version-update:semver-major
   schedule:
     interval: monthly
   open-pull-requests-limit: 2

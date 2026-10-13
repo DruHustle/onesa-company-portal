@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-13 — Keep compiler updates compatible
+
+Retain TypeScript 5.9.3 after the incompatible TypeScript 7.0.2 Dependabot preview failed peer resolution. Route version updates through dev and ignore compiler major updates until API generation and lint peers support them. Align the frontend lockfile Node requirement with its manifest; retain strict npm installation and security checks.
+
 ## 2026-10-13 — Align browser acceptance and identify alert transport
 
 Keep company particulars required on legal/privacy pages and the footer while checking their removal from Contact. Identify the private operations HTTP client for the provider; delivery remains unverified until a real alert receipt succeeds.
