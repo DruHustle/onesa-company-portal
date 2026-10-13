@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-13 — Encrypted scheduled recovery and private operations monitoring
+
+- Prepare hourly off-instance database/object backups with seven-day archive retention, authenticated envelope encryption and separately encrypted key escrow.
+- Add owner-host independent restoration, private aggregate monitoring and nine controlled failure simulations; retain production worker cutover gates until hosted checks pass.
+- Record the real DMARC repair and delivered mail checks, and the measured 15-minute synthetic staging scan/queue workload.
+
+
 ## 2026-10-13 — Oracle production preparation and qualification
 
 - Added an isolated production worker profile that reuses the private ClamAV socket without duplicating the scanner.

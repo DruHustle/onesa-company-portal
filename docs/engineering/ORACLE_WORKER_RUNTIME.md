@@ -327,3 +327,85 @@ not be used by fixture or worker activation guards. Historical tests on it were 
 but do not qualify the corrected staging binding. Jobs remain stopped until fresh
 bucket provenance/isolation and exact-source qualification pass. Production uses the
 separate morning-mode project/dark-boat endpoint; no production worker is activated.
+
+## Scheduled production recovery and monitoring
+
+`scripts/oracle_operations.py install --commit <qualified-staging-SHA>` checks live
+CI/hygiene and identical qualified backend/scanner trees before installing operations
+on the existing VM. It does not start the production worker. The default schedule is
+hourly with seven-day retention; only expired archives inside the dedicated
+`.onesa-portal-backups/v1/` prefix are eligible for removal. Key escrow objects are
+retained separately and are never deleted by archive retention. No new bucket, VM,
+paid service or public monitoring port is introduced.
+
+The root-only backup service exports a PostgreSQL read-only consistent snapshot and
+captures table counts/content hashes, the custom-format dump and associated file
+objects. Each file's size/hash must match the snapshot. Missing or changed objects
+fail the backup; none is silently omitted. Backups currently support at most 1,000
+objects and 64 MiB of combined source bytes. Exceeding a bound produces a failure
+alert and requires reviewed streaming/archive capacity work before increasing it.
+The cadence describes the configured recovery target, not guaranteed RPO or RTO.
+
+Each archive uses a random AES-256-GCM key, authenticated metadata and an RSA-3072
+OAEP SHA-256 wrapped key. Only the public RSA key is installed on Oracle. The private
+key stays on the owner host and is escrowed off instance after encryption with the
+existing owner-held AES recovery master. The backup includes the application
+SESSION_KEY inside the encrypted payload, so encrypted outbox data remains
+recoverable. Dumps, object bytes, credentials and plaintext keys are never logged.
+
+`scripts/oracle_recovery.py --commit <qualified-staging-SHA>` retrieves the encrypted
+archive and key escrow directly from the existing private storage provider using
+authorized owner access. It recovers the RSA key using the owner-held master without
+reading the original private-key file or contacting Oracle, rejects tampering,
+restores PostgreSQL in a disposable local container with no network/public ports,
+compares every table hash/count, restores associated objects into a private temporary
+directory and checks the recovered SESSION_KEY. Only its own container/files are
+removed. Installation includes one run-owned synthetic PDF/database fixture to make
+object recovery observable; that source fixture is removed after backup execution.
+
+Keep the recovery master and private key mode 0600 in the ignored private directory.
+An independent secure offline copy of the master is required for recovery after loss
+of the owner machine; the encrypted escrow alone cannot recover a lost master.
+For key rotation, create a new RSA pair/ID, escrow it using the retained master,
+verify a new archive and independent restore, then replace the VM's public key.
+Preserve old private keys/escrows/master until every dependent archive has expired.
+Never overwrite the sole master or claim a lost master can be reconstructed.
+The current backup prefix shares the existing storage provider and credential scope;
+this does not establish immutable storage or an independent-provider disaster copy.
+
+The monitor samples aggregate database/queue state, private scanner health/signature
+freshness, Docker health/restart counts, disk usage, available memory and backup
+execution state every minute. It covers worker stopped, exhausted job retries,
+stalled queue, ClamAV unavailable, signature updates failed, backup failure, resource
+pressure, database unavailable and unexpected worker restart. Notifications use the
+existing sending-only Resend credential and approved NOTIFY_EMAIL, with a 30-minute
+cooldown. Production-worker absence is not an incident before cutover; activate that
+specific expectation only when the managed production worker is enabled.
+
+`scripts/oracle_operations.py simulate --commit <qualified-staging-SHA>` injects all
+nine metric failures into an isolated evaluation and sends one explicitly labelled
+synthetic alert. It never stops services, fills disks, changes queues or disconnects
+databases. Preserve the actual samples, rule evaluations, provider receipt and
+recipient delivery evidence. A notification accepted by Resend is not a delivered
+alert, and simulated metrics do not prove actual destructive failures occurred.
+
+These services are prepared until exact-source CI, real execution, independent
+DB/object/key restoration, timer readback and recipient delivery have passed.
+Their receipts live under `private/oracle/worker/`; do not publish secrets or raw logs.
+
+## Measured synthetic staging capacity
+
+On 2026-10-13, a 901-second workload processed 150 synthetic 256 KiB PDFs in 30
+batches of five through actual private object storage and ClamAV. Queue latency was
+465 ms p50, 779 ms p95 and 1,205 ms maximum; the final direct benign scan took 3 ms.
+Twenty-eight samples per container measured peak memory of approximately 50.9 MiB
+for the driver, 41.7 MiB for the existing worker and 946.6 MiB for ClamAV. Observed
+peak Docker CPU percentages were 6.70%, 3.74% and 2.61%, respectively. All run-owned
+objects, users and file/audit records were removed. These are sample peaks, not
+continuous CPU averages or a production throughput guarantee.
+
+Keep five-file batches, sequential scanning, 10 MiB per-document limits and private
+quarantine during failures. The test used the staging Compose resource allocation;
+the separately limited production profile still needs its own observation after
+controlled cutover. Fifteen minutes does not establish multi-day reliability,
+maximum saturation throughput or a verified disk/memory exhaustion event.
