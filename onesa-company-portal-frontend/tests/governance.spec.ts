@@ -1,10 +1,10 @@
-import {test,expect} from '@playwright/test';
+import {expect} from '@playwright/test';
+import {test,db} from './database';
 import AxeBuilder from '@axe-core/playwright';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {governanceSeed} from '../../onesa-company-portal-backend/tests/governance-fixture';
 if(!process.env.TEST_DATABASE_URL||!new URL(process.env.TEST_DATABASE_URL).pathname.endsWith('_test'))throw new Error('Governance browsers require an isolated _test database');
 process.env.DATABASE_URL=process.env.TEST_DATABASE_URL;
-const {db}=await import('../../onesa-company-portal-backend/src/services/db');
 const {hash,passwordHash,encrypt}=await import('../../onesa-company-portal-backend/src/auth/crypto');
 const {importGovernance}=await import('../../onesa-company-portal-backend/src/governance/import');
 const password=randomBytes(32).toString('hex'),email=`governance-${randomUUID()}@example.invalid`,ownerId=randomUUID();
@@ -14,7 +14,7 @@ test.beforeAll(async()=>{
  await db.query('DELETE FROM rate_limits');
  await db.query('INSERT INTO users(id,email,password_hash,role,mfa_secret) VALUES($1,$2,$3,$4,$5)',[ownerId,email,passwordHash(password),'owner',encrypt('JBSWY3DPEHPK3PXP')]);
 });
-test.afterAll(async()=>{await db.query('TRUNCATE governance_events,governance_versions,governance_records CASCADE');await db.query('DELETE FROM audit WHERE actor_id=$1',[ownerId]);await db.query('DELETE FROM users WHERE id=$1',[ownerId]);await db.end();});
+test.afterAll(async()=>{await db.query('TRUNCATE governance_events,governance_versions,governance_records CASCADE');await db.query('DELETE FROM audit WHERE actor_id=$1',[ownerId]);await db.query('DELETE FROM users WHERE id=$1',[ownerId]);});
 async function recovery(){const code=randomUUID();await db.query('INSERT INTO mfa_recovery(user_id,code_hash) VALUES($1,$2)',[ownerId,hash(code)]);return code;}
 async function login(page:import('@playwright/test').Page){
  await page.goto('/admin#privacy/overview');
