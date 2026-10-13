@@ -9,7 +9,7 @@ const text=(max=4000)=>z.string().max(max).refine(value=>!/[\u0000-\u0008\u000b\
 export const reference=text(2000).min(1).refine(value=>{
  if(/(?:bearer\s+[a-z0-9._-]{20,}|\b(?:ghp_|github_pat_|sk_live_)[a-z0-9_]+|\b(?:password|api[_-]?key|secret|token)\s*[=:]\s*\S+)/i.test(value))return false;
  if(!/^[a-z][a-z0-9+.-]*:/i.test(value))return !value.includes('..');
- try{const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password&&![...url.searchParams.keys()].some(key=>/token|secret|password|api.?key|bypass/i.test(key));}catch{return false;}
+ try{const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password&&![...url.searchParams.keys()].some(key=>/token|secret|password|api.?key|bypass|signature|credential|access.?key|authorization|(^|_)sig($|_)|(^|_)code($|_)/i.test(key));}catch{return false;}
 },'Use a non-secret HTTPS URL or internal record path');
 const nullableText=text().nullable();
 const date=z.string().datetime().nullable();

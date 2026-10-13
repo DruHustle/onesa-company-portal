@@ -2,7 +2,7 @@
 import {Fragment} from 'react';
 
 export function evidenceHref(value:string){
- try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&![...u.searchParams.keys()].some(k=>/secret|token|password|api.?key|bypass/i.test(k))?u.href:null;}catch{return null;}
+ try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&![...u.searchParams.keys()].some(k=>/secret|token|password|api.?key|bypass|signature|credential|access.?key|authorization|(^|_)sig($|_)|(^|_)code($|_)/i.test(k))?u.href:null;}catch{return null;}
 }
 export function EvidenceLink({value}:{value:string}){const href=evidenceHref(value);return href?<a href={href} target="_blank" rel="noopener noreferrer">{value}</a>:<span>{value}</span>;}
 function Inline({text}:{text:string}){
