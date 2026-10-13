@@ -31,12 +31,11 @@ AI route duration is 150 seconds for bounded streamed generation; verify plan li
 
 ## Render
 
-`render.yaml` configures Docker services with app-only build contexts, private
-PostgreSQL, Frankfurt region, readiness checks and disabled native auto-deploys. Templates
-use paid always-on resources: review actual pricing/capacity before applying. No
-resources or charges are created by storing this file. Databases disable public IP
-access by default; allow only an approved temporary operator address if external
-migration access is needed, and remove it afterwards.
+`render.yaml` references the existing Free Docker API with its independent app
+context, Frankfurt region, readiness check and native auto-deploy disabled. It contains
+no managed database or Render worker declaration. Reuse the verified Neon project and
+private Oracle runtime; do not create duplicate services or regenerate credentials.
+Saving this reference is not a provider deployment or production qualification.
 
 Create/provision database schema with a separate migration-owner identity; then supply
 only a restricted application URL in Render's secret environment settings. Do not use
@@ -162,57 +161,52 @@ identity must match before any update. This does not deploy or migrate the datab
 missing database/model credentials and qualification remain explicit blockers.
 
 
-## Current Portal deployment gate
+## Verified Portal database targets — 2026-10-12
 
-The reviewed Dockerfile CMD and restricted-role/schema readiness tests pass in CI.
-The owner confirmed autumn-glade after the original migration identity check failed;
-read-only inspection verified its empty public schema and authenticated TLS. Render
-still targets dark-boat. Never substitute AI credentials or bypass either target
-guard. `repair-hosting.yml` separates original role repair from confirmed empty-target
-initialization; neither operation qualifies a release. The frontend also needs
-server-only BACKEND_URL and PROXY_SHARED_KEY, and the configured worker ID must be
-replaced by a verified worker target. No successful Portal rollout is claimed.
+The owner-authenticated Neon inventory in organization `org-rapid-flower-72785494`
+identifies these existing projects. The owner's convention is a `-staging` suffix
+on the **project** name; the default branch inside that project may be named `production`.
 
-## Owner-confirmed alternate Portal endpoint
+| Scope | Project | Branch | SQL endpoint |
+| --- | --- | --- | --- |
+| Production | `morning-mode-04948381` / `onesa-ai-company-portal-backend-db` | `br-red-morning-b9d1sxnz` | `ep-dark-boat-b91lg22g` |
+| Staging | `gentle-mud-16323345` / `onesa-ai-company-portal-backend-db-staging` | `br-little-boat-b9fg0rqq` | `ep-morning-shadow-b9jkzgsz` |
 
-On 2026-10-11 the owner identified direct endpoint `ep-autumn-glade-b9760olg.c-7.eu-central-1.aws.neon.tech`, database `neondb`. The Render runtime was previously verified against the separate `dark-boat` endpoint. Do not replace the runtime URL or broaden permission-repair identity checks merely because a new endpoint was supplied.
+Both use `neondb` and Frankfurt `c-7.eu-central-1.aws.neon.tech`. Runtime connections
+use the pooled endpoint, certificate-verified TLS and restricted `onesa_portal_app`.
+Owner migration credentials must target the same scope directly. Never substitute
+`summer-rain-37989301` / the non-staging migrations project (`ep-autumn-glade-b9760olg`)
+for staging. Preserve that historical database and its records; do not copy its data.
 
-Use `repair-hosting.yml` on `audit/portal-master-acceptance` with `portal_action=inspect-confirmed-target` to inspect only the confirmed direct migration secret, TLS and Portal schema in a read-only transaction. It reports an empty, mismatched or verified Portal schema and whether application rows exist without returning records or credentials. It reads the existing provider identity but does not connect to its database, change settings, migrate, provision roles or deploy. Database reconciliation/cutover and backup requirements depend on the actual inventory; an empty replacement must not silently discard existing Portal records.
+Fresh read-only SQL found both approved runtime projects empty and using elevated
+owner logins. The corrected staging target was initialized with seven unchanged,
+CI-qualified migrations and a new staging-only restricted role, preserving existing
+roles/data/passwords. Its actual TLS, login, checksums and zero operational rows were
+verified from Oracle. Only staging Render `DATABASE_URL` and the root-owned Oracle
+staging configuration were rebound. No production configuration/data was changed.
+Private credentials and factual receipts remain under `private/oracle/worker`.
 
-TLS inspection uses the established client socket encrypted/authorized state; server-side pg_stat_ssl does not qualify the client-to-proxy connection. See [Node TLS socket verification](https://nodejs.org/api/tls.html#tlssocketauthorized).
+`repair-hosting.yml` keeps inspection read-only. A repair or empty-target initializer
+must run on its allowed branch with complete exact-source CI/hygiene. Initialization
+requires a privately saved dedicated application password and refuses existing public
+objects or application roles. It is transactional and never resets credentials.
+The production initializer now rejects the obsolete alternate migration project;
+production remains uninitialized and must pass the actual release/operations gates.
+Use `dev → staging → main`; do not recreate historical audit branches.
 
-### Initialize the confirmed empty target without cutting over
+ClamAV remains private to Oracle through `CLAMAV_SOCKET=/run/onesa-scanner/clamd.sock`.
+Leave `CLAMAV_HOST` and `CLAMAV_PORT` unset in Render; uploads remain quarantined until
+the qualified Oracle executor scans them. Legacy Render worker auto-deployments are
+off. The failed staging worker is suspended; the production worker is retained until
+Oracle production qualification succeeds. Do not add credentials to the obsolete
+staging web service or introduce duplicate job executors.
 
-The owner reported no records to migrate after the read-only inspection. Save a
-fresh dedicated 48-byte base64url application password as repository Actions secret
-`PORTAL_APP_DB_PASSWORD` before creating the role. It is separate from the owner
-credential in `PORTAL_MIGRATION_DATABASE_URL`; neither value belongs in Git, chat,
-workflow inputs or frontend configuration. The workflow consumes secrets privately.
-
-After `verify.yml` and `repository-hygiene.yml` pass on the exact audit revision:
-
-```sh
-gh workflow run repair-hosting.yml --ref audit/portal-master-acceptance \
-  -f portal_action=initialize-confirmed-target
-```
-
-The action verifies the confirmed direct host, database name and actual TLS socket,
-then locks and rechecks the public schema and role. It refuses any existing public
-objects or application role; no password reset or data replacement occurs. All seven
-unchanged migrations and restricted role grants commit in one transaction. It then
-verifies the actual restricted login, schema checksums and application permissions.
-Rerunning initialization against a populated schema refuses changes; use read-only
-inspection to review the initialized state. Default facts remain unverified and
-legal/brand approval settings remain false; no user accounts or company records are
-seeded. The existing dark-boat database is neither connected to nor altered.
-
-Render's API/worker `DATABASE_URL` remains unchanged. Its future server-only runtime
-URL must use the confirmed target's pooled endpoint, database `neondb`, restricted
-user `onesa_portal_app`, this privately stored application password and provider TLS
-parameters. Apply configuration only through a reviewed cutover operation paired
-with the qualified source revision. Preserve dark-boat for rollback review; never
-reuse the migration owner login in a runtime service. Initialization does not close
-storage, credential rotation, worker, frontend, backup, legal or deployment gates.
+Database initialization/configuration is distinct from deployment acceptance. Recheck
+all bucket objects against synthetic provenance before enabling staging jobs, rerun
+protected hosted acceptance on the corrected binding, and verify backups/restores,
+mail delivery, monitoring, legal/privacy processing and production role/storage scope.
+Client TLS is qualified by the actual encrypted/authorized socket, not Neon’s separate
+proxy-to-database `pg_stat_ssl` hop.
 
 ## Automated qualification migration
 

@@ -1,6 +1,8 @@
 import {randomUUID} from 'node:crypto';
 import {seedTemplates} from './workflows.js';
 import {db,transaction} from './db.js';
+import {synchronizeApprovedCompany} from './company-publication.js';
+await transaction(synchronizeApprovedCompany);
 await seedTemplates();
 for(const [locale,title,summary,body] of [
  ['en','Onesa AI Platform','A modular AI platform for Chat, Knowledge, Agents and Travel.','The sibling repository implements Chat, Knowledge/RAG, Agents and Travel interfaces, configurable open-weight serving and developer API routes. Travel providers are unconfigured. Model customization includes evaluation and dry-run training workflows. Roadmap statements require product-owner approval. Source: sibling repository README inspected 9 October 2026.'],

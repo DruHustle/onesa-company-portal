@@ -1,4 +1,5 @@
 """Offline configuration gate using the recorded official provider schema."""
+
 import hashlib
 import json
 from pathlib import Path
@@ -17,16 +18,35 @@ for service in blueprint["services"]:
     assert service["branch"] == "main"
     assert service["autoDeployTrigger"] == "off"
     assert (ROOT / service["rootDir"] / service["dockerfilePath"]).is_file()
-assert all(database["ipAllowList"] == [] for database in blueprint["databases"])
-api = next(service for service in blueprint["services"] if service["type"] == "web")
-worker = next(service for service in blueprint["services"] if service["type"] == "worker")
+assert not blueprint.get("databases"), (
+    "Use the existing Neon project; never create a duplicate database"
+)
+assert len(blueprint["services"]) == 1 and blueprint["services"][0]["type"] == "web"
+assert all(service["plan"] == "free" for service in blueprint["services"])
+api = blueprint["services"][0]
 api_env = {entry["key"]: entry for entry in api["envVars"]}
-worker_env = {entry["key"]: entry for entry in worker["envVars"]}
-assert api_env["SESSION_KEY"].get("sync") is False, "Supply a persistent key of at least 48 characters; Render-generated keys are shorter"
-assert worker_env["SESSION_KEY"]["fromService"] == {"type": "web", "name": api["name"], "envVarKey": "SESSION_KEY"}, "API and worker must share the encryption key"
+assert api_env["SESSION_KEY"].get("sync") is False, (
+    "Preserve the existing private encryption key"
+)
+assert not any(
+    "generateValue" in entry or "fromService" in entry for entry in api["envVars"]
+), "Preserve existing credentials; Oracle receives scoped values privately"
 
-front = ROOT / ("onesa-ai-platform-frontend/apps/chat" if ROOT.name == "onesa-ai-platform" else "onesa-company-portal-frontend")
+front = ROOT / (
+    "onesa-ai-platform-frontend/apps/chat"
+    if ROOT.name == "onesa-ai-platform"
+    else "onesa-company-portal-frontend"
+)
 vercel = json.loads((front / "vercel.json").read_text())
-assert vercel["git"]["deploymentEnabled"] is False
-print("PASS: official Blueprint schema, independent Docker contexts, main, manual deployment and private database ingress")
-print("BLOCKED: hosted domains, credentials, migrations, model/storage/email/scanner and acceptance must be verified separately")
+deployments = vercel["git"]["deploymentEnabled"]
+assert deployments is False or deployments == {
+    "main": False,
+    "dev": False,
+    "staging": True,
+}, "Native production/dev deployments must remain disabled"
+print(
+    "PASS: official Blueprint schema, independent Docker contexts, main, manual Free API deployment and no duplicate database/worker"
+)
+print(
+    "BLOCKED: hosted domains, credentials, migrations, model/storage/email/scanner and acceptance must be verified separately"
+)

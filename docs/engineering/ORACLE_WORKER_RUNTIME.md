@@ -7,6 +7,28 @@ receipts stay outside Git. The current target is Ubuntu 24.04 ARM64, 1 OCPU, 6 G
 and a 50 GB boot volume in Frankfurt. Runtime installation is separate from release
 qualification: Docker being available does not prove a working Portal worker.
 
+## Reusable owner SSH connection
+
+The authorized owner's local `~/.ssh/config` defines `onesa-portal-worker` and the
+existing VM IP using the retained private key and pinned known-hosts record. It uses
+`ControlMaster auto`, an owner-only control directory and `ControlPersist 8h` to reuse
+one authenticated transport across terminal sessions. Thirty-second keepalives detect
+a disconnected transport; subsequent connections authenticate using the existing key.
+Password authentication and agent forwarding are disabled. These are local client
+settings; they do not change the VM firewall, Oracle Console sessions or OCI CLI MFA.
+
+```sh
+ssh onesa-portal-worker
+ssh -O check onesa-portal-worker
+ssh -MNf onesa-portal-worker    # start a background transport if none is running
+ssh -O exit onesa-portal-worker # close it after finishing active sessions
+```
+
+The IP entry also lets the existing pinned deployment scripts reuse this connection.
+Keep `~/.ssh/config` at mode `0600` and `~/.ssh/onesa-control` at mode `0700`.
+No application port forwarding is configured. ClamAV continues to use its private
+Unix socket; databases, queues and worker endpoints remain unexposed.
+
 ## Artifact and resource limits
 
 `compose.oracle-staging.yaml` runs only the existing Portal background executor and
@@ -65,8 +87,8 @@ Create `/etc/onesa/portal-staging.env` through the approved private SSH session 
 The `jobs` Compose profile is disabled by default, allowing scanner-only validation
 without application credentials. Missing worker configuration is never a successful
 startup. Compose supplies `NODE_ENV=production`, `PUBLISH_ENABLED=false` and
-`CLAMAV_SOCKET=/run/onesa-scanner/clamd.sock`. Do not set `CLAMAV_HOST` to this public
-IP. The Render API keeps its initial uploads quarantined; the worker retrieves them
+`CLAMAV_SOCKET=/run/onesa-scanner/clamd.sock`. Leave `CLAMAV_HOST` and `CLAMAV_PORT` unset; the Unix socket has no TCP port.
+Do not expose the scanner at this public IP. The Render API keeps its initial uploads quarantined; the worker retrieves them
 privately and updates scan status only after the existing bounded scanner protocol
 returns an explicit result. Do not enable publication or manually mark uploads clean.
 
@@ -209,3 +231,15 @@ It uses the actual compiled Portal scanner client with synthetic bytes and EICAR
 without a database connection, object access or email provider. It checks benign
 clean, infected rejected, unavailable scanner denial and unconfigured quarantine.
 Its receipt explicitly leaves database jobs/private uploads/production unqualified.
+
+## Current staging SQL scope correction
+
+The verified runtime target is Neon project `gentle-mud-16323345`
+(`onesa-ai-company-portal-backend-db-staging`), branch `br-little-boat-b9fg0rqq`, pooled
+SQL host `ep-morning-shadow-b9jkzgsz-pooler.c-7.eu-central-1.aws.neon.tech`, database
+`neondb`, role `onesa_portal_app`. This matches the existing staging bucket namespace.
+The previous autumn-glade SQL project is a non-staging migrations project and must
+not be used by fixture or worker activation guards. Historical tests on it were real
+but do not qualify the corrected staging binding. Jobs remain stopped until fresh
+bucket provenance/isolation and exact-source qualification pass. Production uses the
+separate morning-mode project/dark-boat endpoint; no production worker is activated.

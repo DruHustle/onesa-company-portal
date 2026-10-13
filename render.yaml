@@ -1,12 +1,12 @@
-# HISTORICAL PAID BLUEPRINT: do not apply under the owner free-only policy.
-# Use docs/engineering/FREE_STAGING_SETUP.md; no resource has been changed by this file.
-# S3 storage is required so API and background worker share durable private files.
+# Reference for the existing Free Render API; do not create duplicate resources.
+# Neon supplies the existing database/storage; Oracle supplies the private worker/scanner.
+# Provider changes remain subject to the qualified dev -> staging -> main release path.
 services:
   - type: web
     name: onesa-company-portal-backend
     runtime: docker
     region: frankfurt
-    plan: 1c-2g
+    plan: free
     branch: main
     rootDir: onesa-company-portal-backend
     dockerfilePath: ./Dockerfile
@@ -29,7 +29,7 @@ services:
         # Supply a persistent key; never replace an existing key that encrypts stored data.
         sync: false
       - key: PROXY_SHARED_KEY
-        generateValue: true
+        sync: false
       - key: PUBLISH_ENABLED
         value: 'false'
       - key: S3_BUCKET
@@ -44,57 +44,3 @@ services:
         sync: false
     buildFilter:
       paths: [onesa-company-portal-backend/**, render.yaml]
-  - type: worker
-    name: onesa-company-portal-worker
-    runtime: docker
-    region: frankfurt
-    plan: 0.5c-512mb
-    branch: main
-    rootDir: onesa-company-portal-backend
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    dockerCommand: node dist/src/jobs/worker.js
-    autoDeployTrigger: 'off'
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: DATABASE_URL}
-      - key: PUBLIC_ORIGIN
-        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: PUBLIC_ORIGIN}
-      - key: COMPANY_ORIGIN
-        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: COMPANY_ORIGIN}
-      - key: NOTIFY_EMAIL
-        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: NOTIFY_EMAIL}
-      - key: MAIL_PROVIDER
-        value: resend
-      - key: RESEND_API_KEY
-        sync: false
-      - key: MAIL_FROM
-        sync: false
-      - key: SESSION_KEY
-        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: SESSION_KEY}
-      - key: PROXY_SHARED_KEY
-        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: PROXY_SHARED_KEY}
-      - key: PUBLISH_ENABLED
-        value: 'false'
-      - key: S3_BUCKET
-        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: S3_BUCKET}
-      - key: S3_ENDPOINT
-        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: S3_ENDPOINT}
-      - key: S3_REGION
-        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: S3_REGION}
-      - key: AWS_ACCESS_KEY_ID
-        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: AWS_ACCESS_KEY_ID}
-      - key: AWS_SECRET_ACCESS_KEY
-        fromService: {type: web, name: onesa-company-portal-backend, envVarKey: AWS_SECRET_ACCESS_KEY}
-    buildFilter:
-      paths: [onesa-company-portal-backend/**, render.yaml]
-databases:
-  - name: onesa-company-portal-db
-    region: frankfurt
-    plan: 0.5c-1g
-    databaseName: onesa_portal
-    user: onesa_portal_owner
-    postgresMajorVersion: '17'
-    ipAllowList: []

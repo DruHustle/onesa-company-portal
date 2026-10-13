@@ -1,39 +1,31 @@
 # Free-only staging setup — 2026-10-10
 
-## Owner setup for the verified Portal database — 2026-10-11
+## Current existing Portal staging resources — 2026-10-13
 
-The owner has supplied the API `srv-db5k5had0e5s73fos4g0` at
-`https://onesa-company-portal-backend-staging.onrender.com` and the proposed worker
-`srv-db5k4mlckfvc73agdr40` at
-`https://onesa-company-portal-backend-worker-e1j1.onrender.com`.
-Do not create duplicate services. Their repository, branch, runtime, plan,
-environment scope and actual health remain unverified: GitHub refused the new
-inspection job before startup with an account billing/spending-limit restriction.
-No provider environment values, service commands or deployments were changed.
-
-After GitHub Actions is available, run **Inspect hosting configuration** on
-`audit/portal-master-acceptance`, selecting `portal_scope=staging`:
+The API is `srv-db5k5had0e5s73fos4g0` at
+`https://onesa-company-portal-backend-staging.onrender.com`.
+The redundant credential-free Render worker web service was deleted after its
+healthy Oracle replacement and absence of database binding were verified.
+Staging inspection selects the API and identifies Oracle as the worker target;
+it must not recreate the deleted Render service. Production's legacy worker is
+retained until its qualified Oracle replacement is verified.
 
 ```sh
 gh workflow run inspect-hosting.yml --repo DruHustle/onesa-company-portal \
-  --ref audit/portal-master-acceptance -f portal_scope=staging
+  --ref staging -f portal_scope=staging
 ```
 
-This action only reads the two supplied service IDs, allowlisted resource inventory
-and existing production frontend configuration; it never deploys or prints
-credential values. Review repository/branch/type mismatches before writes.
-Check **GitHub account → Settings → Billing & licensing → Usage / Budgets and alerts**
-for available included Actions usage and the restriction. Keep paid usage disabled.
-If included minutes are exhausted, wait for their reset or separately approve an
-existing private self-hosted runner. Do not raise a spending limit automatically
-or repeatedly retry a rejected workflow without resolving its cause.
+This action remains read-only and exposes no credential values. Existing public
+Staging environment-secret injection passed; private GitHub Free uses the supported
+repository-secret fallback. Do not change visibility, billing or paid limits.
 
-The autumn-glade Portal database is already initialized with seven reviewed
-migrations and a verified restricted `onesa_portal_app` login. Its fresh password
-is saved as private repository Actions secret `PORTAL_APP_DB_PASSWORD`; GitHub
-does not reveal saved secret values. Do not reset that role or use `neondb_owner`
-as the API login. An operator workflow can transfer its credential privately once
-the actual staging service is identified. Do not copy production credentials.
+The authoritative staging target is the existing `onesa-ai-company-portal-backend-db-staging`
+project (`gentle-mud-16323345`), branch `br-little-boat-b9fg0rqq`, endpoint
+`ep-morning-shadow-b9jkzgsz`. It has seven reviewed migrations and an actual restricted
+`onesa_portal_app` login. Credentials are held privately in Render and Oracle; no secret
+value is published. The prior autumn-glade project is a separate non-staging migrations
+project and is preserved, never copied into staging or used by new fixture tests.
+See [the verified target inventory](VERCEL_RENDER.md#verified-portal-database-targets--2026-10-12).
 
 For the supplied API, check **Render → service → Settings** against:
 
@@ -41,7 +33,7 @@ For the supplied API, check **Render → service → Settings** against:
 |---|---|
 | Name | Owner-created `onesa-company-portal-backend_staging` |
 | Repository | `DruHustle/onesa-company-portal` |
-| Branch | `audit/portal-master-acceptance` |
+| Branch | `staging` |
 | Root Directory | `onesa-company-portal-backend` |
 | Runtime | Docker |
 | Dockerfile / context | `./Dockerfile` / `.` relative to the root directory |
@@ -59,7 +51,7 @@ The verified restricted credential still needs a guarded private transfer;
 do not paste it into chat or use the Neon owner connection as the API runtime.
 
 Staging API configuration uses `NODE_ENV=production` for hosted security,
-`PUBLISH_ENABLED=false`, a restricted pooled `DATABASE_URL` for autumn-glade,
+`PUBLISH_ENABLED=false`, a restricted pooled `DATABASE_URL` for morning-shadow,
 a fresh independent `SESSION_KEY` of 64 hex characters, and a fresh independent
 `PROXY_SHARED_KEY`. `PUBLIC_ORIGIN` must be the actual protected staging frontend
 origin; a separate company origin is optional and must be distinct if configured.
@@ -72,7 +64,7 @@ For Vercel, retain the existing portal project and frontend root
 `onesa-company-portal-frontend`, with production branch `main`. Enable Vercel
 Authentication for Preview deployments. Keep native Git deployments disabled;
 deployment will use GitHub Actions/CLI. Use Preview-only variables scoped to
-`audit/portal-master-acceptance`, with server-only `BACKEND_URL` set to the verified
+`staging`, with server-only `BACKEND_URL` set to the verified
 new API and the matching fresh `PROXY_SHARED_KEY`. The actual protected Preview
 origin must be coordinated with `PUBLIC_ORIGIN`, `SITE_URL` and `PORTAL_URL`; do
 not guess a Vercel hostname or reuse public production origins.
@@ -211,7 +203,7 @@ ID or add artificial traffic to defeat provider sleep/quotas.
    project. **Never import the entire backend env into frontend settings.**
 5. Create a Render **Free web service** from the relevant GitHub repo, `main`, Docker,
    Frankfurt, root `<repository-name>-backend`, Dockerfile `./Dockerfile`, context `.`.
-   Do not apply the historical paid root `render.yaml`. A web-service-only
+   The root `render.yaml` references only the existing Free API and creates no database or worker. A web-service-only
    [free staging Blueprint](../../infra/deployment/render-free-staging.yaml) is
    prepared separately; it intentionally provisions no database or worker.
    Disable automatic deployment;
@@ -291,7 +283,7 @@ Read-only Actions inspection verified the owner-created API
 `srv-db5k5had0e5s73fos4g0` is a Frankfurt Free Docker web service in this repository,
 but uses main, the wrong root/health path, native auto-deploy and missing runtime
 variables. After `verify.yml` and `repository-hygiene.yml` pass on the exact reviewed
-`audit/portal-master-acceptance` revision, run **Repair existing hosting configuration**
+`staging` revision, run **Repair existing hosting configuration**
 with `portal_action=repair-staging-layout` on that branch. This pauses native
 auto-deploy, sets the audit branch, backend root, Dockerfile/context, Node server
 CMD and `/api/v1/ready`, then verifies readback. It does not deploy, initialize a

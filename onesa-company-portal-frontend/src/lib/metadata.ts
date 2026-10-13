@@ -1,4 +1,5 @@
 import type {Metadata} from 'next';
+import {company} from '../config/company';
 import {copy, type Locale} from '../config/copy';
 import {companyOrigin, companyPageUrl, companyLanguages} from './site-origin.mjs';
 
@@ -77,7 +78,7 @@ export function companyMetadata({locale, path = '', title, description, translat
 
 export function sectionTitle(locale: Locale, section: string): string {
   const legal: Record<string, string> = {
-    impressum: 'Impressum',
+    impressum: locale === 'en' ? 'Legal Notice' : 'Impressum',
     privacy: locale === 'en' ? 'Privacy information' : 'Datenschutzhinweise',
     cookies: 'Cookies',
     accessibility: locale === 'en' ? 'Accessibility' : 'Barrierefreiheit',
@@ -89,6 +90,7 @@ export function sectionTitle(locale: Locale, section: string): string {
 export function sectionDescription(locale: Locale, section: string): string {
   const t = copy[locale];
   const descriptions: Record<string, string> = {
+    impressum: `${company.legalName}, ${company.address}. ${company.registerCourt}, ${company.registerNumber}.`,
     about: t.missionText,
     products: t.productText,
     technology: t.capText,

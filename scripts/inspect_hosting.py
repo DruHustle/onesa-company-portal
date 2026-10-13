@@ -64,16 +64,24 @@ def health(origin, path):
 
 
 def safe_identifier(value, prefix):
-    return value if isinstance(value, str) and re.fullmatch(prefix + r"[A-Za-z0-9]+", value) else None
+    return (
+        value
+        if isinstance(value, str) and re.fullmatch(prefix + r"[A-Za-z0-9]+", value)
+        else None
+    )
 
 
 def portal_services(scope):
     if scope == "staging":
-        # Supplied by the owner; inspection verifies these before any later operator writes.
-        return "srv-db5k5had0e5s73fos4g0", "srv-db5k4mlckfvc73agdr40"
+        # Oracle runs staging jobs; the redundant credential-free Render web service was deleted.
+        return "srv-db5k5had0e5s73fos4g0", ""
     if scope != "production":
-        raise SystemExit("Choose production or staging inspection; no provider request made")
-    return os.environ.get("RENDER_BACKEND_SERVICE_ID", ""), os.environ.get("RENDER_WORKER_SERVICE_ID", "")
+        raise SystemExit(
+            "Choose production or staging inspection; no provider request made"
+        )
+    return os.environ.get("RENDER_BACKEND_SERVICE_ID", ""), os.environ.get(
+        "RENDER_WORKER_SERVICE_ID", ""
+    )
 
 
 def render_inventory(token):
@@ -86,7 +94,9 @@ def render_inventory(token):
         query = {"limit": 100, "includePreviews": "true"}
         if cursor:
             query["cursor"] = cursor
-        entries, status = get_json("https://api.render.com/v1/", "services?" + urlencode(query), token)
+        entries, status = get_json(
+            "https://api.render.com/v1/", "services?" + urlencode(query), token
+        )
         if status != 200 or not isinstance(entries, list):
             return {"api_http": status, "complete": False, "services": services}
         for entry in entries:
@@ -95,10 +105,18 @@ def render_inventory(token):
             item = entry.get("service", entry)
             if not isinstance(item, dict):
                 continue
-            project = next((name for name in projects if item.get("repo") in {
-                "https://github.com/DruHustle/" + name,
-                "https://github.com/DruHustle/" + name + ".git",
-            }), None)
+            project = next(
+                (
+                    name
+                    for name in projects
+                    if item.get("repo")
+                    in {
+                        "https://github.com/DruHustle/" + name,
+                        "https://github.com/DruHustle/" + name + ".git",
+                    }
+                ),
+                None,
+            )
             identifier = safe_identifier(item.get("id"), "srv-")
             if not project or not identifier or identifier in seen:
                 continue
@@ -106,23 +124,45 @@ def render_inventory(token):
             details = item.get("serviceDetails") or {}
             if not isinstance(details, dict):
                 details = {}
-            branch, plan, region = item.get("branch"), details.get("plan"), details.get("region")
-            services.append({
-                "project": project,
-                "service_id": identifier,
-                "branch": branch if branch in {"main", "staging"} else "other",
-                "service_type": item.get("type") if item.get("type") in {
-                    "web_service", "private_service", "background_worker", "cron_job", "static_site",
-                } else "unknown",
-                "plan": plan if isinstance(plan, str) and re.fullmatch(r"[a-z0-9-]{1,24}", plan) else "unknown",
-                "region": region if region in {"frankfurt", "oregon", "ohio", "singapore", "virginia"} else "unknown",
-                "native_auto_deploy_disabled": item.get("autoDeployTrigger") == "off" or item.get("autoDeploy") == "no",
-                "backend_root_matches": item.get("rootDir") == project + "-backend",
-                "persistent_disk_configured": bool(details.get("disk")),
-            })
+            branch, plan, region = (
+                item.get("branch"),
+                details.get("plan"),
+                details.get("region"),
+            )
+            services.append(
+                {
+                    "project": project,
+                    "service_id": identifier,
+                    "branch": branch if branch in {"main", "staging"} else "other",
+                    "service_type": item.get("type")
+                    if item.get("type")
+                    in {
+                        "web_service",
+                        "private_service",
+                        "background_worker",
+                        "cron_job",
+                        "static_site",
+                    }
+                    else "unknown",
+                    "plan": plan
+                    if isinstance(plan, str) and re.fullmatch(r"[a-z0-9-]{1,24}", plan)
+                    else "unknown",
+                    "region": region
+                    if region
+                    in {"frankfurt", "oregon", "ohio", "singapore", "virginia"}
+                    else "unknown",
+                    "native_auto_deploy_disabled": item.get("autoDeployTrigger")
+                    == "off"
+                    or item.get("autoDeploy") == "no",
+                    "backend_root_matches": item.get("rootDir") == project + "-backend",
+                    "persistent_disk_configured": bool(details.get("disk")),
+                }
+            )
         if len(entries) < 100:
             return {"api_http": 200, "complete": True, "services": services}
-        next_cursor = entries[-1].get("cursor") if isinstance(entries[-1], dict) else None
+        next_cursor = (
+            entries[-1].get("cursor") if isinstance(entries[-1], dict) else None
+        )
         if not isinstance(next_cursor, str) or not next_cursor or next_cursor == cursor:
             break
         cursor = next_cursor
@@ -145,19 +185,38 @@ def log_categories(data):
 
 def portal_database_binding(entries):
     # Return only known provider metadata from a direct service setting, never its URL.
-    from urllib.parse import urlsplit, unquote
-    direct = next((item.get("envVar", item).get("value", "") for item in entries if isinstance(item, dict) and item.get("envVar", item).get("key") == "DATABASE_URL"), "") if isinstance(entries, list) and len(entries) < 100 else ""
+    from urllib.parse import unquote, urlsplit
+
+    direct = (
+        next(
+            (
+                item.get("envVar", item).get("value", "")
+                for item in entries
+                if isinstance(item, dict)
+                and item.get("envVar", item).get("key") == "DATABASE_URL"
+            ),
+            "",
+        )
+        if isinstance(entries, list) and len(entries) < 100
+        else ""
+    )
     try:
         value = urlsplit(direct)
         host = value.hostname or ""
-        if value.scheme not in {"postgres", "postgresql"} or not re.fullmatch(r"ep-[a-z0-9-]+\.c-7\.eu-central-1\.aws\.neon\.tech", host):
+        if value.scheme not in {"postgres", "postgresql"} or not re.fullmatch(
+            r"ep-[a-z0-9-]+\.c-7\.eu-central-1\.aws\.neon\.tech", host
+        ):
             return {"provider_verified": False}
         role = unquote(value.username or "")
         return {
-            "provider": "Neon", "endpoint_identifier": host.split(".")[0],
+            "provider": "Neon",
+            "endpoint_identifier": host.split(".")[0],
             "database_name": "neondb" if value.path == "/neondb" else "other",
-            "runtime_role": role if role in {"onesa_portal_app", "neondb_owner"} else "other",
-            "setting_scope": "direct_service", "effective_binding_verified": False,
+            "runtime_role": role
+            if role in {"onesa_portal_app", "neondb_owner"}
+            else "other",
+            "setting_scope": "direct_service",
+            "effective_binding_verified": False,
             "permissions_verified": False,
         }
     except (ValueError, TypeError):
@@ -177,7 +236,9 @@ def startup_override(command):
     return "unrecognized_override_requires_private_review"
 
 
-def render(role, service, required, expected_root, expected_health, expected_branch="main"):
+def render(
+    role, service, required, expected_root, expected_health, expected_branch="main"
+):
     token = os.environ.get("RENDER_API_KEY", "")
     if not token or not re.fullmatch(r"srv-[a-zA-Z0-9]+", service):
         return {"role": role, "configured": False}
@@ -191,6 +252,22 @@ def render(role, service, required, expected_root, expected_health, expected_bra
         "services/" + service + "/env-vars?limit=100",
         token,
     )
+    if (
+        role == "backend"
+        and expected_root == "onesa-company-portal-backend"
+        and isinstance(env, list)
+        and len(env) < 100
+    ):
+        values = {
+            item.get("envVar", item).get("key"): item.get("envVar", item).get("value")
+            for item in env
+            if isinstance(item, dict)
+        }
+        required = [
+            key for key in required if key not in {"RESEND_API_KEY", "MAIL_FROM"}
+        ]
+        if values.get("MAIL_PROVIDER") == "resend":
+            required += ["RESEND_API_KEY", "MAIL_FROM"]
     deployments, deploy_status = get_json(
         "https://api.render.com/v1/", "services/" + service + "/deploys?limit=3", token
     )
@@ -257,7 +334,11 @@ def render(role, service, required, expected_root, expected_health, expected_bra
         if role == "backend"
         else None,
         "environment_api_http": env_status,
-        **({"database_binding": portal_database_binding(env)} if expected_root == "onesa-company-portal-backend" else {}),
+        **(
+            {"database_binding": portal_database_binding(env)}
+            if expected_root == "onesa-company-portal-backend"
+            else {}
+        ),
         "required_environment_nonempty": environment_checks(
             env if isinstance(env, list) else [], required, "envVar"
         ),
@@ -296,8 +377,15 @@ def vercel(expected_root, required):
     return {
         "api_http": status,
         "project_id": safe_identifier(project, "prj_"),
-        "preview_protection_enabled": (data.get("ssoProtection") or {}).get("deploymentType")
-        in {"all", "all_except_custom_domains", "preview", "prod_deployment_urls_and_all_previews"},
+        "preview_protection_enabled": (data.get("ssoProtection") or {}).get(
+            "deploymentType"
+        )
+        in {
+            "all",
+            "all_except_custom_domains",
+            "preview",
+            "prod_deployment_urls_and_all_previews",
+        },
         "root_directory_matches": data.get("rootDirectory") == expected_root,
         "nextjs_framework": data.get("framework") == "nextjs",
         "environment_api_http": env_status,
@@ -316,56 +404,122 @@ def preview_routing_checks(entries, backend):
     """Select branch overrides; report only comparisons, never private values."""
     selected = {}
     for key in ("BACKEND_URL", "PROXY_SHARED_KEY"):
-        candidates = [entry for entry in entries if entry.get("key") == key and "preview" in entry.get("target", []) and entry.get("gitBranch") in (None, "", "staging")]
+        candidates = [
+            entry
+            for entry in entries
+            if entry.get("key") == key
+            and "preview" in entry.get("target", [])
+            and entry.get("gitBranch") in (None, "", "staging")
+        ]
         branch = [entry for entry in candidates if entry.get("gitBranch") == "staging"]
         candidates = branch or candidates
         selected[key] = candidates[0].get("value") if len(candidates) == 1 else None
     return {
-        "preview_backend_matches_staging": selected.get("BACKEND_URL") == "https://onesa-company-portal-backend-staging.onrender.com",
+        "preview_backend_matches_staging": selected.get("BACKEND_URL")
+        == "https://onesa-company-portal-backend-staging.onrender.com",
         "preview_proxy_key_nonempty": bool(selected.get("PROXY_SHARED_KEY")),
-        "preview_proxy_key_matches_staging": bool(backend.get("PROXY_SHARED_KEY")) and selected.get("PROXY_SHARED_KEY") == backend["PROXY_SHARED_KEY"],
+        "preview_proxy_key_matches_staging": bool(backend.get("PROXY_SHARED_KEY"))
+        and selected.get("PROXY_SHARED_KEY") == backend["PROXY_SHARED_KEY"],
     }
 
 
 def staging_frontend_routing():
-    token, project = os.environ.get("VERCEL_TOKEN", ""), os.environ.get("VERCEL_PROJECT_ID", "")
+    token, project = (
+        os.environ.get("VERCEL_TOKEN", ""),
+        os.environ.get("VERCEL_PROJECT_ID", ""),
+    )
     if not token or not re.fullmatch(r"prj_[A-Za-z0-9]+", project):
         return {"configured": False}
     team = os.environ.get("VERCEL_ORG_ID", "")
     query = "?" + urlencode({"teamId": team}) if team.startswith("team_") else ""
-    project_data, status = get_json("https://api.vercel.com/v9/", "projects/" + project + query, token)
+    project_data, status = get_json(
+        "https://api.vercel.com/v9/", "projects/" + project + query, token
+    )
     link = project_data.get("link", {})
-    if status != 200 or link.get("org") != "DruHustle" or link.get("repo") != "onesa-company-portal":
+    if (
+        status != 200
+        or link.get("org") != "DruHustle"
+        or link.get("repo") != "onesa-company-portal"
+    ):
         return {"target_verified": False}
     service_id = "srv-db5k5had0e5s73fos4g0"
     render_token = os.environ.get("RENDER_API_KEY", "")
-    service, service_status = get_json("https://api.render.com/v1/", "services/" + service_id, render_token)
-    if service_status != 200 or service.get("repo", "").removesuffix(".git") != "https://github.com/DruHustle/onesa-company-portal" or service.get("branch") != "staging":
+    service, service_status = get_json(
+        "https://api.render.com/v1/", "services/" + service_id, render_token
+    )
+    if (
+        service_status != 200
+        or service.get("repo", "").removesuffix(".git")
+        != "https://github.com/DruHustle/onesa-company-portal"
+        or service.get("branch") != "staging"
+    ):
         return {"target_verified": False}
     env_query = "?" + urlencode({"teamId": team, "decrypt": "true"})
-    env, env_status = get_json("https://api.vercel.com/v10/", "projects/" + project + "/env" + env_query, token)
-    entries, render_status = get_json("https://api.render.com/v1/", "services/" + service_id + "/env-vars?limit=100", render_token)
-    if env_status != 200 or render_status != 200 or not isinstance(entries, list) or len(entries) >= 100:
+    env, env_status = get_json(
+        "https://api.vercel.com/v10/", "projects/" + project + "/env" + env_query, token
+    )
+    entries, render_status = get_json(
+        "https://api.render.com/v1/",
+        "services/" + service_id + "/env-vars?limit=100",
+        render_token,
+    )
+    if (
+        env_status != 200
+        or render_status != 200
+        or not isinstance(entries, list)
+        or len(entries) >= 100
+    ):
         return {"target_verified": True, "complete": False}
-    selected = [entry for entry in env.get("envs", []) if entry.get("key") == "PROXY_SHARED_KEY" and entry.get("target") == ["preview"] and entry.get("gitBranch") == "staging"]
+    selected = [
+        entry
+        for entry in env.get("envs", [])
+        if entry.get("key") == "PROXY_SHARED_KEY"
+        and entry.get("target") == ["preview"]
+        and entry.get("gitBranch") == "staging"
+    ]
     private_value_verified = False
-    if len(selected) == 1 and isinstance(selected[0].get("id"), str) and re.fullmatch(r"[A-Za-z0-9_-]+", selected[0]["id"]):
+    if (
+        len(selected) == 1
+        and isinstance(selected[0].get("id"), str)
+        and re.fullmatch(r"[A-Za-z0-9_-]+", selected[0]["id"])
+    ):
         item = selected[0]
-        private, private_status = get_json("https://api.vercel.com/v1/", "projects/" + project + "/env/" + item["id"] + query, token)
-        private_value_verified = private_status == 200 and private.get("decrypted") is True and all(private.get(key) == item.get(key) for key in ("id", "key", "target", "gitBranch"))
+        private, private_status = get_json(
+            "https://api.vercel.com/v1/",
+            "projects/" + project + "/env/" + item["id"] + query,
+            token,
+        )
+        private_value_verified = (
+            private_status == 200
+            and private.get("decrypted") is True
+            and all(
+                private.get(key) == item.get(key)
+                for key in ("id", "key", "target", "gitBranch")
+            )
+        )
         item["value"] = private.get("value") if private_value_verified else None
     else:
         for item in selected:
             item["value"] = None
     backend = {entry["envVar"]["key"]: entry["envVar"]["value"] for entry in entries}
-    return {"target_verified": True, "complete": True, "preview_proxy_value_decrypted": private_value_verified, **preview_routing_checks(env.get("envs", []), backend)}
+    return {
+        "target_verified": True,
+        "complete": True,
+        "preview_proxy_value_decrypted": private_value_verified,
+        **preview_routing_checks(env.get("envs", []), backend),
+    }
 
 
 def main():
     portal = os.environ.get("GITHUB_REPOSITORY", "").endswith("/onesa-company-portal")
     scope = os.environ.get("PORTAL_INSPECTION_SCOPE") or "production"
-    backend_id, worker_id = portal_services(scope) if portal else (
-        os.environ.get("RENDER_BACKEND_SERVICE_ID", ""), "",
+    backend_id, worker_id = (
+        portal_services(scope)
+        if portal
+        else (
+            os.environ.get("RENDER_BACKEND_SERVICE_ID", ""),
+            "",
+        )
     )
     expected_branch = "staging" if portal and scope == "staging" else "main"
     backend_root = (
@@ -386,7 +540,6 @@ def main():
             "S3_ENDPOINT",
             "AWS_ACCESS_KEY_ID",
             "AWS_SECRET_ACCESS_KEY",
-            "CLAMAV_HOST",
             "MAIL_PROVIDER",
             "RESEND_API_KEY",
             "MAIL_FROM",
@@ -429,7 +582,9 @@ def main():
         ),
     }
     if portal:
-        report["authorized_render_resource_inventory"] = render_inventory(os.environ.get("RENDER_API_KEY", ""))
+        report["authorized_render_resource_inventory"] = render_inventory(
+            os.environ.get("RENDER_API_KEY", "")
+        )
         candidates, candidate_status = get_json(
             "https://api.render.com/v1/",
             "services?type=background_worker&limit=100",
@@ -449,25 +604,32 @@ def main():
                     worker_ids.append(identifier)
         report["existing_worker_lookup_http"] = candidate_status
         report["matching_existing_worker_ids"] = worker_ids
-        report["worker"] = render(
-            "worker",
-            worker_id,
-            [
-                "DATABASE_URL",
-                "SESSION_KEY",
-                "S3_BUCKET",
-                "S3_ENDPOINT",
-                "AWS_ACCESS_KEY_ID",
-                "AWS_SECRET_ACCESS_KEY",
-                "MAIL_PROVIDER",
-                "RESEND_API_KEY",
-                "MAIL_FROM",
-                "CLAMAV_HOST",
-                "CLAMAV_SOCKET",
-            ],
-            backend_root,
-            "",
-            expected_branch,
+        report["worker"] = (
+            {
+                "provider": "Oracle",
+                "render_service_required": False,
+                "hosted_verification_required": True,
+            }
+            if scope == "staging"
+            else render(
+                "worker",
+                worker_id,
+                [
+                    "DATABASE_URL",
+                    "SESSION_KEY",
+                    "S3_BUCKET",
+                    "S3_ENDPOINT",
+                    "AWS_ACCESS_KEY_ID",
+                    "AWS_SECRET_ACCESS_KEY",
+                    "MAIL_PROVIDER",
+                    "RESEND_API_KEY",
+                    "MAIL_FROM",
+                    "CLAMAV_SOCKET",
+                ],
+                backend_root,
+                "",
+                expected_branch,
+            )
         )
     if portal and scope == "staging":
         report["staging_frontend_routing"] = staging_frontend_routing()

@@ -48,7 +48,7 @@ test('Staging binding verifies existing restricted role and schema before one en
   const report=await repairPortalStagingDatabase();
   assert.equal(report.migration_checksums_verified,7);assert.equal(report.production_modified,false);assert.equal(report.deployment_requested,false);assert.equal(report.permissions_changed,false);
   assert.deepEqual(requests.filter(request=>request.method!=='GET'),[{url:'https://api.render.com/v1/services/'+stagingService.id+'/env-vars/DATABASE_URL',method:'PUT'}]);
-  const candidate=new URL(saved);assert.equal(candidate.hostname,'ep-autumn-glade-b9760olg-pooler.c-7.eu-central-1.aws.neon.tech');assert.equal(candidate.username,'onesa_portal_app');assert.equal(candidate.searchParams.get('sslmode'),'verify-full');
+  const candidate=new URL(saved);assert.equal(candidate.hostname,'ep-morning-shadow-b9jkzgsz-pooler.c-7.eu-central-1.aws.neon.tech');assert.equal(candidate.username,'onesa_portal_app');assert.equal(candidate.searchParams.get('sslmode'),'verify-full');
   assert.ok(queries.every(sql=>sql.startsWith('SELECT ')||sql==='BEGIN TRANSACTION READ ONLY'||sql==='ROLLBACK'));
  }finally{process.env=previous;globalThis.fetch=originalFetch;pg.Pool.prototype.connect=connect;pg.Pool.prototype.end=end;}
 });
@@ -133,10 +133,11 @@ test('Operator diagnostics identify the failed phase without disclosing database
  assert.ok(!safeDiagnostic(null,'target-verification').includes('null'));
 });
 
-test('Owner-confirmed target does not relax existing repair identity or allow another product',async()=>{
- const confirmed=fixture.replace(host,'ep-autumn-glade-b9760olg.c-7.eu-central-1.aws.neon.tech');
- assert.equal(confirmedPortalDatabaseURL(confirmed).hostname,'ep-autumn-glade-b9760olg.c-7.eu-central-1.aws.neon.tech');
- assert.throws(()=>portalDatabaseURL(confirmed,true));
+test('Confirmed production target rejects migration and staging projects and another product',async()=>{
+ const confirmed=fixture.replace(host,'ep-dark-boat-b91lg22g.c-7.eu-central-1.aws.neon.tech');
+ assert.equal(confirmedPortalDatabaseURL(confirmed).hostname,'ep-dark-boat-b91lg22g.c-7.eu-central-1.aws.neon.tech');
+ assert.equal(portalDatabaseURL(confirmed,true).hostname,confirmedPortalDatabaseURL(confirmed).hostname);
+ for(const wrong of ['ep-autumn-glade-b9760olg.c-7.eu-central-1.aws.neon.tech','ep-morning-shadow-b9jkzgsz.c-7.eu-central-1.aws.neon.tech'])assert.throws(()=>confirmedPortalDatabaseURL(confirmed.replace('ep-dark-boat-b91lg22g.c-7.eu-central-1.aws.neon.tech',wrong)));
  assert.throws(()=>confirmedPortalDatabaseURL(fixture));
  assert.throws(()=>confirmedPortalDatabaseURL(confirmed.replace('sslmode=require','sslmode=disable')));
  const previous={...process.env};

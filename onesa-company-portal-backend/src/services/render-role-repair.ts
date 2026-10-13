@@ -18,8 +18,10 @@ export function safeDiagnostic(error:unknown,phase:string) {
 
 const repository = 'https://github.com/DruHustle/onesa-company-portal';
 const runtimeHost = 'ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech';
-// Owner-confirmed on 2026-10-11. Neither inspection nor initialization cuts over runtime.
-const confirmedDirectHost = 'ep-autumn-glade-b9760olg.c-7.eu-central-1.aws.neon.tech';
+// Owner-authenticated Neon inventory, 2026-10-12: production and *-staging projects.
+// Neither inspection nor initialization changes a runtime binding.
+const confirmedDirectHost = runtimeHost.replace('-pooler.','.');
+const stagingDirectHost = 'ep-morning-shadow-b9jkzgsz.c-7.eu-central-1.aws.neon.tech';
 const database = 'neondb';
 const applicationRole = 'onesa_portal_app';
 const stagingServiceID = 'srv-db5k5had0e5s73fos4g0';
@@ -37,7 +39,7 @@ export async function repairPortalStagingDatabase() {
  diagnosticPhase='staging-provider-identity';
  const path='services/'+stagingServiceID;
  assertPortalStagingService(await provider(path));
- const candidate=new URL('postgresql://'+applicationRole+'@'+confirmedDirectHost.replace('.','-pooler.')+'/'+database+'?sslmode=verify-full&channel_binding=require');
+ const candidate=new URL('postgresql://'+applicationRole+'@'+stagingDirectHost.replace('.','-pooler.')+'/'+database+'?sslmode=verify-full&channel_binding=require');
  candidate.password=password;
  diagnosticPhase='staging-existing-schema-and-role-verification';
  const verified=await verifyRuntime(candidate);
@@ -127,7 +129,7 @@ export async function inspectConfirmedPortalTarget() {
    await client.query('BEGIN TRANSACTION READ ONLY');
    const inventory=await confirmedTargetInventory(client);
    await client.query('ROLLBACK');
-   return {read_only:true,client_tls_verified:true,confirmed_direct_host:confirmedDirectHost,database,existing_runtime_direct_host:runtime.hostname.replace('-pooler.','.'),runtime_matches_confirmed_target:false,...inventory,database_cutover:false,migrations_applied:false,permissions_changed:false,deployment_requested:false};
+   return {read_only:true,client_tls_verified:true,confirmed_direct_host:confirmedDirectHost,database,existing_runtime_direct_host:runtime.hostname.replace('-pooler.','.'),runtime_matches_confirmed_target:runtime.hostname.replace('-pooler.','.')===confirmedDirectHost,...inventory,database_cutover:false,migrations_applied:false,permissions_changed:false,deployment_requested:false};
   }finally{client.release();}
  }finally{await pool.end();}
 }
