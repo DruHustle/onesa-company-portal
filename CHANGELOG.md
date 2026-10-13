@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-14 — Preserve approved SSH networks
+
+Allow multiple approved public IPv4 /32 administrative sources, retaining existing entries on repeated hardening. Validate the root-owned mode-600 allowlist before any firewall command and permit each source only on TCP 22. Keep single-source installations compatible. Prepared source and offline firewall tests do not establish that the inaccessible Oracle host has been updated.
+
 ## 2026-10-13 — Retire duplicate production worker deployment
 
 Remove the legacy Render worker job, secret references and hosting-repair target after Oracle production scanning, bounded retries and managed restart qualified. Keep the API deployment separate from external Oracle execution evidence; Render success alone cannot pass the worker gate. Preserve the shared production database, private storage and protected intake settings.

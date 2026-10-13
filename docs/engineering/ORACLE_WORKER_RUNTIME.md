@@ -9,6 +9,32 @@ qualification: Docker being available does not prove a working Portal worker.
 
 ## Reusable owner SSH connection
 
+The owner selected multiple regularly used administrative networks on 2026-10-14.
+Retain each verified public IPv4 as a separate `/32`, only for TCP destination port
+22 in OCI and on the host. The existing root-owned mode-600
+`/etc/onesa/worker-admin-cidr` now supports one approved source per line; its
+filename remains compatible with existing installations. The maintained validator
+rejects broad/private/IPv6 sources, symlinks and writable/unprivileged files before
+the firewall changes. Repeated hardening preserves existing approved entries.
+
+Install `infra/oracle/admin-sources.py` as
+`/usr/local/lib/onesa/admin-sources.py` and `infra/oracle/worker-firewall.sh` as the
+existing `/usr/local/sbin/onesa-worker-firewall` (root-owned mode 0700) before
+changing a live host to a multi-line list. Keep existing approved sources and add
+new rules individually; verify a fresh pinned-key SSH connection. Do not rerun the
+full hardening/upgrade script or restart Docker/workers for this access correction.
+An unknown future network is pending verification, not an approved broad subnet.
+For initial hardening, keep all three reviewed files together in `infra/oracle/`;
+do not upload or invoke the hardening script without its adjacent validator and
+firewall script.
+
+Installing this correction requires a privileged VM session. Oracle Cloud Shell
+is a separate machine; provider login does not bypass the host firewall.
+Use the existing restricted operations record for exact recovery commands and
+actual live receipts. Offline tests (`python3 scripts/test_oracle_firewall.py`)
+exercise synthetic command capture and rejection before mutation; they are not
+hosted SSH or reboot evidence.
+
 The authorized owner's local `~/.ssh/config` defines `onesa-portal-worker` and the
 existing VM IP using the retained private key and pinned known-hosts record. It uses
 `ControlMaster auto`, an owner-only control directory and `ControlPersist 8h` to reuse

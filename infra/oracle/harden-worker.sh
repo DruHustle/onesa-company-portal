@@ -3,25 +3,32 @@
 set -eu
 test "$(id -u)" = 0 || { echo 'Run with sudo.' >&2; exit 1; }
 test "$(uname -m)" = aarch64 || { echo 'ARM64 required.' >&2; exit 1; }
+# shellcheck source=/dev/null
 . /etc/os-release
 test "$ID:$VERSION_ID" = ubuntu:24.04 || { echo 'Ubuntu 24.04 required.' >&2; exit 1; }
-admin_cidr=${1:?Approved administrative public IPv4 /32 required}
-python3 - "$admin_cidr" "${SSH_CONNECTION:-}" <<'PY'
-import ipaddress, sys
-net = ipaddress.ip_network(sys.argv[1], strict=True)
-source = sys.argv[2].split()
-if net.version != 4 or net.prefixlen != 32 or not net.network_address.is_global:
-    raise SystemExit('A single approved public IPv4 /32 is required')
-if not source or ipaddress.ip_address(source[0]) not in net:
-    raise SystemExit('Current SSH source must match the approved administrative source')
-PY
+test "$#" -gt 0 || { echo 'Approved administrative public IPv4 /32 required.' >&2; exit 1; }
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+# Re-running hardening retains the already approved sources.
+if test -e /etc/onesa/worker-admin-cidr || test -L /etc/onesa/worker-admin-cidr; then
+  admin_cidrs=$(python3 "$script_dir/admin-sources.py" --file /etc/onesa/worker-admin-cidr --require-ssh-session "$@")
+else
+  admin_cidrs=$(python3 "$script_dir/admin-sources.py" --require-ssh-session "$@")
+fi
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get -y --with-new-pkgs upgrade
 apt-get install -y --no-install-recommends docker.io docker-compose-v2 unattended-upgrades
 install -d -m 700 /etc/onesa
-printf '%s\n' "$admin_cidr" > /etc/onesa/worker-admin-cidr
-chmod 600 /etc/onesa/worker-admin-cidr
+install -d -o root -g root -m 755 /usr/local/lib/onesa
+install -o root -g root -m 700 "$script_dir/admin-sources.py" /usr/local/lib/onesa/admin-sources.py
+install -o root -g root -m 700 "$script_dir/worker-firewall.sh" /usr/local/sbin/onesa-worker-firewall
+sources_tmp=$(mktemp /etc/onesa/.worker-admin-cidr.XXXXXX)
+trap 'rm -f -- "$sources_tmp"' 0
+printf '%s\n' "$admin_cidrs" > "$sources_tmp"
+chown root:root "$sources_tmp"
+chmod 600 "$sources_tmp"
+mv -f -- "$sources_tmp" /etc/onesa/worker-admin-cidr
+trap - 0
 cat > /etc/ssh/sshd_config.d/00-onesa-worker.conf <<'EOF'
 PasswordAuthentication no
 KbdInteractiveAuthentication no
@@ -35,33 +42,6 @@ APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 Unattended-Upgrade::Automatic-Reboot "false";
 EOF
-cat > /usr/local/sbin/onesa-worker-firewall <<'EOF'
-#!/bin/sh
-set -eu
-admin_cidr=$(cat /etc/onesa/worker-admin-cidr)
-# Add a dedicated chain without flushing Oracle's INPUT/OUTPUT/InstanceServices.
-iptables -N ONESA_WORKER_INPUT 2>/dev/null || true
-iptables -F ONESA_WORKER_INPUT
-iptables -A ONESA_WORKER_INPUT -i lo -j ACCEPT
-iptables -A ONESA_WORKER_INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-iptables -A ONESA_WORKER_INPUT -s "$admin_cidr" -p tcp --dport 22 -j ACCEPT
-iptables -A ONESA_WORKER_INPUT -p icmp -j ACCEPT
-iptables -A ONESA_WORKER_INPUT -j DROP
-iptables -C INPUT -j ONESA_WORKER_INPUT 2>/dev/null || iptables -I INPUT 1 -j ONESA_WORKER_INPUT
-ip6tables -N ONESA_WORKER_INPUT 2>/dev/null || true
-ip6tables -F ONESA_WORKER_INPUT
-ip6tables -A ONESA_WORKER_INPUT -i lo -j ACCEPT
-ip6tables -A ONESA_WORKER_INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-ip6tables -A ONESA_WORKER_INPUT -p ipv6-icmp -j ACCEPT
-ip6tables -A ONESA_WORKER_INPUT -j DROP
-ip6tables -C INPUT -j ONESA_WORKER_INPUT 2>/dev/null || ip6tables -I INPUT 1 -j ONESA_WORKER_INPUT
-# Docker published ports bypass host INPUT; deny new forwarding from the public NIC.
-external_iface=$(ip -4 route show default | awk 'NR==1 {print $5}')
-test -n "$external_iface"
-iptables -C DOCKER-USER -i "$external_iface" -m conntrack --ctstate NEW -j DROP 2>/dev/null ||
-  iptables -I DOCKER-USER 1 -i "$external_iface" -m conntrack --ctstate NEW -j DROP
-EOF
-chmod 700 /usr/local/sbin/onesa-worker-firewall
 cat > /etc/systemd/system/onesa-worker-firewall.service <<'EOF'
 [Unit]
 Description=Onesa staging worker ingress firewall
