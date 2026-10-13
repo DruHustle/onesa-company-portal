@@ -155,6 +155,29 @@ not evidence that the accepted send failed. Record provider acceptance separatel
 from inbox delivery; confirm the actual delivery event or owner inbox receipt before
 marking delivery verified. Repeating this command creates a new test notification.
 
+`scripts/oracle_production_backup.py --commit <qualified-staging-SHA>` rehearses
+recovery of the actual production database **only while its business tables are
+empty**. It holds a read-only repeatable-read snapshot while collecting table
+counts/content hashes and running `pg_dump --snapshot`. Verified TLS uses the
+restricted application role; the temporary service file is root-only and removed
+afterward. The official PostgreSQL 18 ARM64 client is pinned by digest in the script.
+It creates an AES-256-GCM encrypted archive without writing plaintext dumps to disk,
+verifies tamper rejection, retains ciphertext locally and on the existing Oracle VM,
+and keeps the encryption key only on the owner's machine at
+`private/oracle/worker/production-backup-encryption.key`, mode `0600`. Preserve that
+key through the owner's existing private recovery custody process; do not commit,
+upload, display or discard it during cleanup.
+
+The restore target is a new disposable, resource-limited container with no external
+network or public ports. Restoration verifies every table's count and content hash,
+the existing migration revision, restricted role/sequence permissions and actual
+application readiness. Only run-owned temporary containers/configuration are removed.
+This proves database recovery for the current empty-business target. It excludes
+object/key recovery, scheduled retention, future business data, a production cutover,
+approved RPO/RTO and sustained operations; never present it as complete operational
+acceptance. PostgreSQL documents [snapshot coordination](https://www.postgresql.org/docs/current/app-pgdump.html)
+and [snapshot export](https://www.postgresql.org/docs/current/functions-admin.html).
+
 The existing `repair-hosting.yml` owner action `inspect-role` reads the production
 Render runtime binding and tests its actual login using read-only transactions. It
 does not use `PORTAL_MIGRATION_DATABASE_URL`, apply migrations, change roles or update

@@ -9,6 +9,7 @@
 
 - Added a single-notification production Resend acceptance check; use sending-only credentials without falsely treating provider acceptance as inbox delivery.
 - Kept service identifiers distinct from credential identifiers so the full secret scanner passes without an exemption.
+- Added authenticated encrypted production database recovery rehearsal with consistent snapshots, full table/content comparison and restored application readiness; real business datasets and production cutovers remain excluded.
 
 ## 2026-10-13 — Retire editable local release approvals
 
