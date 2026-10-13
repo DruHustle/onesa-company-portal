@@ -1,11 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import {readdir} from 'node:fs/promises';
 import pg from 'pg';
 import { initializeEmptyPortalSchema, verifiedSchema } from '../src/services/render-role-repair.js';
 import { applicationRoleStatus } from '../src/services/database-role.js';
 
 test('Empty Portal initialization is atomic, preserves existing objects and creates a restricted login',async()=>{
+ const migrationCount=(await readdir('migrations')).filter(name=>name.endsWith('.sql')).length;
  const raw=process.env.TEST_DATABASE_URL;
  if(!raw||!new URL(raw).pathname.endsWith('_test'))throw new Error('An isolated TEST_DATABASE_URL ending _test is required');
  const base=new URL(raw),suffix=randomBytes(8).toString('hex');
@@ -23,15 +25,15 @@ test('Empty Portal initialization is atomic, preserves existing objects and crea
   try {
    await assert.rejects(initializeEmptyPortalSchema(client,'short',role),/dedicated generated application password/);
    await client.query('BEGIN');
-   assert.equal(await initializeEmptyPortalSchema(client,password,role),7);
+   assert.equal(await initializeEmptyPortalSchema(client,password,role),migrationCount);
    await client.query('ROLLBACK');
    assert.equal((await client.query("SELECT count(*) FROM pg_tables WHERE schemaname='public'")).rows[0].count,'0');
    assert.equal((await admin.query('SELECT 1 FROM pg_roles WHERE rolname=$1',[role])).rowCount,0);
 
    await client.query('BEGIN');
-   assert.equal(await initializeEmptyPortalSchema(client,password,role),7);
+   assert.equal(await initializeEmptyPortalSchema(client,password,role),migrationCount);
    await client.query('COMMIT');
-   assert.equal(await verifiedSchema(application),7);
+   assert.equal(await verifiedSchema(application),migrationCount);
    assert.deepEqual(await applicationRoleStatus(application),{safe:true,reasons:[]});
    assert.equal((await application.query('SELECT count(*) FROM users')).rows[0].count,'0');
    await application.query('BEGIN');
@@ -42,7 +44,7 @@ test('Empty Portal initialization is atomic, preserves existing objects and crea
    await client.query('BEGIN');
    await assert.rejects(initializeEmptyPortalSchema(client,password,role),/schema is not empty/);
    await client.query('ROLLBACK');
-   assert.equal(await verifiedSchema(application),7);
+   assert.equal(await verifiedSchema(application),migrationCount);
   }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
  } finally {
   await application.end();await owner.end();

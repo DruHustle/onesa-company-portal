@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-13 — Protected privacy governance
+
+Extend the existing Portal CMS with INTERNAL draft documents, structured retention/processor/decision records, insert-only imports, immutable approved revisions and append-only reviews. Add protected owner/admin navigation, formatted documents, private PDFs, search/filter/history/compare and fresh-MFA owner approval. Record Hobby as the current management preference with a future Pro/Enterprise DPA reference; leave policy, contract and publication decisions unapproved. Disable provisional business-data TTL deletion.
+
+
 ## 2026-10-13 — Keep compiler updates compatible
 
 Retain TypeScript 5.9.3 after the incompatible TypeScript 7.0.2 Dependabot preview failed peer resolution. Route version updates through dev and ignore compiler major updates until API generation and lint peers support them. Align the frontend lockfile Node requirement with its manifest; retain strict npm installation and security checks.

@@ -2,7 +2,7 @@ import {db,transaction,audit} from '../services/db.js';
 import {env,emailConfig} from '../config/env.js';
 import {createMailer} from '../services/mail.js';
 import {decrypt} from '../auth/crypto.js';
-import {enqueue,enqueueStorageDeletion,notify,releaseReady} from '../services/workflows.js';
+import {enqueue,notify,releaseReady} from '../services/workflows.js';
 import {retrieve,scan,remove} from '../services/storage.js';
 import {applicationRoleSafe} from '../services/database-role.js';
 import {writeFile} from 'node:fs/promises';
@@ -25,8 +25,11 @@ export async function tick(){
  await db.query("UPDATE jobs SET status='accepted' WHERE kind='reminder' AND status='pending' AND NOT EXISTS(SELECT 1 FROM enquiries e WHERE e.id::text=jobs.payload->>'recordId' AND e.follow_up_at>now())");
  if(env.CLAMAV_HOST||env.CLAMAV_SOCKET){const files=await db.query("SELECT id,storage_key FROM files WHERE scan_status='quarantine' ORDER BY created_at LIMIT 5");for(const f of files.rows){try{const status=await scan(await retrieve(f.storage_key));const result=await db.query("UPDATE files SET scan_status=$1 WHERE id=$2 AND scan_status='quarantine'",[status,f.id]);if(result.rowCount)await audit(null,'document.scan_completed',f.id);}catch{console.error(JSON.stringify({event:'scan_failed',recordId:f.id}));}}}
  if(env.NODE_ENV!=='production'||await releaseReady()){const scheduled=await db.query("SELECT id FROM content WHERE state='draft' AND publish_at<=now() LIMIT 10");for(const r of scheduled.rows)await transaction(async c=>{const updated=(await c.query("UPDATE content SET state='published',publish_at=NULL,revision=revision+1,updated_at=now() WHERE id=$1 AND state='draft' AND publish_at<=now() RETURNING *",[r.id])).rows[0];if(updated){await c.query('INSERT INTO revisions(content_id,snapshot) VALUES($1,$2)',[r.id,JSON.stringify(updated)]);await enqueue(c,'publish:'+r.id+':'+updated.revision,notify('Scheduled publication',updated.title));await c.query('INSERT INTO audit(action,record_id) VALUES($1,$2)',['content.scheduled_publish',r.id]);}});}
- const expired=await db.query('SELECT id,file_id FROM applications WHERE delete_after<now() LIMIT 20');for(const a of expired.rows){await transaction(async c=>{const f=(await c.query('SELECT storage_key FROM files WHERE id=$1 FOR UPDATE',[a.file_id])).rows[0];if(f)await enqueueStorageDeletion(c,f.storage_key);await c.query('DELETE FROM applications WHERE id=$1',[a.id]);await c.query('DELETE FROM files WHERE id=$1',[a.file_id]);await c.query('INSERT INTO audit(action,record_id) VALUES($1,$2)',['application.retention_deleted',a.id]);});}
- await db.query("DELETE FROM enquiries WHERE created_at<now()-(SELECT (value->>'enquiryDays')::int FROM settings WHERE key='retention')*interval '1 day' AND status='closed'");await db.query('DELETE FROM sessions WHERE expires_at<now()');await db.query('DELETE FROM recovery_tokens WHERE expires_at<now()');await db.query('DELETE FROM rate_limits WHERE expires_at<now()');
+ // Provisional application/enquiry TTLs are not effective privacy policies.
+ // Business-data expiry stays disabled until approved rules, impact previews,
+ // legal holds, deletion cascades and recovery/deletion replay are qualified.
+ // Explicitly authorized storage-deletion outbox work above remains independent.
+ await db.query('DELETE FROM sessions WHERE expires_at<now()');await db.query('DELETE FROM recovery_tokens WHERE expires_at<now()');await db.query('DELETE FROM rate_limits WHERE expires_at<now()');
  await db.query("INSERT INTO operational_state(key) VALUES('worker_success') ON CONFLICT(key) DO UPDATE SET updated_at=now()");
  if(env.NODE_ENV==='production')await writeFile('/tmp/onesa-worker-success',String(Date.now()),{mode:0o600});
 }

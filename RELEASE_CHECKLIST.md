@@ -1,5 +1,12 @@
 # Production release checklist
 
+## Privacy governance implementation — 2026-10-13
+
+Local verification: 73 backend tests pass, including nine governance/import/approval tests; generated contracts contain 70 operations and match the frontend client. Frontend lint, type checks and production build pass. Browser acceptance covers protected PDFs, amendments, comparisons, scoped owner approval and six responsive day/night scenarios. Hosted migration/import and authenticated staging/production UI evidence remain required. Imported documents and retention/provider/decision proposals stay INTERNAL drafts; no legal approval, DPA execution, public notice publication or deletion automation is inferred.
+
+See [privacy governance](docs/engineering/PRIVACY_GOVERNANCE.md).
+
+
 ## 2026-10-12 — Oracle staging runtime qualification
 
 The existing owner-provisioned ARM64 VM has separate hardening and runtime receipts.
