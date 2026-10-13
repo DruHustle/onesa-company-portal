@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-13 — Simplify the contact page
+
+Remove the repeated address, email and telephone block from the English and German contact page introduction. Keep the contact form, partnership page details, footer and legal notices.
+
 ## 2026-10-13 — Encrypted scheduled recovery and private operations monitoring
 
 - Prepare hourly off-instance database/object backups with seven-day archive retention, authenticated envelope encryption and separately encrypted key escrow.
