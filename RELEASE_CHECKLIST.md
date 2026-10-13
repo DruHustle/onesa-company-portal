@@ -6,7 +6,6 @@ Local verification: 73 backend tests pass, including nine governance/import/appr
 
 See [privacy governance](docs/engineering/PRIVACY_GOVERNANCE.md).
 
-
 ## 2026-10-12 — Oracle staging runtime qualification
 
 The existing owner-provisioned ARM64 VM has separate hardening and runtime receipts.
@@ -57,6 +56,15 @@ Source publication and infrastructure preparation alone do not complete this che
 
 ## Outstanding owner and hosted acceptance
 
+- Oracle worker VM: the [OCI provisioning script](infra/oracle/provision-worker.py)
+  passed offline tests. The owner-approved BaSyx resize to 1 OCPU/6 GB returned to
+  RUNNING with identity/IP/storage preserved. The separate Frankfurt AD-2 worker
+  was created and its 1 OCPU/6 GB/50 GB Ubuntu ARM64 configuration and restricted
+  network passed provider readback. SSH and reboot recovery pass, cloud-init is done,
+  automatic security updates are enabled, and root/password login is disabled;
+  verification is recorded privately. Portal worker/ClamAV deployment and actual
+  storage/scanner/job/mail acceptance remain pending. See
+  [the OCI CLI instructions](docs/engineering/DEPLOYMENT.md).
 - Verify organization ownership and provider bindings; the inspected GitHub owner
   is DruHustle, not an independently verified onesa-ug organization.
 - Retest hosted API/worker readiness and original503 failures at the reviewed revision.
