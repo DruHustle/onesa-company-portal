@@ -33,13 +33,12 @@ def main():
     parser.add_argument("--allowlist", type=Path, default=ROOT / "scripts/release/targets.example.json")
     args = parser.parse_args()
     if args.mode == "decision":
-        path = ROOT / "docs/internal/release-audit/evidence/gates.json"
-        values = json.loads(path.read_text()) if path.exists() else {}
+        # A locally editable PASS string and source hash are not release authority.
+        # This compatibility command must never promote retired JSON approvals.
         for gate in GATES:
-            print(gate + ": " + values.get(gate, "BLOCKED"))
-        approved = all(values.get(gate) == "PASS" for gate in GATES) and values.get("valid_for_source_sha256") == source_hash()
-        print("GO" if approved else "NO-GO")
-        raise SystemExit(0 if approved else 1)
+            print(gate + ": BLOCKED")
+        print("NO-GO: legacy JSON approvals are retired; use the trusted release qualification workflow")
+        raise SystemExit(1)
     if args.mode == "smoke":
         allowed = json.loads(args.allowlist.read_text())["allowed_origins"]
         if args.target not in allowed:

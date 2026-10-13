@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-13 — Retire editable local release approvals
+
+The legacy qualification decision command now rejects editable gate JSON, including forged PASS values with a matching source fingerprint. Keep the existing trusted workflow evidence and owner authorization path. Forged/malformed approval regressions and the complete release failure-path suite pass; update the build guide without changing application contracts or production data.
+
 ## 2026-10-13 — Reuse the authorized Oracle SSH connection
 
 Configure the owner's local VM shortcut and an eight-hour idle SSH control connection using the existing private key and pinned host record. Verify two read-only sessions require the running master transport. Document connection status and shutdown commands; preserve provider-console authentication and private scanner/network boundaries.
