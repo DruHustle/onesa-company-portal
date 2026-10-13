@@ -1,11 +1,16 @@
 """Failure and isolation tests; never hosted qualification evidence."""
 
 import importlib.util
+import io
+import json
+import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import oracle_operations as ops
+import oracle_recovery as recovery
 
 SPEC = importlib.util.spec_from_file_location(
     "private_monitor", Path(__file__).parents[1] / "infra/oracle/operations/monitor.py"
@@ -73,6 +78,91 @@ class OperationsGuards(unittest.TestCase):
                 ops.install("a" * 40)
             remote.assert_not_called()
             keys.assert_not_called()
+
+    def test_wrong_recovered_application_key_cannot_start_database_restore(self):
+        with tempfile.TemporaryDirectory() as directory:
+            private = Path(directory)
+            master = private / "production-backup-encryption.key"
+            master.write_bytes(b"m" * 32)
+            master.chmod(0o600)
+            (private / "production-operations-installation.json").write_text(
+                json.dumps(
+                    {
+                        "source_commit": "a" * 40,
+                        "backup": {
+                            "object_count": 1,
+                            "object_key": "synthetic-backup",
+                            "key_id": "synthetic-key",
+                            "ciphertext_sha256": "b" * 64,
+                        },
+                    }
+                )
+            )
+            values = {
+                "DATABASE_URL": "postgresql://synthetic@"
+                + ops.production.DATABASE_HOST
+                + "/neondb",
+                "S3_ENDPOINT": "https://" + ops.production.BUCKET_HOST,
+                "S3_REGION": "synthetic-region",
+                "S3_BUCKET": "synthetic-bucket",
+                "AWS_ACCESS_KEY_ID": "synthetic-access",
+                "AWS_SECRET_ACCESS_KEY": "synthetic-secret",
+                "SESSION_KEY": "approved-synthetic-key",
+            }
+            with (
+                patch.object(ops, "PRIVATE", private),
+                patch.object(ops.worker, "qualified_source"),
+                patch.object(ops.production, "provider", return_value=[]),
+                patch.object(ops.production, "inventory", return_value=values),
+                patch.object(
+                    recovery,
+                    "run",
+                    return_value=json.dumps(
+                        {"session_key": "wrong-synthetic-key"}
+                    ).encode(),
+                ) as commands,
+            ):
+                with self.assertRaisesRegex(
+                    ValueError, "Recovered application key differs"
+                ):
+                    recovery.recover("a" * 40)
+                self.assertEqual(commands.call_count, 1)
+                self.assertEqual(commands.call_args.args[0][0], "node")
+                self.assertFalse(list(private.glob("independent-restore-*")))
+
+    def test_notification_uses_identified_client_and_does_not_follow_redirects(self):
+        values = {
+            "MAIL_PROVIDER": "resend",
+            "NOTIFY_EMAIL": "andrew@onesa.eu",
+            "MAIL_FROM": "synthetic@example.invalid",
+            "RESEND_API_KEY": "synthetic-only",
+        }
+        captured = []
+
+        def open_request(request, timeout):
+            captured.append(request)
+            return io.BytesIO(b'{"id":"synthetic-receipt"}')
+
+        with (
+            patch.dict(
+                "sys.modules",
+                {"backup": SimpleNamespace(checked_env=lambda: (values, None))},
+            ),
+            patch.object(
+                monitor.urllib.request,
+                "build_opener",
+                return_value=SimpleNamespace(open=open_request),
+            ) as build,
+        ):
+            result = monitor.notify(["backup-failed"], simulation=True)
+        self.assertEqual(
+            captured[0].get_header("User-agent"), "Onesa-Portal-Operations/1.0"
+        )
+        self.assertIsNone(
+            build.call_args.args[0].redirect_request(None, None, None, None, None, None)
+        )
+        self.assertTrue(result["provider_accepted"])
+        self.assertFalse(result["delivery_verified"])
 
     def test_monitor_never_stops_restarts_or_deletes_services(self):
         source = Path(monitor.__file__).read_text()

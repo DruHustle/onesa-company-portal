@@ -181,6 +181,7 @@ def notify(alerts, simulation=False):
         data=json.dumps(data).encode(),
         headers={
             "Authorization": "Bearer " + values["RESEND_API_KEY"],
+            "User-Agent": "Onesa-Portal-Operations/1.0",
             "Content-Type": "application/json",
             "Idempotency-Key": "onesa-operations/" + reference,
         },

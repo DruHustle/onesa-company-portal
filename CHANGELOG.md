@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-13 — Align browser acceptance and identify alert transport
+
+Keep company particulars required on legal/privacy pages and the footer while checking their removal from Contact. Identify the private operations HTTP client for the provider; delivery remains unverified until a real alert receipt succeeds.
+
+## 2026-10-13 — Verify recovery installation and application key
+
+Use explicit service paths for root-owned releases, avoid snapshot pipe buffering, and reject recovered application keys that differ from the approved runtime before database restore. Record actual independent recovery and scheduled backup execution; preserve separate alert delivery and production cutover gates.
+
+## 2026-10-13 — Simplify the contact page
+
+Remove the repeated address, email and telephone block from the English and German contact page introduction. Keep the contact form, partnership page details, footer and legal notices.
+
 ## 2026-10-13 — Encrypted scheduled recovery and private operations monitoring
 
 - Prepare hourly off-instance database/object backups with seven-day archive retention, authenticated envelope encryption and separately encrypted key escrow.
