@@ -53,8 +53,7 @@ and removes only its uniquely named disposable `_test` database and test role;
 it verifies rollback, strict refusal of existing objects and restricted permissions.
 
 Existing `verify.yml` runs lint/build/contracts/database/browser/docs/container checks
-under the `verify` job. Require `verify` and `publication-hygiene`. Local preparation
-only runs non-database unit tests; full CI is a separate gate and has not run remotely.
+under the `verify` job. Require `verify` and `publication-hygiene`. Full exact-source remote CI is a separate gate; inspect the actual current GitHub run and hosted acceptance receipts rather than treating local builds as deployed evidence.
 
 ## Container readiness regression
 
@@ -65,7 +64,7 @@ production CMD at PORT 10000, checks liveness, unsafe-role/unavailable-DB 503,
 restricted-role 200, anonymous protected-route 401 and SIGTERM shutdown.
 Do not use production records or change a live database role to run this test.
 
-The read-only Portal role workflow can run on the reviewed audit branch. Its
+The read-only Portal inspection uses the retained reviewed development/staging/main workflow scopes. Its
 allowlisted phase identifies whether runtime or migration URL validation failed;
 never relax the established database identity guard or paste URLs into logs.
 Inspection reports actual role safety and grants only after verifying the database
@@ -104,3 +103,7 @@ Run the mail and company-publication unit tests and the public legal-page browse
 checks, including contact links, exact EN/DE particulars, mobile layout and contrast.
 Mail signatures retain stable provider idempotency keys and are not duplicated on
 retries. Do not send actual email merely to execute the transport unit tests.
+
+## Retired local approval files
+
+`python3 scripts/release/qualify.py decision` always fails closed. Editable `gates.json` strings and a matching local source hash do not establish verified release authority. Use the existing trusted `release-qualification.yml`/`free-qualification.yml` workflow and owner-controlled promotion path. This does not add another reviewer or invalidate existing owner authorization. Contracts, isolated verification and safe anonymous smoke commands remain available.
