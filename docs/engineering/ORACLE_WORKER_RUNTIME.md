@@ -94,6 +94,58 @@ returns an explicit result. Do not enable publication or manually mark uploads c
 
 ## Production binding inspection
 
+Production preparation uses `scripts/oracle_production.py --commit <qualified-staging-SHA>`
+with the owner's private `RENDER_API_KEY` process environment. It accepts only the
+existing production API `srv-db4j1igm7kps73c13s4g`, production database endpoint and
+production branch object endpoint. It refuses owner database logins, unverified TLS,
+staging credential collisions and incomplete provider inventories. It installs only
+the supported inventory above into `/etc/onesa/portal-production.env`, root-owned
+mode `0600`, preserving an existing file rather than silently overwriting it. No
+credential value is displayed, committed or put in an SSH command argument.
+
+If the API has no usable mail profile but the retained production Render worker has
+one, `--reuse-production-mail` reuses that worker's existing Resend identity in the
+Oracle file. It validates the exact production worker and refuses staging token
+reuse. Only a file matching the previously inspected production configuration can
+be atomically extended with those supported mail fields. Unrelated configuration,
+existing configured API mail credentials and all Render settings remain preserved.
+
+The production Compose artifact is `compose.oracle-production.yaml`. It requires an
+exact qualified `PORTAL_WORKER_IMAGE`, the separate production environment file and
+`PORTAL_SCANNER_SOCKET_VOLUME`. On the current VM the already qualified scanner's
+socket volume is `onesa-portal-oracle-staging_scanner_socket`. Reusing this private
+scanner avoids a second 4 GB signature database on the 6 GB VM. Scanning is transient;
+each worker retains its own database, object credentials and egress network. The
+scanner socket is read-only to both workers and has no host TCP binding. Production
+has a 512 MB/0.1 CPU limit; measure combined consumption before long-running use.
+
+Preparation verifies the production schema/role and authenticated bucket metadata
+using a bounded, one-shot process. It does **not** enable the jobs profile, submit
+jobs, grant publication approval or qualify the complete production release.
+Record real synthetic production scan/quarantine, job/retry, restart, mail delivery,
+backup/restore and monitoring results separately. Preserve the existing Render
+production worker until its Oracle replacement passes the actual release gates.
+Never create a second scanner or delete shared database/bucket resources as cleanup.
+
+`scripts/oracle_production.py --action qualify --commit <qualified-staging-SHA>`
+then exercises the real ARM64 executor and private production bucket with disposable
+synthetic UUIDs only. It refuses an existing business dataset, disables email delivery
+inside the test process, verifies anonymous/quarantine/rejected download denial,
+clean download integrity, EICAR detection, scanner failure containment, deduplication,
+actual queue execution and bounded retries. The storage retry test injects a runtime
+transport failure; it does not claim a hosted provider outage. Cleanup removes only
+run-owned records/objects. The private receipt explicitly retains remaining mail,
+backup/restore, rollback, monitoring and long-running restart/capacity checks. A
+successful bounded qualification is never full production acceptance or permission
+to process real applicant documents.
+
+`--action recover` then starts one disposable, two-minute recovery probe with the
+production environment. It refuses business rows before each executor tick, verifies
+the process's own health, restarts that container, verifies fresh health, measures a
+resource sample and checks graceful shutdown/OOM state before removing it. It checks
+Docker boot activation and the restart policy; it does not reboot the shared VM or
+claim sustained production capacity. No permanent production service is enabled.
+
 The existing `repair-hosting.yml` owner action `inspect-role` reads the production
 Render runtime binding and tests its actual login using read-only transactions. It
 does not use `PORTAL_MIGRATION_DATABASE_URL`, apply migrations, change roles or update

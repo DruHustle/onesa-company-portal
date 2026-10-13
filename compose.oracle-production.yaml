@@ -1,0 +1,42 @@
+name: onesa-portal-oracle-production
+services:
+  worker:
+    image: ${PORTAL_WORKER_IMAGE:?Exact qualified ARM64 worker image required}
+    platform: linux/arm64
+    command: [node, dist/src/jobs/worker.js]
+    profiles: [jobs]
+    env_file:
+      - path: ${PORTAL_ORACLE_ENV_FILE:-/etc/onesa/portal-production.env}
+        required: true
+    environment:
+      NODE_ENV: production
+      CLAMAV_SOCKET: /run/onesa-scanner/clamd.sock
+      PUBLISH_ENABLED: 'false'
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 180s
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    volumes: [scanner_socket:/run/onesa-scanner:ro]
+    group_add: ['3000']
+    networks: [worker_egress]
+    mem_limit: 512m
+    cpus: 0.1
+    healthcheck:
+      test: [CMD, node, dist/src/jobs/health.js]
+      interval: 30s
+      timeout: 15s
+      start_period: 60s
+      retries: 3
+networks:
+  worker_egress:
+volumes:
+  scanner_socket:
+    external: true
+    name: ${PORTAL_SCANNER_SOCKET_VOLUME:?Existing qualified private scanner socket volume required}
