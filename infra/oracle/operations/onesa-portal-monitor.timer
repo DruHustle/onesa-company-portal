@@ -1,0 +1,10 @@
+[Unit]
+Description=Onesa private Portal monitoring every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=60
+Unit=onesa-portal-monitor.service
+
+[Install]
+WantedBy=timers.target

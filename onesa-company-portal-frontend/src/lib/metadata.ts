@@ -1,5 +1,7 @@
 import type {Metadata} from 'next';
+import {company} from '../config/company';
 import {copy, type Locale} from '../config/copy';
+import {companyOrigin, companyPageUrl, companyLanguages} from './site-origin.mjs';
 
 export const socialImage = {
   url: 'https://onesa.eu/social/onesa-social-card.png',
@@ -13,12 +15,14 @@ export const socialImage = {
 export function homepageMetadata(): Metadata {
   const title = 'Onesa | Engineering Intelligent Possibilities';
   const description = 'Onesa develops AI platforms, digital products and intelligent applications for businesses, developers and institutions across Europe and global markets.';
-  const url = 'https://onesa.eu/';
+  const origin = companyOrigin();
+  const url = companyPageUrl(origin, 'en');
   return {
     // All homepage sharing URLs are absolute; avoid Next normalizing the root slash.
     metadataBase: null, title: {absolute: title}, description,
-    alternates: {canonical: url, languages: {en: url, de: 'https://onesa.eu/de'}},
+    alternates: {canonical: url, languages: companyLanguages(origin)},
     openGraph: {type: 'website', siteName: 'Onesa', title, description, url,
+      locale: 'en_US', alternateLocale: ['de_DE'],
       images: [{...socialImage, secureUrl: socialImage.url}]},
     twitter: {card: 'summary_large_image', title, description, images: [socialImage]},
   };
@@ -41,16 +45,17 @@ export function companyMetadata({locale, path = '', title, description, translat
   article?: boolean;
 }): Metadata {
   if (locale === 'en' && !path && !title && !description) return homepageMetadata();
-  const origin = new URL(process.env.SITE_URL || 'http://localhost:3300').origin;
-  const url = `${origin}/${locale}${path}`;
+  const origin = companyOrigin();
+  const url = companyPageUrl(origin, locale, path);
   const resolvedTitle = title ? `${title} | Onesa UG` : `Onesa UG — ${copy[locale].footer}`;
   const resolvedDescription = description || copy[locale].intro;
   return {
+    metadataBase: null,
     title: {absolute: resolvedTitle},
     description: resolvedDescription,
     alternates: {
       canonical: url,
-      ...(translated ? {languages: {en: `${origin}/en${path}`, de: `${origin}/de${path}`}} : {}),
+      ...(translated ? {languages: companyLanguages(origin, path)} : {}),
     },
     openGraph: {
       type: article ? 'article' : 'website',
@@ -73,7 +78,7 @@ export function companyMetadata({locale, path = '', title, description, translat
 
 export function sectionTitle(locale: Locale, section: string): string {
   const legal: Record<string, string> = {
-    impressum: 'Impressum',
+    impressum: locale === 'en' ? 'Legal Notice' : 'Impressum',
     privacy: locale === 'en' ? 'Privacy information' : 'Datenschutzhinweise',
     cookies: 'Cookies',
     accessibility: locale === 'en' ? 'Accessibility' : 'Barrierefreiheit',
@@ -85,6 +90,7 @@ export function sectionTitle(locale: Locale, section: string): string {
 export function sectionDescription(locale: Locale, section: string): string {
   const t = copy[locale];
   const descriptions: Record<string, string> = {
+    impressum: `${company.legalName}, ${company.address}. ${company.registerCourt}, ${company.registerNumber}.`,
     about: t.missionText,
     products: t.productText,
     technology: t.capText,

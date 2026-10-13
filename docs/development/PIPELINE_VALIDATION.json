@@ -1,0 +1,123 @@
+{
+  "scope": "Local checks; no live deployments or remote new-workflow run",
+  "pipeline": {
+    "release": {
+      "exit_code": 0,
+      "output": "...........................................\n----------------------------------------------------------------------\nRan 43 tests in 0.226s\n\nOK\n"
+    },
+    "pipeline": {
+      "exit_code": 0,
+      "output": "src/index.ts(2,3): error TS2322: mismatch.................\n----------------------------------------------------------------------\nRan 17 tests in 0.529s\n\nOK\n"
+    },
+    "security": {
+      "exit_code": 0,
+      "output": "Required documentation exists and is nonempty\nZizmor: 0 blocking and 4 advisory findings\nGitleaks: 0 finding(s)\n"
+    },
+    "hygiene": {
+      "exit_code": 0,
+      "output": "Publication hygiene: 0 finding(s); manual review still required.\n"
+    }
+  },
+  "application": [
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "onesa-company-portal-backend",
+        "run",
+        "lint"
+      ],
+      "exit_code": 0,
+      "output_tail": "\n> onesa-company-portal-backend@0.1.0 lint\n> eslint src tests\n\n"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "onesa-company-portal-backend",
+        "run",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "output_tail": "\n> onesa-company-portal-backend@0.1.0 typecheck\n> tsc --noEmit\n\n"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "onesa-company-portal-backend",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "output_tail": "\n> onesa-company-portal-backend@0.1.0 build\n> tsc\n\n"
+    },
+    {
+      "cwd": "onesa-company-portal/onesa-company-portal-backend",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "tests/unit.test.ts",
+        "tests/contracts.test.ts"
+      ],
+      "exit_code": 0,
+      "output_tail": "\u2714 OpenAPI is generated from all registered routes, with unique IDs and error schemas (465.34325ms)\n\u2714 Password hashes are salted and verify only matching passwords (178.846708ms)\n\u2714 AES-GCM MFA encryption detects tampering (0.383291ms)\n\u2714 TOTP RFC6238 SHA1 vector and replay protection (0.396958ms)\n\u2714 PDF generation returns a readable multi-page A4 file (8.46025ms)\n\u2139 tests 5\n\u2139 suites 0\n\u2139 pass 5\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 592.374958\n"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "onesa-company-portal-frontend",
+        "run",
+        "lint"
+      ],
+      "exit_code": 0,
+      "output_tail": "\n> onesa-company-portal-frontend@0.1.0 lint\n> eslint src\n\n"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "onesa-company-portal-frontend",
+        "run",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "output_tail": "\n> onesa-company-portal-frontend@0.1.0 typecheck\n> tsc --noEmit\n\n"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "onesa-company-portal-frontend",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "output_tail": "\n> onesa-company-portal-frontend@0.1.0 build\n> next build --webpack\n\n\u25b2 Next.js 16.4.0 (webpack)\n\u2713 Running next.config.mjs took 8ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 952ms\n  Running TypeScript ...\n  Finished TypeScript in 685ms ...\n  Collecting page data using 7 workers ...\n  Generating static pages using 7 workers (0/1) ...\n\u2713 Generating static pages using 7 workers (1/1) in 64ms\n  Finalizing page optimization ...\n  Collecting build traces ...\n\nRoute (app)\n\u250c \u0192 /\n\u251c \u0192 /_not-found\n\u251c \u0192 /[locale]\n\u251c \u0192 /[locale]/[section]\n\u251c \u0192 /[locale]/[section]/[slug]\n\u251c \u0192 /admin\n\u251c \u0192 /api/v1/[...path]\n\u251c \u0192 /privacy-policy\n\u2514 \u0192 /sitemap.xml\n\n\n\u0192 Proxy (Middleware)\n\n\u0192  (Dynamic)  server-rendered on demand\n\n"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/check-contracts.py"
+      ],
+      "exit_code": 0,
+      "output_tail": "\n> onesa-company-portal-backend@0.1.0 api:export\n> node --import tsx src/api/export.ts\n\nValidated 61 API operations\n\n> onesa-company-portal-frontend@0.1.0 api:generate\n> openapi-typescript ../onesa-company-portal-backend/openapi/openapi.json -o src/lib/api/generated/schema.d.ts\n\n\u2728 openapi-typescript 7.13.0\n\ud83d\ude80 ../onesa-company-portal-backend/openapi/openapi.json \u2192 src/lib/api/generated/schema.d.ts [168.3ms]\nOpenAPI and generated client match route schemas\n"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/test-contract-break.py"
+      ],
+      "exit_code": 0,
+      "output_tail": "Breaking backend schema change regenerated client types and failed consumer compilation as expected\n"
+    }
+  ],
+  "limitations": [
+    "Full live staging/production acceptance not executed",
+    "Full DB/browser/image/ROS suites retained in CI; not rerun in this local pipeline audit",
+    "Robot release tests retain seven native protection specific skips; private-Free external handoff tested"
+  ]
+}

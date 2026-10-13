@@ -1,8 +1,356 @@
 # Changelog
 
+## 2026-10-13 — Align browser acceptance and identify alert transport
+
+Keep company particulars required on legal/privacy pages and the footer while checking their removal from Contact. Identify the private operations HTTP client for the provider; delivery remains unverified until a real alert receipt succeeds.
+
+## 2026-10-13 — Verify recovery installation and application key
+
+Use explicit service paths for root-owned releases, avoid snapshot pipe buffering, and reject recovered application keys that differ from the approved runtime before database restore. Record actual independent recovery and scheduled backup execution; preserve separate alert delivery and production cutover gates.
+
+## 2026-10-13 — Simplify the contact page
+
+Remove the repeated address, email and telephone block from the English and German contact page introduction. Keep the contact form, partnership page details, footer and legal notices.
+
+## 2026-10-13 — Encrypted scheduled recovery and private operations monitoring
+
+- Prepare hourly off-instance database/object backups with seven-day archive retention, authenticated envelope encryption and separately encrypted key escrow.
+- Add owner-host independent restoration, private aggregate monitoring and nine controlled failure simulations; retain production worker cutover gates until hosted checks pass.
+- Record the real DMARC repair and delivered mail checks, and the measured 15-minute synthetic staging scan/queue workload.
+
+
+## 2026-10-13 — Oracle production preparation and qualification
+
+- Added an isolated production worker profile that reuses the private ClamAV socket without duplicating the scanner.
+- Added strict production database/bucket/credential isolation checks, private configuration installation and bounded synthetic scan/quarantine/queue qualification.
+- Added CI tests for production binding and secret-isolation failure paths; full production release and real-document processing remain gated.
+
+
+- Added a single-notification production Resend acceptance check; use sending-only credentials without falsely treating provider acceptance as inbox delivery.
+- Kept service identifiers distinct from credential identifiers so the full secret scanner passes without an exemption.
+- Added authenticated encrypted production database recovery rehearsal with consistent snapshots, full table/content comparison and restored application readiness; real business datasets and production cutovers remain excluded.
+
+## 2026-10-13 — Retire editable local release approvals
+
+The legacy qualification decision command now rejects editable gate JSON, including forged PASS values with a matching source fingerprint. Keep the existing trusted workflow evidence and owner authorization path. Forged/malformed approval regressions and the complete release failure-path suite pass; update the build guide without changing application contracts or production data.
+
+## 2026-10-13 — Reuse the authorized Oracle SSH connection
+
+Configure the owner's local VM shortcut and an eight-hour idle SSH control connection using the existing private key and pinned host record. Verify two read-only sessions require the running master transport. Document connection status and shutdown commands; preserve provider-console authentication and private scanner/network boundaries.
+
+## 2026-10-13 — Retire redundant staging resources and deployment entries
+
+Delete the credential-free legacy Render staging worker after verifying the healthy Oracle replacement. Remove only the empty, unreferenced migrations-staging Neon project after SQL and bucket inventory; preserve active/shared and populated databases and the production worker pending replacement qualification. Reference only the existing Free API in Render, remove duplicate database/worker declarations and generated-key directives, and omit unused TCP scanner settings from Oracle deployment examples. Read-only inspection distinguishes Oracle staging execution and conditional mail profiles.
+
+## 2026-10-12 — Approved company details and verified Neon scope
+
+Use the owner-confirmed legal name, registered address, director, register court/number and contact links consistently across legal/privacy/contact pages, metadata, CMS seeding, document templates and idempotent mail signatures. Preserve CMS revisions and all privacy/publication approvals. Generate independent snapshots from the maintained private record, without committing unapproved records or coupling product builds. Correct staging SQL/fixture guards to the verified *-staging project and production initialization to its actual runtime target; reject the obsolete migrations project. No production or real-data acceptance is implied.
+
+## 2026-10-12 — Registered private-Free staging entry point
+
+Allow the existing manual, owner-only staging bridge on private repositories so the repository-secret fallback is usable before new workflows reach main. Keep production guards, exact-source qualification, named staging secrets and protected Preview checks; test rejection of untrusted actors/events, main refs and production targets.
+
+## 2026-10-12 — Independent production runtime inspection
+
+Inspect the actual Render runtime database login through read-only queries without requiring or validating an unrelated migration credential. Retain provider identity, TLS, schema, permissions and role diagnostics; repair actions keep their separate maintenance-credential checks. Never change data, roles, settings or deployments during inspection.
+
+## 2026-10-12 — Managed legal publication fallback
+
+Render draft legal/privacy fallback text only when no published managed notice exists. A published notice previously received an additional contradictory draft block. Missing notices remain explicitly incomplete; this change does not supply or approve company/legal particulars.
+
+## 2026-10-12 — verified staging secret scope
+
+- Select the verified public `Staging` environment through the non-secret `STAGING_SECRET_SCOPE` variable while keeping repository-level `STAGING_*` secrets as the private-Free fallback.
+- Share one deployment sequence between mutually exclusive owner-only jobs; preserve source qualification, target checks and production separation.
+- Test both scope selections, private fallback and untrusted actor rejection; diagnostics disclose only availability booleans.
+
+## 2026-10-12 — Verify configured staging secret injection
+
+Add trusted owner-only environment and repository availability modes to the existing
+hosting inspector. Test required names as booleans, without checking out code, calling
+providers or displaying values. Preserve the Staging entries and independently verify
+usable injection and actual repository entitlement. Private-Free repository fallback
+remains documented; secret names alone never prove authentication or data isolation.
+Exercise real diagnostic code with synthetic sentinel values and assert they are never
+logged. Oracle configuration remains independent of GitHub secret entry.
+
+
+## 2026-10-12 — Single owner authorization and optional scanner configuration
+
+Accept the owner’s single, exact-commit workflow decision without requiring a second
+review issue or discretionary signature. Preserve actual CI/staging artifact, owner
+identity, digest, freshness and revocation checks; no operational/legal PASS is inferred.
+Treat a blank optional ClamAV socket as absent while retaining absolute-path validation
+and quarantine when scanning is unavailable. Preserve restricted release evidence when
+removing obsolete workspace reports; production and real-data qualification remain separate.
+
+## 2026-10-12 — Preserve pinned SSH paths containing spaces
+
+Quote the existing known-hosts path for OpenSSH configuration parsing. The shared
+workspace contains a space, which otherwise splits the filename and makes strict
+verification reject the host. Keep strict checking, the owner-held identity and
+existing host record; verify the owner operator through a real read-only SSH call.
+
+
+## 2026-10-12 — Separate browser startup and action budgets
+
+The retained CI trace shows WebKit spent 28 seconds creating its page in the
+30-second test budget, leaving 1.4 seconds for an ordinary language-link click.
+Allow a 60-second total browser test budget while explicitly limiting individual
+actions to 15 seconds and navigation to 20 seconds. Keep retries disabled, every
+browser/appearance check and exact-source release gates. This changes the CI fixture
+budget, not an application response contract or a failed-check waiver.
+
+
+## 2026-10-12 — Validate Git staging archive parents
+
+Accept only expected parent directories emitted by Git archive while retaining
+regular-file, path and private-file restrictions. Add a real source archive
+regression so deployment preparation validates the exact Git artifact before SSH.
+
+
+## 2026-10-12 — Scanner dependency security remediation
+
+The new full scanner image gate rejected the Debian candidate with HIGH/CRITICAL
+advisories. Replace it with the pinned official Alpine 3.24.2 ARM64 profile and
+signed ClamAV 1.4.6-r0 packages, retaining documentation and the identical private
+socket, signature-freshness and resource controls. Keep the full vulnerability and
+secret gate enforced for CI and actual native hosted images; no vendor findings
+are suppressed and no failed candidate is deployed.
+
+
+## 2026-10-12 — Private ARM64 executor and automatic day/night
+
+Prepare the existing Portal executor for an owner-provisioned ARM64 staging VM,
+with a nonroot ClamAV image, restricted Unix socket, bounded CPU/memory/logs and
+private heartbeat/scanner health. Production-mode worker startup requires shared
+storage and a restricted application database role. Hosted acceptance waits only
+for its own quarantined synthetic file and still requires an explicit clean result.
+Keep staging Actions credentials at repository-level STAGING_ names for private
+GitHub Free compatibility; record the absence of environment-level isolation.
+Restore automatic visitor-time day/night without a selector or manual preference,
+retaining CSP nonces and testing both appearances. No production promotion or
+hosted scan qualification is implied by local tests or VM runtime installation.
+
+
+## 2026-10-12 — Explicit hosted scanner diagnostics
+
+Hosted storage acceptance requires an explicit clean scanner result before downloading the synthetic private file. Quarantine, rejected content and invalid scan states fail with fixed diagnostic codes; provider messages and file identifiers are not exposed in failure text. Read-only hosting inspection includes scanner and mail configuration names for API/worker troubleshooting. Existing quarantine, authentication and production release gates remain enforced.
+
+## 2026-10-12 — Remove appearance switching
+
+Remove Auto/Light/Dark controls, browser preference logic, timers and custom palette switching at the owner’s request. Retain the existing fixed light surfaces and navy/cyan brand elements; authenticated content and responsive accessibility checks remain in place. Remove only tests and assets belonging to the retired feature.
+
+
+## 2026-10-12 — Decrypted Preview environment readback
+
+Use the current Vercel v10 environment-list endpoint for metadata and the individual v1 variable endpoint for private server-value readback. Require an explicitly decrypted response with the exact variable ID, key, Preview target and staging branch before comparing the credential. Ciphertext, a foreign scope or a mismatched value cannot qualify a successful write. Preserve production snapshots and fixed diagnostic codes; never log private values.
+
+
+## 2026-10-12 — Complete published detail route QA
+
+Exercise each implemented product/article/job/research detail in EN/DE at mobile/desktop widths in both themes against isolated real PostgreSQL fixtures. Check rendering, overflow and axe, then verify the privacy alias and absent detail. Both local Chromium/WebKit cases pass across 64 detail combinations; no hosted/public data is created. Preserve word spacing between the headline’s visual lines so accessible names and extracted content read naturally in EN/DE.
+
+
+## 2026-10-12 — Read-only Preview routing diagnosis
+
+Compare the effective staging Preview backend and proxy binding with the identified staging API. Branch overrides take precedence; ambiguous values fail validation. Report booleans only, preserving credentials and production. A hosted owner repair checks current dev/staging CI and isolated provider identity before saving only the staging branch backend URL and existing staging proxy key; production values are read back unchanged, with no deployment requested.
+
+
+## 2026-10-12 — Exact native staging Preview origin
+
+- Real staging deployment and temporary identity cleanup succeeded; authenticated acceptance exposed an HTTP 403 from the Preview hostname/origin boundary.
+- Only the exact provider-bound staging Git Preview receives the combined company/administration surface and its own HTTPS mutation origin. Production company/portal separation, unknown-host denial, development origins and forged-host rejection remain enforced.
+- Domain tests now cover the staging binding and reject production/dev/foreign Preview contexts. Hosted auth diagnostics distinguish fixed HOST and ORIGIN failures without exposing response content.
+
+## 2026-10-12 — Visitor-time appearance, exact-source staging and private synthetic fixtures
+
+- Public EN/DE routes and administration offer Auto/Light/Dark. Auto uses the visitor's local 07:00/19:00 boundaries, survives blocked storage, restores manual preferences, and updates after focus/timezone changes. CSP nonce protection is retained.
+- Staging validates fixture project/synthetic scope before deploy. Owner-only temporary accounts use random private credentials and MFA; cleanup disables only exact run-owned identities and revokes their sessions. Existing accounts and production remain unchanged.
+- The staging frontend reuses the protected native Git Preview for the exact SHA; Actions deploys only the backend. Ambiguous, foreign-source, production or failed Previews cannot qualify.
+- Updated official GitHub Actions to reviewed immutable Node 24-compatible releases. Expanded two-theme route/browser acceptance; repaired mobile theme visibility and dark-panel contrast.
+- Local backend: 57 tests pass. Release fixtures and Preview negative tests pass. Production publication, legal approval, worker/scanner/mail integration and actual hosted acceptance remain separate release gates.
+
+## 2026-10-12 — Correct only the verified staging database binding
+
+Add an owner-only staging repair using the privately saved restricted application
+password. Verify free Render identity, TLS, existing migration checksums, login and
+least-privilege grants before updating only staging DATABASE_URL and reading it back.
+Never initialize data, change grants/passwords, deploy, or modify production.
+Use the existing operator's current-head/visibility/full-CI gate; release preflight
+continues to accept only deployment workflow paths, excluding this operator.
+
+## 2026-10-12 — Fail incomplete hosted staging acceptance
+
+Retain uploaded staging receipts but fail the workflow when hosted acceptance is FAIL,
+BLOCKED, incomplete, or falsely claims PASS with failed checks. A successful provider
+build/deploy is still recorded separately. Production qualification gates are unchanged.
+
+## 2026-10-12 — Safe hosted preflight diagnostics
+
+Report a fixed failure code for provider access, target identity, database binding,
+model configuration and Preview protection without printing values, URLs, provider
+responses or arbitrary exception text. Retain every existing validation/release gate;
+add regression coverage rejecting private exception text from diagnostics.
+
+## 2026-10-12 — Explicit staging secret forwarding
+
+Declare and forward only the staging secret names used by the reusable qualification
+workflow. GitHub otherwise resolves environment-only secrets to empty strings. Retain
+Staging environment precedence, preflight value/isolation checks and production gates;
+add contract coverage for missing mappings and prevent production credential forwarding.
+
+## 2026-10-12 — Scope mandatory startup evidence to its image
+
+Name the backend-only startup requirement as mandatory only for the backend matrix
+entry. Its intentional frontend skip no longer blocks otherwise complete release
+qualification. Backend startup, both runtime digests and image/security checks remain
+mandatory; regression cases reject skipped, failed and cancelled required evidence.
+
+## 2026-10-12 — Staging workflow registration and credential scopes
+
+- Add a staging-only dispatch through the already registered deploy.yml entry point,
+  reusing the same exact-source release-staging workflow and Staging environment.
+  This permits initial staging qualification before new workflows are installed on main.
+- Keep owner, branch, event, commit, provider isolation and hosted acceptance gates.
+  Production jobs require the production target and existing exact-commit approval;
+  the staging caller does not inherit production credentials.
+- Correct legacy public production jobs to use production provider secret names.
+  Staging tokens must never be paired with production services or --prod commands.
+  Private production jobs remain disabled pending the external credential procedure.
+
+## 2026-10-12 — Company search and social metadata
+
+- Use validated canonical origins without a production localhost fallback. Align the
+  root English homepage, its /en alias, German alternates and sitemap destinations;
+  preserve absolute root URLs when Next.js resolves metadata.
+- Permit facebookexternalhit and Facebot homepage/image previews in the unreleased
+  robots response while retaining publication gates and private-route exclusions.
+- Include published product/article/job/research URLs and verified revision dates in
+  the gated sitemap. Map managed-page search links to implemented routes and keep
+  search results noindex. Do not invent translated detail slugs or modification dates.
+- Expand actual HTTP and unit regressions for crawler HTML, locale links, images,
+  sitemap entries and invalid hosted origins. Live acceptance requires deploying the
+  tested candidate through the existing staging and production qualification gates.
+
+## Staging branch and environment configuration
+
+- Retarget retired operator branch references; production database mutations remain main-only and require exact-source CI.
+- Standardize remote branches on dev, staging and main; preserve branch history in restricted recovery bundles.
+- Scope staging workflows to the GitHub Staging environment and retain commit-specific production authorization.
+- Use each product’s existing Vercel project for staging previews; enable Git previews only for staging in the prepared configuration.
+- Document required environment secret names and block missing or excessively privileged credentials.
+
+
+
+## 2026-10-11 — Automated review and CI/CD optimization
+
+Add read-only Reviewdog, checksum-locked workflow/secret analyzers, negative pipeline
+tests, conservative PR paths, dependency caches, PR cancellation and required CI summary.
+Preserve full release-source checks and independently tested runtime evidence; remove
+Portal duplicate image builds. Add opt-in isolated staging and automatic technical
+qualification, retaining manual exact-digest owner authorization and external production
+credential custody. Legal/operational evidence never receives fabricated PASS.
+Dependabot version schedules are prepared; automatic security-update PRs were enabled
+and verified as requested. No other remote settings, pushes or live deployments. See the CI/CD pipeline report.
+
+## 2026-10-11 — Private-Free release safeguards
+
+Credential-free hosted PR CI; immutable Actions pins; exact-commit qualification and owner authorization with external production handoff; separate staging credentials; legacy JSON fallback removed; private credential-bearing production workflows excluded. Remote settings and deployments unchanged. See the private-Free safeguard report for owner migration and enforcement limits.
+
+## 2026-10-11 — Preserve audited applications with owner runner policy
+
+- Merge the owner-approved main policy without replacing current application fixes.
+- Public jobs verify hosted execution and live visibility; private reusable validation
+  retains all implemented tests, browser matrices, startup and image-security gates.
+- No local runner activation, production promotion or physical control.
+
+## 2026-10-11 — Verified staging layout and read-only inventory clarity
+
+- Applied the guarded Portal staging layout correction with auto-deploy disabled;
+  branch, backend root, command and readiness path are verified without deploying.
+- Distinguish facts/settings rows from operational records in confirmed database
+  inventory. Seeded configuration no longer implies business data; preserve the
+  existing aggregate field and use SELECT EXISTS only, without reading record content.
+
+
+## 2026-10-11 — Public repository hosted Actions
+
+- Record the owner-selected temporary public visibility and standard GitHub-hosted
+  runner policy. Local runners remain private-only; retain security and release gates.
+- Clarify that earlier private-plan protection failures are historical and do not
+  establish current public-repository enforcement. No billing or protection settings changed.
+- Route public Portal jobs to Ubuntu hosted runners, including browser OS dependencies;
+  keep the manual local smoke gated to private repositories.
+
+## 2026-10-11 — Guarded staging layout repair
+
+- Fresh authenticated inspection found the owner-created staging API on main with
+  the wrong root/health path, native auto-deploy enabled and no runtime variables.
+  Add an exact-source CI-gated operator action limited to its fixed service ID,
+  matching repository, Docker runtime, Frankfurt and free plan.
+- Pause auto-deploy with readback before changing branch/root/CMD/health; verify
+  final configuration without reading/copying environment values or deploying.
+  Refuse foreign, paid, mismatched and unverified targets. The purported worker is
+  a web service and remains blocked; no conversion, paid plan or runtime cutover.
+
+## 2026-10-11 — Scanner framing and crashed final worker attempts
+
+- Require one complete NUL-framed INSTREAM clean response. Ambiguous, truncated
+  and error replies remain quarantined; infected signatures containing an OK
+  substring are rejected. Bound scanner response bytes and total elapsed time.
+- Exhausted email/storage leases become failed after expiry without a sixth
+  attempt. Active final leases remain owned; reconcile provider acceptance before
+  any manual retry. Added TCP scanner and disposable-database regressions.
+
+## 2026-10-11 — Owner-created staging targets
+
+- Record the two supplied Render service IDs and add an explicit read-only staging inspection scope. Production settings and release guards remain unchanged; hosted verification is blocked by GitHub's account runner restriction.
+
+## 2026-10-11 — Deployment target discovery
+
+Read-only hosting inspection reports exact deployment IDs, Preview protection and
+a bounded, repository-filtered inventory of existing Onesa Render services.
+Provider environment values and commands remain excluded. Partial inventories are
+marked incomplete; discovery does not authorize repurposing or deploying a service.
+Added foreign-resource, redaction and pagination regression checks.
+
+## 2026-10-11 — Confirmed empty Portal database initialization
+
+- Added a separate operator action for the owner-confirmed empty autumn-glade
+  database. Exact-commit CI, database identity and verified client TLS are required;
+  occupied schemas and existing role passwords are preserved by refusal.
+- Seven unchanged migrations and a dedicated restricted login are created in one
+  transaction, using a private pre-saved application credential. The login's schema
+  checksums and permissions are verified before any proposed runtime cutover.
+  This operation never changes Render settings, connects to dark-boat or deploys.
+- The shared migration executor does not load runtime environment files. Added a
+  disposable-database rollback/permissions regression. Database test files run
+  serially because shared-fixture grants and sequence writes reproduced a catalog
+  update race; all tests remain enabled.
+
+## 2026-10-11 — Read-only database diagnostics
+
+Identify runtime URL, migration URL, schema, authentication and permission failures
+without logging credentials or provider responses. Read-only inspection now verifies
+the actual configured runtime role, grants and migration checksums. Role repair and
+production release guards remain unchanged; audit branches cannot apply permissions.
+
+
+## 2026-10-11 — Targeted Render database-role repair
+
+- Added an operator-only workflow that verifies the established Portal Neon target,
+  all migration checksums and the complete table inventory before permission changes.
+- Uses a fresh private direct owner URL to create a restricted runtime role, verifies
+  its CRUD/sequence access and forbidden administrative privileges, and saves only
+  the Portal API DATABASE_URL with private provider readback. Existing records,
+  migrations, role passwords, worker and frontend settings remain untouched.
+- The operation does not deploy or restart; existing production qualification gates
+  continue to apply. Missing owner credentials or unknown schema/roles fail safely.
+
 ## 2026-10-11 — Isolated local Actions runner
 
-- Route all existing Linux jobs to a repository-scoped ARM64 Ubuntu VM runner.
+- Route compatible verification/inspection jobs to the existing repository-scoped ARM64 Ubuntu VM runner.
   Preserve check names, security gates, three-browser coverage and release controls.
 - Restrict execution to owner-controlled branches/PRs, use read-only checkout
   credentials, bounded timeouts, allocated database ports and runner-owned cleanup.
@@ -173,8 +521,68 @@ workers, EU model/privacy/capacity and restored backup limits remain material.
 Free inference candidates are unconfigured, not a deployed real-model endpoint.
 Production remains NO-GO; preserve independent products and all original data.
 
-## 2026-10-11 — Visibility-aware Actions policy
+### 2026-10-11 — Production readiness checks
 
-- Public repositories use hosted execution with zero local registration access; the former portal service was removed and its VM/login startup stopped. Repository visibility was not changed.
-- Private workflows use a shared exact-revision local validation phase before cloud checks, preserving existing check names and release approvals. Runtime visibility hooks deny public/missing-token/API-failure execution independently of workflow conditions.
-- Public cloud CI results and private unverified activation limitations are recorded in the runner maintenance guide after verification. Production remains gated.
+Readiness now verifies migration checksums, application CRUD and sequence grants,
+and the existing restricted-role boundary. Container probes honor the assigned
+PORT. CI exercises the actual production command, unavailable databases, safe and
+unsafe roles, authentication boundaries and graceful shutdown on an isolated DB.
+The historical hosted role fault has not been reclassified from a timeout alone.
+
+
+## 2026-10-10 — GitHub Free governance plan
+
+- Selected private GitHub Free operation with voluntary feature-branch PRs, verified
+  CI, manual authorization and least practical write access. No paid upgrade or
+  visibility workaround is proposed; main enforcement remains blocked.
+
+## 2026-10-10 — Branch protection and governance audit
+
+- Verified private personal ownership, admin access, actual PR CI/security check names
+  and deployment/environment evidence across all three repositories.
+- Attempted repository rulesets and classic fallback; GitHub rejected both with HTTP
+  403 requiring Pro eligibility. Main readback remains unprotected, NOT ENFORCED.
+- Prepared exact payloads, solo-developer PR/recovery policy, templates and API-backed
+  reports. Local `deploy.yml` display names now use `deploy-qualification`, `deploy-frontend` and `deploy-backend` plus `deploy-worker`. Job IDs, dependency expressions and deployment behavior are preserved. This removes collisions with required CI checks. These edits are not yet published; merge them through a reviewed PR and verify the resulting names before activating the payload.
+- Existing local work is preserved. No push, merge, deployment, billing, visibility,
+  credential or external provider change was performed.
+
+## 2026-10-10 — Render database-role follow-up
+
+- Guarded the existing restricted-role operator procedure with database identity/TLS
+  checks and read-only default; added credential-free privilege reasons.
+- Readiness verifies migration checksums and application CRUD grants; Docker health
+  follows PORT. Production CMD and owner/restricted/dependency regressions added to CI.
+- 36 backend tests passed on isolated PostgreSQL; production image smoke passed.
+  Hosted role condition/identity remain unverified; production/legal gates stay open.
+
+## 2026-10-10 — Instruction documentation cleanup
+
+Removed completed GitHub setup instructions and duplicate status/session-handoff
+logs. Consolidated contribution, security, repository governance and agent policies
+in one root AGENTS.md per independent repository. Preserved unfinished work in
+existing roadmap/release documentation, updated links and documentation tooling.
+
+## 2026-10-11 — Reviewed governance integration
+
+Consolidated policy references and templates, preserved later audited runtime fixes, and reconciled deployment notes with actual staging evidence. Prepared protection settings remain reference only under GitHub Free. Original local work and private environment files are preserved. Public production qualification is unchanged.
+
+## 2026-10-11 — Confirmed alternate Portal database inspection
+
+Added a strictly read-only inspection operation for the owner-confirmed alternate Neon Portal endpoint. Existing runtime-role repair still accepts only its established target. Inspection verifies TLS/schema and reports data presence without records, credentials, migrations, permission changes, settings updates or deployment. Corrected the operator workflow reference to repair-hosting.yml.
+
+Follow-up: verify encrypted/certificate-validated TLS at the actual client socket, rather than using pg_stat_ssl for Neon proxy connections. Reject unverified/plain connections before SQL.
+
+## 2026-10-11 — Automated qualification (local implementation)
+
+Added versioned exact-candidate Actions evidence, tested runtime digests, encrypted
+reviewed Vercel prebuilt artifacts, owner approval/revocation records, staged/provider
+receipts and fail-closed promotion/hosted checks. Legacy qualification is retained
+behind an explicit verified migration switch. No production release or legal approval
+was issued; target acceptance adapters/configuration and remote validation remain open.
+
+## 2026-10-11 — Remote CI integration review
+
+Removed pip caching from the publication hygiene job because it installs no packages; GitHub runner cleanup otherwise fails when the cache directory is absent.
+
+The backend image startup job now creates, migrates and cleans up its own disposable PostgreSQL fixture, using the exact image under security review. This preserves restricted-role readiness and shutdown checks after separating image verification from the application test job.

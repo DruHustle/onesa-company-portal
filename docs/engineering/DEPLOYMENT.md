@@ -1,5 +1,17 @@
 # Deployment and independent releases
 
+## Reviewed staging path — 2026-10-12
+
+After dev PR and exact merged staging CI pass, use the already registered owner workflow: `gh workflow run deploy.yml --ref staging -f target=staging -f fixture_mode=temporary`. Staging-only credentials and the existing approved synthetic scope/project JSON are required. The fixture helper creates two random identities through the verified restricted staging application role, keeps credentials only in a 0600 runner file, then disables those exact identities and revokes sessions on cleanup. Provided fixtures remain available with `fixture_mode=provided`; production accounts are never created by this helper.
+
+Vercel native Git owns the protected staging frontend Preview. The release workflow waits for and verifies its exact SHA/project/ref instead of deploying a second frontend. Actions owns the manually deployed exact-source backend. Actual API/auth/workflow/storage/browser acceptance remains mandatory; FAIL/BLOCKED receipts cannot qualify. No migration, production approval, visibility or paid change is implied.
+
+The staging routing operator saves only branch-specific server bindings and verifies production metadata unchanged. Private proxy readback uses Vercel's individual-variable endpoint and requires `decrypted: true` plus exact variable identity and staging scope; list ciphertext is never treated as the credential. An unverified readback blocks qualification even when the provider accepted the write.
+
+Hosted scanner troubleshooting uses only fixed failure codes: `STORAGE_QUARANTINE`, `STORAGE_SCAN_REJECTED`, or `STORAGE_SCAN_STATE`. Acceptance requires `scan_status=clean` before download. Check the read-only API/worker `CLAMAV_HOST` and mail key-presence inventory privately, then verify the approved scanner endpoint is reachable from the actual runtime. A present host or successful upload is not a clean scan or delivered mail. Keep quarantined objects private and use an approved executor; do not substitute a web service or fake scanner result.
+
+> Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
+
 The frontend and backend have separate Docker build contexts and versioned images.
 Build either image using the build guide, label it with the reviewed source revision,
 and release only the selected application when API compatibility allows. Worker and
@@ -58,3 +70,37 @@ Do not create a paid worker or hide missing worker functionality to satisfy the
 owner's free-only requirement. Both roles require verified shared persistent
 storage. Successful compilation does not prove bucket access, credential
 rotation, migrations, worker operation or production release qualification.
+
+### Portal DATABASE_ROLE remediation
+
+A production readiness response with code `DATABASE_ROLE` means the application
+connection has administrative, ownership or migration-write privileges. Preserve
+this check. Create a dedicated runtime identity instead of disabling the check or
+changing NODE_ENV. The existing owner-selected Portal Neon database is `neondb`
+on the established `ep-dark-boat-b91lg22g` branch; its default database name does
+not make it the AI database. The operator repair verifies that branch, all seven
+Portal migration checksums and the complete schema inventory before any grants.
+
+Rotate any exposed Portal owner password in Neon first. Save the fresh direct
+(pooling OFF) TLS connection URL as GitHub Actions repository secret
+`PORTAL_MIGRATION_DATABASE_URL` in `DruHustle/onesa-company-portal`. Never paste
+its value in chat, documentation, frontend settings or workflow inputs.
+
+Dispatch `Repair existing hosting configuration` on `fix/render-runtime-repair`:
+first choose `inspect-role`, then `repair-role` after that revision's CI and hygiene
+pass. The repair creates `onesa_portal_app` only when absent, privately generates its
+password, preserves existing data, grants application CRUD/sequence privileges and
+read-only migration access, checks that runtime permissions are restricted, and
+saves the pooled URL only on the verified Portal API service. An existing role with
+an unknown password is preserved and requires private operator configuration.
+The misidentified RENDER_WORKER_SERVICE_ID is not updated or deployed.
+
+Saving configuration is not hosted acceptance. Render restart reuses the existing
+environment values; it is not a substitute for applying new settings. A new deploy
+must follow the existing release qualification and exact-revision CI gates. After
+that authorized deploy, verify actual JSON responses: `/api/v1/health` 200,
+`/api/v1/ready` 200 and unauthenticated `/api/v1/auth/me` 401. Render's loading HTML
+may return HTTP 200; do not classify it as application readiness.
+
+References: [Render Docker commands](https://render.com/docs/docker),
+[Render deployment and restart behavior](https://render.com/docs/deploys).

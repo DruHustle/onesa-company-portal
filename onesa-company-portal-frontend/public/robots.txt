@@ -8,6 +8,7 @@ Disallow: /api/
 Sitemap: https://onesa.eu/sitemap.xml
 
 User-agent: facebookexternalhit
+User-agent: Facebot
 Allow: /
 Disallow: /admin
 Disallow: /api/

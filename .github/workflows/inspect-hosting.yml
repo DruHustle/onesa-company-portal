@@ -1,20 +1,33 @@
-# Public: hosted only. Private: full local validation precedes cloud execution.
 name: Inspect hosting configuration
 'on':
-  workflow_dispatch: null
+  workflow_dispatch:
+    inputs:
+      secret_scope:
+        description: Read providers or test only staging secret availability
+        type: choice
+        default: providers
+        options: [providers, environment, repository]
+      portal_scope:
+        description: Read only the production targets or the owner-identified staging targets
+        type: choice
+        default: production
+        options:
+        - production
+        - staging
 permissions:
   contents: read
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  local-validation:
-    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    uses: ./.github/workflows/_local-validation.yml
   inspect:
+    if: ${{ inputs.secret_scope == 'providers' && github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal'
+      && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name
+      == github.repository && github.event.pull_request.user.login == 'DruHustle')))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
+      PORTAL_INSPECTION_SCOPE: ${{ inputs.portal_scope }}
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_BACKEND_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
       RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
@@ -26,19 +39,70 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         EXPECTED_PRIVATE: ${{ github.event.repository.private }}
-      run: |-
-        test "$RUNNER_ENVIRONMENT" = github-hosted
-        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
-        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
-    - uses: actions/checkout@v4
+      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
+
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
+
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Repository visibility changed; start fresh validation''; exit 1;
+        }
+
+        '
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         persist-credentials: false
-        ref: ${{ github.sha }}
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
       with:
         python-version: '3.11'
     - name: Read configuration and deployment status without revealing credentials
       run: python scripts/inspect_hosting.py
-    needs:
-    - local-validation
-    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
+  staging-environment-availability:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging') && inputs.secret_scope == 'environment'
+    environment: Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+    - name: Report only required staging secret availability
+      env:
+        STAGING_SECRET_SCOPE: environment
+        STAGING_FIXTURES_JSON: ${{ secrets.STAGING_FIXTURES_JSON }}
+        STAGING_RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        STAGING_RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        STAGING_VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+        STAGING_VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        STAGING_VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+      run: |
+        node <<'NODE'
+        const names=["STAGING_FIXTURES_JSON", "STAGING_RENDER_API_KEY", "STAGING_RENDER_SERVICE_ID", "STAGING_VERCEL_AUTOMATION_BYPASS_SECRET", "STAGING_VERCEL_ORG_ID", "STAGING_VERCEL_PROJECT_ID", "STAGING_VERCEL_TOKEN"];
+        const available=Object.fromEntries(names.map(name=>[name,Boolean(process.env[name])]));
+        const all=Object.values(available).every(Boolean);
+        console.log(JSON.stringify({repository:process.env.GITHUB_REPOSITORY,scope:process.env.STAGING_SECRET_SCOPE,available,all_available:all,values_disclosed:false,provider_requests:false}));
+        if(!all) process.exitCode=1;
+        NODE
+  staging-repository-availability:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging') && inputs.secret_scope == 'repository'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+    - name: Report only required staging secret availability
+      env:
+        STAGING_SECRET_SCOPE: repository
+        STAGING_FIXTURES_JSON: ${{ secrets.STAGING_FIXTURES_JSON }}
+        STAGING_RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        STAGING_RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        STAGING_VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+        STAGING_VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        STAGING_VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+      run: |
+        node <<'NODE'
+        const names=["STAGING_FIXTURES_JSON", "STAGING_RENDER_API_KEY", "STAGING_RENDER_SERVICE_ID", "STAGING_VERCEL_AUTOMATION_BYPASS_SECRET", "STAGING_VERCEL_ORG_ID", "STAGING_VERCEL_PROJECT_ID", "STAGING_VERCEL_TOKEN"];
+        const available=Object.fromEntries(names.map(name=>[name,Boolean(process.env[name])]));
+        const all=Object.values(available).every(Boolean);
+        console.log(JSON.stringify({repository:process.env.GITHUB_REPOSITORY,scope:process.env.STAGING_SECRET_SCOPE,available,all_available:all,values_disclosed:false,provider_requests:false}));
+        if(!all) process.exitCode=1;
+        NODE

@@ -1,5 +1,13 @@
 # Vercel frontend and Render backend
 
+> Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
+
+Owner-created Portal staging targets are recorded in `FREE_STAGING_SETUP.md`.
+Use the read-only inspection workflow's `portal_scope=staging` option to inspect
+those IDs; the default remains production inspection. This does not deploy or
+modify production secrets. Current runner billing/usage restrictions must be
+resolved before hosted inspection or qualification can resume.
+
 The repository contains provider configuration, not a completed remote deployment.
 Use the private `onesa-ug/onesa-company-portal` GitHub repository and `main`. The frontend and
 backend remain separate release units. Grant the providers access only to the required
@@ -23,12 +31,11 @@ AI route duration is 150 seconds for bounded streamed generation; verify plan li
 
 ## Render
 
-`render.yaml` configures Docker services with app-only build contexts, private
-PostgreSQL, Frankfurt region, readiness checks and disabled native auto-deploys. Templates
-use paid always-on resources: review actual pricing/capacity before applying. No
-resources or charges are created by storing this file. Databases disable public IP
-access by default; allow only an approved temporary operator address if external
-migration access is needed, and remove it afterwards.
+`render.yaml` references the existing Free Docker API with its independent app
+context, Frankfurt region, readiness check and native auto-deploy disabled. It contains
+no managed database or Render worker declaration. Reuse the verified Neon project and
+private Oracle runtime; do not create duplicate services or regenerate credentials.
+Saving this reference is not a provider deployment or production qualification.
 
 Create/provision database schema with a separate migration-owner identity; then supply
 only a restricted application URL in Render's secret environment settings. Do not use
@@ -109,7 +116,7 @@ database URLs or application secrets belong in the repository.
 ## Final release qualification — 2026-10-09
 
 Prepared configuration is not a hosted deployment. Production promotion additionally
-requires the exact-commit `RELEASE_QUALIFICATION_JSON` Actions secret with all four
+historically required the exact-commit `RELEASE_QUALIFICATION_JSON` secret with all four
 reviewed gates passing and a matching source fingerprint. The local audit decision
 is NO-GO. Do not supply a passing attestation until target, operations and content
 approvals actually exist. See restricted `docs/internal/release-audit/` evidence.
@@ -142,7 +149,67 @@ presence, root/health-path matches and the provider's deployment commit. A succe
 diagnostic job means the inspection ran; it does not establish healthy deployment.
 Production deployment still requires a reviewed exact-commit qualification record.
 
+Inspection also returns allowlisted service/deployment IDs, Preview-protection
+status and an existing Render inventory restricted to the three Onesa repositories.
+Pagination is bounded and partial results are marked incomplete. Discovery alone
+does not authorize deploying or repurposing an existing resource. No environment
+values or provider commands are printed. See [Render pagination](https://api-docs.render.com/reference/pagination).
+
 `gh workflow run repair-hosting.yml --ref main` repairs the existing service layout
 and absent nonsecret configuration, then reads it back. Repository and runtime
 identity must match before any update. This does not deploy or migrate the database;
 missing database/model credentials and qualification remain explicit blockers.
+
+
+## Verified Portal database targets — 2026-10-12
+
+The owner-authenticated Neon inventory in organization `org-rapid-flower-72785494`
+identifies these existing projects. The owner's convention is a `-staging` suffix
+on the **project** name; the default branch inside that project may be named `production`.
+
+| Scope | Project | Branch | SQL endpoint |
+| --- | --- | --- | --- |
+| Production | `morning-mode-04948381` / `onesa-ai-company-portal-backend-db` | `br-red-morning-b9d1sxnz` | `ep-dark-boat-b91lg22g` |
+| Staging | `gentle-mud-16323345` / `onesa-ai-company-portal-backend-db-staging` | `br-little-boat-b9fg0rqq` | `ep-morning-shadow-b9jkzgsz` |
+
+Both use `neondb` and Frankfurt `c-7.eu-central-1.aws.neon.tech`. Runtime connections
+use the pooled endpoint, certificate-verified TLS and restricted `onesa_portal_app`.
+Owner migration credentials must target the same scope directly. Never substitute
+`summer-rain-37989301` / the non-staging migrations project (`ep-autumn-glade-b9760olg`)
+for staging. Preserve that historical database and its records; do not copy its data.
+
+Fresh read-only SQL found both approved runtime projects empty and using elevated
+owner logins. The corrected staging target was initialized with seven unchanged,
+CI-qualified migrations and a new staging-only restricted role, preserving existing
+roles/data/passwords. Its actual TLS, login, checksums and zero operational rows were
+verified from Oracle. Only staging Render `DATABASE_URL` and the root-owned Oracle
+staging configuration were rebound. No production configuration/data was changed.
+Private credentials and factual receipts remain under `private/oracle/worker`.
+
+`repair-hosting.yml` keeps inspection read-only. A repair or empty-target initializer
+must run on its allowed branch with complete exact-source CI/hygiene. Initialization
+requires a privately saved dedicated application password and refuses existing public
+objects or application roles. It is transactional and never resets credentials.
+The production initializer now rejects the obsolete alternate migration project;
+production remains uninitialized and must pass the actual release/operations gates.
+Use `dev → staging → main`; do not recreate historical audit branches.
+
+ClamAV remains private to Oracle through `CLAMAV_SOCKET=/run/onesa-scanner/clamd.sock`.
+Leave `CLAMAV_HOST` and `CLAMAV_PORT` unset in Render; uploads remain quarantined until
+the qualified Oracle executor scans them. Legacy Render worker auto-deployments are
+off. The failed staging worker is suspended; the production worker is retained until
+Oracle production qualification succeeds. Do not add credentials to the obsolete
+staging web service or introduce duplicate job executors.
+
+Database initialization/configuration is distinct from deployment acceptance. Recheck
+all bucket objects against synthetic provenance before enabling staging jobs, rerun
+protected hosted acceptance on the corrected binding, and verify backups/restores,
+mail delivery, monitoring, legal/privacy processing and production role/storage scope.
+Client TLS is qualified by the actual encrypted/authorized socket, not Neon’s separate
+proxy-to-database `pg_stat_ssl` hop.
+
+## Automated qualification migration
+
+See [automated release qualification](AUTOMATED_QUALIFICATION.md) for immutable
+Actions evidence, explicit owner reviews, build integrity and the guarded migration.
+The legacy JSON secret fallback is retired. Private-Free production uses the external owner handoff; production credential removal/rotation and provider control verification remain owner actions.

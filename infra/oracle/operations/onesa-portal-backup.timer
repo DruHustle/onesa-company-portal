@@ -1,0 +1,12 @@
+[Unit]
+Description=Hourly Onesa Portal backup, seven-day retention
+
+[Timer]
+OnCalendar=hourly
+OnBootSec=5min
+RandomizedDelaySec=120
+Persistent=true
+Unit=onesa-portal-backup.service
+
+[Install]
+WantedBy=timers.target

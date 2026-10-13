@@ -1,0 +1,74 @@
+name: Owner release review
+'on':
+  workflow_dispatch:
+    inputs:
+      qualification_run:
+        description: Exact qualification run reviewed
+        type: string
+        required: true
+      evidence_digest:
+        description: Canonical JSON SHA256 from qualification summary
+        type: string
+        required: true
+      decision:
+        description: Approve production or revoke a prior approval
+        type: choice
+        options:
+        - revoke
+        - approve
+        default: revoke
+        required: true
+      operations_review:
+        description: Owner reviewed monitoring, alerts, recovery, limits, worker, rollback evidence
+        type: choice
+        options:
+        - blocked
+        - approved
+        default: blocked
+        required: true
+      legal_review:
+        description: Owner explicitly approves candidate content/legal/business version
+        type: choice
+        options:
+        - blocked
+        - approved
+        default: blocked
+        required: true
+      review_url:
+        description: Open owner-authored repository issue/PR documenting reviewed evidence
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+  issues: read
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+jobs:
+  review:
+    if: always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref
+      == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Validate evidence and record explicit owner decision
+      env:
+        GH_TOKEN: ${{ github.token }}
+        QUALIFICATION_RUN: ${{ inputs.qualification_run }}
+        EVIDENCE_DIGEST: ${{ inputs.evidence_digest }}
+        REVIEW_DECISION: ${{ inputs.decision }}
+        OPERATIONS_REVIEW: ${{ inputs.operations_review }}
+        LEGAL_REVIEW: ${{ inputs.legal_review }}
+        REVIEW_URL: ${{ inputs.review_url }}
+      run: python3 scripts/release/evidence.py review --output "$RUNNER_TEMP/approval/record.json"
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: release-approval
+        path: ${{ runner.temp }}/approval/record.json
+        retention-days: 7
+        if-no-files-found: error

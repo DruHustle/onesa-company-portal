@@ -127,8 +127,8 @@ AI software fixtures use mock inference/lexical retrieval where specified and di
 real PostgreSQL/pgvector; real model/semantic-host/GPU/training acceptance is separate.
 Robot main remains scaffold-only; audit snapshots have software simulation. ROS2
 compilation/messaging, real sensors/actuators, GPU and physical movement are unverified;
-no physical operation is allowed by this task. Mac native Firefox failed profile creation
-in the isolated simulator check; Linux hosted browser results must be reported separately.
+no physical operation is allowed by this task. The historical Mac-native Firefox profile failure is environment-specific;
+all 18 current Linux-hosted Robot browser cases passed at `6b421ee`.
 The older portal private service/VM restart recovered without a Mac reboot. No AI/robot
 private service restart or actual host reboot/login recovery was tested; current services
 are deliberately absent. For a future privately activated setup, restart each idle unit,
@@ -154,3 +154,6 @@ self-hosted access. Runner policy removal is independent of application rollback
 
 Policy candidate `7b51ce1` passed [push validation](https://github.com/DruHustle/onesa-company-portal/actions/runs/38136347961), [PR validation](https://github.com/DruHustle/onesa-company-portal/actions/runs/38136350329) and hygiene on hosted x86 runners. The verification evidence artifact uploaded successfully (21,874,420 bytes); no storage/capacity block occurred in these runs. Final documentation/hook-location corrections require fresh checks before merge. Production packaging and provider deployment were not dispatched: release qualification remains NO-GO.
 GitHub currently reports no main branch protection (404) and no applicable branch rules ([]); this migration did not change enforcement settings. PR/check discipline and production approvals remain required.
+
+The audit reconciliation retains current startup readiness and full browser/security
+checks. Hosted success does not authorize production, real inference or physical motion.

@@ -14,3 +14,22 @@
 @media(max-width:760px){.admin-grid{grid-template-columns:minmax(0,1fr)}}
 
 .admin-header span { min-width:0; max-width:100%; overflow-wrap:anywhere; }
+
+.site-header nav{gap:16px;flex-wrap:wrap;justify-content:flex-end}
+
+
+
+
+h1,h2,h3{overflow-wrap:anywhere;hyphens:auto}
+
+/* Automatic visitor-local night palette; no appearance selector. */
+html[data-theme=dark],html[data-theme=dark] body{color-scheme:dark;--ink:#e5edf6;--muted:#b4c4d6;--line:#557a9e;--paper:#14243a;--blue:#83baff;background:#0b1523;color:var(--ink)}
+html[data-theme=dark] :is(.site-header,.capability,.content-card,.admin-card,.admin-login,.admin-list button,.admin-tabs button,.admin-actions button,.mobile-toggle){background:#14243a;color:var(--ink)}
+html[data-theme=dark] :is(input,textarea,select){background:#0f2034;color:var(--ink);border-color:var(--line)}
+html[data-theme=dark] :is(input,textarea)::placeholder{color:var(--muted);opacity:1}
+html[data-theme=dark] :is(.preview-banner,.admin-notice){background:#173249;color:#d6edf9}
+html[data-theme=dark] .product-window{box-shadow:20px 20px 0 #20344a}
+html[data-theme=dark] .admin-tabs button[aria-pressed=true]{background:#294766;color:#fff}
+html[data-theme=dark] .cta{background:#14243a;color:#e5edf6}
+html[data-theme=dark] .legal-draft{background:#382b16;color:#fff7e9}
+html[data-theme=dark] .skip-link{background:#14243a;color:#e5edf6}

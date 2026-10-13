@@ -1,5 +1,88 @@
 # Free-only staging setup — 2026-10-10
 
+## Current existing Portal staging resources — 2026-10-13
+
+The API is `srv-db5k5had0e5s73fos4g0` at
+`https://onesa-company-portal-backend-staging.onrender.com`.
+The redundant credential-free Render worker web service was deleted after its
+healthy Oracle replacement and absence of database binding were verified.
+Staging inspection selects the API and identifies Oracle as the worker target;
+it must not recreate the deleted Render service. Production's legacy worker is
+retained until its qualified Oracle replacement is verified.
+
+```sh
+gh workflow run inspect-hosting.yml --repo DruHustle/onesa-company-portal \
+  --ref staging -f portal_scope=staging
+```
+
+This action remains read-only and exposes no credential values. Existing public
+Staging environment-secret injection passed; private GitHub Free uses the supported
+repository-secret fallback. Do not change visibility, billing or paid limits.
+
+The authoritative staging target is the existing `onesa-ai-company-portal-backend-db-staging`
+project (`gentle-mud-16323345`), branch `br-little-boat-b9fg0rqq`, endpoint
+`ep-morning-shadow-b9jkzgsz`. It has seven reviewed migrations and an actual restricted
+`onesa_portal_app` login. Credentials are held privately in Render and Oracle; no secret
+value is published. The prior autumn-glade project is a separate non-staging migrations
+project and is preserved, never copied into staging or used by new fixture tests.
+See [the verified target inventory](VERCEL_RENDER.md#verified-portal-database-targets--2026-10-12).
+
+For the supplied API, check **Render → service → Settings** against:
+
+| Setting | Value |
+|---|---|
+| Name | Owner-created `onesa-company-portal-backend_staging` |
+| Repository | `DruHustle/onesa-company-portal` |
+| Branch | `staging` |
+| Root Directory | `onesa-company-portal-backend` |
+| Runtime | Docker |
+| Dockerfile / context | `./Dockerfile` / `.` relative to the root directory |
+| Docker Command override | Leave blank; use the reviewed image CMD |
+| Region | Frankfurt |
+| Instance | Free; do not apply the historical paid root Blueprint |
+| Auto Deploy | Off |
+| Health Check Path | `/api/v1/ready` |
+
+Do not replace the existing production service. Creation may initiate an initial
+build; the service cannot pass startup/readiness until its private staging settings
+are installed. A resource existing in the dashboard is not successful deployment.
+The service ID and URL have already been supplied; they are not requested again.
+The verified restricted credential still needs a guarded private transfer;
+do not paste it into chat or use the Neon owner connection as the API runtime.
+
+Staging API configuration uses `NODE_ENV=production` for hosted security,
+`PUBLISH_ENABLED=false`, a restricted pooled `DATABASE_URL` for morning-shadow,
+a fresh independent `SESSION_KEY` of 64 hex characters, and a fresh independent
+`PROXY_SHARED_KEY`. `PUBLIC_ORIGIN` must be the actual protected staging frontend
+origin; a separate company origin is optional and must be distinct if configured.
+The API requires a private staging bucket and its actual `S3_BUCKET`, `S3_ENDPOINT`,
+`S3_REGION`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Use `staging.env.example`
+as the key inventory, with fresh scoped credentials entered through approved settings.
+Never place the owner database URL or backend credentials in `NEXT_PUBLIC` variables.
+
+For Vercel, retain the existing portal project and frontend root
+`onesa-company-portal-frontend`, with production branch `main`. Enable Vercel
+Authentication for Preview deployments. Keep native Git deployments disabled;
+deployment will use GitHub Actions/CLI. Use Preview-only variables scoped to
+`staging`, with server-only `BACKEND_URL` set to the verified
+new API and the matching fresh `PROXY_SHARED_KEY`. The actual protected Preview
+origin must be coordinated with `PUBLIC_ORIGIN`, `SITE_URL` and `PORTAL_URL`; do
+not guess a Vercel hostname or reuse public production origins.
+
+No free Render background-worker instance exists. Do not select a paid worker or
+use an unrelated web service as one. Full enquiry/email/scanner acceptance still
+needs an independently approved worker/scanner host. A free existing private host
+is possible, but its real reachable endpoints and storage access must be verified.
+The supplied `backend-worker_staging` public URL is characteristic of a web service;
+its name does not establish a background-worker runtime. Do not add a dummy HTTP
+health response to disguise worker failure or claim an always-running Free worker.
+Confirm the actual service type first; preserve it without repurposing it.
+
+Acceptance remains exact-source CI, real health/ready JSON200, anonymous auth401,
+authenticated CMS/business tests, storage and worker/mail tests, persistence and
+restoration. See [Render Free limits](https://render.com/docs/free) and
+[Vercel Authentication](https://vercel.com/docs/deployment-protection/methods-to-protect-deployments/vercel-authentication).
+
 The owner has rejected paid services and will create the isolated staging environment.
 No resource, paid upgrade, trial subscription, DNS change or populated private env
 file was changed by preparing this guide. Checked-in examples contain no credentials.
@@ -120,7 +203,7 @@ ID or add artificial traffic to defeat provider sleep/quotas.
    project. **Never import the entire backend env into frontend settings.**
 5. Create a Render **Free web service** from the relevant GitHub repo, `main`, Docker,
    Frankfurt, root `<repository-name>-backend`, Dockerfile `./Dockerfile`, context `.`.
-   Do not apply the historical paid root `render.yaml`. A web-service-only
+   The root `render.yaml` references only the existing Free API and creates no database or worker. A web-service-only
    [free staging Blueprint](../../infra/deployment/render-free-staging.yaml) is
    prepared separately; it intentionally provisions no database or worker.
    Disable automatic deployment;
@@ -194,3 +277,40 @@ managed GPU capacity or company legal approval is claimed. Production remains NO
 
 Do not promote the free staging project onto `onesa.eu`/`portal.onesa.eu` or change
 Squarespace/Zoho/Resend DNS in this setup. Existing production projects are preserved.
+## Confirmed Portal staging layout repair — 2026-10-11
+
+Read-only Actions inspection verified the owner-created API
+`srv-db5k5had0e5s73fos4g0` is a Frankfurt Free Docker web service in this repository,
+but uses main, the wrong root/health path, native auto-deploy and missing runtime
+variables. After `verify.yml` and `repository-hygiene.yml` pass on the exact reviewed
+`staging` revision, run **Repair existing hosting configuration**
+with `portal_action=repair-staging-layout` on that branch. This pauses native
+auto-deploy, sets the audit branch, backend root, Dockerfile/context, Node server
+CMD and `/api/v1/ready`, then verifies readback. It does not deploy, initialize a
+database, read/copy runtime credentials, change a plan or modify production.
+
+Set fresh, independently scoped staging `DATABASE_URL`, `SESSION_KEY` (at least
+48 characters), `PUBLIC_ORIGIN`, `COMPANY_ORIGIN`, `PROXY_SHARED_KEY`, `S3_BUCKET`,
+`S3_ENDPOINT`, `S3_REGION`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` directly in
+the staging API settings. Keep `PUBLISH_ENABLED=false`. Use a restricted application
+database role and private staging storage. Never use previously exposed credentials
+or the migration-owner URL. Saving settings is not readiness or release acceptance.
+
+The purported worker `srv-db5k4mlckfvc73agdr40` was authenticated as a Free web
+service, not a background worker. Do not convert it to a paid plan or wrap a worker
+in dummy HTTP health checks. A separately approved genuinely free private executor
+and delivery/scanner/storage acceptance remain prerequisites.
+
+The [Render update-service API](https://api-docs.render.com/reference/update-service)
+does not deploy configuration updates automatically; deployment is a separate
+operation requiring the existing release/target gates.
+
+## Verified layout and inventory — 2026-10-11
+
+The guarded action at f3715a4 verified the identified staging API layout with native
+updates disabled (GitHub run38136781194). Its missing runtime variables, private
+storage, frontend and executor requirements still block deployment acceptance.
+Confirmed database inventory distinguishes configuration rows (facts/settings,
+including migration defaults) from operational rows. An aggregate presence flag alone
+does not establish user/business records or authorize initializing an occupied schema.
+No data, role or migration is changed by inventory; all existing schema guards remain.
