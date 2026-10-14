@@ -1,5 +1,20 @@
 # Production release checklist
 
+## AI application directions — prepared 2026-10-15
+
+The Products page adds English/German recommendations and decision-support use cases
+(travel planning, business feasibility and investment research) and smart farming
+(crop choice, step-by-step cultivation, weather, water, costs and market demand).
+An ordered farming workflow connects crop selection through selling opportunities.
+Business/investment and farming applications remain explicitly planned; this copy
+does not introduce working domain tools or data integrations. Content renders on the
+server without additional API requests or client JavaScript. Exact-source validation
+and release evidence must precede any claim that this copy is live.
+Local lint, type checks and the production build pass. Eight Chromium views cover
+English/German at390/1440px in system light/dark appearance, with all five ordered
+steps, existing product documentation links, no page errors or horizontal overflow
+and no external browser requests. Publication hygiene and repository docs checks pass.
+
 ## Early mobile interaction — prepared 2026-10-14
 
 Hosted staging reproduced a lost first menu tap before hydration: the hero appeared
