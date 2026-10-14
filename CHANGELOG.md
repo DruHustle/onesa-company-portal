@@ -6,6 +6,8 @@
   from the approved Onesa artwork, with standalone SVG,16/32/64 ICO and180PNG.
   Original artwork stays unchanged. Company metadata replaces the non-square icon
   declaration; hosted deployment and browser-tab evidence are recorded separately.
+- Protected administration explicitly shows PRODUCTION from trusted Vercel production
+  configuration, separately from product/access and browser appearance.
 
 ## 2026-10-14 — Private administration transport
 
