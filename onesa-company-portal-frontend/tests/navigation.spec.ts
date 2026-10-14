@@ -2,7 +2,7 @@ import {test,expect,type Page} from '@playwright/test';
 
 async function switchLanguage(page: Page, locale: 'en' | 'de') {
   const menu = page.locator('.mobile-toggle');
-  if (await menu.isVisible() && await menu.getAttribute('aria-expanded') !== 'true') {
+  if (await menu.isVisible() && !await menu.evaluate(element => element.closest('details')?.open)) {
     await menu.click();
   }
   await page.getByRole('link', {name: locale.toUpperCase(), exact: true}).click();
@@ -69,4 +69,45 @@ test.describe('system appearance before hydration', () => {
       }
     });
   }
+  for (const mode of ['dark', 'light'] as const) {
+    test(`mobile navigation and language switch work without JavaScript in ${mode}`, async ({page}) => {
+      await page.setViewportSize({width:390,height:844});
+      await page.emulateMedia({colorScheme:mode});
+      await page.goto('/');
+      await page.locator('.mobile-toggle').click();
+      await expect(page.locator('.mobile-navigation')).toHaveAttribute('open','');
+      await expect(page.locator('#mobile-main-nav').getByRole('link',{name:'Products',exact:true})).toBeVisible();
+      await page.getByRole('link',{name:'DE',exact:true}).click();
+      await expect(page.locator('html')).toHaveAttribute('lang','de');
+      await expect.poll(() => appearance(page)).toEqual(expectedAppearance(mode));
+      await page.locator('.mobile-toggle').focus();
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('link',{name:'EN',exact:true})).toBeVisible();
+    });
+  }
+});
+
+test('the first mobile menu tap works while client scripts are held and survives hydration',async({page}) => {
+  await page.setViewportSize({width:390,height:844});
+  const errors:string[] = [];
+  page.on('pageerror',error => errors.push(error.message));
+  page.on('console',message => { if(message.type() === 'error') errors.push(message.text()); });
+  let releaseScripts!: () => void;
+  const held = new Promise<void>(resolve => { releaseScripts = resolve; });
+  await page.route('**/_next/static/**/*.js',async route => { await held; await route.continue(); });
+  try {
+    await page.goto('/',{waitUntil:'commit'});
+    await page.locator('.mobile-toggle').click();
+    await expect(page.locator('#mobile-main-nav').getByRole('link',{name:'Products',exact:true})).toBeVisible();
+    await expect(page.locator('.mobile-navigation')).toHaveAttribute('open','');
+    releaseScripts();
+    await page.waitForLoadState('load');
+    await expect.poll(() => page.locator('.mobile-navigation').evaluate(element => Object.keys(element).some(key => key.startsWith('__react')))).toBe(true);
+    await expect(page.locator('.mobile-navigation')).toHaveAttribute('open','');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.mobile-navigation')).not.toHaveAttribute('open','');
+    await expect(page.locator('.mobile-toggle')).toBeFocused();
+    await expect(page.locator('#mobile-main-nav').getByRole('link',{name:'Products',exact:true})).toBeHidden();
+    expect(errors).toEqual([]);
+  } finally { releaseScripts(); }
 });

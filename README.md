@@ -69,6 +69,9 @@ Onesa uses one shared visual foundation with distinct product interfaces. Light/
 appearance follows the browser/OS preference, including live changes; no application
 selector, stored appearance override or clock schedule exists. Administration and public
 content have distinct shells and access boundaries.
+The public mobile menu works before JavaScript loads. Dynamic page navigation shows
+an immediate loading status while fresh approved content is fetched; optional homepage
+content does not block the hero. These controls preserve the browser/OS appearance.
 
 Vercel hosts the frontend, Render the API, and the qualified private Oracle worker handles
 processing. Governance currently contains draft policies; deployment does not approve

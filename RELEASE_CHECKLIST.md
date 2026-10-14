@@ -1,5 +1,16 @@
 # Production release checklist
 
+## Early mobile interaction — prepared 2026-10-14
+
+Hosted staging reproduced a lost first menu tap before hydration: the hero appeared
+at 491 ms, a tap at 546 ms did nothing, and a later tap opened the menu. The mobile
+navigation now uses a native disclosure, retaining the same links, focus handling and
+system appearance. Local Chromium/WebKit acceptance passes all 20 navigation cases,
+including JavaScript-disabled language switching and a first tap while client scripts
+are held, with the opened menu preserved through hydration and no browser errors.
+Public dynamic navigation now has a localized loading status. These changes need
+fresh three-browser CI and exact-source hosted qualification before production.
+
 ## Language switching and system appearance — prepared 2026-10-14
 
 The live site still uses a clock script to set `data-theme`. EN/DE navigation clears

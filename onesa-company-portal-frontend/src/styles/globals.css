@@ -17,6 +17,19 @@
 .admin-header span { min-width:0; max-width:100%; overflow-wrap:anywhere; }
 
 .site-header nav{gap:16px;flex-wrap:wrap;justify-content:flex-end}
+.mobile-navigation{display:none}
+.mobile-toggle{list-style:none;cursor:pointer;min-height:var(--onesa-control-size);touch-action:manipulation}
+.mobile-toggle::-webkit-details-marker{display:none}
+.menu-open-label{display:none}
+.mobile-navigation[open] .menu-closed-label{display:none}
+.mobile-navigation[open] .menu-open-label{display:inline}
+@media(max-width:760px){
+  .site-header .desktop-navigation{display:none}
+  .mobile-navigation{display:block}
+  .mobile-navigation[open]{width:100%}
+  .mobile-toggle{width:max-content;margin-left:auto;display:flex;align-items:center;justify-content:center}
+  .mobile-navigation[open] nav{display:flex;justify-content:flex-start}
+}
 
 
 
