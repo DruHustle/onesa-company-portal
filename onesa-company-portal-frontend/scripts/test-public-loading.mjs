@@ -61,7 +61,7 @@ function probe(origin, path, {rsc = false} = {}) {
     const start = performance.now();
     let html = '', headingAt, principalAt, productsAt;
     const url = new URL(path, origin);
-    if(rsc)url.searchParams.set('_rsc','synthetic-publication-check');
+    if(rsc)url.searchParams.set('_rsc','');
     const request = http.get(url, {headers:rsc?{RSC:'1',Accept:'text/x-component'}:{}}, response => {
       response.setEncoding('utf8');
       response.on('data', chunk => {
