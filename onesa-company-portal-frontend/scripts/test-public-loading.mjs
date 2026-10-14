@@ -56,11 +56,13 @@ const backend = http.createServer(async (request, response) => {
 });
 await new Promise(resolve => backend.listen(0, '127.0.0.1', resolve));
 const backendUrl = `http://127.0.0.1:${backend.address().port}`;
-function probe(origin, path) {
+function probe(origin, path, {rsc = false} = {}) {
   return new Promise((resolve, reject) => {
     const start = performance.now();
     let html = '', headingAt, principalAt, productsAt;
-    const request = http.get(new URL(path, origin), response => {
+    const url = new URL(path, origin);
+    if(rsc)url.searchParams.set('_rsc','synthetic-publication-check');
+    const request = http.get(url, {headers:rsc?{RSC:'1',Accept:'text/x-component'}:{}}, response => {
       response.setEncoding('utf8');
       response.on('data', chunk => {
         html += chunk;
@@ -116,6 +118,22 @@ function productOverview(page) {
   for(const path of ['ai-platform','robot']) assert.ok(page.html.includes(`href="https://docs.onesa.eu/docs/public/${path}"`),'Each product links to its exact public documentation');
   assert.ok(page.productsAt<800,`Product information must arrive before optional CMS reads: ${page.productsAt}ms`);
   assert.doesNotMatch(page.html,/Content service is temporarily unavailable|Der Inhaltsdienst ist vorübergehend nicht verfügbar|Product entries are awaiting editorial approval|Produkteinträge warten auf redaktionelle Freigabe/,'Product information remains available during CMS failure');
+}
+async function deniedPublicRead(path, rsc = false) {
+  requests.length=0;
+  const page=await probe(frontend.origin,path,{rsc});security(page);
+  assert.equal(page.status,200);
+  assert.match(page.html,/awaiting release approval|wartet auf Freigabe/);
+  assert.doesNotMatch(page.html,/Synthetic (en|de)|Synthetic approved rendering fixture/,'Neither CMS body nor SEO is serialized in HTML or RSC');
+  assert.doesNotMatch(page.html,/product-ai|product-robot/,'Denied leaves cannot serialize the static product overview');
+  if(rsc) {
+    assert.match(page.headers['content-type'],/text\/x-component/,'This checks a real RSC response');
+    assert.match(page.html,/"name":"robots","content":"noindex/);
+  } else assert.match(page.html,/name="robots" content="noindex/);
+  assert.ok(page.total<2000,'Required approval has the unchanged complete-response deadline');
+  assert.equal(requests.filter(request=>request.path==='/api/v1/public/company').length,1,'Layout, body and metadata share only this render’s fresh approval');
+  assert.equal(requests.filter(request=>request.path.startsWith('/api/v1/public/content')).length,0,'Denied or unavailable approval prevents every CMS read');
+  return page;
 }
 let frontend;
 try {
@@ -188,17 +206,27 @@ try {
     const managedRecovery=await probe(frontend.origin,'/de/contact');
     assert.match(managedRecovery.html,/<title>Synthetic de SEO/);assert.match(managedRecovery.html,/Synthetic de principal content/);
     approved=false;
-    const denied=await probe(frontend.origin,'/en/products/synthetic-detail');
-    assert.match(denied.html,/awaiting release approval/); assert.ok(!denied.html.includes('Synthetic en principal content'));
-    assert.match(denied.html,/name="robots" content="noindex/);
-    const deniedProducts=await probe(frontend.origin,'/de/products');
-    assert.ok(!deniedProducts.html.includes('<h2 id="product-ai">'),'Publication denial also hides the static product information');
-    assert.match(deniedProducts.html,/name="robots" content="noindex/);
-    approved=true; companyDelay=2200;
-    const approvalTimeout=await probe(frontend.origin,'/de/products');
-    assert.ok(!approvalTimeout.html.includes('<h2 id="product-ai">'),'Slow required approval hides the static product information');
-    assert.ok(!approvalTimeout.html.includes('Synthetic de product')); assert.match(approvalTimeout.html,/name="robots" content="noindex/);
-    companyDelay=0;
+    for(const locale of ['en','de']) for(const suffix of ['', '/contact', '/products',
+      ...['products','news','research','careers'].map(section=>`/${section}/synthetic-detail`)]) {
+      for(const rsc of [false,true])await deniedPublicRead(`/${locale}${suffix}`,rsc);
+    }
+    for(const path of ['/xx','/xx/contact','/en/unknown','/en/unknown/absent']) {
+      requests.length=0;assert.equal((await probe(frontend.origin,path)).status,404);
+      assert.equal(requests.filter(request=>request.path.startsWith('/api/v1/public/content')).length,0);
+    }
+    approved=true;companyDelay=2200;
+    const timeoutRoutes=[['/en',false],['/de/products',true],['/en/news/synthetic-detail',true],['/de/contact',false]];
+    for(const bodyStalled of [false,true]) {
+      earlyHeaders=bodyStalled;
+      for(const [path,rsc] of timeoutRoutes)await deniedPublicRead(path,rsc);
+    }
+    earlyHeaders=false;companyDelay=0;
+    const approvalRecovery=await probe(frontend.origin,'/en/products');
+    productOverview(approvalRecovery);assert.match(approvalRecovery.html,/Synthetic en principal content/);
+    const approvalRscRecovery=await probe(frontend.origin,'/de/products/synthetic-detail',{rsc:true});
+    assert.match(approvalRscRecovery.headers['content-type'],/text\/x-component/);
+    assert.match(approvalRscRecovery.html,/Synthetic de principal content/);
+    console.log('PASS denied and stalled approval serialize no CMS/SEO/product data in HTML or RSC, send no CMS reads, and recover freshly');
     for (const path of ['/xx/contact','/en/unknown','/en/unknown/absent']) assert.equal((await probe(frontend.origin,path)).status,404);
     copyStatus=503;feedStatus=503;
     for(const locale of ['en','de']){

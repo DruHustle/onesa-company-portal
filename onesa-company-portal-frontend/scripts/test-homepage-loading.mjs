@@ -149,6 +149,8 @@ try {
   assert.equal(blocked.heroAt, undefined);
   assert.match(blocked.html, /name="robots" content="noindex, nofollow"/);
   assert.equal(requests.filter(request => request.path.endsWith('/company')).length, 1, 'Metadata and layout share one readiness read');
+  assert.doesNotMatch(blocked.html, /Synthetic homepage introduction|Synthetic published news|Synthetic approved content/);
+  assert.equal(requests.filter(request => request.path.endsWith('/content')).length, 0, 'Denied approval prevents homepage CMS serialization and reads');
   approved = true;
   requests.length = 0;
   const published = await probe(frontend.origin, '/');
@@ -159,11 +161,14 @@ try {
   assert.match(published.html, /Synthetic published news/);
   console.log('PASS approval is checked once per render and never reused across visitors');
   companyDelay = 2200;
+  requests.length = 0;
   const unavailable = await probe(frontend.origin, '/');
   checkSecurity(unavailable);
   assert.equal(unavailable.heroAt, undefined);
   assert.match(unavailable.html, /Company website awaiting release approval/);
   assert.match(unavailable.html, /name="robots" content="noindex, nofollow"/);
+  assert.doesNotMatch(unavailable.html, /Synthetic homepage introduction|Synthetic published news|Synthetic approved content/);
+  assert.equal(requests.filter(request => request.path.endsWith('/content')).length, 0, 'Timed out approval prevents homepage CMS serialization and reads');
   assert.ok(unavailable.total < 2100, 'Unavailable approval fails closed within the rendering deadline');
   companyDelay = 0;
   const readyAgain = await probe(frontend.origin, '/');
