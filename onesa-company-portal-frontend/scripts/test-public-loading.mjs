@@ -128,8 +128,13 @@ try {
       assert.ok(staticPage.headingAt < 800, 'Optional CMS copy/SEO must not hold the section shell');
       assert.ok(staticPage.total < 2000, 'Optional copy is bounded');
       assert.match(staticPage.html, new RegExp(`/${locale}/contact`));
-      assert.ok(requests.some(request => request.cancelled),'Timed out transport is cancelled');
-      assert.equal(requests.filter(request => request.path.endsWith(`/page/${locale}/contact`)).length,1,'Body and SEO share only this render');
+      const copyRequests=requests.filter(request=>request.path.endsWith(`/page/${locale}/contact`));
+      assert.equal(copyRequests.length,1,'Body and SEO share only this render');
+      // The HTTP page can finish before the upstream socket-close acknowledgement.
+      // Observe only this request; the page-speed and1500ms deadlines stay unchanged.
+      const cancellationObservedAt=performance.now();
+      while(!copyRequests[0].cancelled&&performance.now()-cancellationObservedAt<250)await delay(10);
+      assert.equal(copyRequests[0].cancelled,true,'Timed out transport is cancelled');
     }
     feedDelay = 2200; requests.length=0;
     const listing = await probe(frontend.origin,`/${locale}/products`); security(listing); report(`slow feed and copy ${locale}/products`,listing);
