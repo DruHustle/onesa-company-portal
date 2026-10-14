@@ -1,6 +1,6 @@
 'use client';
 import {useState,type FormEvent} from 'react';
-import Link from 'next/link';
+import {ResponsiveLink as Link} from '@/components/responsive-link';
 import {api,ApiError} from '@/lib/api/client';
 import {copy,type Locale} from '@/config/copy';
 import type {paths} from '@/lib/api/generated/schema';

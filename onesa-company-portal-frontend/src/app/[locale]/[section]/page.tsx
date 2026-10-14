@@ -1,5 +1,5 @@
 import {companyMetadata,sectionTitle,sectionDescription} from '@/lib/metadata';
-import Link from 'next/link';
+import {ResponsiveLink as Link} from '@/components/responsive-link';
 import {ContentCard} from '@/components/content-card';
 import applications from '@/config/onesa-applications.json';
 import {notFound} from 'next/navigation';
