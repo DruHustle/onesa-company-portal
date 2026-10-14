@@ -33,6 +33,18 @@ backend. `SITE_URL` and public-release settings are build-time configuration.
 Frontend env example lives in its subdirectory; current native dev scripts load the
 root `.env`, so export values explicitly for independent deployments.
 
+After the production build, run the homepage loading regression:
+
+```sh
+npm --prefix onesa-company-portal-frontend run test:homepage-loading
+```
+
+It starts an isolated loopback mock API with synthetic content and exercises both
+public-release settings, slow responses and recovery. No database, provider credentials
+or hosted backend is required. Verify prompt hero rendering, bounded response completion,
+request-scoped publication checks and fail-closed approval behavior. Passing locally
+does not establish deployed performance or hosted acceptance.
+
 ## Backend
 
 ```sh
@@ -189,6 +201,16 @@ A session is not a background monitor. Restore the security-PR setting with repo
 `automated-security-fixes` PUT; do not disable it again under superseded instructions.
 
 ## System appearance and isolated browser fixtures
+
+Identity assets are versioned alongside the foundation in
+`design-system.consumer.json`. Their common O outline comes from the unchanged
+owner-supplied orbit artwork; Company, AI, Robot and Docs use distinct geometric
+frames. `node scripts/generate_identity_icons.mjs` deliberately regenerates the
+canonical SVG,16/32/64 ICO and180PNG files with the existing installed Playwright
+Chromium. Review the output and provenance, then explicitly copy the relevant
+versioned product files into each consumer and qualify its release. This does not
+run during application startup or silently update sibling builds. Native tab
+readability requires actual browser evidence in addition to HTTP/MIME/byte checks.
 
 `node scripts/test_system_appearance.mjs` validates the pinned shared foundation,
 ordinary text/control contrast, registry and removal of clock/persisted overrides.

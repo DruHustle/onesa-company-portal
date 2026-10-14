@@ -1,0 +1,229 @@
+{
+  "version": "1.0.0",
+  "source": "onesa-company-portal-frontend/public/brand/onesa-orbit.png",
+  "sourceSha256": "4dc5ada01211fe5127ab59f33a9e4b19482658ef9878300fa088de4b27e6d7e6",
+  "rights": "Owner-supplied Onesa artwork; technical product-icon derivatives authorized by master specification Section10.4. No new official or registered logo is asserted.",
+  "method": "Source-traced common O; distinct geometric frames and product accents; existing Chromium SVG export, no generative redraw or source-bitmap modification.",
+  "products": [
+    {
+      "id": "company",
+      "title": "Onesa Company",
+      "accent": "#407cce",
+      "files": [
+        {
+          "name": "onesa-company.svg",
+          "sha256": "0b599ac85d4ac2406e09abc5893ba310aa09dc1e3bf57b234d6e9d43bbf0ed62",
+          "bytes": 3330,
+          "width": 32,
+          "height": 32,
+          "mime": "image/svg+xml"
+        },
+        {
+          "name": "onesa-company-16.png",
+          "sha256": "551092184b662f5c2bfa0ac3fe1456f2983bf88ff180ef5b2071e0c054da3eda",
+          "bytes": 649,
+          "width": 16,
+          "height": 16,
+          "mime": "image/png"
+        },
+        {
+          "name": "onesa-company-32.png",
+          "sha256": "8e3f95466cf094b9d9309803bcbafcf4090ae465589608dbe21d68984e86b894",
+          "bytes": 1462,
+          "width": 32,
+          "height": 32,
+          "mime": "image/png"
+        },
+        {
+          "name": "onesa-company-64.png",
+          "sha256": "8104289c621d141332ac7d8f6176b74fb3b4246cecac1b7c174404cfefb685d0",
+          "bytes": 2916,
+          "width": 64,
+          "height": 64,
+          "mime": "image/png"
+        },
+        {
+          "name": "onesa-company.ico",
+          "sha256": "c4ea593a721f331eb23a7bc56027532e2cf1db17c5dfbaf8b974e82e8e460ad6",
+          "bytes": 5081,
+          "width": null,
+          "height": null,
+          "mime": "image/vnd.microsoft.icon"
+        },
+        {
+          "name": "onesa-company-180.png",
+          "sha256": "1e4a1fd8d9d73bdb9e6bb2989498c10a396cb28ad76e7afff2c03fc2ae2245c0",
+          "bytes": 8400,
+          "width": 180,
+          "height": 180,
+          "mime": "image/png"
+        }
+      ]
+    },
+    {
+      "id": "ai",
+      "title": "Onesa AI Platform",
+      "accent": "#9c90ed",
+      "files": [
+        {
+          "name": "onesa-ai.svg",
+          "sha256": "36a76063ef89f0273cad4606d3b5e0e563ae003d3d4de48568f3ddb5f59e5ea7",
+          "bytes": 3365,
+          "width": 32,
+          "height": 32,
+          "mime": "image/svg+xml"
+        },
+        {
+          "name": "onesa-ai-16.png",
+          "sha256": "e735303a4ca5e5747c1d6077e939b31da4fdf4b4cc93dc5e4c66cc056248d2b9",
+          "bytes": 669,
+          "width": 16,
+          "height": 16,
+          "mime": "image/png"
+        },
+        {
+          "name": "onesa-ai-32.png",
+          "sha256": "2c808f44fadb4b39f941b0efc440e84709164577cfcdcbb2da8424dbd486d04e",
+          "bytes": 1536,
+          "width": 32,
+          "height": 32,
+          "mime": "image/png"
+        },
+        {
+          "name": "onesa-ai-64.png",
+          "sha256": "3498fff9f22df8ad865799662e8483613d53bdb909da0d7c7db4e71bb1e157c6",
+          "bytes": 3051,
+          "width": 64,
+          "height": 64,
+          "mime": "image/png"
+        },
+        {
+          "name": "onesa-ai.ico",
+          "sha256": "5d1b00638f35e175a10535d25fb4c5b34b1352ec98adc768e80fbdf1ef50eee6",
+          "bytes": 5310,
+          "width": null,
+          "height": null,
+          "mime": "image/vnd.microsoft.icon"
+        },
+        {
+          "name": "onesa-ai-180.png",
+          "sha256": "832f8caa03a15a7a3155c79ea023750da546432bbcd05fe6bdb152066b2cc3a6",
+          "bytes": 8801,
+          "width": 180,
+          "height": 180,
+          "mime": "image/png"
+        }
+      ]
+    },
+    {
+      "id": "robot",
+      "title": "Onesa AI Robot",
+      "accent": "#2da8a0",
+      "files": [
+        {
+          "name": "onesa-robot.svg",
+          "sha256": "38d22f1cd8aca398bf5835ec8f383a9f7409ea2340c34e0f11ffacc38ca7816a",
+          "bytes": 3314,
+          "width": 32,
+          "height": 32,
+          "mime": "image/svg+xml"
+        },
+        {
+          "name": "onesa-robot-16.png",
+          "sha256": "0933e28e70d089d87057cd992597531108e8687bd1618285fa994865fb5ec1b7",
+          "bytes": 851,
+          "width": 16,
+          "height": 16,
+          "mime": "image/png"
+        },
+        {
+          "name": "onesa-robot-32.png",
+          "sha256": "2c34674a2ba33419cc361258469e7492bc7c8bec28c1b53b2e0655161669d2d3",
+          "bytes": 2064,
+          "width": 32,
+          "height": 32,
+          "mime": "image/png"
+        },
+        {
+          "name": "onesa-robot-64.png",
+          "sha256": "89428fdb779d4c986e074003047e468aedda91121bacc15d8de2819b2d36ded9",
+          "bytes": 4199,
+          "width": 64,
+          "height": 64,
+          "mime": "image/png"
+        },
+        {
+          "name": "onesa-robot.ico",
+          "sha256": "9ce4657d9ae65829eec04cd710fe26c24e449e1b2c4d2c3b7a1b174f0f459c94",
+          "bytes": 7168,
+          "width": null,
+          "height": null,
+          "mime": "image/vnd.microsoft.icon"
+        },
+        {
+          "name": "onesa-robot-180.png",
+          "sha256": "59635e23f014653bf1a5fd72d2ee488f80db43ba31a71ec3a316c17798e0d95e",
+          "bytes": 12206,
+          "width": 180,
+          "height": 180,
+          "mime": "image/png"
+        }
+      ]
+    },
+    {
+      "id": "docs",
+      "title": "Onesa Developer Docs",
+      "accent": "#a1b0c6",
+      "files": [
+        {
+          "name": "onesa-docs.svg",
+          "sha256": "ff3c8248f627e16eaa1510bdda26957477a4eaceba1f1e1964b112894eb82a4f",
+          "bytes": 3352,
+          "width": 32,
+          "height": 32,
+          "mime": "image/svg+xml"
+        },
+        {
+          "name": "onesa-docs-16.png",
+          "sha256": "16ae649e68a531d4e3c8b50ebff2c8d022c1827feb6e4f2c39223ebee841b680",
+          "bytes": 538,
+          "width": 16,
+          "height": 16,
+          "mime": "image/png"
+        },
+        {
+          "name": "onesa-docs-32.png",
+          "sha256": "6a2115ee45fc3c1d41b63ec9ff063b86e8ec09aa620f4745f4d05c81a9f68e73",
+          "bytes": 1059,
+          "width": 32,
+          "height": 32,
+          "mime": "image/png"
+        },
+        {
+          "name": "onesa-docs-64.png",
+          "sha256": "b5df4e9807216f28843e25a9fec6265b5314986a7d52965d6b944650370927d4",
+          "bytes": 1850,
+          "width": 64,
+          "height": 64,
+          "mime": "image/png"
+        },
+        {
+          "name": "onesa-docs.ico",
+          "sha256": "53df3668bdf7451e2ffa46df5ec02af1baadf964818f567d77ffe3dad8d9daf9",
+          "bytes": 3501,
+          "width": null,
+          "height": null,
+          "mime": "image/vnd.microsoft.icon"
+        },
+        {
+          "name": "onesa-docs-180.png",
+          "sha256": "67875fd2aabc244173a3e4c3e00bcf15942fa2d8f5eef75b9a798a05a776aaed",
+          "bytes": 5215,
+          "width": 180,
+          "height": 180,
+          "mime": "image/png"
+        }
+      ]
+    }
+  ]
+}

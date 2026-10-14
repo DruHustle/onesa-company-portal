@@ -29,6 +29,18 @@ Portal additionally needs `PUBLIC_ORIGIN`, `SITE_URL` and matching server-only
 `PROXY_SHARED_KEY`. Supply `NEXT_PUBLIC_MAX_UPLOAD_BYTES=10485760` at build time.
 AI route duration is 150 seconds for bounded streamed generation; verify plan limits.
 
+The prepared homepage loading change streams the static hero while optional CMS and
+news reads run concurrently, with a 1.5-second server-rendering timeout. Slow or
+unavailable content uses the existing fallback; a later navigation or refresh can
+retrieve content after the API wakes. With `PUBLIC_RELEASE_ENABLED=false`, publication
+readiness is already disabled and rendering skips its backend lookup. When enabled,
+metadata and layout share a request-scoped readiness check and retain the existing
+approval gate on errors or timeouts. Per-response CSP nonces and private, no-store HTML
+remain in place. Administration, uploads and browser API requests retain their current
+timeouts. This change is prepared locally and has not been deployed; qualify the exact
+source through the existing staging and production gates before claiming a live fix.
+The isolated regression command is documented in [Build and test](BUILD_AND_TEST.md).
+
 ## Render
 
 `render.yaml` references the existing Free Docker API with its independent app

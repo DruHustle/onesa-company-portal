@@ -16,5 +16,68 @@
       "onesa-company-portal-frontend/src/config/onesa-applications.json"
     ]
   },
-  "guide_availability": "New protected route pending qualified documentation deployment; existing Pages origin is verified."
+  "guide_availability": "New protected route pending qualified documentation deployment; existing Pages origin is verified.",
+  "identity": {
+    "version": "1.0.0",
+    "source": "onesa-company-portal-frontend/public/brand/icons/v1/sources.json",
+    "producer": "scripts/generate_identity_icons.mjs",
+    "sourceArtworkSha256": "4dc5ada01211fe5127ab59f33a9e4b19482658ef9878300fa088de4b27e6d7e6",
+    "product": "company",
+    "files": [
+      {
+        "name": "onesa-company.svg",
+        "sha256": "0b599ac85d4ac2406e09abc5893ba310aa09dc1e3bf57b234d6e9d43bbf0ed62",
+        "bytes": 3330,
+        "width": 32,
+        "height": 32,
+        "mime": "image/svg+xml",
+        "path": "onesa-company-portal-frontend/public/brand/icons/v1/onesa-company.svg"
+      },
+      {
+        "name": "onesa-company-16.png",
+        "sha256": "551092184b662f5c2bfa0ac3fe1456f2983bf88ff180ef5b2071e0c054da3eda",
+        "bytes": 649,
+        "width": 16,
+        "height": 16,
+        "mime": "image/png",
+        "path": "onesa-company-portal-frontend/public/brand/icons/v1/onesa-company-16.png"
+      },
+      {
+        "name": "onesa-company-32.png",
+        "sha256": "8e3f95466cf094b9d9309803bcbafcf4090ae465589608dbe21d68984e86b894",
+        "bytes": 1462,
+        "width": 32,
+        "height": 32,
+        "mime": "image/png",
+        "path": "onesa-company-portal-frontend/public/brand/icons/v1/onesa-company-32.png"
+      },
+      {
+        "name": "onesa-company-64.png",
+        "sha256": "8104289c621d141332ac7d8f6176b74fb3b4246cecac1b7c174404cfefb685d0",
+        "bytes": 2916,
+        "width": 64,
+        "height": 64,
+        "mime": "image/png",
+        "path": "onesa-company-portal-frontend/public/brand/icons/v1/onesa-company-64.png"
+      },
+      {
+        "name": "onesa-company.ico",
+        "sha256": "c4ea593a721f331eb23a7bc56027532e2cf1db17c5dfbaf8b974e82e8e460ad6",
+        "bytes": 5081,
+        "width": null,
+        "height": null,
+        "mime": "image/vnd.microsoft.icon",
+        "path": "onesa-company-portal-frontend/public/brand/icons/v1/onesa-company.ico"
+      },
+      {
+        "name": "onesa-company-180.png",
+        "sha256": "1e4a1fd8d9d73bdb9e6bb2989498c10a396cb28ad76e7afff2c03fc2ae2245c0",
+        "bytes": 8400,
+        "width": 180,
+        "height": 180,
+        "mime": "image/png",
+        "path": "onesa-company-portal-frontend/public/brand/icons/v1/onesa-company-180.png"
+      }
+    ]
+  }
 }
