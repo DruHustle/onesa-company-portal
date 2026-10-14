@@ -88,6 +88,7 @@ jobs:
       run: |
         sh -n infra/oracle/harden-worker.sh
         sh -n infra/oracle/worker-firewall.sh
+        sh -n infra/oracle/install-tailscale.sh
         sh -n infra/oracle/clamav/start.sh
         sh -n infra/oracle/clamav/health.sh
     - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'

@@ -20,6 +20,19 @@ SPEC.loader.exec_module(sources)
 
 
 class SourceValidation(unittest.TestCase):
+    def test_tailscale_peer_is_separate_exact_cgnat_ipv4_source(self):
+        for value in ["100.64.0.1/32", "100.101.102.103/32", "100.127.255.254/32"]:
+            with patch.object(sources, "read_protected_text", return_value=value + "\n"):
+                self.assertEqual(sources.read_tailscale_peer("synthetic-root-file"), value)
+        for value in ["100.64.0.0/10", "100.101.102.0/24", "8.8.8.8/32", "10.0.0.1/32", "100.128.0.1/32", "fd7a:115c:a1e0::1/128", "100.101.102.103/32\n100.101.102.104/32", "", "synthetic-invalid-private-value"]:
+            with patch.object(sources, "read_protected_text", return_value=value), self.assertRaises(ValueError):
+                sources.read_tailscale_peer("synthetic-root-file")
+
+    def test_tailscale_cli_cannot_mix_with_public_source_or_session_validation(self):
+        for extra in [["--file", "other-file"], ["8.8.8.8/32"], ["--require-ssh-session"]]:
+            with patch.object(sys, "argv", ["admin-sources.py", "--tailscale-peer-file", "synthetic-root-file", *extra]), self.assertRaises(ValueError):
+                sources.main()
+
     def test_existing_sources_and_new_network_are_retained_without_duplicates(self):
         self.assertEqual(sources.normalize(["8.8.8.8/32", "1.1.1.1/32", "8.8.8.8/32"]), ["8.8.8.8/32", "1.1.1.1/32"])
 
@@ -85,21 +98,27 @@ class SourceValidation(unittest.TestCase):
 
 
 class FirewallCommands(unittest.TestCase):
-    def execute(self, content, mode=0o600):
+    def execute(self, content, mode=0o600, peer=None, peer_mode=0o600):
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)
             source_file, log = folder / "sources", folder / "commands"
             source_file.write_text(content)
             source_file.chmod(mode)
+            peer_file = folder / "tailscale-peer"
+            if peer is not None:
+                peer_file.write_text(peer)
+                peer_file.chmod(peer_mode)
             wrapper = folder / "validate.py"
             wrapper.write_text(
                 "import os,runpy,sys\nfrom unittest.mock import patch\n"
                 + "original=os.fstat\ndef root_stat(fd):\n value=list(original(fd));value[4]=0;return os.stat_result(value)\n"
-                + "sys.argv=[" + repr(str(ROOT / "infra/oracle/admin-sources.py")) + ",'--file'," + repr(str(source_file)) + "]\n"
+                + "flag='--tailscale-peer-file' if '--tailscale-peer-file' in sys.argv else '--file'\n"
+                + "path=" + repr(str(peer_file)) + " if flag=='--tailscale-peer-file' else " + repr(str(source_file)) + "\n"
+                + "sys.argv=[" + repr(str(ROOT / "infra/oracle/admin-sources.py")) + ",flag,path]\n"
                 + "with patch('os.fstat',side_effect=root_stat):runpy.run_path(sys.argv[0],run_name='__main__')\n"
             )
             validator = folder / "python3"
-            validator.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + " " + shlex.quote(str(wrapper)) + "\n")
+            validator.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + " " + shlex.quote(str(wrapper)) + ' "$@"\n')
             validator.chmod(0o700)
             for tool in ["iptables", "ip6tables"]:
                 executable = folder / tool
@@ -108,7 +127,9 @@ class FirewallCommands(unittest.TestCase):
             route = folder / "ip"
             route.write_text("#!/bin/sh\nprintf '%s\\n' 'default via 10.0.0.1 dev eth0'\n")
             route.chmod(0o700)
-            result = subprocess.run(["sh", str(ROOT / "infra/oracle/worker-firewall.sh")], env={**os.environ, "PATH": str(folder) + os.pathsep + os.environ["PATH"]}, capture_output=True, text=True)
+            firewall = folder / "firewall.sh"
+            firewall.write_text((ROOT / "infra/oracle/worker-firewall.sh").read_text().replace("/etc/onesa/worker-tailscale-peer", str(peer_file)))
+            result = subprocess.run(["sh", str(firewall)], env={**os.environ, "PATH": str(folder) + os.pathsep + os.environ["PATH"]}, capture_output=True, text=True)
             commands = log.read_text().splitlines() if log.exists() else []
             return result.returncode, commands
 
@@ -128,6 +149,32 @@ class FirewallCommands(unittest.TestCase):
         code, commands = self.execute("8.8.8.8/32\n")
         self.assertEqual(code, 0)
         self.assertEqual(sum("--dport 22" in rule for rule in commands), 1)
+
+    def test_overlay_ssh_accepts_only_one_peer_on_correct_interface_and_blocks_forwarding(self):
+        code, commands = self.execute("8.8.8.8/32\n", peer="100.101.102.103/32\n")
+        self.assertEqual(code, 0)
+        ipv4 = [commands[index + 1] for index, value in enumerate(commands) if value == "iptables"]
+        self.assertIn("-A ONESA_WORKER_INPUT -i tailscale0 -s 100.101.102.103/32 -p tcp --dport 22 -j ACCEPT", ipv4)
+        self.assertIn("-A ONESA_WORKER_INPUT -i tailscale0 -j DROP", ipv4)
+        self.assertIn("-C FORWARD -i tailscale0 -j DROP", ipv4)
+        self.assertLess(ipv4.index("-A ONESA_WORKER_INPUT -i tailscale0 -j DROP"), ipv4.index("-A ONESA_WORKER_INPUT -p icmp -j ACCEPT"))
+        ipv6 = [commands[index + 1] for index, value in enumerate(commands) if value == "ip6tables"]
+        self.assertIn("-A ONESA_WORKER_INPUT -i tailscale0 -j DROP", ipv6)
+        self.assertIn("-C FORWARD -i tailscale0 -j DROP", ipv6)
+        self.assertFalse(any("--dport 22" in rule for rule in ipv6))
+
+    def test_missing_overlay_approval_still_drops_overlay_and_never_accepts_it(self):
+        code, commands = self.execute("8.8.8.8/32\n")
+        self.assertEqual(code, 0)
+        self.assertIn("-A ONESA_WORKER_INPUT -i tailscale0 -j DROP", commands)
+        self.assertFalse(any("-i tailscale0" in rule and "-j ACCEPT" in rule for rule in commands))
+
+    def test_invalid_overlay_peer_refuses_all_firewall_mutations(self):
+        for peer, mode in [("100.64.0.0/10\n", 0o600), ("100.101.102.103/32\n", 0o644), ("8.8.8.8/32\n", 0o600), ("", 0o600)]:
+            with self.subTest(peer=peer, mode=mode):
+                code, commands = self.execute("8.8.8.8/32\n", peer=peer, peer_mode=mode)
+                self.assertNotEqual(code, 0)
+                self.assertEqual(commands, [])
 
     def test_invalid_or_unprotected_allowlist_never_reaches_firewall_commands(self):
         for content, mode in [("8.8.8.8/32\n0.0.0.0/0\n", 0o600), ("", 0o600), ("8.8.8.8/32\n", 0o644)]:

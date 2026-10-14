@@ -24,13 +24,30 @@ def normalize(values):
     return sources
 
 
-def read_sources(path):
+def read_protected_text(path):
     descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     with os.fdopen(descriptor) as stream:
         metadata = os.fstat(stream.fileno())
         if metadata.st_uid != 0 or not stat.S_ISREG(metadata.st_mode) or stat.S_IMODE(metadata.st_mode) != 0o600:
             raise ValueError("SSH source file must be a root-owned regular file with mode 0600")
-        return normalize(stream.read().splitlines())
+        return stream.read()
+
+
+def read_sources(path):
+    return normalize(read_protected_text(path).splitlines())
+
+
+def read_tailscale_peer(path):
+    values = read_protected_text(path).splitlines()
+    if len(values) != 1:
+        raise ValueError("Exactly one approved Tailscale IPv4 /32 peer is required")
+    try:
+        network = ipaddress.ip_network(values[0], strict=True)
+    except ValueError:
+        raise ValueError("Tailscale peer must be a canonical IPv4 /32 in 100.64.0.0/10") from None
+    if network.version != 4 or network.prefixlen != 32 or not network.subnet_of(ipaddress.ip_network("100.64.0.0/10")):
+        raise ValueError("Tailscale peer must be a canonical IPv4 /32 in 100.64.0.0/10")
+    return str(network)
 
 
 def require_session(sources, connection):
@@ -43,8 +60,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("sources", nargs="*")
     parser.add_argument("--file", help="Existing root-owned mode-600 allowlist to preserve")
+    parser.add_argument("--tailscale-peer-file", help="Separate root-owned mode-600 single-peer overlay allowlist")
     parser.add_argument("--require-ssh-session", action="store_true")
     arguments = parser.parse_args()
+    if arguments.tailscale_peer_file:
+        if arguments.file or arguments.sources or arguments.require_ssh_session:
+            raise ValueError("Tailscale peer validation must remain separate from public sources")
+        print(read_tailscale_peer(arguments.tailscale_peer_file))
+        return
     sources = normalize((read_sources(arguments.file) if arguments.file else []) + arguments.sources)
     if arguments.require_ssh_session:
         require_session(sources, os.environ.get("SSH_CONNECTION", ""))

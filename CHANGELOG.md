@@ -1,8 +1,12 @@
 # Changelog
 
+## 2026-10-14 — Private Tailscale administration
+
+Add a separate root-owned, mode-600 single-peer overlay allowlist. Permit that peer only on `tailscale0` TCP 22 and deny other overlay input and forwarding, preserving approved public SSH recovery sources. Use ordinary pinned-key OpenSSH, signed ARM64 packages and explicit firewall ordering; keep Tailscale SSH, subnet routing, exit nodes and public sharing disabled. Hosted connectivity and plan eligibility are separate from offline firewall verification.
+
 ## 2026-10-14 — Preserve approved SSH networks
 
-Allow multiple approved public IPv4 /32 administrative sources, retaining existing entries on repeated hardening. Validate the root-owned mode-600 allowlist before any firewall command and permit each source only on TCP 22. Keep single-source installations compatible. Prepared source and offline firewall tests do not establish that the inaccessible Oracle host has been updated.
+Allow multiple approved public IPv4 /32 administrative sources, retaining existing entries on repeated hardening. Validate the root-owned mode-600 allowlist before any firewall command and permit each source only on TCP 22. Keep single-source installations compatible. Restricted operations receipts record the controlled console recovery, fresh pinned-key SSH connection and healthy workers/scanner; offline firewall tests remain separate evidence.
 
 Reject nonregular source files without waiting for input and report malformed entries without echoing their contents.
 
