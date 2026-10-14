@@ -4,3 +4,8 @@ required=['README.md','CHANGELOG.md','RELEASE_CHECKLIST.md','docs/api/API.md','d
 for p in required:
  assert (root/p).is_file() and (root/p).stat().st_size>100,p
 print('Required documentation exists and is nonempty')
+
+from check_repository_docs import check
+issues=check()
+for issue in issues: print(issue)
+if issues: raise SystemExit(1)

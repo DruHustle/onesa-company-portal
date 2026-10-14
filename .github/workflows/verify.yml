@@ -1,5 +1,7 @@
 name: Portal verification
 'on':
+  schedule:
+  - cron: "17 6 * * 1"
   push:
     branches:
     - main
@@ -72,8 +74,8 @@ jobs:
         cache-dependency-path: 'onesa-company-portal-backend/package-lock.json
 
           onesa-company-portal-frontend/package-lock.json'
-    - name: Verify automatic day and night clock boundaries
-      run: node scripts/test_day_night.mjs
+    - name: Verify system appearance, pinned foundation and measured contrast
+      run: node scripts/test_system_appearance.mjs
     - name: 'Release requirement: qualification failure-path tests'
       run: python3 -m unittest discover -s scripts/release -p 'test_*.py'
     - run: npm ci
@@ -85,7 +87,12 @@ jobs:
     - name: Verify Oracle staging and production preparation guards
       run: python3 -m unittest discover -s scripts -p 'test_oracle*.py'
     - name: Check Oracle host-hardening script syntax
-      run: sh -n infra/oracle/harden-worker.sh && sh -n infra/oracle/clamav/start.sh && sh -n infra/oracle/clamav/health.sh
+      run: |
+        sh -n infra/oracle/harden-worker.sh
+        sh -n infra/oracle/worker-firewall.sh
+        sh -n infra/oracle/install-tailscale.sh
+        sh -n infra/oracle/clamav/start.sh
+        sh -n infra/oracle/clamav/health.sh
     - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'
     - run: python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src tests && python3 ../scripts/ci/analyze.py
         tsc -- node_modules/.bin/tsc --pretty false && npm test && npm audit --audit-level=high

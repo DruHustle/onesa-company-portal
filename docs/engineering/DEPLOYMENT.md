@@ -1,5 +1,31 @@
 # Deployment and independent releases
 
+## Branch policy and dependency releases
+
+Three permanent branches: dev, staging, main. Temporary Dependabot security-update
+and necessary narrow security-release branches are permitted. Normal promotion remains
+dev → staging → main. Security PRs target default main and receive isolated credential-free
+CI; incorporate their reviewed change once through the normal path. Urgent candidates
+start from the verified production source, exclude unfinished dev work and require
+trusted exact-candidate staging qualification before the existing owner-controlled
+production gate, followed by reconciliation into dev/staging. Temporary refs do not grant
+staging or production credentials. See the existing
+[dependency-maintenance procedure](BUILD_AND_TEST.md#dependency-maintenance-and-continuing-detection).
+
+```mermaid
+flowchart LR
+  Bot[Temporary security update PR to default main] --> Review[Review advisory and exact dependency diff]
+  Review --> Dev[Integrate single fix on dev]
+  Dev --> Staging[Qualify staging]
+  Staging --> Main[Owner promotes main]
+  Production[Verified production revision] --> Candidate[Narrow temporary urgent candidate]
+  Candidate --> Isolated[Trusted isolated candidate staging qualification]
+  Isolated --> Main
+  Main --> Release[Existing owner production gate]
+  Release --> Verify[Deployed artifact and advisory verification]
+  Verify --> Reconcile[Reconcile fix into dev and staging]
+```
+
 ## Oracle Always Free worker VM through OCI CLI — 2026-10-12
 
 The owner selected the local OCI CLI for provisioning `onesa-portal-worker` after

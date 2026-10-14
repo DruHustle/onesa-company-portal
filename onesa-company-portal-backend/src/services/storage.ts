@@ -3,11 +3,13 @@ import { resolve,dirname } from 'node:path';
 import { createConnection } from 'node:net';
 import { S3Client,PutObjectCommand,GetObjectCommand,DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { env } from '../config/env.js';
+import {assertTestStorageScope} from './storage-scope.js';
+assertTestStorageScope(env,process.env);
 const s3=new S3Client({region:env.S3_REGION,endpoint:env.S3_ENDPOINT,forcePathStyle:!!env.S3_ENDPOINT});
 function local(key:string){if(!/^[a-f0-9-]{36}$/.test(key))throw new Error('Invalid storage key');return resolve(env.STORAGE_DIR,key);}
-export async function store(key:string,bytes:Buffer){if(env.S3_BUCKET)await s3.send(new PutObjectCommand({Bucket:env.S3_BUCKET,Key:key,Body:bytes,ServerSideEncryption:'AES256'}));else{await mkdir(env.STORAGE_DIR,{recursive:true,mode:0o700});await writeFile(local(key),bytes,{mode:0o600,flag:'wx'});}}
-export async function retrieve(key:string){if(env.S3_BUCKET){const response=await s3.send(new GetObjectCommand({Bucket:env.S3_BUCKET,Key:key}));return Buffer.from(await response.Body!.transformToByteArray());}return readFile(local(key));}
-export async function remove(key:string){if(env.S3_BUCKET)await s3.send(new DeleteObjectCommand({Bucket:env.S3_BUCKET,Key:key}));else try{await unlink(local(key));}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}}
+export async function store(key:string,bytes:Buffer){assertTestStorageScope(env,process.env);if(env.S3_BUCKET)await s3.send(new PutObjectCommand({Bucket:env.S3_BUCKET,Key:key,Body:bytes,ServerSideEncryption:'AES256'}));else{await mkdir(env.STORAGE_DIR,{recursive:true,mode:0o700});await writeFile(local(key),bytes,{mode:0o600,flag:'wx'});}}
+export async function retrieve(key:string){assertTestStorageScope(env,process.env);if(env.S3_BUCKET){const response=await s3.send(new GetObjectCommand({Bucket:env.S3_BUCKET,Key:key}));return Buffer.from(await response.Body!.transformToByteArray());}return readFile(local(key));}
+export async function remove(key:string){assertTestStorageScope(env,process.env);if(env.S3_BUCKET)await s3.send(new DeleteObjectCommand({Bucket:env.S3_BUCKET,Key:key}));else try{await unlink(local(key));}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}}
 export function pdfSafe(bytes:Buffer){return bytes.subarray(0,5).toString()==='%PDF-'&&bytes.subarray(-1024).includes(Buffer.from('%%EOF'));}
 export async function scannerStatusCurrent():Promise<boolean>{
  if(!env.CLAMAV_SOCKET)return !!env.CLAMAV_HOST;

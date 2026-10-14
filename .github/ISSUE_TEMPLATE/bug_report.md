@@ -6,7 +6,7 @@ labels: ''
 assignees: ''
 ---
 
-Do not report vulnerabilities, credentials or personal records here; follow SECURITY.md privately.
+Do not report vulnerabilities, credentials or personal records here; use the private reporting section in README.md.
 
 ## Reproduction and expected behavior
 

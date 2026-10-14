@@ -1,3 +1,7 @@
+# Three permanent branches: dev, staging, main; temporary security branches allowed.
+# Ordinary version-update PRs disabled; reviewed fixes follow dev → staging → main.
+# Registry, compiler compatibility and reviewed update metadata retained.
+# Security-update PRs are enabled separately and target the default main branch.
 version: 2
 updates:
 - package-ecosystem: github-actions
@@ -5,7 +9,7 @@ updates:
   target-branch: dev
   schedule:
     interval: monthly
-  open-pull-requests-limit: 2
+  open-pull-requests-limit: 0
   groups:
     compatible-actions:
       applies-to: version-updates
@@ -21,7 +25,7 @@ updates:
   target-branch: dev
   schedule:
     interval: monthly
-  open-pull-requests-limit: 2
+  open-pull-requests-limit: 0
   groups:
     compatible-packages:
       applies-to: version-updates
@@ -42,7 +46,7 @@ updates:
     - version-update:semver-major
   schedule:
     interval: monthly
-  open-pull-requests-limit: 2
+  open-pull-requests-limit: 0
   groups:
     compatible-packages:
       applies-to: version-updates

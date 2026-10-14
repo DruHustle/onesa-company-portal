@@ -6917,18 +6917,46 @@
                             "type": "object",
                             "properties": {
                               "category": {
-                                "type": "string"
+                                "type": "string",
+                                "maxLength": 100
                               },
                               "author": {
-                                "type": "string"
+                                "type": "string",
+                                "maxLength": 100
                               },
                               "imageId": {
-                                "type": "string"
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "imageAlt": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "imageCaption": {
+                                "type": "string",
+                                "maxLength": 1000
+                              },
+                              "imageCredit": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "imageRights": {
+                                "type": "string",
+                                "maxLength": 1000
+                              },
+                              "featured": {
+                                "type": "boolean"
                               },
                               "seoTitle": {
-                                "type": "string"
+                                "type": "string",
+                                "maxLength": 160
                               },
                               "seoDescription": {
+                                "type": "string",
+                                "maxLength": 300
+                              },
+                              "publishedAt": {
                                 "type": "string"
                               }
                             },
@@ -7394,18 +7422,46 @@
                       "type": "object",
                       "properties": {
                         "category": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 100
                         },
                         "author": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 100
                         },
                         "imageId": {
-                          "type": "string"
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "imageAlt": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "imageCaption": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "imageCredit": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "imageRights": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "featured": {
+                          "type": "boolean"
                         },
                         "seoTitle": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 160
                         },
                         "seoDescription": {
+                          "type": "string",
+                          "maxLength": 300
+                        },
+                        "publishedAt": {
                           "type": "string"
                         }
                       },
@@ -8275,19 +8331,101 @@
                             "type": "object",
                             "properties": {
                               "category": {
-                                "type": "string"
+                                "type": "string",
+                                "maxLength": 100
                               },
                               "author": {
-                                "type": "string"
+                                "type": "string",
+                                "maxLength": 100
                               },
                               "imageId": {
-                                "type": "string"
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "imageAlt": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "imageCaption": {
+                                "type": "string",
+                                "maxLength": 1000
+                              },
+                              "imageCredit": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "imageRights": {
+                                "type": "string",
+                                "maxLength": 1000
+                              },
+                              "featured": {
+                                "type": "boolean"
                               },
                               "seoTitle": {
-                                "type": "string"
+                                "type": "string",
+                                "maxLength": 160
                               },
                               "seoDescription": {
+                                "type": "string",
+                                "maxLength": 300
+                              },
+                              "publishedAt": {
                                 "type": "string"
+                              },
+                              "editorialReview": {
+                                "type": "object",
+                                "properties": {
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "draft",
+                                      "pending_review",
+                                      "approved",
+                                      "needs_changes"
+                                    ]
+                                  },
+                                  "reviewedRevision": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "sourceRevision": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "digest": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  },
+                                  "reviewedBy": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "reviewedAt": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "note": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "reviewedRevision",
+                                  "sourceRevision",
+                                  "digest",
+                                  "reviewedBy",
+                                  "reviewedAt",
+                                  "note"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "additionalProperties": false
@@ -8750,6 +8888,25 @@
                         "format": "uuid",
                         "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                       },
+                      "imageAlt": {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      "imageCaption": {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      "imageCredit": {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      "imageRights": {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      "featured": {
+                        "type": "boolean"
+                      },
                       "seoTitle": {
                         "type": "string",
                         "maxLength": 160
@@ -8758,7 +8915,8 @@
                         "type": "string",
                         "maxLength": 300
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   },
                   "state": {
                     "default": "draft",
@@ -8844,19 +9002,101 @@
                       "type": "object",
                       "properties": {
                         "category": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 100
                         },
                         "author": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 100
                         },
                         "imageId": {
-                          "type": "string"
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "imageAlt": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "imageCaption": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "imageCredit": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "imageRights": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "featured": {
+                          "type": "boolean"
                         },
                         "seoTitle": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 160
                         },
                         "seoDescription": {
+                          "type": "string",
+                          "maxLength": 300
+                        },
+                        "publishedAt": {
                           "type": "string"
+                        },
+                        "editorialReview": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "pending_review",
+                                "approved",
+                                "needs_changes"
+                              ]
+                            },
+                            "reviewedRevision": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "sourceRevision": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "digest": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "reviewedBy": {
+                              "nullable": true,
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "reviewedAt": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "note": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "reviewedRevision",
+                            "sourceRevision",
+                            "digest",
+                            "reviewedBy",
+                            "reviewedAt",
+                            "note"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -9302,6 +9542,25 @@
                         "format": "uuid",
                         "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                       },
+                      "imageAlt": {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      "imageCaption": {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      "imageCredit": {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      "imageRights": {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      "featured": {
+                        "type": "boolean"
+                      },
                       "seoTitle": {
                         "type": "string",
                         "maxLength": 160
@@ -9310,7 +9569,8 @@
                         "type": "string",
                         "maxLength": 300
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   },
                   "state": {
                     "default": "draft",
@@ -9409,19 +9669,101 @@
                       "type": "object",
                       "properties": {
                         "category": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 100
                         },
                         "author": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 100
                         },
                         "imageId": {
-                          "type": "string"
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "imageAlt": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "imageCaption": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "imageCredit": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "imageRights": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "featured": {
+                          "type": "boolean"
                         },
                         "seoTitle": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 160
                         },
                         "seoDescription": {
+                          "type": "string",
+                          "maxLength": 300
+                        },
+                        "publishedAt": {
                           "type": "string"
+                        },
+                        "editorialReview": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "pending_review",
+                                "approved",
+                                "needs_changes"
+                              ]
+                            },
+                            "reviewedRevision": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "sourceRevision": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "digest": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "reviewedBy": {
+                              "nullable": true,
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "reviewedAt": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "note": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "reviewedRevision",
+                            "sourceRevision",
+                            "digest",
+                            "reviewedBy",
+                            "reviewedAt",
+                            "note"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -10181,6 +10523,585 @@
         }
       }
     },
+    "/api/v1/admin/content/{id}/review": {
+      "post": {
+        "operationId": "reviewEditorialContent",
+        "tags": [
+          "CMS"
+        ],
+        "description": "Authenticated. Server-side role checks apply. Mutations require X-CSRF-Token.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "verdict": {
+                    "type": "string",
+                    "enum": [
+                      "pending_review",
+                      "approved",
+                      "needs_changes"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 4000
+                  }
+                },
+                "required": [
+                  "expectedRevision",
+                  "verdict",
+                  "note"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "page",
+                        "product",
+                        "article",
+                        "job",
+                        "research",
+                        "section"
+                      ]
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "locale": {
+                      "type": "string",
+                      "enum": [
+                        "en",
+                        "de"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "summary": {
+                      "type": "string"
+                    },
+                    "body": {
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "properties": {
+                        "category": {
+                          "type": "string",
+                          "maxLength": 100
+                        },
+                        "author": {
+                          "type": "string",
+                          "maxLength": 100
+                        },
+                        "imageId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "imageAlt": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "imageCaption": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "imageCredit": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "imageRights": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "featured": {
+                          "type": "boolean"
+                        },
+                        "seoTitle": {
+                          "type": "string",
+                          "maxLength": 160
+                        },
+                        "seoDescription": {
+                          "type": "string",
+                          "maxLength": 300
+                        },
+                        "publishedAt": {
+                          "type": "string"
+                        },
+                        "editorialReview": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "pending_review",
+                                "approved",
+                                "needs_changes"
+                              ]
+                            },
+                            "reviewedRevision": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "sourceRevision": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "digest": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "reviewedBy": {
+                              "nullable": true,
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "reviewedAt": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "note": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "reviewedRevision",
+                            "sourceRevision",
+                            "digest",
+                            "reviewedBy",
+                            "reviewedAt",
+                            "note"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "draft",
+                        "published",
+                        "archived"
+                      ]
+                    },
+                    "publish_at": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "author_id": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "revision": {
+                      "type": "number"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "slug",
+                    "locale",
+                    "title",
+                    "summary",
+                    "body",
+                    "metadata",
+                    "state",
+                    "publish_at",
+                    "author_id",
+                    "revision",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/content/{id}/revisions": {
       "get": {
         "operationId": "contentRevisions",
@@ -10346,19 +11267,101 @@
                                 "type": "object",
                                 "properties": {
                                   "category": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 100
                                   },
                                   "author": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 100
                                   },
                                   "imageId": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "imageAlt": {
+                                    "type": "string",
+                                    "maxLength": 500
+                                  },
+                                  "imageCaption": {
+                                    "type": "string",
+                                    "maxLength": 1000
+                                  },
+                                  "imageCredit": {
+                                    "type": "string",
+                                    "maxLength": 500
+                                  },
+                                  "imageRights": {
+                                    "type": "string",
+                                    "maxLength": 1000
+                                  },
+                                  "featured": {
+                                    "type": "boolean"
                                   },
                                   "seoTitle": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 160
                                   },
                                   "seoDescription": {
+                                    "type": "string",
+                                    "maxLength": 300
+                                  },
+                                  "publishedAt": {
                                     "type": "string"
+                                  },
+                                  "editorialReview": {
+                                    "type": "object",
+                                    "properties": {
+                                      "status": {
+                                        "type": "string",
+                                        "enum": [
+                                          "draft",
+                                          "pending_review",
+                                          "approved",
+                                          "needs_changes"
+                                        ]
+                                      },
+                                      "reviewedRevision": {
+                                        "nullable": true,
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "sourceRevision": {
+                                        "nullable": true,
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "digest": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "pattern": "^[a-f0-9]{64}$"
+                                      },
+                                      "reviewedBy": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      "reviewedAt": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "note": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "status",
+                                      "reviewedRevision",
+                                      "sourceRevision",
+                                      "digest",
+                                      "reviewedBy",
+                                      "reviewedAt",
+                                      "note"
+                                    ],
+                                    "additionalProperties": false
                                   }
                                 },
                                 "additionalProperties": false
@@ -10872,19 +11875,101 @@
                       "type": "object",
                       "properties": {
                         "category": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 100
                         },
                         "author": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 100
                         },
                         "imageId": {
-                          "type": "string"
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "imageAlt": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "imageCaption": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "imageCredit": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "imageRights": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "featured": {
+                          "type": "boolean"
                         },
                         "seoTitle": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 160
                         },
                         "seoDescription": {
+                          "type": "string",
+                          "maxLength": 300
+                        },
+                        "publishedAt": {
                           "type": "string"
+                        },
+                        "editorialReview": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "pending_review",
+                                "approved",
+                                "needs_changes"
+                              ]
+                            },
+                            "reviewedRevision": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "sourceRevision": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "digest": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "reviewedBy": {
+                              "nullable": true,
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "reviewedAt": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "note": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "reviewedRevision",
+                            "sourceRevision",
+                            "digest",
+                            "reviewedBy",
+                            "reviewedAt",
+                            "note"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -22584,6 +23669,867 @@
         }
       }
     },
+    "/api/v1/admin/processing/overview": {
+      "get": {
+        "operationId": "processingOverview",
+        "tags": [
+          "Background processing"
+        ],
+        "description": "INTERNAL owner/administrator queue diagnostics; no personal payloads, recipients, storage keys or raw logs.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "jobs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "count": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "status",
+                          "count"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "storageDeletionJobs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "count": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "status",
+                          "count"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "oldestQueueAgeSeconds": {
+                      "type": "number"
+                    },
+                    "workerLastSuccessAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "workerState": {
+                      "type": "string",
+                      "enum": [
+                        "recent",
+                        "stale",
+                        "not_observed"
+                      ]
+                    },
+                    "backupLastSuccessAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "quarantineFiles": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "scannerConfigurationPresent": {
+                      "type": "boolean"
+                    },
+                    "scannerReadiness": {
+                      "type": "string",
+                      "enum": [
+                        "requires_runtime_evidence"
+                      ]
+                    },
+                    "emailConfigurationPresent": {
+                      "type": "boolean"
+                    },
+                    "mailAcceptanceNote": {
+                      "type": "string"
+                    },
+                    "mutationRestrictions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "jobs",
+                    "storageDeletionJobs",
+                    "oldestQueueAgeSeconds",
+                    "workerLastSuccessAt",
+                    "workerState",
+                    "backupLastSuccessAt",
+                    "quarantineFiles",
+                    "scannerConfigurationPresent",
+                    "scannerReadiness",
+                    "emailConfigurationPresent",
+                    "mailAcceptanceNote",
+                    "mutationRestrictions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/processing/jobs": {
+      "get": {
+        "operationId": "listProcessingJobs",
+        "tags": [
+          "Background processing"
+        ],
+        "description": "INTERNAL owner/administrator queue diagnostics; no personal payloads, recipients, storage keys or raw logs.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "running",
+                "accepted",
+                "failed"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "email",
+                              "reminder"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "running",
+                              "accepted",
+                              "failed"
+                            ]
+                          },
+                          "attempts": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "run_at": {
+                            "type": "string"
+                          },
+                          "locked_at": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "errorCategory": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "retry_exhausted",
+                              "dependency_unavailable",
+                              "cancelled",
+                              "unclassified"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "status",
+                          "attempts",
+                          "run_at",
+                          "locked_at",
+                          "created_at",
+                          "errorCategory"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "page": {
+                      "type": "number"
+                    },
+                    "limit": {
+                      "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/public/transfers": {
       "post": {
         "operationId": "applicationTransferStart",
@@ -27550,6 +29496,14 @@
                                   "superseded",
                                   "archived"
                                 ]
+                              },
+                              "interpretationIssues": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "maxLength": 4000
+                                },
+                                "description": "Read-only diagnostics; original snapshot and source fingerprint remain unchanged."
                               }
                             },
                             "required": [
@@ -27574,7 +29528,8 @@
                               "approvedAt",
                               "approvalScope",
                               "approvalEvidenceRefs",
-                              "displayStatus"
+                              "displayStatus",
+                              "interpretationIssues"
                             ],
                             "additionalProperties": false
                           }
@@ -28533,6 +30488,14 @@
                             "superseded",
                             "archived"
                           ]
+                        },
+                        "interpretationIssues": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 4000
+                          },
+                          "description": "Read-only diagnostics; original snapshot and source fingerprint remain unchanged."
                         }
                       },
                       "required": [
@@ -28557,7 +30520,8 @@
                         "approvedAt",
                         "approvalScope",
                         "approvalEvidenceRefs",
-                        "displayStatus"
+                        "displayStatus",
+                        "interpretationIssues"
                       ],
                       "additionalProperties": false
                     }
@@ -29061,6 +31025,14 @@
                               "superseded",
                               "archived"
                             ]
+                          },
+                          "interpretationIssues": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 4000
+                            },
+                            "description": "Read-only diagnostics; original snapshot and source fingerprint remain unchanged."
                           }
                         },
                         "required": [
@@ -29084,7 +31056,8 @@
                           "approvedAt",
                           "approvalScope",
                           "approvalEvidenceRefs",
-                          "displayStatus"
+                          "displayStatus",
+                          "interpretationIssues"
                         ],
                         "additionalProperties": false
                       }
@@ -30491,6 +32464,14 @@
                             "superseded",
                             "archived"
                           ]
+                        },
+                        "interpretationIssues": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 4000
+                          },
+                          "description": "Read-only diagnostics; original snapshot and source fingerprint remain unchanged."
                         }
                       },
                       "required": [
@@ -30515,7 +32496,8 @@
                         "approvedAt",
                         "approvalScope",
                         "approvalEvidenceRefs",
-                        "displayStatus"
+                        "displayStatus",
+                        "interpretationIssues"
                       ],
                       "additionalProperties": false
                     }
@@ -31531,6 +33513,14 @@
                             "superseded",
                             "archived"
                           ]
+                        },
+                        "interpretationIssues": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 4000
+                          },
+                          "description": "Read-only diagnostics; original snapshot and source fingerprint remain unchanged."
                         }
                       },
                       "required": [
@@ -31555,7 +33545,8 @@
                         "approvedAt",
                         "approvalScope",
                         "approvalEvidenceRefs",
-                        "displayStatus"
+                        "displayStatus",
+                        "interpretationIssues"
                       ],
                       "additionalProperties": false
                     }
@@ -32510,6 +34501,14 @@
                             "superseded",
                             "archived"
                           ]
+                        },
+                        "interpretationIssues": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 4000
+                          },
+                          "description": "Read-only diagnostics; original snapshot and source fingerprint remain unchanged."
                         }
                       },
                       "required": [
@@ -32534,7 +34533,8 @@
                         "approvedAt",
                         "approvalScope",
                         "approvalEvidenceRefs",
-                        "displayStatus"
+                        "displayStatus",
+                        "interpretationIssues"
                       ],
                       "additionalProperties": false
                     }
