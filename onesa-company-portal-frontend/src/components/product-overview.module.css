@@ -1,0 +1,21 @@
+.product {
+  padding: 32px;
+  margin-block-end: 32px;
+  border: 1px solid var(--onesa-divider);
+  min-width: 0;
+}
+.product > div { min-width: 0; }
+.features {
+  padding-inline-start: 1.2em;
+  line-height: 1.65;
+  margin-block: 20px 28px;
+}
+.features li + li { margin-block-start: 12px; }
+@media (max-width: 760px) {
+  .product {
+    padding: 24px 0;
+    background: transparent;
+    border: 0;
+    border-block-start: 1px solid var(--onesa-divider);
+  }
+}

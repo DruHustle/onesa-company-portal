@@ -26,6 +26,74 @@ flowchart LR
   Verify --> Reconcile[Reconcile fix into dev and staging]
 ```
 
+## Verified crawler access and publication scope — 2026-10-14
+
+Crawling follows the existing publication approval and access boundaries. A deployed
+website, an accessible static file or a declared public route is not approval to
+publish drafts. `robots.txt` and `noindex` guide crawlers; backend authorization and
+Cloudflare Access protect private resources independently.
+
+| Production surface | Approved crawl scope and current constraint |
+| --- | --- |
+| Company `onesa.eu` | Publication remains closed: the live wildcard robots policy disallows `/`, and the Company HTML is `noindex, nofollow`. Preserve `PUBLIC_RELEASE_ENABLED`, `PUBLISH_ENABLED` and fresh backend legal/editorial approval. Once approved, use canonical EN `/`, DE `/de`, approved section/detail routes and their approved media; omit `/en` aliases, query variants, admin/API routes and unpublished CMS/private files. |
+| Public Docs `docs.onesa.eu` | Public production documentation and its classified assets permit crawling. The existing `docs/documentation-policy.json` allowlist governs public pages, generated indexes, diagrams and PDFs; arbitrary source or generated files are not public by default. Preview deployments remain outside the public crawl scope and protected by their existing SSO/noindex policy. A qualified staging revision is not proof that production has changed. |
+| Robot `robot.onesa.eu` | The public, script-free landing page and its public presentation assets permit crawling. Retain `/console` and `/api/` exclusions, console noindex and backend operator authorization for status, tasks, telemetry, history and controls. |
+| AI workspace `platform.onesa.eu` | The sign-in/workspace surface is private and has noindex metadata. Its current `/robots.txt` returns 404, which does not authorize indexing conversations, Knowledge documents, Agents, Travel or authentication/API routes. Public AI discovery belongs in the approved Company/Docs descriptions. |
+| Portal administration and engineering Docs | No crawler session, token or Access bypass. Keep governance records/PDFs, applications, uploads, private search/schema/manual/diagram indexes and all engineering deployment origins protected. |
+
+Company enforcement is in `src/proxy.ts`, `src/lib/publication.ts` and
+`src/app/sitemap.ts` in the frontend, plus backend `src/services/workflows.ts` and
+exact-revision editorial/media approval. The existing restricted release evidence
+does not infer legal/content approval. Determine any missing approval from the
+protected owner workflow before changing publication flags; do not open the gate
+to resolve a crawler request.
+
+Identify DuckDuckBot using its actual connection source against the current
+[official DuckDuckBot address inventory](https://duckduckgo.com/duckduckbot.json)
+and the available [Cloudflare verified-bot identification](https://developers.cloudflare.com/bots/concepts/bot/verified-bots/).
+The 14 October read retained 486 unique IPv4 `/32` entries. Re-read and validate the
+official inventory before a future rule change; do not trust the user agent or
+client-supplied `X-Forwarded-For`, `CF-Connecting-IP` or bot headers. The anonymous
+and spoofed-header GET audit tests denial only; it cannot prove real bot access.
+Use authenticated provider metadata only in the existing owner-held custody;
+never send crawler credentials or create authenticated crawler sessions.
+
+The recorded Cloudflare reads changed no settings: Company and public Docs are
+proxied; Platform and Robot are DNS-only, so their HTTP traffic is outside this
+zone's Cloudflare event dataset. Bot Fight Mode was disabled in the readback.
+Unavailable rule endpoints are not proof that every protection is absent. The
+verified 24-hour security/traffic queries ending 14 October at 15:06:31 UTC returned
+no DuckDuckBot matches; adaptive sampling and dataset limits prevent a universal
+access claim. No actual DuckDuckBot false positive was established, so no allow or
+skip rule was added. Preserve DuckAssistBot and every unrelated bot policy, WAF,
+rate limit, SSO, authorization and private-cache control.
+
+Use the existing Cloudflare dashboard Security Events and traffic views to review
+actual source-qualified DuckDuckBot requests on proxied public hosts. Record the
+window, sampling/limit status, host, sanitized route class, action and rule ID in
+the existing restricted audit location. Monitor backend authorization and private
+resource denials separately; a timeout, 404, 5xx or an unexpected 200 is not a
+verified authentication-denial result. Save sanitized per-request results as they
+finish, without private response bodies, cookies or tokens.
+
+Any future crawler correction must be limited to approved production paths/assets,
+follow dev → staging → main and retain exact-source qualification and owner release
+control. Check robots, sitemap, canonical/noindex metadata and anonymous/spoofed
+private-resource denial before and after deployment. If a more specific bot group
+is introduced, repeat its private-path exclusions because wildcard rules are not
+inherited by that group. Preserve the existing Facebook sharing exception. Roll
+back a defective source change through the same release path to the retained
+qualified revision, restoring its exact robots/sitemap/metadata policy; keep all
+publication approvals, credentials and private controls intact. A future provider
+rule would need separate scoped authority, prior-configuration evidence and exact
+rule restoration/removal on rollback; this record authorizes no provider change.
+
+References: existing AI restricted evidence `system-design-v2-duckduckbot-robots-readback.json`
+and owner readbacks `duckduckbot-official-ip-source-20261014.json`,
+`duckduckbot-zone-controls-readback-20261014.json` and
+`duckduckbot-native-security-traffic-qualified-readback-20261014.json` under the
+existing release/runtime audit locations; [robots matching rules](https://www.rfc-editor.org/rfc/rfc9309#section-2.2.2).
+
 ## Oracle Always Free worker VM through OCI CLI — 2026-10-12
 
 The owner selected the local OCI CLI for provisioning `onesa-portal-worker` after
