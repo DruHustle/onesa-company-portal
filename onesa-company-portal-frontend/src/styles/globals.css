@@ -17,6 +17,20 @@
 .admin-header span { min-width:0; max-width:100%; overflow-wrap:anywhere; }
 
 .site-header nav{gap:16px;flex-wrap:wrap;justify-content:flex-end}
+.mobile-navigation{display:none}
+.mobile-toggle{list-style:none;cursor:pointer;min-height:var(--onesa-control-size);touch-action:manipulation;border-color:var(--onesa-border)}
+.mobile-toggle::-webkit-details-marker{display:none}
+.menu-open-label{display:none}
+.navigation-status{position:fixed;right:24px;bottom:24px;z-index:60;margin:0;max-width:calc(100vw - 48px);padding:12px 16px;border:1px solid var(--onesa-border);border-radius:var(--onesa-radius);background:var(--onesa-surface);color:var(--onesa-text);box-shadow:0 4px 16px #0002}
+.mobile-navigation[open] .menu-closed-label{display:none}
+.mobile-navigation[open] .menu-open-label{display:inline}
+@media(max-width:760px){
+  .site-header .desktop-navigation{display:none}
+  .mobile-navigation{display:block}
+  .mobile-navigation[open]{width:100%}
+  .mobile-toggle{width:max-content;margin-left:auto;display:flex;align-items:center;justify-content:center}
+  .mobile-navigation[open] nav{display:flex;justify-content:flex-start}
+}
 
 
 

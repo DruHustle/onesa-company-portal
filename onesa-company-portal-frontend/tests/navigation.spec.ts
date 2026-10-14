@@ -2,7 +2,7 @@ import {test,expect,type Page} from '@playwright/test';
 
 async function switchLanguage(page: Page, locale: 'en' | 'de') {
   const menu = page.locator('.mobile-toggle');
-  if (await menu.isVisible() && await menu.getAttribute('aria-expanded') !== 'true') {
+  if (await menu.isVisible() && !await menu.evaluate(element => element.closest('details')?.open)) {
     await menu.click();
   }
   await page.getByRole('link', {name: locale.toUpperCase(), exact: true}).click();
@@ -69,4 +69,88 @@ test.describe('system appearance before hydration', () => {
       }
     });
   }
+  for (const mode of ['dark', 'light'] as const) {
+    test(`mobile navigation and language switch work without JavaScript in ${mode}`, async ({page}) => {
+      await page.setViewportSize({width:390,height:844});
+      await page.emulateMedia({colorScheme:mode});
+      await page.goto('/');
+      await page.locator('.mobile-toggle').click();
+      await expect(page.locator('.mobile-navigation')).toHaveAttribute('open','');
+      await expect(page.locator('#mobile-main-nav').getByRole('link',{name:'Products',exact:true})).toBeVisible();
+      await page.getByRole('link',{name:'DE',exact:true}).click();
+      await expect(page.locator('html')).toHaveAttribute('lang','de');
+      await expect.poll(() => appearance(page)).toEqual(expectedAppearance(mode));
+      await page.locator('.mobile-toggle').focus();
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('link',{name:'EN',exact:true})).toBeVisible();
+    });
+  }
+});
+
+test('the first mobile menu tap works while client scripts are held and survives hydration',async({page}) => {
+  await page.setViewportSize({width:390,height:844});
+  const errors:string[] = [];
+  page.on('pageerror',error => errors.push(error.message));
+  page.on('console',message => { if(message.type() === 'error') errors.push(message.text()); });
+  let releaseScripts!: () => void;
+  const held = new Promise<void>(resolve => { releaseScripts = resolve; });
+  await page.route('**/_next/static/**/*.js',async route => { await held; await route.continue(); });
+  try {
+    await page.goto('/',{waitUntil:'commit'});
+    await page.locator('.mobile-toggle').click();
+    await expect(page.locator('#mobile-main-nav').getByRole('link',{name:'Products',exact:true})).toBeVisible();
+    await expect(page.locator('.mobile-navigation')).toHaveAttribute('open','');
+    releaseScripts();
+    await page.waitForLoadState('load');
+    await expect.poll(() => page.locator('.mobile-navigation').evaluate(element => Object.keys(element).some(key => key.startsWith('__react')))).toBe(true);
+    await expect(page.locator('.mobile-navigation')).toHaveAttribute('open','');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.mobile-navigation')).not.toHaveAttribute('open','');
+    await expect(page.locator('.mobile-toggle')).toBeFocused();
+    await expect(page.locator('#mobile-main-nav').getByRole('link',{name:'Products',exact:true})).toBeHidden();
+    expect(errors).toEqual([]);
+  } finally { releaseScripts(); }
+});
+
+for (const locale of ['en','de'] as const) for (const width of [390,1440]) {
+  test(`slow navigation shows ${locale} feedback and can be interrupted at ${width}px`,async({page}) => {
+    await page.setViewportSize({width,height:900});
+    const errors:string[] = [];
+    page.on('pageerror',error => errors.push(error.message));
+    let releaseResponse!: () => void;
+    const held = new Promise<void>(resolve => { releaseResponse = resolve; });
+    await page.route(`**/${locale}/products?*`,async route => { await held; await route.continue(); });
+    try {
+      await page.goto(`/${locale}`);
+      const mobile = page.locator('.mobile-navigation');
+      const menu = page.getByRole('button',{name:locale === 'de' ? 'Menü' : 'Menu',exact:true});
+      const navigation = page.getByRole('navigation',{name:locale === 'de' ? 'Hauptnavigation' : 'Main navigation'});
+      if (width === 390) await menu.click();
+      await navigation.getByRole('link',{name:locale === 'de' ? 'Produkte' : 'Products',exact:true}).click();
+      const feedback = page.locator('.navigation-status');
+      await expect(feedback).toHaveAttribute('role','status');
+      await expect(feedback).toHaveText(locale === 'de' ? 'Seite wird geladen…' : 'Loading page…');
+      await expect(feedback).toBeVisible();
+      await expect(page.getByRole('heading',{level:1})).toBeVisible();
+      if (width === 390) {
+        await expect(mobile).not.toHaveAttribute('open','');
+        await menu.click();
+      }
+      await navigation.getByRole('link',{name:locale === 'de' ? 'Kontakt' : 'Contact',exact:true}).click();
+      await expect(page).toHaveURL(new RegExp(`/${locale}/contact$`));
+      await expect(page.locator('.navigation-status')).toHaveCount(0);
+      releaseResponse();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      expect(errors).toEqual([]);
+    } finally { releaseResponse(); }
+  });
+}
+
+test('an unknown published detail keeps HTTP404 and noindex',async({page}) => {
+  const response = await page.goto('/en/products/absent-synthetic-detail');
+  expect(response?.status()).toBe(404);
+  await expect(page.locator('main')).toBeVisible();
+  const directives = await page.locator('meta[name="robots"]').evaluateAll(elements => elements.map(element => element.getAttribute('content') || ''));
+  expect(directives.length).toBeGreaterThan(0);
+  expect(directives.every(content => content.includes('noindex'))).toBe(true);
 });

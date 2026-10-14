@@ -1,7 +1,7 @@
 import {PublicDocumentImage} from '@/components/public-document-image';
 import {companyMetadata} from '@/lib/metadata';
 import {notFound} from 'next/navigation';
-import Link from 'next/link';
+import {ResponsiveLink as Link} from '@/components/responsive-link';
 import type {Metadata} from 'next';
 import {serverApi} from '@/lib/api/server';
 import type {Locale} from '@/config/copy';
