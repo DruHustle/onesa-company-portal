@@ -1,6 +1,6 @@
 import {CompanyDetails} from '@/components/company-details';
 import {company as companyDetails} from '@/config/company';
-import Link from 'next/link';
+import {ResponsiveLink as Link} from '@/components/responsive-link';
 import applications from '@/config/onesa-applications.json';
 import {notFound} from 'next/navigation';
 import {Navigation} from '@/components/navigation';

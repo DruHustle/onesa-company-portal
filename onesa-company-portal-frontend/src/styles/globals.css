@@ -21,6 +21,7 @@
 .mobile-toggle{list-style:none;cursor:pointer;min-height:var(--onesa-control-size);touch-action:manipulation;border-color:var(--onesa-border)}
 .mobile-toggle::-webkit-details-marker{display:none}
 .menu-open-label{display:none}
+.navigation-status{position:fixed;right:24px;bottom:24px;z-index:60;margin:0;max-width:calc(100vw - 48px);padding:12px 16px;border:1px solid var(--onesa-border);border-radius:var(--onesa-radius);background:var(--onesa-surface);color:var(--onesa-text);box-shadow:0 4px 16px #0002}
 .mobile-navigation[open] .menu-closed-label{display:none}
 .mobile-navigation[open] .menu-open-label{display:inline}
 @media(max-width:760px){

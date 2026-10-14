@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-14 — Public navigation responsiveness prepared
+
+- Mobile navigation opens before JavaScript starts and keeps its native open state
+  through hydration. Slow client navigation gives localized feedback while the current
+  page remains usable, preserving HTTP404 for absent details.
+- Local Chromium/WebKit navigation and accessibility checks pass; exact-source CI,
+  hosted staging qualification and production deployment remain required.
+
 ## 2026-10-14 — Product identity asset correction
 
 - Implemented distinct version1.0.0 Company, AI, Robot and Docs favicon derivatives

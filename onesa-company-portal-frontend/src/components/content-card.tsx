@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import {ResponsiveLink as Link} from '@/components/responsive-link';
 import {publicContentPath} from '@/lib/public-content-url.mjs';
 import {PublicDocumentImage} from './public-document-image';
 import type {operations} from '@/lib/api/generated/schema';

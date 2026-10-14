@@ -2,7 +2,7 @@ import {company} from '@/config/company';
 import {companyMetadata} from '@/lib/metadata';
 import {companyOrigin} from '@/lib/site-origin.mjs';
 import {notFound} from 'next/navigation';
-import Link from 'next/link';
+import {ResponsiveLink as Link} from '@/components/responsive-link';
 import {copy,capabilities,industries,type Locale} from '@/config/copy';
 import {publicServerApi} from '@/lib/api/server';
 import {Suspense} from 'react';

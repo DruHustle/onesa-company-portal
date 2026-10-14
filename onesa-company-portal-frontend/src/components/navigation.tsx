@@ -1,5 +1,5 @@
 'use client';
-import Link from 'next/link';
+import {ResponsiveLink as Link} from '@/components/responsive-link';
 import {usePathname} from 'next/navigation';
 import {useRef} from 'react';
 import {copy,type Locale} from '@/config/copy';
@@ -32,7 +32,7 @@ export function Navigation({locale}:{locale:Locale}) {
         mobile.current.querySelector('summary')?.focus();
       }
     }}>
-      <summary className="mobile-toggle" aria-controls="mobile-main-nav">
+      <summary className="mobile-toggle" role="button" aria-controls="mobile-main-nav">
         <span className="menu-closed-label">{locale === 'de' ? 'Menü' : 'Menu'}</span>
         <span className="menu-open-label">{locale === 'de' ? 'Schließen' : 'Close'}</span>
       </summary>

@@ -8,8 +8,12 @@ navigation now uses a native disclosure, retaining the same links, focus handlin
 system appearance. Local Chromium/WebKit acceptance passes all 20 navigation cases,
 including JavaScript-disabled language switching and a first tap while client scripts
 are held, with the opened menu preserved through hydration and no browser errors.
-Public dynamic navigation now has a localized loading status. These changes need
-fresh three-browser CI and exact-source hosted qualification before production.
+Pending client navigation has a localized status outside the closing mobile menu;
+the current page remains usable during a slow response. The initial route-wide
+streaming fallback failed missing-detail HTTP404 acceptance and was removed; the
+replacement uses Next's link status without changing server status codes. The native
+summary explicitly exposes its button role. These changes need fresh three-browser
+CI and exact-source hosted qualification before production.
 
 ## Language switching and system appearance — prepared 2026-10-14
 
