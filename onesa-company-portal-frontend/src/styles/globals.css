@@ -18,7 +18,7 @@
 
 .site-header nav{gap:16px;flex-wrap:wrap;justify-content:flex-end}
 .mobile-navigation{display:none}
-.mobile-toggle{list-style:none;cursor:pointer;min-height:var(--onesa-control-size);touch-action:manipulation}
+.mobile-toggle{list-style:none;cursor:pointer;min-height:var(--onesa-control-size);touch-action:manipulation;border-color:var(--onesa-border)}
 .mobile-toggle::-webkit-details-marker{display:none}
 .menu-open-label{display:none}
 .mobile-navigation[open] .menu-closed-label{display:none}
