@@ -64,7 +64,7 @@ for (const [path, canonical, en, de] of [
   }
   console.log(`PASS canonical, locale links and publication gate: ${path}`);
 }
-const search = await request('onesa.eu', '/en/search?q=software');
+const search = await request('onesa.eu', '/en/search?q=software', {'User-Agent':'Mozilla/5.0'});
 assert.equal(search.status, 200);
 assert.match(search.body.toString().split('</head>')[0], /name="robots" content="noindex, follow"/);
 const sitemap = await request('onesa.eu', '/sitemap.xml');

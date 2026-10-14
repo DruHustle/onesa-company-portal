@@ -45,6 +45,32 @@ or hosted backend is required. Verify prompt hero rendering, bounded response co
 request-scoped publication checks and fail-closed approval behavior. Passing locally
 does not establish deployed performance or hosted acceptance.
 
+The Node-only transport regression is independent of Next startup and browser installation:
+
+```sh
+npm --prefix onesa-company-portal-frontend run test:public-fetch
+```
+
+It checks real synthetic loopback delayed headers, stalled bodies, upstream cancellation,
+recovery and404 with no database or provider. After installing the existing Chromium/WebKit
+Playwright browsers, also run:
+
+```sh
+npm --prefix onesa-company-portal-frontend run test:public-loading
+```
+
+This separate production-renderer regression binds synthetic loopback services and
+checks slow headers/bodies, optional copy/feed/related content, fresh publication and
+detail reads, genuine404 versus transient failure, recovery, EN/DE navigation and
+browser Back. Section copy and related stories stream independently; optional section
+SEO falls back to maintained metadata after250ms. Complete public response reads have
+a1500ms deadline and abort upstream on expiry. Required release/detail checks precede
+streaming. No public data or approval is cached across requests. The fixture never
+submits forms or uses a database/provider, and refuses local production env files.
+Renderer setup polls readiness for at most60s; page-response assertions retain their
+separate strict budgets. These are lab timings; exact-source hosted acceptance remains
+a separate gate.
+
 ## Backend
 
 ```sh

@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-10-14 — Responsive Company navigation and product information prepared
+
+- Company sections render their primary content while optional editorial copy,
+  listings and related articles load separately. Public response deadlines cover
+  slow headers and stalled bodies; required detail resolution remains fresh,
+  distinguishes missing content from service failures and preserves publication gates.
+- Added English/German AI Platform and Robot overviews to Products, including
+  direct product and public documentation links. The overview renders immediately,
+  independently of optional CMS entries; simulation and research directions stay explicit.
+- Added isolated slow/failure navigation and response-cancellation checks to existing CI.
+  Production rollout still requires current exact-source qualification and owner authority.
+
+## 2026-10-14 — AI engine illustration prepared
+
+- Replaced the Company website's three-step AI graphic with an original responsive
+  vector showing an AI engine, example applications and broader integration directions.
+  English/German captions describe robotics, autonomous vehicles, physical AI and
+  AGI research as integration and development directions.
+- The illustration follows browser/OS appearance and preserves the Robot simulator
+  graphic and all publication, backend authorization and actuation gates. Local
+  visual/build review and qualified deployment are recorded separately.
+
 ## 2026-10-14 — Public navigation responsiveness prepared
 
 - Mobile navigation opens before JavaScript starts and keeps its native open state

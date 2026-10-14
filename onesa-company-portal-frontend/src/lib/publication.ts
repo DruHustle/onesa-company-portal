@@ -8,3 +8,10 @@ export const publicationReady = cache(async () => {
   const company = await publicServerApi().GET('/api/v1/public/company').catch(() => null);
   return company?.data?.release_ready === true;
 });
+
+// Next can serialize a leaf even when its parent layout hides children.
+// Check before reading CMS data; retain the existing unpublished preview mode.
+export const publicContentAllowed = cache(async () => {
+  if (process.env.PUBLIC_RELEASE_ENABLED !== 'true') return true;
+  return publicationReady();
+});
