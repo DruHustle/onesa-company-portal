@@ -98,7 +98,7 @@ jobs:
         tsc -- node_modules/.bin/tsc --pretty false && npm test && npm audit --audit-level=high
       working-directory: onesa-company-portal-backend
     - run: python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src && python3 ../scripts/ci/analyze.py
-        tsc -- node_modules/.bin/tsc --noEmit --pretty false && npm run test:domains && npm run build && npm run test:homepage-loading && npm audit --audit-level=high
+        tsc -- node_modules/.bin/tsc --noEmit --pretty false && npm run test:domains && npm run test:public-fetch && npm run build && npm run test:homepage-loading && npm audit --audit-level=high
       working-directory: onesa-company-portal-frontend
     - run: npm run documents
       working-directory: onesa-company-portal-backend
@@ -106,6 +106,9 @@ jobs:
       working-directory: onesa-company-portal-backend
     - name: Install browsers and OS dependencies on GitHub-hosted Ubuntu
       run: npx playwright install --with-deps chromium firefox webkit
+      working-directory: onesa-company-portal-frontend
+    - name: Verify bounded public navigation with isolated synthetic services
+      run: npm run test:public-loading
       working-directory: onesa-company-portal-frontend
     - run: "cleanup() { kill \"$backend_pid\" \"$frontend_pid\" 2>/dev/null || true; wait \"$backend_pid\" \"$frontend_pid\"\
         \ 2>/dev/null || true; }\nnode onesa-company-portal-backend/dist/src/server.js > \"$RUNNER_TEMP/portal-backend.log\"\

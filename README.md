@@ -71,8 +71,10 @@ selector, stored appearance override or clock schedule exists. Administration an
 content have distinct shells and access boundaries.
 The public mobile menu works before JavaScript loads. Pending client navigation shows
 a localized status while fresh approved content is fetched, retaining the current page
-and true missing-page HTTP responses. Optional homepage content does not block the hero.
-These controls preserve the browser/OS appearance.
+and true missing-page HTTP responses. Optional homepage content does not block the hero. Section copy, listings and related
+stories stream independently with bounded public reads. A genuine missing detail keeps
+HTTP404; a transient content outage shows a localized noindex retry state. Required
+publication and detail checks stay fresh, preserving the browser/OS appearance.
 
 Vercel hosts the frontend, Render the API, and the qualified private Oracle worker handles
 processing. Governance currently contains draft policies; deployment does not approve
