@@ -66,7 +66,7 @@ Run the existing backend operator command with privately supplied configuration:
 
 ```sh
 npm run privacy:import -- ../private/privacy-governance/package/privacy_governance_seed.json \
-  --context ../private/privacy-governance/reconciliation-context.json
+  --context ../private/privacy-governance/reconciliation-context.json --dry-run
 ```
 
 The command requires existing `DATABASE_URL`, `SESSION_KEY`,
@@ -79,6 +79,13 @@ The transaction is serialized and insert-only. Existing drafts and approved/newe
 records are preserved on rerun; missing children of a pre-existing document are
 reported as skipped for operator review, rather than silently appended.
 
+The dry run reports planned inserts, preserved/skipped IDs and actual database counts
+without writing versions, events or audit records. Remove `--dry-run` only after target,
+backup and migration qualification. The CLI verifies every original Markdown document
+against the JSON body before import and reports the raw JSON SHA-256 separately from
+the existing normalized seed fingerprint. Source counts stay 3/16/9/12 even when
+subsequent processor assessments extend the register.
+
 Recovery is restore-based; there is no destructive down migration. Older APIs tolerate
 the extra tables. Keep the additive schema when rolling an application back. Verify
 the restored governance counts, revisions, approvals, audit events and encryption key
@@ -90,6 +97,17 @@ Provisional legacy application/enquiry TTL settings no longer delete business re
 Existing security-session expiry, bounded-transfer cleanup and explicitly authorized
 storage-deletion outbox processing retain their original behavior. No business-data
 retention automation or data-subject-request executor is activated by governance.
+
+The supplied source has three unresolved calendar interpretations: RET-01 says six
+months while its structured period says 180 days; RET-03 says twelve months while
+its period says 365 days; RET-09 proposes an annual inactivity review while its notes
+say 365 days. These are preserved proposals, not conversions. Read-only
+`interpretationIssues` on each version make the conflict visible in the protected
+viewer, tables and PDFs without rewriting stored snapshots or fingerprints. The API
+rejects approval of an unresolved retention rule. Management can create an explicit
+amendment with the chosen duration/unit or review wording and evidence, then approve
+that revision through the existing owner/MFA workflow. Previous proposals and genuine
+approvals remain immutable; no amendment enables deletion.
 
 ```mermaid
 flowchart TD
@@ -131,6 +149,38 @@ flowchart TD
  E --> F[Identify missing evidence or processing restrictions]
  F --> G[Owner reviews a scoped processor assessment]
 ```
+
+### Tailscale administrative tunnel
+
+The owner PC reaches the Oracle worker through the existing encrypted Tailscale
+overlay, with system OpenSSH/SFTP, key authentication and a pinned host identity.
+This is an administration trust boundary; it does not expose application databases,
+ClamAV, worker or model/control ports. Existing acceptance records show the approved
+PC allowed to TCP 22, other tested service ports denied, Tailscale SSH disabled and
+no advertised subnet/exit-node routes. Public recovery SSH sources remain separately
+controlled. Reverify current runtime and grants before operational changes.
+
+```mermaid
+flowchart LR
+ PC[Approved owner PC] -->|Encrypted Tailscale overlay| VM[Tagged Oracle worker VM]
+ VM -->|Scoped system SSH and SFTP| Admin[Authorized administrative operations]
+ Control[Tailscale coordination and identity metadata] -.-> PC
+ Control -.-> VM
+ VM --> Boundary[Existing worker, scanner and data authorization boundaries]
+```
+
+The [provider privacy policy](https://tailscale.com/privacy-policy), effective
+25 August 2026 and read 14 October 2026, distinguishes encrypted mesh traffic from
+device, identity and connection metadata. Its location disclosure includes processing
+outside the EEA. The [published DPA](https://tailscale.com/dpa), read the same day,
+is an assessment reference; account applicability and acceptance are unverified.
+Do not infer zero metadata retention or EEA-only processing from encryption.
+
+The restricted `tailscale-processor-extension-draft.json` proposes separate PROC-10
+under ONESA-PRIV-PROC-001 with runtime/source provenance and unresolved plan, DPA,
+logging, retention and transfer fields. It preserves the nine original package rows.
+Until an authorized, backed-up import and protected readback are recorded, this
+extension is **not persisted** and no provider/transfer approval is claimed.
 
 ```mermaid
 flowchart TD

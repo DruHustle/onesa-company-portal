@@ -7,6 +7,5 @@ export function PublicDocumentImage({id,alt}:{id:string;alt:string}){
  setUrl(null);setFailed(false);
  void publicDocument(id,controller.signal).then(blob=>{if(controller.signal.aborted)return;objectUrl=URL.createObjectURL(blob);setUrl(objectUrl);}).catch(()=>{if(!controller.signal.aborted)setFailed(true);});
  return()=>{controller.abort();if(objectUrl)URL.revokeObjectURL(objectUrl);};},[id]);
- if(failed)return <p role="status">Image temporarily unavailable.</p>;
- return url?<img src={url} alt={alt} className="article-image"/>:<span role="status" aria-label="Loading image"/>;
+ return <div className="article-media">{failed?<p role="status">Image temporarily unavailable.</p>:url?<img src={url} alt={alt} className="article-image"/>:<span role="status" aria-label="Loading image"/>}</div>;
 }

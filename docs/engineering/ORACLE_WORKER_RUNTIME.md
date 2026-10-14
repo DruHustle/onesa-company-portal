@@ -9,8 +9,37 @@ qualification: Docker being available does not prove a working Portal worker.
 
 ## Reusable owner SSH connection
 
-The authorized owner's local `~/.ssh/config` defines `onesa-portal-worker` and the
-existing VM IP using the retained private key and pinned known-hosts record. It uses
+The owner selected multiple regularly used administrative networks on 2026-10-14.
+Retain each verified public IPv4 as a separate `/32`, only for TCP destination port
+22 in OCI and on the host. The existing root-owned mode-600
+`/etc/onesa/worker-admin-cidr` now supports one approved source per line; its
+filename remains compatible with existing installations. The maintained validator
+rejects broad/private/IPv6 sources, symlinks and writable/unprivileged files before
+the firewall changes. Repeated hardening preserves existing approved entries.
+
+Install `infra/oracle/admin-sources.py` as
+`/usr/local/lib/onesa/admin-sources.py` and `infra/oracle/worker-firewall.sh` as the
+existing `/usr/local/sbin/onesa-worker-firewall` (root-owned mode 0700) before
+changing a live host to a multi-line list. Keep existing approved sources and add
+new rules individually; verify a fresh pinned-key SSH connection. Do not rerun the
+full hardening/upgrade script or restart Docker/workers for this access correction.
+An unknown future network is pending verification, not an approved broad subnet.
+For initial hardening, keep all three reviewed files together in `infra/oracle/`;
+do not upload or invoke the hardening script without its adjacent validator and
+firewall script.
+
+Installing this correction requires a privileged VM session. Oracle Cloud Shell
+is a separate machine; provider login does not bypass the host firewall.
+Use the existing restricted operations record for exact recovery commands and
+actual live receipts. Offline tests (`python3 scripts/test_oracle_firewall.py`)
+exercise synthetic command capture and rejection before mutation; they are not
+hosted SSH or reboot evidence.
+
+The authorized owner's local `~/.ssh/config` defines `onesa-portal-worker` using
+the verified overlay address after Tailscale acceptance, with a separate
+`onesa-portal-worker-public` and existing public-IP recovery entry. Both retain
+the private key and pinned known-hosts record. The overlay uses `HostKeyAlias`
+to match that original public-host pin. The client uses
 `ControlMaster auto`, an owner-only control directory and `ControlPersist 8h` to reuse
 one authenticated transport across terminal sessions. Thirty-second keepalives detect
 a disconnected transport; subsequent connections authenticate using the existing key.
@@ -28,6 +57,70 @@ The IP entry also lets the existing pinned deployment scripts reuse this connect
 Keep `~/.ssh/config` at mode `0600` and `~/.ssh/onesa-control` at mode `0700`.
 No application port forwarding is configured. ClamAV continues to use its private
 Unix socket; databases, queues and worker endpoints remain unexposed.
+
+## Private Tailscale administration
+
+The owner requested an encrypted overlay between the existing Mac and Oracle VM.
+Verify the running Mac's Tailscale device ID, IPv4 and GitHub tailnet against the
+owner's supplied identity before enrolling the VM. Keep actual device identifiers,
+tailnet policy snapshots, enrollment links and hosted results in the restricted
+operations record, outside Git. This human administration path does not enroll CI
+runners or grant deployment credentials.
+
+Install only the signed stable Ubuntu 24.04 ARM64 package using
+`infra/oracle/install-tailscale.sh`. Its existing-state guard refuses to replace a
+previous enrollment. Inspect that identity rather than deleting its state. The
+maintained systemd drop-in requires the existing host firewall before `tailscaled`
+starts. Do not restart workers, Docker or the VM to install the overlay.
+
+Create `/etc/onesa/worker-tailscale-peer` as a root-owned regular file, mode `0600`,
+containing exactly the independently verified Mac Tailscale IPv4 followed by `/32`.
+This is a separate inventory file, not an application environment variable. Install
+the reviewed validator and firewall scripts at their existing paths, validate both
+source files, then apply the firewall. Invalid peer files fail before any mutation.
+The overlay permits only that peer on interface `tailscale0`, TCP port 22. Other
+overlay input, IPv6 access and forwarding are denied. Preserve every approved
+public `/32` in `/etc/onesa/worker-admin-cidr` and the corresponding OCI recovery
+rules; no new public ingress port is needed.
+
+Enroll privately through the official browser flow. Do not put auth keys or the
+one-time login link into shell history, logs, Git or chat. Explicit settings:
+
+```sh
+sudo tailscale up --hostname=onesa-portal-worker \
+  --accept-dns=false --accept-routes=false --netfilter-mode=off \
+  --ssh=false --advertise-exit-node=false --advertise-routes= \
+  --exit-node= --advertise-tags=tag:onesa-portal-worker
+```
+
+`netfilter-mode=off` is intentional: the maintained host firewall owns the narrow
+rules. Do not switch to Tailscale's automatic allow rules. Define the server tag's
+owner in the existing tailnet policy and grant only the verified Mac `/32` to
+`tag:onesa-portal-worker` on `tcp:22`; leaving a wildcard allow-all grant in place
+would defeat that restriction. Preserve unrelated policy sections. Add policy
+tests for SSH acceptance, other ports denied and a different peer denied. Keep
+Tailscale SSH disabled on the VM, along with Serve, Funnel, exit nodes and subnet
+routes. Preserve existing OpenSSH keys, password restrictions and host-key pin.
+
+Verify fresh SSH over the actual VM overlay IPv4 before changing local shortcuts.
+Use `HostKeyAlias` with the existing pinned public-host entry. Keep a separate
+`onesa-portal-worker-public` shortcut for independent recovery. Verify `SSH_CONNECTION`
+shows the approved Mac overlay IP, blocked non-SSH ports, daemon boot enablement,
+policy readback and healthy workers/scanner. A one-network test is not evidence of
+a successful Wi-Fi change; repeat from a second network when available.
+
+Rollback through the retained public SSH path: `sudo tailscale down`, restore the
+saved local SSH configuration and reviewed previous tailnet policy, remove only
+the overlay peer file, and reapply the maintained firewall. Preserve the device
+state and public recovery rules; do not delete unrelated machines or credentials.
+
+The actual account is Personal/Free. Available capacity does not establish corporate
+use eligibility: [Tailscale pricing](https://tailscale.com/pricing) limits Personal
+to noncommercial use. Record the owner's pre-commercial setup declaration and the
+unresolved company-infrastructure terms assessment separately. Do not purchase a
+plan, claim contractual acceptance or provision paid resources automatically.
+See [netfilter modes](https://tailscale.com/docs/reference/netfilter-modes) and
+[grants](https://tailscale.com/docs/reference/syntax/grants).
 
 ## Artifact and resource limits
 

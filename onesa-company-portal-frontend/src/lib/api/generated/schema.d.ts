@@ -364,6 +364,23 @@ export interface paths {
         patch: operations["updateContent"];
         trace?: never;
     };
+    "/api/v1/admin/content/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Authenticated. Server-side role checks apply. Mutations require X-CSRF-Token. */
+        post: operations["reviewEditorialContent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/content/{id}/revisions": {
         parameters: {
             query?: never;
@@ -751,6 +768,40 @@ export interface paths {
         };
         /** @description Authenticated. Server-side role checks apply. Mutations require X-CSRF-Token. */
         get: operations["exportBusinessData"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/processing/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description INTERNAL owner/administrator queue diagnostics; no personal payloads, recipients, storage keys or raw logs. */
+        get: operations["processingOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/processing/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description INTERNAL owner/administrator queue diagnostics; no personal payloads, recipients, storage keys or raw logs. */
+        get: operations["listProcessingJobs"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3961,9 +4012,16 @@ export interface operations {
                             metadata: {
                                 category?: string;
                                 author?: string;
+                                /** Format: uuid */
                                 imageId?: string;
+                                imageAlt?: string;
+                                imageCaption?: string;
+                                imageCredit?: string;
+                                imageRights?: string;
+                                featured?: boolean;
                                 seoTitle?: string;
                                 seoDescription?: string;
+                                publishedAt?: string;
                             };
                             updated_at: string;
                         }[];
@@ -4143,9 +4201,16 @@ export interface operations {
                         metadata: {
                             category?: string;
                             author?: string;
+                            /** Format: uuid */
                             imageId?: string;
+                            imageAlt?: string;
+                            imageCaption?: string;
+                            imageCredit?: string;
+                            imageRights?: string;
+                            featured?: boolean;
                             seoTitle?: string;
                             seoDescription?: string;
+                            publishedAt?: string;
                         };
                         updated_at: string;
                     };
@@ -4485,9 +4550,27 @@ export interface operations {
                             metadata: {
                                 category?: string;
                                 author?: string;
+                                /** Format: uuid */
                                 imageId?: string;
+                                imageAlt?: string;
+                                imageCaption?: string;
+                                imageCredit?: string;
+                                imageRights?: string;
+                                featured?: boolean;
                                 seoTitle?: string;
                                 seoDescription?: string;
+                                publishedAt?: string;
+                                editorialReview?: {
+                                    /** @enum {string} */
+                                    status: "draft" | "pending_review" | "approved" | "needs_changes";
+                                    reviewedRevision: number | null;
+                                    sourceRevision: number | null;
+                                    digest: string | null;
+                                    /** Format: uuid */
+                                    reviewedBy: string | null;
+                                    reviewedAt: string | null;
+                                    note: string;
+                                };
                             };
                             /** @enum {string} */
                             state: "draft" | "published" | "archived";
@@ -4666,6 +4749,11 @@ export interface operations {
                         author?: string;
                         /** Format: uuid */
                         imageId?: string;
+                        imageAlt?: string;
+                        imageCaption?: string;
+                        imageCredit?: string;
+                        imageRights?: string;
+                        featured?: boolean;
                         seoTitle?: string;
                         seoDescription?: string;
                     };
@@ -4701,9 +4789,27 @@ export interface operations {
                         metadata: {
                             category?: string;
                             author?: string;
+                            /** Format: uuid */
                             imageId?: string;
+                            imageAlt?: string;
+                            imageCaption?: string;
+                            imageCredit?: string;
+                            imageRights?: string;
+                            featured?: boolean;
                             seoTitle?: string;
                             seoDescription?: string;
+                            publishedAt?: string;
+                            editorialReview?: {
+                                /** @enum {string} */
+                                status: "draft" | "pending_review" | "approved" | "needs_changes";
+                                reviewedRevision: number | null;
+                                sourceRevision: number | null;
+                                digest: string | null;
+                                /** Format: uuid */
+                                reviewedBy: string | null;
+                                reviewedAt: string | null;
+                                note: string;
+                            };
                         };
                         /** @enum {string} */
                         state: "draft" | "published" | "archived";
@@ -5044,6 +5150,11 @@ export interface operations {
                         author?: string;
                         /** Format: uuid */
                         imageId?: string;
+                        imageAlt?: string;
+                        imageCaption?: string;
+                        imageCredit?: string;
+                        imageRights?: string;
+                        featured?: boolean;
                         seoTitle?: string;
                         seoDescription?: string;
                     };
@@ -5079,9 +5190,236 @@ export interface operations {
                         metadata: {
                             category?: string;
                             author?: string;
+                            /** Format: uuid */
                             imageId?: string;
+                            imageAlt?: string;
+                            imageCaption?: string;
+                            imageCredit?: string;
+                            imageRights?: string;
+                            featured?: boolean;
                             seoTitle?: string;
                             seoDescription?: string;
+                            publishedAt?: string;
+                            editorialReview?: {
+                                /** @enum {string} */
+                                status: "draft" | "pending_review" | "approved" | "needs_changes";
+                                reviewedRevision: number | null;
+                                sourceRevision: number | null;
+                                digest: string | null;
+                                /** Format: uuid */
+                                reviewedBy: string | null;
+                                reviewedAt: string | null;
+                                note: string;
+                            };
+                        };
+                        /** @enum {string} */
+                        state: "draft" | "published" | "archived";
+                        publish_at: string | null;
+                        /** Format: uuid */
+                        author_id: string | null;
+                        revision: number;
+                        updated_at: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    reviewEditorialContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedRevision: number;
+                    /** @enum {string} */
+                    verdict: "pending_review" | "approved" | "needs_changes";
+                    note: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        kind: "page" | "product" | "article" | "job" | "research" | "section";
+                        slug: string;
+                        /** @enum {string} */
+                        locale: "en" | "de";
+                        title: string;
+                        summary: string;
+                        body: string;
+                        metadata: {
+                            category?: string;
+                            author?: string;
+                            /** Format: uuid */
+                            imageId?: string;
+                            imageAlt?: string;
+                            imageCaption?: string;
+                            imageCredit?: string;
+                            imageRights?: string;
+                            featured?: boolean;
+                            seoTitle?: string;
+                            seoDescription?: string;
+                            publishedAt?: string;
+                            editorialReview?: {
+                                /** @enum {string} */
+                                status: "draft" | "pending_review" | "approved" | "needs_changes";
+                                reviewedRevision: number | null;
+                                sourceRevision: number | null;
+                                digest: string | null;
+                                /** Format: uuid */
+                                reviewedBy: string | null;
+                                reviewedAt: string | null;
+                                note: string;
+                            };
                         };
                         /** @enum {string} */
                         state: "draft" | "published" | "archived";
@@ -5274,9 +5612,27 @@ export interface operations {
                                 metadata: {
                                     category?: string;
                                     author?: string;
+                                    /** Format: uuid */
                                     imageId?: string;
+                                    imageAlt?: string;
+                                    imageCaption?: string;
+                                    imageCredit?: string;
+                                    imageRights?: string;
+                                    featured?: boolean;
                                     seoTitle?: string;
                                     seoDescription?: string;
+                                    publishedAt?: string;
+                                    editorialReview?: {
+                                        /** @enum {string} */
+                                        status: "draft" | "pending_review" | "approved" | "needs_changes";
+                                        reviewedRevision: number | null;
+                                        sourceRevision: number | null;
+                                        digest: string | null;
+                                        /** Format: uuid */
+                                        reviewedBy: string | null;
+                                        reviewedAt: string | null;
+                                        note: string;
+                                    };
                                 };
                                 /** @enum {string} */
                                 state: "draft" | "published" | "archived";
@@ -5471,9 +5827,27 @@ export interface operations {
                         metadata: {
                             category?: string;
                             author?: string;
+                            /** Format: uuid */
                             imageId?: string;
+                            imageAlt?: string;
+                            imageCaption?: string;
+                            imageCredit?: string;
+                            imageRights?: string;
+                            featured?: boolean;
                             seoTitle?: string;
                             seoDescription?: string;
+                            publishedAt?: string;
+                            editorialReview?: {
+                                /** @enum {string} */
+                                status: "draft" | "pending_review" | "approved" | "needs_changes";
+                                reviewedRevision: number | null;
+                                sourceRevision: number | null;
+                                digest: string | null;
+                                /** Format: uuid */
+                                reviewedBy: string | null;
+                                reviewedAt: string | null;
+                                note: string;
+                            };
                         };
                         /** @enum {string} */
                         state: "draft" | "published" | "archived";
@@ -10070,6 +10444,331 @@ export interface operations {
             };
         };
     };
+    processingOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        jobs: {
+                            kind: string;
+                            status: string;
+                            count: number;
+                        }[];
+                        storageDeletionJobs: {
+                            kind: string;
+                            status: string;
+                            count: number;
+                        }[];
+                        oldestQueueAgeSeconds: number;
+                        workerLastSuccessAt: string | null;
+                        /** @enum {string} */
+                        workerState: "recent" | "stale" | "not_observed";
+                        backupLastSuccessAt: string | null;
+                        quarantineFiles: number;
+                        scannerConfigurationPresent: boolean;
+                        /** @enum {string} */
+                        scannerReadiness: "requires_runtime_evidence";
+                        emailConfigurationPresent: boolean;
+                        mailAcceptanceNote: string;
+                        mutationRestrictions: string[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    listProcessingJobs: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                status?: "pending" | "running" | "accepted" | "failed";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "email" | "reminder";
+                            /** @enum {string} */
+                            status: "pending" | "running" | "accepted" | "failed";
+                            attempts: number;
+                            run_at: string;
+                            locked_at: string | null;
+                            created_at: string;
+                            /** @enum {string|null} */
+                            errorCategory: "retry_exhausted" | "dependency_unavailable" | "cancelled" | "unclassified" | null;
+                        }[];
+                        page: number;
+                        limit: number;
+                        total: number;
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
     applicationTransferStart: {
         parameters: {
             query?: never;
@@ -12009,6 +12708,8 @@ export interface operations {
                                 approvalEvidenceRefs: string[] | null;
                                 /** @enum {string} */
                                 displayStatus: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected" | "superseded" | "archived";
+                                /** @description Read-only diagnostics; original snapshot and source fingerprint remain unchanged. */
+                                interpretationIssues: string[];
                             };
                         }[];
                         page: number;
@@ -12272,6 +12973,8 @@ export interface operations {
                             approvalEvidenceRefs: string[] | null;
                             /** @enum {string} */
                             displayStatus: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected" | "superseded" | "archived";
+                            /** @description Read-only diagnostics; original snapshot and source fingerprint remain unchanged. */
+                            interpretationIssues: string[];
                         };
                     };
                 };
@@ -12447,6 +13150,8 @@ export interface operations {
                             approvalEvidenceRefs: string[] | null;
                             /** @enum {string} */
                             displayStatus: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected" | "superseded" | "archived";
+                            /** @description Read-only diagnostics; original snapshot and source fingerprint remain unchanged. */
+                            interpretationIssues: string[];
                         }[];
                         page: number;
                         limit: number;
@@ -12792,6 +13497,8 @@ export interface operations {
                             approvalEvidenceRefs: string[] | null;
                             /** @enum {string} */
                             displayStatus: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected" | "superseded" | "archived";
+                            /** @description Read-only diagnostics; original snapshot and source fingerprint remain unchanged. */
+                            interpretationIssues: string[];
                         };
                     };
                 };
@@ -13068,6 +13775,8 @@ export interface operations {
                             approvalEvidenceRefs: string[] | null;
                             /** @enum {string} */
                             displayStatus: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected" | "superseded" | "archived";
+                            /** @description Read-only diagnostics; original snapshot and source fingerprint remain unchanged. */
+                            interpretationIssues: string[];
                         };
                     };
                 };
@@ -13332,6 +14041,8 @@ export interface operations {
                             approvalEvidenceRefs: string[] | null;
                             /** @enum {string} */
                             displayStatus: "draft" | "draft_pending_review" | "pending_review" | "approved" | "needs_changes" | "rejected" | "superseded" | "archived";
+                            /** @description Read-only diagnostics; original snapshot and source fingerprint remain unchanged. */
+                            interpretationIssues: string[];
                         };
                     };
                 };

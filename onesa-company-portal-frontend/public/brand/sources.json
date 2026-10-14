@@ -19,11 +19,16 @@
     },
     {
       "path": "/favicon.ico",
-      "source": "/brand/onesa-orbit.png",
-      "width": 64,
-      "height": 64,
-      "sha256": "7d236707ace84a0117de7dd6fcb97e4664b96f859b9e1bdc3325e7fe3b097e89",
-      "role": "Browser favicon fallback"
+      "source": "/brand/icons/v1/onesa-company.svg",
+      "width": null,
+      "height": null,
+      "sha256": "c4ea593a721f331eb23a7bc56027532e2cf1db17c5dfbaf8b974e82e8e460ad6",
+      "role": "Optimized Company browser-icon fallback; source-derived product frame",
+      "dimensions": [
+        16,
+        32,
+        64
+      ]
     },
     {
       "path": "/social/onesa-social-card.png",
@@ -34,5 +39,5 @@
       "role": "Homepage Open Graph and Twitter preview"
     }
   ],
-  "processing": "Owner-supplied originals preserved byte-for-byte; favicon.ico converted from the orbit PNG to 64x64 ICO using macOS sips."
+  "processing": "Owner-supplied originals preserved byte-for-byte. Version1.0.0 source-traced product icons, SVG/16-32-64 ICO/180PNG, are generated with the existing browser renderer; see /brand/icons/v1/sources.json."
 }

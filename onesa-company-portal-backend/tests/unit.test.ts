@@ -1,3 +1,4 @@
+import './local-environment.js';
 import {test} from 'node:test';import assert from 'node:assert/strict';
 process.env.DATABASE_URL='postgresql://unit:unit@127.0.0.1:1/unit';process.env.SESSION_KEY='unit-test-encryption-key-not-for-production-123';process.env.NODE_ENV='test';
 const crypto=await import('../src/auth/crypto.js');

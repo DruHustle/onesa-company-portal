@@ -6,6 +6,7 @@ import {enqueue,notify,releaseReady} from '../services/workflows.js';
 import {retrieve,scan,remove} from '../services/storage.js';
 import {applicationRoleSafe} from '../services/database-role.js';
 import {writeFile} from 'node:fs/promises';
+import {publishScheduledContent} from '../services/editorial.js';
 let stopping=false;
 process.on('SIGTERM',()=>stopping=true);process.on('SIGINT',()=>stopping=true);
 const sendMail=createMailer({...env,...emailConfig});
@@ -24,7 +25,7 @@ export async function tick(){
  const reminders=await db.query("SELECT id,follow_up_at FROM enquiries WHERE status<>'closed' AND follow_up_at<=now() AND follow_up_at>now()-interval '1 day'");for(const r of reminders.rows)await transaction(c=>enqueue(c,'reminder-due:'+r.id+':'+r.follow_up_at.toISOString(),notify('Enquiry follow-up due',`Review record ${r.id}`)));
  await db.query("UPDATE jobs SET status='accepted' WHERE kind='reminder' AND status='pending' AND NOT EXISTS(SELECT 1 FROM enquiries e WHERE e.id::text=jobs.payload->>'recordId' AND e.follow_up_at>now())");
  if(env.CLAMAV_HOST||env.CLAMAV_SOCKET){const files=await db.query("SELECT id,storage_key FROM files WHERE scan_status='quarantine' ORDER BY created_at LIMIT 5");for(const f of files.rows){try{const status=await scan(await retrieve(f.storage_key));const result=await db.query("UPDATE files SET scan_status=$1 WHERE id=$2 AND scan_status='quarantine'",[status,f.id]);if(result.rowCount)await audit(null,'document.scan_completed',f.id);}catch{console.error(JSON.stringify({event:'scan_failed',recordId:f.id}));}}}
- if(env.NODE_ENV!=='production'||await releaseReady()){const scheduled=await db.query("SELECT id FROM content WHERE state='draft' AND publish_at<=now() LIMIT 10");for(const r of scheduled.rows)await transaction(async c=>{const updated=(await c.query("UPDATE content SET state='published',publish_at=NULL,revision=revision+1,updated_at=now() WHERE id=$1 AND state='draft' AND publish_at<=now() RETURNING *",[r.id])).rows[0];if(updated){await c.query('INSERT INTO revisions(content_id,snapshot) VALUES($1,$2)',[r.id,JSON.stringify(updated)]);await enqueue(c,'publish:'+r.id+':'+updated.revision,notify('Scheduled publication',updated.title));await c.query('INSERT INTO audit(action,record_id) VALUES($1,$2)',['content.scheduled_publish',r.id]);}});}
+ if(env.NODE_ENV!=='production'||await releaseReady()){const scheduled=await db.query("SELECT id FROM content WHERE state='draft' AND publish_at<=now() AND metadata->'editorialReview'->>'status'='approved' ORDER BY publish_at LIMIT 10");for(const r of scheduled.rows)await transaction(c=>publishScheduledContent(c,r.id));}
  // Provisional application/enquiry TTLs are not effective privacy policies.
  // Business-data expiry stays disabled until approved rules, impact previews,
  // legal holds, deletion cascades and recovery/deletion replay are qualified.

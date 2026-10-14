@@ -1,3 +1,4 @@
+import './local-environment.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import pg from 'pg';

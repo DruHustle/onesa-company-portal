@@ -17,7 +17,8 @@
     "api:check": "python3 ../scripts/check-contracts.py",
     "test:contracts": "python3 ../scripts/test-contract-break.py",
     "test:domains": "node --test unit/domains.test.ts",
-    "test:domain-http": "node scripts/test-domain-routing.mjs"
+    "test:domain-http": "node scripts/test-domain-routing.mjs",
+    "test:homepage-loading": "node scripts/test-homepage-loading.mjs"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.17",

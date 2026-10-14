@@ -6,13 +6,14 @@ import {HttpError,required,normalize} from '../services/workflows.js';
 import {reauthenticate} from '../auth/reauthenticate.js';
 import type {Actor} from '../access/roles.js';
 import * as G from './schemas.js';
+import {retentionInterpretationIssues} from './interpretation.js';
 
 export const fingerprint=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const selection=`SELECT r.*, (SELECT max(e.created_at) FROM governance_events e WHERE e.record_id=r.stable_id AND e.action LIKE 'review.%') AS last_reviewed_at, v.revision,v.version_label,v.title,v.owner,v.product_scopes,v.payload,v.evidence_refs,v.status,v.source_fingerprint,v.source_file,v.created_by,v.created_at AS version_created_at,v.review_due_at,v.effective_at,v.approved_by,v.approved_email,v.approved_role,v.approved_at,v.approval_scope,v.approval_evidence_refs FROM governance_records r JOIN governance_versions v ON v.record_id=r.stable_id AND v.revision=coalesce($2::integer,r.current_revision)`;
 export function asRecord(raw:unknown):z.infer<typeof G.record>{
  const r=normalize<Record<string,unknown>>(raw);
  const displayStatus=r.archived?'archived':r.status==='approved'&&typeof r.effective_revision==='number'&&Number(r.revision)<r.effective_revision?'superseded':r.status;
- return G.record.parse({stableId:r.stable_id,kind:r.kind,documentId:r.document_id,classification:r.classification,currentRevision:r.current_revision,effectiveRevision:r.effective_revision,archived:r.archived,createdAt:r.created_at,updatedAt:r.updated_at,lastReviewedAt:r.last_reviewed_at??null,version:{recordId:r.stable_id,revision:r.revision,versionLabel:r.version_label,title:r.title,owner:r.owner,productScopes:r.product_scopes,payload:r.payload,evidenceRefs:r.evidence_refs,status:r.status,sourceFingerprint:r.source_fingerprint,sourceFile:r.source_file,createdBy:r.created_by,createdAt:r.version_created_at,reviewDueAt:r.review_due_at,effectiveAt:r.effective_at,approvedBy:r.approved_by,approvedEmail:r.approved_email,approvedRole:r.approved_role,approvedAt:r.approved_at,approvalScope:r.approval_scope,approvalEvidenceRefs:r.approval_evidence_refs,displayStatus}});
+ return G.record.parse({stableId:r.stable_id,kind:r.kind,documentId:r.document_id,classification:r.classification,currentRevision:r.current_revision,effectiveRevision:r.effective_revision,archived:r.archived,createdAt:r.created_at,updatedAt:r.updated_at,lastReviewedAt:r.last_reviewed_at??null,version:{recordId:r.stable_id,revision:r.revision,versionLabel:r.version_label,title:r.title,owner:r.owner,productScopes:r.product_scopes,payload:r.payload,evidenceRefs:r.evidence_refs,status:r.status,sourceFingerprint:r.source_fingerprint,sourceFile:r.source_file,createdBy:r.created_by,createdAt:r.version_created_at,reviewDueAt:r.review_due_at,effectiveAt:r.effective_at,approvedBy:r.approved_by,approvedEmail:r.approved_email,approvedRole:r.approved_role,approvedAt:r.approved_at,approvalScope:r.approval_scope,approvalEvidenceRefs:r.approval_evidence_refs,displayStatus,interpretationIssues:retentionInterpretationIssues(r.payload as G.Snapshot['payload'])}});
 }
 export async function getRecord(stableId:string,revision?:number,connection:Pick<PoolClient,'query'>=db){
  return asRecord(required((await connection.query(selection+' WHERE r.stable_id=$1',[stableId,revision??null])).rows[0]));
@@ -63,6 +64,7 @@ export async function review(id:string,input:z.infer<typeof G.reviewInput>,actor
   if(meta.archived)throw new HttpError(409,'ARCHIVED','Archived records cannot be reviewed.');
   const old=await getRecord(id,input.expectedRevision,c);
   if(old.version.status==='approved')throw new HttpError(409,'IMMUTABLE','Approved versions are immutable. Create an amendment.');
+  if(input.verdict==='approved'&&old.version.interpretationIssues.length)throw new HttpError(409,'POLICY_INTERPRETATION','Resolve the calendar-period interpretation in a new amendment before approving this retention rule.');
   if(['approved','rejected'].includes(input.verdict)){
    const role=await reauthenticate(c,{userId:actor.id,token:sessionToken,csrf:actor.csrf},input.stepUp);
    if(role!=='owner')throw new HttpError(403,'APPROVER','Owner approval required.');
