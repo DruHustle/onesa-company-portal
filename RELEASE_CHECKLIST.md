@@ -1,5 +1,16 @@
 # Production release checklist
 
+## Language switching and system appearance — prepared 2026-10-14
+
+The live site still uses a clock script to set `data-theme`. EN/DE navigation clears
+that attribute and the old stylesheet falls back to light. The existing development
+CSS follows the browser/system preference and preserves appearance through language
+switches. `tests/navigation.spec.ts` checks both directions on the homepage and contact
+pages at mobile/desktop widths, opposing clocks, live preference changes and rendering
+without JavaScript. Chromium and WebKit pass these cases locally. Firefox must run
+in CI because its installed local browser fails to launch. This source still requires exact-source CI, staging qualification
+and production promotion; pushing `dev` does not update `https://onesa.eu/`.
+
 ## Homepage loading — prepared 2026-10-14
 
 The local production build streams the homepage while optional CMS/news requests
