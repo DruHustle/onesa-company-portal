@@ -211,7 +211,7 @@ try {
       for(const rsc of [false,true])await deniedPublicRead(`/${locale}${suffix}`,rsc);
     }
     for(const path of ['/xx','/xx/contact','/en/unknown','/en/unknown/absent']) {
-      requests.length=0;assert.equal((await probe(frontend.origin,path)).status,404);
+      requests.length=0;assert.equal((await probe(frontend.origin,path)).status,404,`Denied invalid route ${path} retains404`);
       assert.equal(requests.filter(request=>request.path.startsWith('/api/v1/public/content')).length,0);
     }
     approved=true;companyDelay=2200;
