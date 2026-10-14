@@ -5,15 +5,14 @@
 Run from the repository root with Node 24, Python 3 and Docker when building images.
 Commit lockfiles; `npm ci` installs their exact dependency resolutions.
 
-Dependabot version updates target `dev` and follow `dev → staging → main`.
+Reviewed dependency changes use `dev → staging → main`; automatic version PR creation is disabled while update configuration and compatibility constraints are retained.
 Keep the Portal frontend on TypeScript 5.9.3 while `openapi-typescript` 7.13.0
 requires `^5.x` and the installed typescript-eslint 8.71.1 peers require
 `>=4.8.4 <6.1.0`. The TypeScript 7.0.2 update in PR #28 failed `npm ci`
 with `ERESOLVE`; it must not enter a release. Dependabot ignores compiler major
 version updates until the generator, lint tooling and compiler can be upgraded
 together and pass contract generation, lint, type checks and builds. Do not use
-`--force` or `--legacy-peer-deps` to hide peer conflicts. Minor/patch version
-updates continue. Security updates remain on the default branch under
+`--force` or `--legacy-peer-deps` to hide peer conflicts. Supported minor/patch updates are reviewed and applied on dev. Security updates remain on the default branch under
 [GitHub's documented target-branch behavior](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#target-branch)
 and still require compatibility checks and the qualified release path.
 
@@ -58,6 +57,24 @@ validate contracts. Full backend `npm test` requires a disposable PostgreSQL dat
 with `TEST_DATABASE_URL` ending `_test`; it truncates test tables. Never point it at
 application data. Browser tests need an isolated seeded stack and installed Chromium:
 `npm --prefix onesa-company-portal-frontend run test:e2e`.
+
+The test preload and every backend test entrypoint apply
+`tests/local-environment.ts` before importing runtime configuration. It rejects
+hosted database bindings even when their name ends `_test`, clears inherited
+S3/AWS storage credentials and endpoint aliases, scanner sockets/hosts and mail
+provider credentials, and disables cloud metadata discovery. Browser database
+fixtures use the same guard. Local fixtures use temporary files and explicit
+loopback scanner mocks; actual provider tests require their separate controlled
+acceptance scripts. An isolated SQL database alone does not isolate object storage
+or notification delivery. Keep this guard when adding new test entrypoints.
+
+The storage source also refuses inherited remote S3 configuration or orphan AWS
+credentials in `NODE_ENV=test`, before client use and before every storage operation.
+Explicit loopback storage requires a test bucket ending `-test`; default fixtures
+remain temporary local files. The negative regression imports unsanitized synthetic
+cloud settings and tries a runtime override with transport/file-write sentinels: both
+must fail with zero storage writes and zero client sends. Real hosted storage checks
+use the separately qualified, explicitly isolated acceptance target and procedure.
 
 Backend test files run serially because their shared fixture performs grants,
 migrations, truncation and sequence writes. The initialization regression creates
@@ -119,3 +136,70 @@ retries. Do not send actual email merely to execute the transport unit tests.
 ## Retired local approval files
 
 `python3 scripts/release/qualify.py decision` always fails closed. Editable `gates.json` strings and a matching local source hash do not establish verified release authority. Use the existing trusted `release-qualification.yml`/`free-qualification.yml` workflow and owner-controlled promotion path. This does not add another reviewer or invalidate existing owner authorization. Contracts, isolated verification and safe anonymous smoke commands remain available.
+
+## Dependency maintenance and continuing detection
+
+Three permanent branches are retained: dev, staging and main. Temporary Dependabot
+security-update and necessary narrow security-release candidate branches are permitted.
+Automatic security-update PR creation is **enabled**, superseding the earlier scoped
+disablement. All three actual default branches are main; they were not changed.
+Security PRs target default main: ordinary version `target-branch: dev` does not
+redirect them. Version PR limits remain zero while registry/compatibility metadata is
+retained. Alerts are enabled, with zero open alerts at the 14 October readback; other
+reported protections are unchanged. Direct dependency-graph SBOM readback returned
+HTTP404, so that setting is not directly verified and was not modified. Existing
+security PRs/branches are preserved. The owner confirmed receiving and monitoring
+Actions failures and Dependabot alerts for all three repositories.
+
+For an ordinary fix, review the advisory, affected package/lockfile, license and full
+diff. Incorporate that single reviewed change on dev, retaining the bot PR/advisory
+reference. Run lint/types, unit/integration/API checks, production builds and dependency/
+image scans; promote through staging and main with actual hosted acceptance. Reconcile
+the bot PR only after main contains the equivalent fix; do not merge it again or close
+it just to shorten the branch list. Breaking changes, unexpected diffs, conflicts and
+failing checks require owner review; patch/minor numbering is insufficient evidence.
+
+For an urgent production finding, verify the actual deployed revision and prepare a
+narrow temporary candidate from it. Exclude unrelated unfinished dev work. Qualify
+that exact candidate against approved isolated staging resources and synthetic data,
+including compatibility with the existing production API/data, then use the current
+owner-controlled main release gate. Existing workflow credentials remain available
+only on allowlisted staging/main refs: a temporary branch does not unlock them.
+If staging already contains unfinished changes, do not reset it or deploy its unrelated
+content; obtain a separately tested candidate-bound staging qualification through the
+existing external owner path before release. The current staging dispatcher does not
+accept arbitrary temporary refs. A candidate without trusted exact-source qualification
+remains blocked. After deployment, reconcile the same fix into dev/staging and preserve
+its reviewed source, release receipts and advisory. Delete a temporary branch only
+after verified incorporation or legitimate supersession and no active dependencies.
+
+PR and installation jobs use credential-free GitHub-hosted runners, isolated test
+resources and synthetic data. Never add deployment secrets to Dependabot, use unsafe
+pull_request_target, execute privileged PR artifacts, or blanket auto-merge. Vercel Git
+configuration denies unspecified branches (including nested bot heads); only the
+existing staging branch can prepare a native Preview. Production stays owner-controlled.
+
+The existing full verification workflow runs weekly on Monday at 06:17 UTC after
+qualified main adoption, and continues required checks for dev/staging/main changes.
+Dependency/source/final-image gates, OS/application checks and Oracle maintenance are
+retained. Track each advisory, severity, affected version, remediation action, responsible
+owner, integration, release and deployed verification in the existing restricted findings
+register. Zero alerts or a fix on dev is not proof the production artifact is patched.
+A session is not a background monitor. Restore the security-PR setting with repository
+`automated-security-fixes` PUT; do not disable it again under superseded instructions.
+
+## System appearance and isolated browser fixtures
+
+`node scripts/test_system_appearance.mjs` validates the pinned shared foundation,
+ordinary text/control contrast, registry and removal of clock/persisted overrides.
+Browser checks use OS preference with an opposing mocked clock, plus live changes
+preserving an unsaved draft, focus and session. All three browser engines remain required.
+Read the canonical protected Onesa Design System and local consumer manifest before
+changing shared semantics. Test representative Company, AI, Robot and Docs views together.
+
+Every ordinary backend/browser fixture imports `tests/local-environment.ts` before
+runtime modules. It rejects hosted/non-test databases and removes inherited cloud,
+scanner and email credentials. Storage additionally rejects any remote binding in
+`NODE_ENV=test` before client construction or writes. Local server adapters bind loopback;
+no production bucket or credentials are prerequisites. Remote acceptance is a separate
+explicitly approved isolated target, never a fallback from ordinary local tests.

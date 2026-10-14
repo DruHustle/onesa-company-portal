@@ -37,12 +37,24 @@ test('Protected governance documents, search, evidence, PDF, amendments and scop
  await page.getByRole('button',{name:'Processors & Transfers',exact:true}).click();await page.getByRole('button',{name:'Synthetic provider 1',exact:true}).click();await expect(page.getByText('hobby',{exact:true})).toBeVisible();await expect(page.getByText('not_established',{exact:true})).toBeVisible();await expect(page.getByRole('link',{name:'https://vercel.com/legal/dpa',exact:true}).first()).toHaveAttribute('href','https://vercel.com/legal/dpa');
  const counts=(await db.query("SELECT kind,count(*)::int AS n FROM governance_records GROUP BY kind ORDER BY kind")).rows;expect(counts).toEqual([{kind:'decision',n:12},{kind:'document',n:3},{kind:'processor',n:9},{kind:'retention',n:16}]);
 });
-for(const width of [390,768,1440])for(const [hour,mode] of [[12,'light'],[20,'dark']] as const)test(`Governance is accessible and responsive at ${width}px in ${mode}`,async({page})=>{
- await page.setViewportSize({width,height:900});await page.addInitScript(hour=>{Date.prototype.getHours=()=>hour;},hour);await login(page);
- await expect(page.locator('html')).toHaveAttribute('data-theme',mode);
+for(const width of [390,768,1440])for(const [hour,mode] of [[20,'light'],[12,'dark']] as const)test(`Governance is accessible and responsive at ${width}px in ${mode}`,async({page})=>{
+ await page.setViewportSize({width,height:900});await page.addInitScript(hour=>{Date.prototype.getHours=()=>hour;},hour); await page.emulateMedia({colorScheme:mode});await login(page);
+ expect(await page.evaluate(()=>getComputedStyle(document.documentElement).colorScheme)).toBe(mode);
  expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze()).violations).toEqual([]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  await page.getByRole('button',{name:'Retention & Deletion',exact:true}).click();await expect(page.getByRole('columnheader',{name:'Deletion method',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  await page.getByRole('button',{name:'Data Subject Requests',exact:true}).click();await expect(page.getByRole('heading',{name:'Data subject request automation is deferred'})).toBeVisible();
+});
+
+test('System appearance changes preserve an administration draft, focus and session without API writes',async({page})=>{
+ await page.emulateMedia({colorScheme:'light'});await login(page);
+ await page.getByRole('button',{name:'Content',exact:true}).click();
+ await page.getByRole('button',{name:'+ New content',exact:true}).click();
+ const title=page.getByLabel('Title',{exact:true});await title.fill('Synthetic unsaved editorial draft');await title.focus();
+ const cookies=await page.context().cookies();const writes:string[]=[];
+ page.on('request',request=>{if(request.url().includes('/api/v1/')&&request.method()!=='GET')writes.push(request.method());});
+ for(const scheme of ['dark','light'] as const){await page.emulateMedia({colorScheme:scheme});await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));expect(await page.evaluate(()=>getComputedStyle(document.documentElement).colorScheme)).toBe(scheme);await expect(title).toHaveValue('Synthetic unsaved editorial draft');await expect(title).toBeFocused();}
+ expect(await page.context().cookies()).toEqual(cookies);expect(writes).toEqual([]);
+ await page.getByRole('button',{name:'Background Processing',exact:true}).click();await expect(page.getByRole('heading',{name:'Background Processing',exact:true})).toBeVisible();await expect(page.getByRole('region',{name:'Background processing jobs',exact:true})).toBeVisible();await expect(page.getByRole('columnheader',{name:'Attempts',exact:true})).toBeVisible();
 });

@@ -164,6 +164,7 @@ for (const privateRepo of [true, false]) {
         self.assertEqual(
             config["git"]["deploymentEnabled"],
             {
+                "**": False,
                 "main": False,
                 "dev": False,
                 "staging": True,
@@ -203,6 +204,43 @@ for (const privateRepo of [true, false]) {
             self.assertNotRegex(text, r"\$\{\{\s*secrets\.")
             self.assertIn("pull_request:", text)
             self.assertRegex(text, r"pull_request:\n    branches:\n    - main")
+
+
+    def test_temporary_security_refs_cannot_authorize_release_or_staging_credentials(self):
+        authorization = (ROOT / ".github/workflows/free-authorization.yml").read_text()
+        condition = re.search(r"    if: ([\s\S]+?)\n    runs-on:", authorization).group(1)
+        staging = (ROOT / ".github/workflows/release-staging.yml").read_text()
+        staging_conditions = re.findall(r"^    if: (.+)", staging, re.MULTILINE)
+        program = r"""
+const conditions=JSON.parse(process.argv[1]), repository=process.argv[2];
+for(const ref of ['refs/heads/dependabot/pip/security-fixture','refs/heads/security/production-fixture']) {
+ for(const actor of ['DruHustle','dependabot[bot]']) {
+  const github={repository,actor,triggering_actor:actor,ref,event_name:'workflow_dispatch',
+   event:{repository:{private:false}}};
+  const vars={STAGING_SECRET_SCOPE:'environment',STAGING_AUTOMATION_ENABLED:'true'};
+  for(const condition of conditions)if(new Function('github','vars','return ('+condition+')')(github,vars))process.exit(1);
+ }
+}
+const github={repository,actor:'dependabot[bot]',triggering_actor:'dependabot[bot]',ref:'refs/heads/main'};
+if(new Function('github','return ('+conditions[0]+')')(github))process.exit(1);
+"""
+        result = subprocess.run(
+            ["node", "-e", program, json.dumps([condition, *staging_conditions]), "DruHustle/" + ROOT.name],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_version_target_does_not_claim_to_redirect_dependabot_security_fixes(self):
+        config = (ROOT / ".github/dependabot.yml").read_text()
+        ecosystems = re.split(r"(?m)^- package-ecosystem:", config)[1:]
+        self.assertTrue(ecosystems)
+        for ecosystem in ecosystems:
+            self.assertRegex(ecosystem, r"(?m)^  target-branch: dev$")
+            self.assertRegex(ecosystem, r"(?m)^  open-pull-requests-limit: 0$")
+        policy = (ROOT / "AGENTS.md").read_text()
+        self.assertIn("security fixes", policy)
+        self.assertIn("default main", policy)
+        self.assertIn("three permanent branches", policy)
 
 
 if __name__ == "__main__":

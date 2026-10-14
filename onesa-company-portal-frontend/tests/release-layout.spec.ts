@@ -2,9 +2,9 @@ import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 const sections=['about','products','technology','industries','research','partnerships','careers','news','contact','impressum','privacy','cookies','accessibility'];
 const widths=[320,390,768,1024,1440];
-for(const [hour,mode] of [[12,'light'],[20,'dark']] as const) test(`release audit: responsive EN/DE ${mode} pages, reduced motion and axe`,async({page},info)=>{
+for(const [hour,mode] of [[20,'light'],[12,'dark']] as const) test(`release audit: responsive EN/DE ${mode} pages, reduced motion and axe`,async({page},info)=>{
  test.setTimeout(600000);
- await page.addInitScript(hour=>{Date.prototype.getHours=()=>hour;},hour);
+ await page.addInitScript(hour=>{Date.prototype.getHours=()=>hour;},hour); await page.emulateMedia({colorScheme:mode});
  await page.emulateMedia({reducedMotion:'reduce'});
  for(const width of widths){
   await page.setViewportSize({width,height:900});

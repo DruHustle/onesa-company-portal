@@ -26,7 +26,8 @@ export async function registerGovernance(app:FastifyInstance,allow:Guard){
   const record=await store.getRecord(req.params.stableId,req.query.revision),v=record.version;
   const body=v.payload.type==='document'?v.payload.markdown:Object.entries(v.payload).filter(([key])=>key!=='type').map(([key,value])=>`## ${key}\n${typeof value==='string'?value:JSON.stringify(value,null,2)}`).join('\n\n');
   const status=v.status==='approved'?`INTERNAL · APPROVED · ${v.approvedAt}`:'INTERNAL · DRAFT — NOT APPROVED';
-  const bytes=await generatePDF(v.title,`Record ${record.stableId}\nVersion ${v.versionLabel} · Revision ${v.revision}\n${status}\n\n${body}`,{version:v.revision,status});
+  const interpretation=v.interpretationIssues.length?`\n\n## Unresolved duration interpretation\n${v.interpretationIssues.map(issue=>'- '+issue).join('\n')}`:'';
+  const bytes=await generatePDF(v.title,`Record ${record.stableId}\nVersion ${v.versionLabel} · Revision ${v.revision}\n${status}${interpretation}\n\n${body}`,{version:v.revision,status});
   await audit(req.actor!.id,'governance.pdf_downloaded',record.stableId,req.id);
   reply.header('Cache-Control','private, no-store').header('Content-Disposition',`attachment; filename="${record.stableId}-r${v.revision}.pdf"`).header('X-Content-Type-Options','nosniff').type('application/pdf');
   return (reply as FastifyReply).send(bytes);

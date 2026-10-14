@@ -140,11 +140,15 @@ passes and local builds do not change that status.
 
 ```mermaid
 flowchart TD
-  F[feature / fix / hotfix branch] --> PR[Owner PR to main or staging]
+  BOT[Temporary Dependabot security branch: default main proposal] --> DEV[Reviewed single fix on dev]
+  DEV --> PR[Normal owner PR dev to staging]
+  PR --> PROMOTE[Qualified staging to main PR]
+  URGENT[Narrow candidate from deployed production revision] --> ISOLATED[Exact candidate isolated staging qualification]
+  ISOLATED --> PROMOTE
   PR --> R[Read-only Reviewdog + lint + types + security]
   R --> T[Relevant tests / contracts / browser / production builds]
   T --> S[Always-running CI summary + independent hygiene]
-  S --> M[Owner reviews results and merges to main]
+  S --> M[Owner reviews qualified scope and promotes staging to main]
   M --> C[Full exact-main CI + tested runtime digests]
   C --> P[Optional isolated staging: one Actions authority]
   P --> V[Provider revision + authenticated probes + receipts]
@@ -221,22 +225,28 @@ is assumed or required. An optional review of the diff through the user's alread
 authorized Codex session remains nonblocking; no Codex API subscription or runner
 integration was added, and no CLI capability was claimed as verified.
 
-Dependabot alerts are enabled, with **zero open alerts** in the readback. Automated
-security-fix PRs were **disabled** in the before inventory and are now **enabled** on
-all three remotes, verified by readback after the explicitly requested setting change. The new configuration schedules
-monthly ecosystem updates, at most two version PRs per ecosystem, a seven-day version
-cooldown, and compatible minor/patch version groups. Security updates are ungrouped
-and have no version cooldown. Automatic security-fix PRs were enabled using the user-authorized setting; version
-update schedules activate after the owner publishes and merges the local configuration. Bot PRs run the same read-only CI and
-never automatically merge or deploy.
+The 14 October 2026 owner revision retains three permanent branches: dev, staging,
+main, and permits temporary Dependabot security-update and narrow security-release
+candidate branches. Security-update PR creation is enabled on all three repositories;
+alerts/scans/notifications remain intact and zero open alerts were read back. Default
+main remains unchanged and is the security-PR target; version target-branch does not
+redirect it. Ordinary version PR limits are zero, with registry/compatibility metadata
+preserved. Bot PRs receive credential-free hosted CI and never auto-merge or deploy.
 
 ## Optimization and branch policy
 
-Use `feature/*`, `fix/*` and `hotfix/*` PRs targeting `main` or `staging`; preserve
-existing branches, including Portal's established `audit/portal-master-acceptance`.
-Feature push CI duplication is removed: PR activity validates development changes;
-`main`, `staging`, explicit dispatch and the established Portal acceptance branch run
-full critical suites. No native restriction on pushes is asserted.
+Normal reviewed fixes integrate once through dev → staging → main, with advisory/PR
+provenance. Urgent fixes start from the verified production revision, exclude unfinished
+dev changes, require trusted isolated candidate staging qualification, owner-controlled
+release and reconciliation into dev/staging. Temporary refs do not unlock privileged
+workflows. Preserve reviews, findings and branches until verified incorporation or
+legitimate supersession and no active dependency. Never delete permanent branches.
+The operational procedure and notification evidence are maintained in
+[Build and test](../engineering/BUILD_AND_TEST.md#dependency-maintenance-and-continuing-detection).
+Required PR checks have no head-branch restriction; dev/staging/main source pushes and
+weekly scheduled checks run the full critical suites. Vercel denies unspecified Git
+branches and allows only the existing staging Preview; production authority is external
+owner custody. No native restriction on pushes is asserted.
 
 Superseded PR runs cancel; release-source runs and deployments do not cancel in
 flight. npm download and pip caches key from committed lockfiles; no credentials,

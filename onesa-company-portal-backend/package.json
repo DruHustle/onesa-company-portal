@@ -12,7 +12,7 @@
     "start": "node dist/src/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
-    "test": "node --env-file-if-exists=../.env --import tsx --test --test-concurrency=1 tests/*.test.ts",
+    "test": "node --env-file-if-exists=../.env --import tsx --import ./tests/local-environment.ts --test --test-concurrency=1 tests/*.test.ts",
     "migrate": "node --env-file-if-exists=../.env --import tsx src/services/migrate.ts",
     "bootstrap": "node --env-file-if-exists=../.env --import tsx src/auth/bootstrap.ts",
     "worker": "node --env-file-if-exists=../.env --import tsx src/jobs/worker.ts",

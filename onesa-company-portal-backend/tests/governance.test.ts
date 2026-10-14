@@ -1,3 +1,4 @@
+import './local-environment.js';
 import {test,before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID,randomBytes} from 'node:crypto';
@@ -8,6 +9,7 @@ import {governanceSeed} from './governance-fixture.js';
 import {normalizeSeed} from '../src/governance/seed.js';
 import {governanceTarget} from '../src/governance/target.js';
 import {reference} from '../src/governance/schemas.js';
+import {retentionInterpretationIssues} from '../src/governance/interpretation.js';
 if(!process.env.TEST_DATABASE_URL||!new URL(process.env.TEST_DATABASE_URL).pathname.endsWith('_test'))throw new Error('Governance tests require an isolated _test database');
 process.env.DATABASE_URL=process.env.TEST_DATABASE_URL;process.env.NODE_ENV='test';process.env.COMPANY_ORIGIN='';
 process.env.SESSION_KEY=randomBytes(32).toString('hex');process.env.PUBLIC_ORIGIN='http://localhost:3300';
@@ -35,6 +37,8 @@ test('Package validation rejects approval/deletion injection, duplicates and mis
 });
 test('Actual import is atomic, insert-only and idempotent with exact stable IDs and no publication',async()=>{
  const oldSettings=(await db.query("SELECT value FROM settings WHERE key IN ('legal','retention') ORDER BY key")).rows;
+ const preview=await importGovernance(governanceSeed(),undefined,{dryRun:true});assert.equal(preview.dryRun,true);assert.equal(preview.plannedInserts.length,40);assert.equal(preview.inserted.length,0);
+ assert.equal((await db.query('SELECT count(*)::int AS n FROM governance_records')).rows[0].n,0);assert.equal((await db.query('SELECT count(*)::int AS n FROM governance_events')).rows[0].n,0);
  const first=await importGovernance(governanceSeed());assert.equal(first.inserted.length,40);
  const second=await importGovernance(governanceSeed());assert.equal(second.inserted.length,0);assert.equal(second.preserved.length,40);
  assert.deepEqual(first.counts,[{kind:'decision',count:12},{kind:'document',count:3},{kind:'processor',count:9},{kind:'retention',count:16}]);
@@ -43,6 +47,14 @@ test('Actual import is atomic, insert-only and idempotent with exact stable IDs 
  assert.deepEqual((await db.query("SELECT value FROM settings WHERE key IN ('legal','retention') ORDER BY key")).rows,oldSettings);
  assert.equal((await db.query("SELECT count(*)::int AS n FROM content WHERE body LIKE '%Synthetic retention policy%'")).rows[0].n,0);
  const overview=await app.inject({url:prefix+'/overview',headers:owner().headers});assert.equal(overview.statusCode,200);assert.equal(overview.json().documents,3);assert.equal(overview.json().approvedDocuments,0);assert.equal(overview.json().automaticDeletionEnabled,false);
+});
+test('Calendar month and annual-review source proposals remain unresolved without silently rewriting durations',()=>{
+ const base={type:'retention',periodUnit:'days',proposedPeriod:180,notes:'**6 months** after a synthetic outcome',exceptions:''};
+ assert.equal(retentionInterpretationIssues(base).length,1);
+ assert.equal(retentionInterpretationIssues({...base,notes:'**12 months** after synthetic closure',proposedPeriod:365}).length,1);
+ assert.equal(retentionInterpretationIssues({...base,notes:'Annual inactivity review; thirty-day deletion target',proposedPeriod:30,periodUnit:'days_target_active_deletion',exceptions:'Review inactive history after 365 days.'}).length,1);
+ assert.deepEqual(retentionInterpretationIssues({...base,periodUnit:'calendar_months',proposedPeriod:6}),[]);
+ assert.deepEqual(retentionInterpretationIssues({...base,notes:'Seven days after completion',proposedPeriod:7}),[]);
 });
 test('Every governance read, PDF, history and mutation enforces existing server roles and CSRF',async()=>{
  const urls=[prefix+'/overview',prefix+'/records',prefix+'/events',prefix+'/records/ONESA-PRIV-RET-001',prefix+'/records/ONESA-PRIV-RET-001/versions',prefix+'/records/ONESA-PRIV-RET-001/pdf'];
@@ -74,6 +86,17 @@ test('Only a fresh authenticated owner proof can approve one immutable version, 
  const events=await app.inject({url:prefix+'/events?stableId=DEC-01',headers:owner().headers});assert.equal(events.json().items[0].actorRole,'owner');assert.equal(events.json().items[0].scope,body.scope);assert.ok(!events.body.includes(password));assert.ok(!events.body.includes(stepUp.code));
  await assert.rejects(db.query("UPDATE governance_events SET note='changed' WHERE record_id='DEC-01'"),{code:'23514'});
  assert.equal((await app.inject({url:prefix+'/records/DEC-02',headers:owner().headers})).json().version.status,'draft_pending_review');
+});
+test('Unresolved calendar interpretation rejects approval; an explicit amendment can resolve it while preserving the original',async()=>{
+ const original=(await app.inject({url:prefix+'/records/RET-01',headers:owner().headers})).json().version;
+ const base={expectedRevision:1,title:original.title,owner:original.owner,productScopes:original.productScopes,versionLabel:'0.2',reviewDueAt:null,evidenceRefs:['tests/synthetic/calendar-review'],payload:{...original.payload,proposedPeriod:180,periodUnit:'days',notes:'Synthetic proposal: **6 months** after completion.'}};
+ const amended=await app.inject({method:'POST',url:prefix+'/records/RET-01/revisions',headers:owner().headers,payload:base});assert.equal(amended.statusCode,201,amended.body);assert.equal(amended.json().version.interpretationIssues.length,1);assert.equal(amended.json().version.payload.proposedPeriod,180);
+ const review={expectedRevision:2,verdict:'approved',note:'Synthetic isolated calendar decision.',scope:'Synthetic policy fixture only; no actual retention approval.',evidenceRefs:['tests/synthetic/calendar-review'],effectiveAt:new Date().toISOString(),reviewDueAt:new Date(Date.now()+30*86400000).toISOString(),stepUp:await proof()};
+ const denied=await app.inject({method:'POST',url:prefix+'/records/RET-01/review',headers:owner().headers,payload:review});assert.equal(denied.statusCode,409);assert.equal(denied.json().error.code,'POLICY_INTERPRETATION');
+ const resolved=await app.inject({method:'POST',url:prefix+'/records/RET-01/revisions',headers:owner().headers,payload:{...base,expectedRevision:2,versionLabel:'0.3',payload:{...base.payload,proposedPeriod:6,periodUnit:'calendar_months'}}});assert.equal(resolved.statusCode,201,resolved.body);assert.deepEqual(resolved.json().version.interpretationIssues,[]);
+ const approved=await app.inject({method:'POST',url:prefix+'/records/RET-01/review',headers:owner().headers,payload:{...review,expectedRevision:3}});assert.equal(approved.statusCode,200,approved.body);assert.equal(approved.json().version.status,'approved');
+ const retained=(await app.inject({url:prefix+'/records/RET-01?revision=2',headers:owner().headers})).json().version;assert.equal(retained.payload.proposedPeriod,180);assert.equal(retained.status,'draft_pending_review');
+ assert.deepEqual((await app.inject({url:prefix+'/records/RET-01?revision=1',headers:owner().headers})).json().version,original);
 });
 test('Amendments preserve approved source, prevent lost concurrent updates and survive app restart/import',async()=>{
  const old=(await app.inject({url:prefix+'/records/DEC-01',headers:owner().headers})).json();const v=old.version;
