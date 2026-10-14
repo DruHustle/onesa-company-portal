@@ -32,3 +32,36 @@ test('all shared text, product action and status mappings meet ordinary text con
     assert.ok(contrast(values.border,values.canvas)>=3,'control border');
   }
 });
+test('versioned identity assets are square, self-contained and distinct across products',async()=>{
+  const directory='onesa-company-portal-frontend/public/brand/icons/v1/';
+  const sources=JSON.parse(await readFile(new URL(directory+'sources.json',root),'utf8'));
+  assert.equal(sources.version,'1.0.0');
+  assert.equal(createHash('sha256').update(await readFile(new URL(sources.source,root))).digest('hex'),sources.sourceSha256);
+  const icons=[];
+  for(const product of sources.products){
+    for(const file of product.files){
+      const bytes=await readFile(new URL(directory+file.name,root));
+      assert.equal(createHash('sha256').update(bytes).digest('hex'),file.sha256,file.name);
+      if(file.mime==='image/svg+xml'){
+        assert.match(bytes.toString(),/viewBox="0 0 32 32"/);
+        assert.doesNotMatch(bytes.toString(),/<script|<foreignObject|\bhref=|\bon\w+=|https?:\/\/(?!www\.w3\.org)/);
+        assert.ok(bytes.length<4096,'optimized standalone SVG');
+      }else if(file.mime==='image/png'){
+        assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+        assert.equal(bytes.readUInt32BE(16),file.width);assert.equal(bytes.readUInt32BE(20),file.height);
+      }else{
+        assert.equal(bytes.readUInt16LE(0),0);assert.equal(bytes.readUInt16LE(2),1);assert.equal(bytes.readUInt16LE(4),3);
+        for(let i=0;i<3;i++){
+          const at=6+i*16,size=[16,32,64][i],offset=bytes.readUInt32LE(at+12),length=bytes.readUInt32LE(at+8);
+          assert.equal(bytes[at],size);assert.equal(bytes[at+1],size);
+          assert.ok(offset>=54&&offset+length<=bytes.length);
+          assert.equal(bytes.subarray(offset,offset+8).toString('hex'),'89504e470d0a1a0a');
+          assert.equal(bytes.readUInt32BE(offset+16),size);assert.equal(bytes.readUInt32BE(offset+20),size);
+        }
+        icons.push(file.sha256);
+      }
+    }
+  }
+  assert.equal(new Set(icons).size,4,'product icons differ beyond identical fallback bytes');
+  for(const file of manifest.identity.files)assert.equal(createHash('sha256').update(await readFile(new URL(file.path,root))).digest('hex'),file.sha256);
+});

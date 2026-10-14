@@ -202,6 +202,16 @@ A session is not a background monitor. Restore the security-PR setting with repo
 
 ## System appearance and isolated browser fixtures
 
+Identity assets are versioned alongside the foundation in
+`design-system.consumer.json`. Their common O outline comes from the unchanged
+owner-supplied orbit artwork; Company, AI, Robot and Docs use distinct geometric
+frames. `node scripts/generate_identity_icons.mjs` deliberately regenerates the
+canonical SVG,16/32/64 ICO and180PNG files with the existing installed Playwright
+Chromium. Review the output and provenance, then explicitly copy the relevant
+versioned product files into each consumer and qualify its release. This does not
+run during application startup or silently update sibling builds. Native tab
+readability requires actual browser evidence in addition to HTTP/MIME/byte checks.
+
 `node scripts/test_system_appearance.mjs` validates the pinned shared foundation,
 ordinary text/control contrast, registry and removal of clock/persisted overrides.
 Browser checks use OS preference with an opposing mocked clock, plus live changes
