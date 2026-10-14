@@ -33,6 +33,18 @@ backend. `SITE_URL` and public-release settings are build-time configuration.
 Frontend env example lives in its subdirectory; current native dev scripts load the
 root `.env`, so export values explicitly for independent deployments.
 
+After the production build, run the homepage loading regression:
+
+```sh
+npm --prefix onesa-company-portal-frontend run test:homepage-loading
+```
+
+It starts an isolated loopback mock API with synthetic content and exercises both
+public-release settings, slow responses and recovery. No database, provider credentials
+or hosted backend is required. Verify prompt hero rendering, bounded response completion,
+request-scoped publication checks and fail-closed approval behavior. Passing locally
+does not establish deployed performance or hosted acceptance.
+
 ## Backend
 
 ```sh

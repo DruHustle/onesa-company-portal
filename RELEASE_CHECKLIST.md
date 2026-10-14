@@ -1,5 +1,18 @@
 # Production release checklist
 
+## Homepage loading — prepared 2026-10-14
+
+The local production build streams the homepage while optional CMS/news requests
+run concurrently with a 1.5-second deadline. Synthetic slow-API checks cover `/`,
+`/en`, `/de`, content recovery, CSP nonces and request-scoped publication approval;
+timeouts preserve the existing approval gate. Frontend lint, types, build, domain,
+appearance, documentation and publication-hygiene checks pass. Chromium and WebKit
+confirm streamed insertion, timeout fallback and mobile/language navigation without
+CSP or hydration errors. The installed local Firefox fails to launch with
+`Could not find profile folder`; verify Firefox on the CI runner before acceptance.
+This source is not deployed. Qualify the exact revision through staging and the owner-controlled release
+path, then remeasure browser first paint and complete loading on `https://onesa.eu/`.
+
 ## Privacy governance implementation — 2026-10-13
 
 Local verification: 73 backend tests pass, including nine governance/import/approval tests; generated contracts contain 70 operations and match the frontend client. Frontend lint, type checks and production build pass. Browser acceptance covers protected PDFs, amendments, comparisons, scoped owner approval and six responsive day/night scenarios. Hosted migration/import and authenticated staging/production UI evidence remain required. Imported documents and retention/provider/decision proposals stay INTERNAL drafts; no legal approval, DPA execution, public notice publication or deletion automation is inferred.
