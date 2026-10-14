@@ -1,5 +1,6 @@
 /** Complete public JSON reads share a deadline covering both headers and body. */
 export async function publicFetch(request:Request):Promise<Response> {
+  if(!['GET','HEAD'].includes(request.method))throw new Error('Public server fetch supports reads only');
   const controller=new AbortController();
   let deadline:ReturnType<typeof setTimeout>|undefined;
   try {
@@ -10,9 +11,15 @@ export async function publicFetch(request:Request):Promise<Response> {
         },1500);
       });
     const content=(async()=>{
-        const response=await fetch(new Request(request, {
+        // Next's Request normalization drops init.signal before its memoizer.
+        // URL + explicit options preserve cancellation and bypass that memoizer.
+        // React's request-scoped caches still share the required head/body read.
+        const response=await fetch(request.url, {
+          method:request.method,headers:request.headers,credentials:request.credentials,
+          redirect:request.redirect,mode:request.mode,referrer:request.referrer,
+          referrerPolicy:request.referrerPolicy,integrity:request.integrity,
           signal:AbortSignal.any([request.signal,controller.signal]),cache:'no-store',
-        }));
+        });
         const body=await response.arrayBuffer();
         return new Response([204,205,304].includes(response.status)?null:body,{status:response.status,statusText:response.statusText,headers:response.headers});
       })();
