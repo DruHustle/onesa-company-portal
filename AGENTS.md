@@ -129,6 +129,7 @@ Portal publication requires exact-version editorial review; scheduling is not ap
 Owner-authorized `PUBLICATION_STAGE=prelaunch` defers the legal hold; default `launch`
 restores it. Legal records stay unapproved. Public indexing is authorized. Preserve
 editorial/data/file/deletion controls; see DEPLOYMENT.md.
+No public approval waits or hold UI.
 Private CVs remain quarantined until a real clean scanner result, with authorized downloads.
 Preserve least-privilege runtime roles, bounded retries/leases and the current qualified
 Oracle consumer; cutovers require recovery and actual hosted acceptance. Governance stable
