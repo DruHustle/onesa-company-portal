@@ -70,7 +70,9 @@ function probe(origin, path) {
 
 function checkSecurity(page) {
   assert.equal(page.status, 200);
-  assert.doesNotMatch(page.html, /class="product-section section"|ai-engine-illustration/, 'AI Platform presentation belongs under Products, not Home');
+  assert.doesNotMatch(page.html, /class="product-section section"|ai-engine-illustration/, 'Detailed product illustrations remain on Products');
+  assert.match(page.html, /id="products"/, 'Product previews render with the homepage before optional content resolves');
+  for (const id of ['ai', 'robot']) assert.match(page.html, new RegExp('href="/(?:en|de)/products#product-' + id + '"'), 'Each homepage preview links to its detailed product');
   assert.match(page.headers['cache-control'], /private.*no-store/);
   const nonce = /'nonce-([^']+)'/.exec(page.headers['content-security-policy'])?.[1];
   assert.ok(nonce, 'Every response retains its CSP nonce');
