@@ -70,6 +70,7 @@ function probe(origin, path) {
 
 function checkSecurity(page) {
   assert.equal(page.status, 200);
+  assert.doesNotMatch(page.html, /class="product-section section"|ai-engine-illustration/, 'AI Platform presentation belongs under Products, not Home');
   assert.match(page.headers['cache-control'], /private.*no-store/);
   const nonce = /'nonce-([^']+)'/.exec(page.headers['content-security-policy'])?.[1];
   assert.ok(nonce, 'Every response retains its CSP nonce');
@@ -143,53 +144,29 @@ try {
   await stopFrontend(frontend.child);
   frontend = await startFrontend(true);
   await probe(frontend.origin, '/');
-  requests.length = 0;
-  const blocked = await probe(frontend.origin, '/');
-  checkSecurity(blocked);
-  assert.match(blocked.html, /Company website awaiting release approval/);
-  assert.equal(blocked.heroAt, undefined);
-  assert.match(blocked.html, /name="robots" content="noindex, nofollow"/);
-  assert.equal(requests.filter(request => request.path.endsWith('/company')).length, 1, 'Metadata and layout share one readiness read');
-  assert.doesNotMatch(blocked.html, /Synthetic homepage introduction|Synthetic published news|Synthetic approved content/);
-  assert.equal(requests.filter(request => request.path.endsWith('/content')).length, 0, 'Denied approval prevents homepage CMS serialization and reads');
-  approved = true;
-  requests.length = 0;
-  const published = await probe(frontend.origin, '/');
-  checkSecurity(published);
-  assert.ok(published.heroAt !== undefined);
-  assert.match(published.html, /name="robots" content="index, follow"/);
-  assert.equal(requests.filter(request => request.path.endsWith('/company')).length, 1);
-  assert.match(published.html, /Synthetic published news/);
-  console.log('PASS approval is checked once per render and never reused across visitors');
-  companyDelay = 2200;
-  requests.length = 0;
-  const unavailable = await probe(frontend.origin, '/');
-  checkSecurity(unavailable);
-  assert.equal(unavailable.heroAt, undefined);
-  assert.match(unavailable.html, /Company website awaiting release approval/);
-  assert.match(unavailable.html, /name="robots" content="noindex, nofollow"/);
-  assert.doesNotMatch(unavailable.html, /Synthetic homepage introduction|Synthetic published news|Synthetic approved content/);
-  assert.equal(requests.filter(request => request.path.endsWith('/content')).length, 0, 'Timed out approval prevents homepage CMS serialization and reads');
-  assert.ok(unavailable.total < 2100, 'Unavailable approval fails closed within the rendering deadline');
-  companyDelay = 0;
-  const readyAgain = await probe(frontend.origin, '/');
-  assert.ok(readyAgain.heroAt !== undefined);
-  assert.match(readyAgain.html, /name="robots" content="index, follow"/);
-  console.log('PASS publication timeout fails closed and a fresh approval read recovers');
-  approved = false; prelaunch = true; requests.length = 0;
+  // An operational approval endpoint is not a dependency of an already-published website.
+  // The synthetic content endpoint represents editorially published public content.
+  for (const status of [false, true]) for (const delayMs of [0, 2200]) {
+    approved = status; companyDelay = delayMs; requests.length = 0;
+    const page = await probe(frontend.origin, '/');
+    checkSecurity(page);
+    assert.ok(page.heroAt < 1000, 'Approved public shell remains responsive');
+    assert.match(page.html, /Synthetic published news/);
+    assert.match(page.html, /name="robots" content="index, follow"/);
+    assert.doesNotMatch(page.html, /awaiting release approval|wartet auf Freigabe|Publication approval pending/);
+    assert.equal(requests.filter(request => request.path.endsWith('/company')).length, 0,
+      'A denied, slow or unavailable approval-status endpoint is never requested by public rendering');
+    assert.ok(requests.every(request => request.path === '/api/v1/public/content'),
+      'Public rendering uses only published-content endpoints');
+    assert.doesNotMatch(page.html.match(/<footer[\s\S]*?<\/footer>/)?.[0] || '', /mailto:|tel:/);
+    assert.match(page.html, /href="\/en\/contact"/);
+  }
+  prelaunch = true;
   const development = await probe(frontend.origin, '/');
-  checkSecurity(development);
   assert.ok(development.heroAt !== undefined);
   assert.match(development.html, /Synthetic published news/);
-  assert.match(development.html, /name="robots" content="index, follow"/);
-  assert.equal(requests.filter(request => request.path.endsWith('/company')).length, 1);
-  assert.doesNotMatch(development.html.match(/<footer[\s\S]*?<\/footer>/)?.[0] || '', /mailto:|tel:/);
-  assert.match(development.html, /href="\/en\/contact"/);
-  prelaunch = false;
-  const restored = await probe(frontend.origin, '/');
-  assert.equal(restored.heroAt, undefined);
-  assert.doesNotMatch(restored.html, /Synthetic published news/);
-  console.log('PASS owner-approved pre-launch publication permits indexing without inventing legal approval; launch mode restores the hold');
+  assert.doesNotMatch(development.html, /awaiting release approval|wartet auf Freigabe/);
+  console.log('PASS public website and indexing remain available without an approval-status request; backend content boundaries are unchanged');
 
 } finally {
   if (frontend) await stopFrontend(frontend.child);

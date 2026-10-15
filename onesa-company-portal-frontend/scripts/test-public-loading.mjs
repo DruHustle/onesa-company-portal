@@ -119,20 +119,19 @@ function productOverview(page) {
   assert.ok(page.productsAt<800,`Product information must arrive before optional CMS reads: ${page.productsAt}ms`);
   assert.doesNotMatch(page.html,/Content service is temporarily unavailable|Der Inhaltsdienst ist vorübergehend nicht verfügbar|Product entries are awaiting editorial approval|Produkteinträge warten auf redaktionelle Freigabe/,'Product information remains available during CMS failure');
 }
-async function deniedPublicRead(path, rsc = false) {
+async function independentPublicRead(path, rsc = false) {
   requests.length=0;
   const page=await probe(frontend.origin,path,{rsc});security(page);
   assert.equal(page.status,200);
-  assert.match(page.html,/awaiting release approval|wartet auf Freigabe/);
-  assert.doesNotMatch(page.html,/Synthetic (en|de)|Synthetic approved rendering fixture/,'Neither CMS body nor SEO is serialized in HTML or RSC');
-  assert.doesNotMatch(page.html,/product-ai|product-robot/,'Denied leaves cannot serialize the static product overview');
-  if(rsc) {
-    assert.match(page.headers['content-type'],/text\/x-component/,'This checks a real RSC response');
-    assert.match(page.html,/"name":"robots","content":"noindex/);
-  } else assert.match(page.html,/name="robots" content="noindex/);
-  assert.ok(page.total<2000,'Required approval has the unchanged complete-response deadline');
-  assert.equal(requests.filter(request=>request.path==='/api/v1/public/company').length,1,'Layout, body and metadata share only this render’s fresh approval');
-  assert.equal(requests.filter(request=>request.path.startsWith('/api/v1/public/content')).length,0,'Denied or unavailable approval prevents every CMS read');
+  assert.doesNotMatch(page.html,/awaiting release approval|wartet auf Freigabe|Publication approval pending/);
+  assert.doesNotMatch(page.html,/Synthetic private record|Synthetic unpublished draft/);
+  if(rsc) assert.match(page.headers['content-type'],/text\/x-component/,'This checks a real RSC response');
+  else assert.match(page.html,/name="robots" content="index, follow"/);
+  assert.ok(page.total<2000,'Public rendering keeps its existing response deadline');
+  assert.equal(requests.filter(request=>request.path==='/api/v1/public/company').length,0,
+    'Rendering and metadata never wait for an approval-status endpoint');
+  assert.ok(requests.every(request=>request.method==='GET'&&request.path.startsWith('/api/v1/public/content')),
+    'Rendering only reads published public content, never private records or administrative state');
   return page;
 }
 let frontend;
@@ -208,7 +207,7 @@ try {
     approved=false;
     for(const locale of ['en','de']) for(const suffix of ['', '/contact', '/products',
       ...['products','news','research','careers'].map(section=>`/${section}/synthetic-detail`)]) {
-      for(const rsc of [false,true])await deniedPublicRead(`/${locale}${suffix}`,rsc);
+      for(const rsc of [false,true])await independentPublicRead(`/${locale}${suffix}`,rsc);
     }
     for(const path of ['/xx','/xx/contact','/en/unknown','/en/unknown/absent']) {
       requests.length=0;assert.equal((await probe(frontend.origin,path)).status,404,`Denied invalid route ${path} retains404`);
@@ -218,7 +217,7 @@ try {
     const timeoutRoutes=[['/en',false],['/de/products',true],['/en/news/synthetic-detail',true],['/de/contact',false]];
     for(const bodyStalled of [false,true]) {
       earlyHeaders=bodyStalled;
-      for(const [path,rsc] of timeoutRoutes)await deniedPublicRead(path,rsc);
+      for(const [path,rsc] of timeoutRoutes)await independentPublicRead(path,rsc);
     }
     earlyHeaders=false;companyDelay=0;
     const approvalRecovery=await probe(frontend.origin,'/en/products');
@@ -226,7 +225,7 @@ try {
     const approvalRscRecovery=await probe(frontend.origin,'/de/products/synthetic-detail',{rsc:true});
     assert.match(approvalRscRecovery.headers['content-type'],/text\/x-component/);
     assert.match(approvalRscRecovery.html,/Synthetic de principal content/);
-    console.log('PASS denied and stalled approval serialize no CMS/SEO/product data in HTML or RSC, send no CMS reads, and recover freshly');
+    console.log('PASS HTML and RSC public pages remain available without approval-status reads; unpublished detail404 and private-route boundaries remain intact');
     for (const path of ['/xx/contact','/en/unknown','/en/unknown/absent']) assert.equal((await probe(frontend.origin,path)).status,404);
     copyStatus=503;feedStatus=503;
     for(const locale of ['en','de']){
@@ -275,7 +274,7 @@ try {
     } finally { await browser.close(); }
   }
   assert.ok(requests.every(request=>request.method==='GET'&&request.path.startsWith('/api/v1/public/')),'Public rendering cannot request private routes');
-  console.log(measureOnly?'Baseline measured':'PASS isolated public loading, approval,404,recovery,locale,appearance and Browser Back');
+  console.log(measureOnly?'Baseline measured':'PASS isolated public loading, approval-status independence,404,recovery,locale,appearance and Browser Back');
 } finally {
   if(frontend?.child.exitCode===null){frontend.child.kill('SIGTERM');await once(frontend.child,'exit');}
   backend.closeAllConnections();await new Promise(resolve=>backend.close(resolve));
