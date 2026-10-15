@@ -6436,13 +6436,25 @@
                     },
                     "release_ready": {
                       "type": "boolean"
+                    },
+                    "publication_enabled": {
+                      "type": "boolean"
+                    },
+                    "publication_stage": {
+                      "type": "string",
+                      "enum": [
+                        "prelaunch",
+                        "launch"
+                      ]
                     }
                   },
                   "required": [
                     "name",
                     "positioning",
                     "facts",
-                    "release_ready"
+                    "release_ready",
+                    "publication_enabled",
+                    "publication_stage"
                   ],
                   "additionalProperties": false
                 }
@@ -20671,6 +20683,16 @@
                     },
                     "releaseReady": {
                       "type": "boolean"
+                    },
+                    "publicationEnabled": {
+                      "type": "boolean"
+                    },
+                    "publicationStage": {
+                      "type": "string",
+                      "enum": [
+                        "prelaunch",
+                        "launch"
+                      ]
                     }
                   },
                   "required": [
@@ -20681,7 +20703,9 @@
                     "drafts",
                     "published",
                     "pendingJobs",
-                    "releaseReady"
+                    "releaseReady",
+                    "publicationEnabled",
+                    "publicationStage"
                   ],
                   "additionalProperties": false
                 }

@@ -3,8 +3,8 @@
 This is the single policy file for `onesa-company-portal`, including Codex/agent instructions,
 contribution rules, security reporting and repository governance. Keep policies here;
 do not recreate separate setup, implementation-status or session-handoff documents.
-Read the README, current roadmap/release checklist, relevant architecture and existing
-code before editing. Continue incomplete work; do not restart implemented features.
+Read README, current release checklist, relevant architecture and code before edits.
+Continue incomplete work.
 Update the changelog, contracts and affected operational documentation when behavior
 changes. Record unverified functionality honestly in the applicable release checklist
 or roadmap. Explicit user instructions and previously authorized scope take precedence.
@@ -126,6 +126,9 @@ Keep public/internal access, deployment context and simulation/live state separa
 Do not import unversioned sibling code, fetch mutable design settings or add a repository.
 
 Portal publication requires exact-version editorial review; scheduling is not approval.
+Owner-authorized `PUBLICATION_STAGE=prelaunch` defers the legal hold; default `launch`
+restores it. Legal records stay unapproved. Public indexing is authorized. Preserve
+editorial/data/file/deletion controls; see DEPLOYMENT.md.
 Private CVs remain quarantined until a real clean scanner result, with authorized downloads.
 Preserve least-privilege runtime roles, bounded retries/leases and the current qualified
 Oracle consumer; cutovers require recovery and actual hosted acceptance. Governance stable

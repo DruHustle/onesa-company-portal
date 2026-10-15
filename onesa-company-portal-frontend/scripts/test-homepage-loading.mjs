@@ -19,6 +19,7 @@ const requests = [];
 let contentDelay = 0;
 let companyDelay = 0;
 let approved = false;
+let prelaunch = false;
 const backend = http.createServer(async (request, response) => {
   const url = new URL(request.url, 'http://localhost');
   requests.push({path: url.pathname, kind: url.searchParams.get('kind'), at: performance.now()});
@@ -26,7 +27,7 @@ const backend = http.createServer(async (request, response) => {
   if (url.pathname === '/api/v1/public/company') {
     const ready = approved;
     await delay(companyDelay);
-    if (!response.destroyed) response.end(JSON.stringify({release_ready: ready}));
+    if (!response.destroyed) response.end(JSON.stringify({release_ready: ready, publication_enabled: ready || prelaunch, publication_stage: prelaunch ? 'prelaunch' : 'launch'}));
   } else if (url.pathname === '/api/v1/public/content') {
     await delay(contentDelay);
     if (response.destroyed) return;
@@ -175,6 +176,21 @@ try {
   assert.ok(readyAgain.heroAt !== undefined);
   assert.match(readyAgain.html, /name="robots" content="index, follow"/);
   console.log('PASS publication timeout fails closed and a fresh approval read recovers');
+  approved = false; prelaunch = true; requests.length = 0;
+  const development = await probe(frontend.origin, '/');
+  checkSecurity(development);
+  assert.ok(development.heroAt !== undefined);
+  assert.match(development.html, /Synthetic published news/);
+  assert.match(development.html, /name="robots" content="index, follow"/);
+  assert.equal(requests.filter(request => request.path.endsWith('/company')).length, 1);
+  assert.doesNotMatch(development.html.match(/<footer[\s\S]*?<\/footer>/)?.[0] || '', /mailto:|tel:/);
+  assert.match(development.html, /href="\/en\/contact"/);
+  prelaunch = false;
+  const restored = await probe(frontend.origin, '/');
+  assert.equal(restored.heroAt, undefined);
+  assert.doesNotMatch(restored.html, /Synthetic published news/);
+  console.log('PASS owner-approved pre-launch publication permits indexing without inventing legal approval; launch mode restores the hold');
+
 } finally {
   if (frontend) await stopFrontend(frontend.child);
   backend.closeAllConnections();

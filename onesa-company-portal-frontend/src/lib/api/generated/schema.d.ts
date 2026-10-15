@@ -3834,6 +3834,9 @@ export interface operations {
                             verified_at: string | null;
                         }[];
                         release_ready: boolean;
+                        publication_enabled: boolean;
+                        /** @enum {string} */
+                        publication_stage: "prelaunch" | "launch";
                     };
                 };
             };
@@ -9253,6 +9256,9 @@ export interface operations {
                         published: number | null;
                         pendingJobs: number | null;
                         releaseReady: boolean;
+                        publicationEnabled: boolean;
+                        /** @enum {string} */
+                        publicationStage: "prelaunch" | "launch";
                     };
                 };
             };

@@ -16,6 +16,14 @@ import evidence as e
 
 WORKFLOW = "free-authorization.yml"
 QUALIFICATION = "free-qualification.yml"
+PRELAUNCH_LEGAL_DEFERRAL = {
+    "decision": "DEFERRED_BY_OWNER_UNTIL_LAUNCH",
+    "scope": "existing-company-prelaunch-features-and-public-production-indexing",
+    "runtime_setting": {"PUBLICATION_STAGE": "prelaunch"},
+    "legal_records_approved": False,
+    "legal_compliance_certified": False,
+    "authentication_editorial_and_private_data_controls_preserved": True,
+}
 
 
 def current_main(github, sha):
@@ -158,10 +166,14 @@ def owner_issue(github, number, sha, fingerprint):
     }
 
 
-def authorize(github, sha, run, qualification_run, fingerprint, review_issue, decision):
+def authorize(github, sha, run, qualification_run, fingerprint, review_issue, decision,
+              defer_prelaunch_legal=False):
     e.trusted_run(run, WORKFLOW, sha, {"main"}, completed=False)
     current_main(github, sha)
     e.require(decision in {"approve", "revoke"}, "Explicit decision required")
+    e.require(type(defer_prelaunch_legal) is bool, "Explicit pre-launch decision required")
+    e.require(not defer_prelaunch_legal or decision == "approve",
+              "Revocation cannot grant a pre-launch exception")
     record = {
         "repository": e.REPOSITORY,
         "candidate_commit": sha,
@@ -194,6 +206,8 @@ def authorize(github, sha, run, qualification_run, fingerprint, review_issue, de
                 }
             ),
         )
+        if defer_prelaunch_legal:
+            record["prelaunch_legal_deferral"] = dict(PRELAUNCH_LEGAL_DEFERRAL)
     return record
 
 
@@ -220,6 +234,7 @@ def verify(github, sha, identifier):
         approval["evidence_sha256"],
         approval["owner_review"].get("number"),
         "approve",
+        defer_prelaunch_legal="prelaunch_legal_deferral" in approval,
     )
     e.require(approval == refreshed, "Approval or owner review changed")
     return {
@@ -242,6 +257,8 @@ def main():
     parser.add_argument("--review-issue", default=os.getenv("REVIEW_ISSUE"))
     parser.add_argument("--decision", default=os.getenv("REVIEW_DECISION", "revoke"))
     parser.add_argument("--authorization-run")
+    parser.add_argument("--defer-prelaunch-legal", choices=["false", "true"],
+                        default=os.getenv("DEFER_PRELAUNCH_LEGAL", "false"))
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     github = e.GitHub()
@@ -284,6 +301,7 @@ def main():
                 args.evidence_digest,
                 args.review_issue,
                 args.decision,
+                defer_prelaunch_legal=args.defer_prelaunch_legal == "true",
             )
         )
     e.save(record, args.output)
