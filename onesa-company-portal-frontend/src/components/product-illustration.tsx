@@ -1,5 +1,5 @@
-/* Original Onesa capability illustration. Synthetic diagram; no device or user data.
- * Rights: maintained with this source by Onesa UG; not a screenshot or hardware claim. */
+/* Original Onesa capability visuals; no device or user data.
+ * Concept artwork provenance and unchanged asset hashes: public/brand/sources.json. */
 type Domain = 'apps'|'robotics'|'physical'|'vehicles';
 
 function DomainIcon({domain,x,y}:{domain:Domain;x:number;y:number}){
@@ -89,15 +89,22 @@ function AIEngineIllustration({locale}:{locale:string}){
  </figure>;
 }
 
+function RobotConceptIllustration({locale}:{locale:string}) {
+ const de=locale==='de';
+ return <figure className="product-illustration robot-concept-illustration">
+  <div className="robot-concept-art">
+   <picture>
+    <source media="(max-width: 640px)" srcSet="/images/robot-concept-640.webp"/>
+    <img src="/images/robot-concept-1280.webp" width="1280" height="853" loading="lazy" decoding="async"
+     alt={de?'Konzeptillustration eines futuristischen humanoiden Roboters mit einer leuchtenden Kugel in einer offenen Stadtlandschaft.':'Concept artwork of a futuristic humanoid robot holding a luminous sphere in an open city landscape.'}/>
+   </picture>
+   <span className="robot-concept-status">{de?'In Entwicklung':'Under development'}</span>
+   <div className="robot-concept-message"><p>ONESA AI ROBOT</p><strong>{de?'Intelligenz trifft Interaktion.':'Intelligence meets interaction.'}</strong></div>
+  </div>
+  <figcaption><span>{de?'Robotik · Physische KI · Mensch-Maschine-Interaktion':'Robotics · Physical AI · Human–machine interaction'}</span><p>{de?'Eine Vision für intelligente Maschinen. Konzeptillustration.':'A vision for intelligent machines. Concept artwork.'}</p></figcaption>
+ </figure>;
+}
+
 export function ProductIllustration({product,locale}:{product:'ai'|'robot';locale:string}){
- if(product==='ai')return <AIEngineIllustration locale={locale}/>;
- const robot=product==='robot',de=locale==='de';
- const title=robot?'Onesa AI Robot':'Onesa AI Platform';
- const labels=robot?['Operator',de?'Cloud-Simulation':'Cloud simulation',de?'Simulierter Zustand':'Simulated state']:['Chat','Knowledge',de?'Antwort mit Quellen':'Answer with sources'];
- return <figure className="product-illustration"><svg viewBox="0 0 900 390" role="img" aria-label={`${title}: ${labels.join(' → ')}`} width="900" height="390">
- <rect x="1" y="1" width="898" height="388" rx="12" fill="var(--onesa-surface)" stroke="var(--onesa-border)"/>
- <text x="45" y="70" fill="var(--onesa-text)" fontSize="30" fontFamily="Arial,Helvetica,sans-serif">{title}</text>
- {labels.map((label,i)=><g key={label}><rect x={45+i*285} y="125" width="245" height="115" rx="8" fill="var(--onesa-canvas)" stroke="var(--onesa-border)"/><text x={167+i*285} y="190" textAnchor="middle" fill="var(--onesa-text)" fontSize="20" fontFamily="Arial,Helvetica,sans-serif">{label}</text>{i<2&&<path d={`M${300+i*285} 182h18m-8-8 8 8-8 8`} fill="none" stroke="var(--onesa-accent)" strokeWidth="3"/>}</g>)}
- <text x="45" y="315" fill="var(--onesa-muted)" fontSize="18" fontFamily="Arial,Helvetica,sans-serif">{robot?(de?'SIMULATION · Keine physische Bewegung':'SIMULATION · No physical actuation'):'CHAT · KNOWLEDGE · AGENTS · TRAVEL'}</text>
- </svg><figcaption>{de?'Schematische Darstellung: ':'Capability illustration: '}{labels.join(' → ')}. {de?'Keine Live-Daten.':'No live data.'}</figcaption></figure>;
+ return product==='ai'?<AIEngineIllustration locale={locale}/>:<RobotConceptIllustration locale={locale}/>;
 }
