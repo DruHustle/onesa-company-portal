@@ -1,5 +1,19 @@
 # Production release checklist
 
+## Company Products Robot visual — prepared 2026-10-15
+
+Replace the three-box Operator/Cloud simulation/Simulated state diagram with the
+existing approved Onesa Robot concept artwork, responsive 32/87KB WebP assets,
+English/German product messaging and a concise concept-art caption. Keep the actual
+under-development status, existing product/Docs links and server-rendered content.
+Asset hashes and original image-generation provenance are retained in the existing
+brand source register. No API calls, client scripts, live telemetry or hardware claims
+are added. This visual change needs its own affected-page validation and normal
+frontend release; it does not invalidate the independent Robot qualification.
+Local lint, type checks and production build pass. Eight Chromium views cover EN/DE,
+390/1440px and system light/dark appearance, with loaded responsive images, zero axe
+violations, browser errors or overflow. Desktop and mobile screenshots were reviewed.
+
 ## AI application directions — prepared 2026-10-15
 
 The Products page adds English/German recommendations and decision-support use cases
