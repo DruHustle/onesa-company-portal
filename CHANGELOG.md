@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-10-15 — Homepage product discovery live
+
+- Released frontend `bcf2081f10df619c2d6c380d9df90e69c1ab5d28`, deployment
+  `dpl_83TKhQ1UJzTrBTJuWPfZ9g2iBKQC`, after passing exact-main CI/security, hosted staging and
+  the existing owner-controlled production handoff.
+- Home features concise AI Platform and Robot previews with responsive images and
+  direct links to their detailed Products sections. A shared English/German catalog
+  keeps names and content consistent. Full capabilities, application directions and
+  public documentation links remain on Products.
+- Removed Concept visual and Under development overlay badges from product imagery;
+  retained the illustrations, accessible descriptions and substantive product details.
+- Eight local light/dark mobile/desktop views and sixteen detail-navigation checks
+  pass with zero axe violations or browser errors. Final hosted EN/DE Home/Products,
+  image custody, indexing and anonymous/spoofed private-denial checks pass.
+  Unchanged qualified backend/worker, data, credentials and access controls remain.
+
 ## 2026-10-15 — Company public availability and Products presentation live
 
 - Released frontend `abdad3b24e3e45bc782e1d775e162f5139725f59` through normal
