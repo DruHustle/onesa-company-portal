@@ -83,11 +83,11 @@
       "generation": {
         "tool": "OpenAI built-in imagegen",
         "date": "2026-10-15",
-        "source": "Original generated artwork; owner-supplied visual used as a style/subject reference",
+        "source": "Original Onesa artwork; owner-requested image edit replaces AI with Onesa while preserving the professional concept composition",
         "width": 1536,
         "height": 1024,
-        "bytes": 1845792,
-        "sha256": "d95e99f73e7743e23ebb16cbbd7ebe1dd44fdc01150ea5708ae30b1746415029"
+        "bytes": 1786669,
+        "sha256": "b34a72cb2fb70607ae51285125405490c031fe2a7c967d649eeee081a923d351"
       },
       "processing": {
         "tool": "sharp",
@@ -102,15 +102,15 @@
           "path": "/images/ai-platform-concept-640.webp",
           "width": 640,
           "height": 427,
-          "bytes": 23330,
-          "sha256": "b7525b420ee6cfcd5b526311532c32cf94d735e8842f1e95a376f4b3049ba91c"
+          "bytes": 23718,
+          "sha256": "d72b65f25b1953c3015738fa07ea7437fd7aedd42afbb3b06038599bcaa59a36"
         },
         {
           "path": "/images/ai-platform-concept-1280.webp",
           "width": 1280,
           "height": 853,
-          "bytes": 60820,
-          "sha256": "b71843994491953f4b811e7e2eb15447cb461e111cd7a587da3b66454cdab7c8"
+          "bytes": 61530,
+          "sha256": "3daa9a07d2756ecfe2dcb9883647db0ae03541ca5dee0f1464d011f0182d5e9d"
         }
       ],
       "use": "Company Products AI Platform presentation; illustrative AI interaction, not a photograph of existing Onesa hardware"
