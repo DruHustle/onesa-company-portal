@@ -25,7 +25,7 @@ function RobotConceptIllustration({locale}:{locale:string}) {
    </picture>
    <div className="robot-concept-message"><p>ONESA AI ROBOT</p><strong>{de?'Intelligenz trifft Interaktion.':'Intelligence meets interaction.'}</strong></div>
   </div>
-  <figcaption><span>{de?'Robotik · Physische KI · Mensch-Maschine-Interaktion':'Robotics · Physical AI · Human–machine interaction'}</span><p>{de?'Eine Vision für intelligente Maschinen. Konzeptillustration.':'A vision for intelligent machines. Concept artwork.'}</p></figcaption>
+  <figcaption><span>{de?'Robotik · Physische KI · Mensch-Maschine-Interaktion':'Robotics · Physical AI · Human–machine interaction'}</span></figcaption>
  </figure>;
 }
 
