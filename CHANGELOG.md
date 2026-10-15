@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-10-15 — Products Apps section published; API acceptance blocked
+
+- Published frontend `c2186bcd7951f15623a0ae86a4a7cfb289f1ed04`, deployment
+  `dpl_13ppT1z8nStM6DQ2FLRaHQYDTc4y`. Exact-main CI/security and hosted staging passed;
+  the existing CI browser run completed with 102 passing tests.
+- Apps powered by the Onesa AI Platform now has its own section after the product
+  overviews. Recommendations and smart-farming descriptions remain; the farming
+  workflow list and the requested Robot image caption are removed in EN/DE.
+- Final hosted image hashes and four Home/Products desktop/mobile views pass,
+  including independent section placement and caption/workflow absence. Home previews
+  and product/documentation links remain intact.
+- Full API acceptance is **BLOCKED**: Render suspended the unchanged Company backend
+  with `suspenders: [billing]` at 19:16 UTC. The private check returned503, which is
+  not authentication-denial evidence. AI/Robot production backends have the same hold.
+  No backend redeploy, data/credential change, paid plan or billing action was made.
+
 ## 2026-10-15 — Homepage product discovery live
 
 - Released frontend `bcf2081f10df619c2d6c380d9df90e69c1ab5d28`, deployment
