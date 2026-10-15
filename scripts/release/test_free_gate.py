@@ -165,6 +165,39 @@ class FreeGateTests(unittest.TestCase):
         with self.assertRaises(e.Rejected):
             f.authorize(self.github, SHA, self.github.run(40), 30, fingerprint, None, "approve")
 
+    def test_prelaunch_deferral_is_explicit_source_bound_and_not_legal_approval(self):
+        self.github.record = f.qualification(self.github, SHA, self.github.run(30), 20)
+        fingerprint = e.digest(self.github.record)
+        ordinary = f.authorize(self.github, SHA, self.github.run(40), 30,
+                               fingerprint, None, "approve")
+        self.assertNotIn("prelaunch_legal_deferral", ordinary)
+        self.github.approval = f.authorize(self.github, SHA, self.github.run(40), 30,
+                                          fingerprint, None, "approve",
+                                          defer_prelaunch_legal=True)
+        value = f.verify(self.github, SHA, 40)
+        decision = value["approval"]["prelaunch_legal_deferral"]
+        self.assertEqual(decision["decision"], "DEFERRED_BY_OWNER_UNTIL_LAUNCH")
+        self.assertFalse(decision["legal_records_approved"])
+        self.assertEqual(self.github.record["CONTENT_LEGAL_APPROVED"], "BLOCKED")
+        self.github.approval["prelaunch_legal_deferral"]["legal_records_approved"] = True
+        with self.assertRaises(e.Rejected):
+            f.verify(self.github, SHA, 40)
+
+    def test_prelaunch_deferral_rejects_nonboolean_revocation_and_failed_ci(self):
+        self.github.record = f.qualification(self.github, SHA, self.github.run(30), 20)
+        fingerprint = e.digest(self.github.record)
+        for flag in ["true", 1, None]:
+            with self.assertRaises(e.Rejected):
+                f.authorize(self.github, SHA, self.github.run(40), 30,
+                            fingerprint, None, "approve", defer_prelaunch_legal=flag)
+        with self.assertRaises(e.Rejected):
+            f.authorize(self.github, SHA, self.github.run(40), 30,
+                        fingerprint, None, "revoke", defer_prelaunch_legal=True)
+        self.github.ci_jobs[0]["conclusion"] = "failure"
+        with self.assertRaises(e.Rejected):
+            f.authorize(self.github, SHA, self.github.run(40), 30,
+                        fingerprint, None, "approve", defer_prelaunch_legal=True)
+
     def test_automatic_qualification_derives_evidence_without_human_pass(self):
         value = self.github.run(30)
         value["event"] = "workflow_run"

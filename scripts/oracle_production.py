@@ -45,6 +45,7 @@ NAMES = {
     "SMTP_USER",
     "SMTP_PASSWORD",
     "COMPANY_ORIGIN",
+    "PUBLICATION_STAGE",
 }
 
 
@@ -83,6 +84,8 @@ def inventory(entries):
 
 
 def production_values(service, values, staging):
+    worker.require(values.get("PUBLICATION_STAGE", "launch") in {"prelaunch", "launch"},
+                   "Invalid owner-controlled publication stage")
     worker.require(
         service.get("id") == SERVICE
         and service.get("branch") == "main"

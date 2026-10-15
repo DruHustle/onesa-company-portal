@@ -68,6 +68,16 @@ class ProductionBindingGuards(unittest.TestCase):
             with self.subTest(key=key, value=value), self.assertRaises(ValueError):
                 production.production_values(self.service, values, self.staging)
 
+    def test_explicit_publication_stage_is_preserved_and_unknown_modes_rejected(self):
+        for stage in ["prelaunch", "launch"]:
+            values = {**self.values, "PUBLICATION_STAGE": stage}
+            self.assertEqual(production.production_values(
+                self.service, values, self.staging)["PUBLICATION_STAGE"], stage)
+        with self.assertRaises(ValueError):
+            production.production_values(self.service,
+                                         {**self.values, "PUBLICATION_STAGE": "bypass"},
+                                         self.staging)
+
     def test_staging_secrets_are_never_reused(self):
         for name in [
             "SESSION_KEY",

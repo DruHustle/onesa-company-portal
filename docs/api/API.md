@@ -51,3 +51,13 @@ session/MFA and CSRF guards apply; only the reauthenticated owner may approve/re
 `expectedRevision` rejects lost updates with 409. PDFs use `application/pdf` and
 private/no-store headers; authentication and validation errors retain JSON responses. No operation enables business-data deletion or public
 privacy publication. See [the governance architecture](../engineering/PRIVACY_GOVERNANCE.md).
+
+
+## Publication operating stage
+
+`GET /api/v1/public/company` reports `publication_stage` (`prelaunch` or `launch`) and
+`publication_enabled` separately from the unchanged `release_ready` legal-readiness
+result. The protected dashboard exposes corresponding `publicationStage` and
+`publicationEnabled` fields. Pre-launch is an explicit owner-authorized runtime
+exception to the global legal hold; it does not publish drafts, grant permissions,
+approve files, enable retention deletion or change recorded legal decisions.

@@ -26,6 +26,40 @@ flowchart LR
   Verify --> Reconcile[Reconcile fix into dev and staging]
 ```
 
+## Owner-authorized pre-launch operation — 2026-10-15
+
+The owner explicitly requested deferring the Company API's global `409 LEGAL_GATE`
+until launch so existing features can operate during pre-launch development.
+Set `PUBLICATION_STAGE=prelaunch` only on the authorized API and qualified worker.
+The validated default is `launch`; other values fail configuration validation.
+`publication_enabled` reports operational access separately from `release_ready`,
+which continues to report the actual legal prerequisites without inventing approval.
+Protected administration shows the active mode. No legal setting, governance approval,
+retention rule or processor record is changed by this mode.
+
+The exception covers existing published content and categories, enquiries, recruitment,
+and explicitly approved, public, clean files. Draft/future content stays private.
+Exact-version editorial/media review, publisher roles, authentication/MFA, CSRF,
+object access, malware quarantine, rate limits and immutable audit records still apply.
+Scheduled content uses the same mode and still needs exact-version editorial review.
+Business-data expiry remains disabled; the exception does not enable retention deletion.
+The footer routes general enquiries to the localized Contact form; legal and privacy
+pages retain the previously approved company/contact particulars.
+
+Before launch, change API and worker to `PUBLICATION_STAGE=launch`, verify actual
+company facts, notices and legal/processing decisions through the established review,
+and qualify the resulting public workflow. Do not turn legal settings true simply to
+clear a dashboard. The owner also explicitly authorized public production indexing. Enable
+`PUBLIC_RELEASE_ENABLED=true` on the qualified production Company frontend. Public
+metadata and the canonical sitemap follow `publication_enabled`; actual legal readiness
+is still reported separately. The sitemap contains only maintained public routes and
+published, due content. Portal administration, API/private resources, previews and
+staging retain their access and indexing boundaries; unrelated bot policies are unchanged.
+Rollback the exception by restoring `launch` on both services, verifying public requests
+return the existing hold if prerequisites remain incomplete, and retaining all records.
+Use exact-source staging, CI and the owner-controlled release path; preserve credentials,
+data and the currently qualified worker until its replacement passes cutover checks.
+
 ## Verified crawler access and publication scope — 2026-10-14
 
 Crawling follows the existing publication approval and access boundaries. A deployed
@@ -35,7 +69,7 @@ Cloudflare Access protect private resources independently.
 
 | Production surface | Approved crawl scope and current constraint |
 | --- | --- |
-| Company `onesa.eu` | Publication remains closed: the live wildcard robots policy disallows `/`, and the Company HTML is `noindex, nofollow`. Preserve `PUBLIC_RELEASE_ENABLED`, `PUBLISH_ENABLED` and fresh backend legal/editorial approval. Once approved, use canonical EN `/`, DE `/de`, approved section/detail routes and their approved media; omit `/en` aliases, query variants, admin/API routes and unpublished CMS/private files. |
+| Company `onesa.eu` | The earlier 14 October readback had publication closed. The owner has now authorized pre-launch public production indexing through the procedure above. Retain exact-version editorial approval; this does not fabricate legal approval. Use canonical EN `/`, DE `/de`, approved section/detail routes and their approved media; omit `/en` aliases, query variants, admin/API routes and unpublished CMS/private files. |
 | Public Docs `docs.onesa.eu` | Public production documentation and its classified assets permit crawling. The existing `docs/documentation-policy.json` allowlist governs public pages, generated indexes, diagrams and PDFs; arbitrary source or generated files are not public by default. Preview deployments remain outside the public crawl scope and protected by their existing SSO/noindex policy. A qualified staging revision is not proof that production has changed. |
 | Robot `robot.onesa.eu` | The public, script-free landing page and its public presentation assets permit crawling. Retain `/console` and `/api/` exclusions, console noindex and backend operator authorization for status, tasks, telemetry, history and controls. |
 | AI workspace `platform.onesa.eu` | The sign-in/workspace surface is private and has noindex metadata. Its current `/robots.txt` returns 404, which does not authorize indexing conversations, Knowledge documents, Agents, Travel or authentication/API routes. Public AI discovery belongs in the approved Company/Docs descriptions. |

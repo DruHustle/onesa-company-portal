@@ -257,3 +257,37 @@ test('Operational metrics reject anonymous/wrong keys and expose bounded non-per
  const response=await app.inject({url:'/api/v1/metrics',headers:{authorization:'Bearer '+env.METRICS_TOKEN}});assert.equal(response.statusCode,200);assert.ok(response.body.includes('onesa_portal_database_available 1'));assert.ok(response.body.includes('onesa_portal_queue_age_seconds'));assert.ok(!response.body.includes(owner.email));assert.ok(!response.body.includes(env.METRICS_TOKEN));assert.ok(!response.body.includes(password));
  }finally{env.METRICS_TOKEN=old;}
 });
+
+
+test('Owner pre-launch mode enables public workflows without approving legal records or exposing drafts/private files',async()=>{
+ const {env}=await import('../src/config/env.js');
+ const before={node:env.NODE_ENV,stage:env.PUBLICATION_STAGE};
+ const legalBefore=(await db.query("SELECT value FROM settings WHERE key='legal'")).rows[0].value;
+ const draftId=randomUUID();
+ await db.query("INSERT INTO content(id,kind,slug,locale,title,body,state) VALUES($1,'article','prelaunch-private-fixture','en','Private synthetic draft','Not public','draft')",[draftId]);
+ try{
+  env.NODE_ENV='production';env.PUBLICATION_STAGE='launch';
+  assert.equal((await app.inject({url:'/api/v1/public/content'})).statusCode,409);
+  env.PUBLICATION_STAGE='prelaunch';
+  const company=await app.inject({url:'/api/v1/public/company'});
+  assert.equal(company.statusCode,200);assert.equal(company.json().publication_stage,'prelaunch');
+  assert.equal(company.json().publication_enabled,true);assert.equal(company.json().release_ready,false);
+  const list=await app.inject({url:'/api/v1/public/content?kind=article&locale=en'});
+  assert.equal(list.statusCode,200,list.body);assert.ok(!list.json().items.some((item:{id:string})=>item.id===draftId));
+  assert.equal((await app.inject({url:'/api/v1/public/content/article/en/prelaunch-private-fixture'})).statusCode,404);
+  assert.equal((await app.inject({url:'/api/v1/public/content/article/en/future-legacy-fixture'})).statusCode,404);
+  assert.equal((await app.inject({url:'/api/v1/public/categories?locale=en'})).statusCode,200);
+  const files=await app.inject({url:'/api/v1/public/files'});assert.equal(files.statusCode,200);
+  assert.ok(!JSON.stringify(files.json()).includes('storage_key'));
+  for(const path of ['/api/v1/admin/enquiries','/api/v1/admin/applications','/api/v1/admin/settings','/api/v1/admin/governance/records'])assert.equal((await app.inject({url:path})).statusCode,401,path);
+  const enquiry=await app.inject({method:'POST',url:'/api/v1/public/enquiries',remoteAddress:'2001:db8:ffaa::1',payload:{category:'general',name:'Synthetic prelaunch visitor',email:'prelaunch@example.invalid',message:'Isolated prelaunch workflow regression only.',locale:'en',consent:true}});
+  assert.equal(enquiry.statusCode,201,enquiry.body);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM enquiries WHERE id=$1',[enquiry.json().id])).rows[0].n,1);
+  const unreviewed=await app.inject({method:'POST',url:'/api/v1/admin/content',headers:ownerH,payload:{...article,slug:'prelaunch-unreviewed-fixture',state:'published'}});
+  assert.equal(unreviewed.statusCode,409);assert.equal(unreviewed.json().error.code,'EDITORIAL_REVIEW');
+  assert.deepEqual((await db.query("SELECT value FROM settings WHERE key='legal'")).rows[0].value,legalBefore);
+  env.PUBLICATION_STAGE='launch';
+  assert.equal((await app.inject({url:'/api/v1/public/content'})).statusCode,409);
+  assert.equal((await app.inject({url:'/api/v1/public/company'})).json().publication_enabled,false);
+ }finally{env.NODE_ENV=before.node;env.PUBLICATION_STAGE=before.stage;}
+});
