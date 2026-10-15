@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-10-15 — Company public availability and Products presentation live
+
+- Released frontend `abdad3b24e3e45bc782e1d775e162f5139725f59` through normal
+  dev/staging/main PRs, passing exact-main CI/security, hosted staging and the
+  existing owner-controlled production handoff. Deployment
+  `dpl_8VYEca9qYBdbBZ9zouyXbJLWppFt` serves the existing Company/Portal domains.
+- Public pages render without waiting for an approval-status service or showing
+  a release-approval screen. Published-content and protected-data controls remain.
+- Products uses original, responsive AI and Robot concept artwork. The AI image
+  reads “Onesa”; its duplicated Home feature is removed. Product and public Docs
+  links, recommendations/decision-support and planned smart-farming content remain.
+- Hosted EN/DE desktop/mobile checks verified image hashes, Home placement,
+  system appearance, indexing, zero browser errors and anonymous/spoofed private
+  denials. The unchanged qualified backend/worker, data and credentials are retained.
+  Existing owner pre-launch deferral does not approve legal/governance records.
+
 ## 2026-10-14 — Responsive Company navigation and product information prepared
 
 - Company sections render their primary content while optional editorial copy,
