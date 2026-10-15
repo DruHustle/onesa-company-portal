@@ -39,5 +39,44 @@
       "role": "Homepage Open Graph and Twitter preview"
     }
   ],
-  "processing": "Owner-supplied originals preserved byte-for-byte. Version1.0.0 source-traced product icons, SVG/16-32-64 ICO/180PNG, are generated with the existing browser renderer; see /brand/icons/v1/sources.json."
+  "processing": "Owner-supplied originals preserved byte-for-byte. Version1.0.0 source-traced product icons, SVG/16-32-64 ICO/180PNG, are generated with the existing browser renderer; see /brand/icons/v1/sources.json.",
+  "illustrations": [
+    {
+      "role": "Robot product concept artwork",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-14",
+        "source": "Original generated concept artwork",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2265712,
+        "sha256": "06afa48dcca5f767a6afc310ee5f922f26d84b1f72a6b873a0becdbd1c2fd9b7"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "format": "WebP",
+        "quality": 76,
+        "effort": 6,
+        "operation": "Proportional resizing and encoding; no crop or compositional alteration"
+      },
+      "images": [
+        {
+          "path": "/images/robot-concept-640.webp",
+          "width": 640,
+          "height": 427,
+          "bytes": 32546,
+          "sha256": "4a1ca154b15cf24087c52a5f776cd319436e3fe5a3068916749ba6dcb6c381f7"
+        },
+        {
+          "path": "/images/robot-concept-1280.webp",
+          "width": 1280,
+          "height": 853,
+          "bytes": 86610,
+          "sha256": "9fc38d19cc86ae59b4155a0060ff21326a834a7fd348ea78b84f9c30223c8845"
+        }
+      ],
+      "use": "Company Products Robot presentation; reuse of the approved Onesa Robot concept artwork without re-encoding or compositional changes"
+    }
+  ]
 }
