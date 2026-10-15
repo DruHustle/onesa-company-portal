@@ -102,9 +102,7 @@ button,input,select{min-height:var(--onesa-control-size)}
 .ai-engine-illustration{overflow:hidden;border:1px solid var(--onesa-divider);border-radius:20px;background:var(--onesa-surface)}
 .ai-engine-art{position:relative;background:#06172a;overflow:hidden}
 .ai-engine-art picture,.ai-engine-art img{display:block;width:100%;height:auto}
-.ai-engine-image-label{position:absolute;left:16px;bottom:16px;padding:5px 10px;border:1px solid #ffffff80;border-radius:999px;background:#06172a;color:#fff;font-size:.7rem;line-height:1.5}
 .ai-engine-illustration figcaption{margin:0;padding:16px 24px;color:var(--onesa-text)}
-@media(forced-colors:active){.ai-engine-image-label{background:Canvas;color:CanvasText;border-color:CanvasText}}
 
 .article-media{aspect-ratio:16/9;display:grid;place-items:center;background:var(--onesa-surface);border:1px solid var(--line);overflow:hidden}.article-media .article-image{width:100%;height:100%;object-fit:contain}
 
@@ -112,12 +110,11 @@ button,input,select{min-height:var(--onesa-control-size)}
 .robot-concept-art{position:relative;isolation:isolate;background:#0b1523;overflow:hidden}
 .robot-concept-art picture,.robot-concept-art img{display:block;width:100%;height:auto}
 .robot-concept-art::after{content:"";position:absolute;inset:35% 0 0;background:linear-gradient(transparent,rgba(5,13,24,.94));pointer-events:none}
-.robot-concept-status{position:absolute;z-index:1;top:20px;left:20px;padding:6px 12px;border:1px solid rgba(255,255,255,.5);border-radius:999px;background:#0b1523;color:#fff;font-size:.75rem;line-height:1.5;letter-spacing:.04em}
 .robot-concept-message{position:absolute;z-index:1;inset:auto 24px 24px;color:#fff}
 .robot-concept-message p{margin:0 0 8px;font-size:.7rem;letter-spacing:.16em;color:#d4e7f5}
 .robot-concept-message strong{display:block;max-width:20ch;font-size:clamp(1.4rem,3vw,2.15rem);line-height:1.15;font-weight:600;letter-spacing:-.025em;text-wrap:balance}
 .robot-concept-illustration figcaption{margin:0;padding:18px 24px 20px}
 .robot-concept-illustration figcaption span{display:block;color:var(--onesa-text);font-size:.8rem;font-weight:600;line-height:1.7}
 .robot-concept-illustration figcaption p{margin:6px 0 0}
-@media(max-width:480px){.robot-concept-status{top:12px;left:12px}.robot-concept-message{inset:auto 16px 16px}.robot-concept-illustration figcaption{padding:16px}}
-@media(forced-colors:active){.robot-concept-status,.robot-concept-message{background:Canvas;color:CanvasText}.robot-concept-message p{color:CanvasText}}
+@media(max-width:480px){.robot-concept-message{inset:auto 16px 16px}.robot-concept-illustration figcaption{padding:16px}}
+@media(forced-colors:active){.robot-concept-message{background:Canvas;color:CanvasText}.robot-concept-message p{color:CanvasText}}
