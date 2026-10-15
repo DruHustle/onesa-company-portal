@@ -12,34 +12,22 @@
 }
 .features li + li { margin-block-start: 12px; }
 .useCases {
-  grid-column: 1 / -1;
-  padding-block-start: 28px;
+  margin-block-start: 48px;
+  padding-block-start: 40px;
   border-block-start: 1px solid var(--onesa-divider);
   min-width: 0;
 }
-.useCases h3 { margin-block: 0 12px; }
+.useCases > h2 { margin-block: 0 16px; max-width: 24ch; }
 .useCaseGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
   margin-block: 24px;
 }
-.useCaseGrid h4 { margin-block: 0 12px; }
+.useCaseGrid h3 { margin-block: 0 12px; }
 .useCaseGrid p { margin-block: 0; }
-.workflowLabel { font-weight: 600; }
-.workflow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 32px;
-  padding-inline-start: 1.4em;
-  line-height: 1.65;
-  list-style: decimal outside;
-}
-.workflow li { padding-inline-end: 8px; }
 @media (max-width: 760px) {
   .useCaseGrid { grid-template-columns: 1fr; }
-  .workflow { display: block; }
-  .workflow li + li { margin-block-start: 8px; }
   .product {
     padding: 24px 0;
     background: transparent;
