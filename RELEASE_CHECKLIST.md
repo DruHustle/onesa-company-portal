@@ -1,5 +1,19 @@
 # Production release checklist
 
+## Homepage product previews and clean imagery — LIVE 2026-10-15
+
+Runtime frontend `bcf2081f10df619c2d6c380d9df90e69c1ab5d28`, deployment `dpl_83TKhQ1UJzTrBTJuWPfZ9g2iBKQC`, serves the existing
+Company/Portal domains. Exact-main verification `38785535973` and hygiene
+`38785535983`, hosted staging `38787542991`, qualification `38787957768` and
+owner handoff `38788052862` pass. Home previews AI Platform
+and Robot with links to fuller Products sections; image overlay badges are removed.
+Final image hashes, four EN/DE mobile/desktop Home/Products views and anonymous/
+spoofed private denials pass. No application-data write, production backend/worker
+rebuild or credential change. Restricted evidence:
+`private/privacy-governance/production-home-products-01cb854/`.
+Earlier release entries below remain historical; Home now intentionally features
+brief previews, with detailed information on Products.
+
 ## Company public availability and Onesa image — LIVE 2026-10-15
 
 Frontend source `abdad3b24e3e45bc782e1d775e162f5139725f59` is live at the existing
