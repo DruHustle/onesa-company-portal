@@ -70,6 +70,7 @@ function probe(origin, path) {
 
 function checkSecurity(page) {
   assert.equal(page.status, 200);
+  assert.doesNotMatch(page.html, /class="product-section section"|ai-engine-illustration/, 'AI Platform presentation belongs under Products, not Home');
   assert.match(page.headers['cache-control'], /private.*no-store/);
   const nonce = /'nonce-([^']+)'/.exec(page.headers['content-security-policy'])?.[1];
   assert.ok(nonce, 'Every response retains its CSP nonce');

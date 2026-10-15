@@ -229,3 +229,15 @@ API failures, English/German navigation and Chromium/WebKit mobile/desktop check
 Navigation under delayed optional CMS content took307–341ms in8 local browser cases;
 these are synthetic local samples, not hosted/cold-start guarantees. No approval-status
 requests were sent. Production acceptance remains pending an actual hosted deployment.
+
+
+Products presentation correction (prepared): remove the AI Platform feature section
+from Home, retain its Products entry and exact product/Docs links, and replace the
+text-heavy SVG with an original professional AI interaction concept image based on
+the owner’s visual reference. Responsive local WebP variants are 23,330/60,820 bytes;
+source provenance is recorded in the existing asset manifest. The long duplicate
+alt/caption descriptions are removed. Product capability/research scope remains in
+the Products text. Final isolated build/lint/types and Home-placement regressions PASS. Eight English/German
+desktop/mobile light/dark Products views and both Home locale checks PASS, with zero
+accessibility violations, browser errors, overflow or approval-status requests. Product
+and exact public documentation links remain present. Hosted production acceptance is pending.

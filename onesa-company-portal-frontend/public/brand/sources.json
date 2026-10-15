@@ -77,6 +77,43 @@
         }
       ],
       "use": "Company Products Robot presentation; reuse of the approved Onesa Robot concept artwork without re-encoding or compositional changes"
+    },
+    {
+      "role": "AI Platform professional concept visual",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-15",
+        "source": "Original generated artwork; owner-supplied visual used as a style/subject reference",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1845792,
+        "sha256": "d95e99f73e7743e23ebb16cbbd7ebe1dd44fdc01150ea5708ae30b1746415029"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "format": "WebP",
+        "quality": 76,
+        "effort": 6,
+        "operation": "Proportional resizing and encoding; no crop or compositional alteration"
+      },
+      "images": [
+        {
+          "path": "/images/ai-platform-concept-640.webp",
+          "width": 640,
+          "height": 427,
+          "bytes": 23330,
+          "sha256": "b7525b420ee6cfcd5b526311532c32cf94d735e8842f1e95a376f4b3049ba91c"
+        },
+        {
+          "path": "/images/ai-platform-concept-1280.webp",
+          "width": 1280,
+          "height": 853,
+          "bytes": 60820,
+          "sha256": "b71843994491953f4b811e7e2eb15447cb461e111cd7a587da3b66454cdab7c8"
+        }
+      ],
+      "use": "Company Products AI Platform presentation; illustrative AI interaction, not a photograph of existing Onesa hardware"
     }
   ]
 }
