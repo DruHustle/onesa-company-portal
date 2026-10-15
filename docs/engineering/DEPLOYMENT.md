@@ -370,3 +370,16 @@ may return HTTP 200; do not classify it as application readiness.
 
 References: [Render Docker commands](https://render.com/docs/docker),
 [Render deployment and restart behavior](https://render.com/docs/deploys).
+
+
+### Public rendering and publication status
+
+The owner-approved public website renders its factual pages and product information
+without fetching the company approval-status endpoint. A cold or unavailable API must
+not replace public navigation with a release-approval screen or change indexing.
+`PUBLIC_RELEASE_ENABLED=true` identifies the approved public production deployment;
+protected Preview deployments retain their separate environment label and noindex.
+CMS requests still use the published-only public endpoints, bounded optional reads
+and their existing 404/error behavior. Backend editorial approval, administrator sessions,
+private files and write authorization remain independent. The owner’s pre-launch legal
+deferral remains a deferral; frontend availability does not create approval records.

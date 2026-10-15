@@ -217,3 +217,15 @@ Local credential-free qualification/authorization and failure demonstration are 
 
 - Subsequent owner instruction permits indexing of approved public Company production
   pages during pre-launch; keep private/staging/Preview exclusions and access controls.
+
+
+Public availability correction (prepared): remove the public release-approval renderer
+and its blocking company-status read. Keep factual public pages and indexing independent
+of that operational endpoint, and retain published-only CMS reads, private access controls
+and existing bounded loading. Preview text names its environment without approval wording.
+Isolated production build, lint, types, hygiene, documentation validation and the existing
+homepage/public-loading regression suites PASS. HTML/RSC, unpublished-detail404, bounded
+API failures, English/German navigation and Chromium/WebKit mobile/desktop checks pass.
+Navigation under delayed optional CMS content took307–341ms in8 local browser cases;
+these are synthetic local samples, not hosted/cold-start guarantees. No approval-status
+requests were sent. Production acceptance remains pending an actual hosted deployment.
