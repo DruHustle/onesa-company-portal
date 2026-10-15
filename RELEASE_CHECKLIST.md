@@ -1,5 +1,18 @@
 # Production release checklist
 
+## Products Apps section — UI LIVE; API BLOCKED 2026-10-15
+
+Frontend `c2186bcd7951f15623a0ae86a4a7cfb289f1ed04`, deployment `dpl_13ppT1z8nStM6DQ2FLRaHQYDTc4y`, passed exact-main
+verification `38789628532`, hygiene `38789628779`, staging `38792242497`,
+qualification `38792591575` and owner handoff `38792678934`. Four final EN/DE
+Home/Products views and image hashes pass: Apps is independent; farming workflow
+and requested Robot caption are absent. Full production acceptance remains BLOCKED:
+Render reports the unchanged Company backend suspended by billing, and the private
+probe returned503. AI/Robot production services report the same billing hold.
+Preserve the passed UI evidence; resolve the provider hold, verify readiness and run
+only the outstanding read-only private denials. Do not redeploy or repeat the UI suite.
+Restricted outcome: `private/privacy-governance/production-products-apps-20261015/production-release-outcome.json`.
+
 ## Homepage product previews and clean imagery — LIVE 2026-10-15
 
 Runtime frontend `bcf2081f10df619c2d6c380d9df90e69c1ab5d28`, deployment `dpl_83TKhQ1UJzTrBTJuWPfZ9g2iBKQC`, serves the existing
