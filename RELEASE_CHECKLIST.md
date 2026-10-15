@@ -189,3 +189,17 @@ The migration switch stays off and the original secret gate is retained.
 ## Private-Free production prerequisites — 2026-10-11
 
 Local credential-free qualification/authorization and failure demonstration are implemented. Owner billing/visibility confirmation, production credential removal/rotation, provider auto-deploy readback, isolated staging acceptance and remote workflow installation remain pending. Direct pushes remain possible. See [the enforcement report](docs/development/PRIVATE_FREE_SAFEGUARDS.md). Physical Robot deployment stays separately blocked.
+
+
+### Owner-authorized pre-launch features and footer correction — 2026-10-15
+
+- Owner requested deferral of the global Company legal-publication hold until launch;
+  source separates operating mode from actual legal readiness and keeps all private,
+  editorial, file and deletion safeguards. Production activation remains unverified.
+- Careers uses “There are currently no open positions.” for an empty published list.
+  Footer general contact uses the localized Contact page; legal particulars remain.
+- Required: isolated production-mode integration regression, API compatibility, build,
+  exact-source staging/release qualification and hosted public/private readback.
+
+- Subsequent owner instruction permits indexing of approved public Company production
+  pages during pre-launch; keep private/staging/Preview exclusions and access controls.

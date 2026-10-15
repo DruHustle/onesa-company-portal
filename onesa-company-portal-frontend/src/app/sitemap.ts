@@ -6,7 +6,7 @@ export const dynamic='force-dynamic';
 export default async function sitemap():Promise<MetadataRoute.Sitemap>{
   if(process.env.PUBLIC_RELEASE_ENABLED!=='true')return [];
   const ready=await serverApi().GET('/api/v1/public/company').catch(()=>null);
-  if(ready?.data?.release_ready!==true)return [];
+  if(ready?.data?.publication_enabled!==true&&ready?.data?.release_ready!==true)return [];
   const published=[];
   for(const locale of ['en','de'] as const){
     for(let page=1;page<=500;page++){

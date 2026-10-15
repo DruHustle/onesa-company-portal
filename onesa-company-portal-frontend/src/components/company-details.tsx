@@ -1,11 +1,11 @@
 import {company} from '@/config/company';
 import type {Locale} from '@/config/copy';
 
-export function CompanyDetails({locale, register = false}: {locale: Locale; register?: boolean}) {
+export function CompanyDetails({locale, register = false, footer = false}: {locale: Locale; register?: boolean; footer?: boolean}) {
   return <div className="company-details">
     <p><strong>{company.legalName}</strong></p>
     <address>{locale === 'de' ? company.address.replace(', Germany', ', Deutschland') : company.address}</address>
-    <p><a href={company.mailHref}>{company.email}</a> · <a href={company.telephoneHref}>{company.telephone}</a></p>
+    {footer ? <p><a href={`/${locale}/contact`}>{locale === 'de' ? 'Kontakt' : 'Contact'}</a></p> : <p><a href={company.mailHref}>{company.email}</a> · <a href={company.telephoneHref}>{company.telephone}</a></p>}
     {register && <dl>
       <dt>{locale === 'de' ? 'Geschäftsführer' : 'Managing Director'}</dt><dd>{company.managingDirector}</dd>
       <dt>{locale === 'de' ? 'Registergericht' : 'Register court'}</dt><dd>{company.registerCourt}</dd>
