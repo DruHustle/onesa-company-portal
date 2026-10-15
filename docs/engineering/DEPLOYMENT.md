@@ -383,3 +383,16 @@ CMS requests still use the published-only public endpoints, bounded optional rea
 and their existing 404/error behavior. Backend editorial approval, administrator sessions,
 private files and write authorization remain independent. The owner’s pre-launch legal
 deferral remains a deferral; frontend availability does not create approval records.
+
+### Provider billing suspension — observed 2026-10-15
+
+A Render deployment record can remain `live` while its service is suspended. Before
+a production handoff, read the actual service suspension state and suspenders as well
+as the exact deployment/source; a live deployment alone does not prove availability.
+The Company, AI and Robot Free production services reported billing suspension at
+19:16 UTC. A provider suspension page/503 is neither readiness nor authentication
+denial. The precise billing limit still needs the account Billing notice; do not
+infer a quota from earlier usage figures, restart repeatedly or change plans.
+Preserve completed UI acceptance separately. After the provider hold is resolved,
+establish actual readiness and complete only the outstanding read-only API checks.
+The UI publication does not certify full API availability or change legal records.
