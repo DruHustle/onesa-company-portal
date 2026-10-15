@@ -1,5 +1,20 @@
 # Production release checklist
 
+## Company public availability and Onesa image — LIVE 2026-10-15
+
+Frontend source `abdad3b24e3e45bc782e1d775e162f5139725f59` is live at the existing
+Company/Portal production domains, deployment `dpl_8VYEca9qYBdbBZ9zouyXbJLWppFt`.
+Exact-main CI `38779263142`, hygiene `38779263376`, hosted staging `38781041825`,
+qualification `38781367455` and owner handoff `38781465582` passed. The Onesa-branded
+AI visual and Robot concept artwork appear under Products; the AI Home feature and
+public approval waits/hold screen are removed. Two production image hashes, four
+EN/DE desktop/mobile Home/Products views and two anonymous/spoofed private denials
+pass, with zero browser errors or application-data writes. Unchanged backend/worker
+remain at qualified source `bfe2891487107d4d3a9126dc5ba2a4dd72f0f0ab`.
+Restricted receipts: `private/privacy-governance/production-onesa-image-18a471f/`.
+Earlier prepared entries below are retained as historical context; this receipt
+records the actual deployment. No legal/governance approval is inferred.
+
 ## Company Products Robot visual — prepared 2026-10-15
 
 Replace the three-box Operator/Cloud simulation/Simulated state diagram with the
