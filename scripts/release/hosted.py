@@ -226,6 +226,13 @@ def preflight(*, configuration_dev=False):
         os.environ["RENDER_API_KEY"],
     )
     require(
+        isinstance(service, dict)
+        and service.get("suspended") == "not_suspended"
+        and isinstance(service.get("suspenders"), list)
+        and service["suspenders"] == [],
+        "Staging service suspended or availability unverified; no deployment authorized",
+    )
+    require(
         service.get("repo") == "https://github.com/" + REPOSITORY
         and service.get("branch") == POLICY["staging_branch"]
         and service.get("type") == "web_service",
