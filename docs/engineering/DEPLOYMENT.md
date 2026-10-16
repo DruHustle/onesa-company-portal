@@ -1,14 +1,64 @@
 # Deployment and independent releases
 
+## Oracle backend migration — owner authorized 2026-10-16
+
+The owner now authorizes moving the existing staging and production APIs from Render
+to the existing Oracle worker VM. This supersedes the backend-deployment pause for
+this migration only. Keep qualification active; the Render billing hold itself remains.
+Preserve the existing worker/scanner services, BaSyx, databases, credentials, accounts,
+stored content, Robot history and physical-controller restrictions. Frontends stay on
+Vercel; migrate only their server-side backend origin when the new target qualifies.
+
+`compose.oracle-backend.yaml` defines independent staging/production API profiles.
+Images must be ARM64, scanned, source-labelled and pinned by immutable image ID.
+Each environment has separate networks, runtime files and (where used) storage volumes.
+Ports bind only to loopback; no public API/container/database/SSH port is opened.
+The existing PC-to-VM Tailscale SSH route remains an administrative connection.
+Use an explicitly configured Cloudflare HTTPS tunnel for API ingress, retaining
+application authentication/CSRF/ownership checks and existing Access/WAF protections.
+No wildcard ingress or privileged crawler/session bypass is permitted.
+
+Keep matching private runtime values in root-owned mode-600 files under
+`/etc/onesa/backends/`; never copy them into Git or Actions. Preserve each environment's
+original database, origin, key and inference/storage settings. Build from credential-free
+Git archives off the VM and record exact backend tree, source commit, image ID,
+archive digest and scan results in existing restricted evidence. The image map uses
+`ORACLE_STAGING_IMAGE`, `ORACLE_PRODUCTION_IMAGE` and their corresponding `_COMMIT`
+variables; both image values must be immutable `sha256:` IDs already loaded on the VM.
+
+Run isolated config checks first, then deploy only the named staging service with
+`docker compose --env-file <private-image-map> -f compose.oracle-backend.yaml
+--profile staging up -d --no-build staging` (one command). Record healthy readiness,
+private anonymous denial, authenticated workflows and measured host/container capacity.
+An unavailable service or uncertain Robot journal lease stops activation; never repair
+history through SQL or force an active lease. Reuse valid exact-source application
+qualification and perform target-specific migration acceptance; local/config tests
+alone are not hosted acceptance. Do not conceal a known application failure as PASS.
+
+Only after the applicable staging/source/preservation gates pass, run the corresponding
+explicit `--profile production ... production` command, then change the matching
+frontend backend-origin binding and verify the deployed frontend revision and API.
+Do not use `compose down`, restart workers, run migrations automatically, delete old
+services, rotate credentials, provision paid capacity or change unrelated domains.
+Keep the prior frontend/backend configuration and images for rollback. Render is
+currently suspended: restoring its old URL is configuration rollback, not recovery of
+service availability. On failure stop promotion and retain the actual partial state.
+
+Staging has lower CPU shares/limits than production. Observe memory/OOM/error counters
+and latency alongside the existing scanner and workers; a short idle sample does not
+qualify peak load. Existing backups/monitoring remain active. Public documentation must
+not publish the private runtime files, host inventory, source layouts or audit records.
+
+
 ## Render capacity hold — local maintenance, 2026-10-16
 
-The owner confirms Render credits are exhausted and backend deployments are paused.
-Do not dispatch staging qualification that builds a backend, request a recovery build,
+The owner confirms Render credits are exhausted and Render deployments remain paused.
+Do not dispatch staging qualification that deploys to Render or request a Render recovery build,
 resume a suspended service, change billing or provision paid capacity during this hold.
-Continue isolated local implementation and affected regression checks. Preserve the
+Continue non-deploying qualification and the authorized Oracle migration above. Preserve the
 existing source-bound hosted results; they do not establish current API availability.
-A restored provider budget and the applicable release controls are required before
-new backend delivery or remaining hosted acceptance.
+A restored Render budget is required before another Render build. Oracle migration
+acceptance follows the source, staging, preservation and owner controls above.
 
 The maintained deployment script now requires `suspended: not_suspended` and an
 explicit empty `suspenders` list before creation and again when observing `live`.
