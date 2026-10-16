@@ -1,11 +1,18 @@
 # Changelog
 
-## Unreleased — Company visual storytelling
+## Unreleased — Mobile homepage layout
+
+- Reduced empty space in the mobile hero, capability cards and product previews.
+- Aligned mobile actions and section spacing while retaining the desktop layout, rounded controls and system appearance.
+- Release requires full technical CI and source-bound hosted acceptance; no technical-test bypass is authorized.
+
+## 2026-10-16 — Company Home, Products and footer live
 
 - Introduced an image-led homepage hero and alternating product showcases using existing optimized Onesa artwork.
 - Separated product overviews, capability explanations and application directions, with consistent rounded actions and panels.
 - Kept server-rendered navigation, system appearance, reduced-motion and private access boundaries; no backend or dependencies changed.
 - Cleaned the footer into Company, Products and Resources groups, with one inquiry action and a separate legal strip. Exact-source deployment status is recorded in the restricted release evidence.
+- Released frontend `90e994757d010cf2d3ead8c7342f6bde2cc137e6`, deployment `dpl_Hr9rpZwXx3p38uarjNLhZb2KK69q`, after full exact-main CI/security passed. Hosted footer acceptance passed 16 views; unchanged Home/Products evidence was retained, followed by exact-main Preview and canonical production checks. The Oracle backend was retained.
 
 ## 2026-10-16 — Protected Oracle VM operations documentation
 
