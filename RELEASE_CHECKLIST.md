@@ -1,5 +1,16 @@
 # Production release checklist
 
+## Render credit hold — prepared local guard, 2026-10-16
+
+Owner confirms exhausted Render credits: backend delivery and backend-deploying
+staging runs are paused. Maintained deploy/staging scripts now reject suspended,
+contradictory or unavailable service metadata before any creation request; deploy
+success also rechecks service availability. Three offline regression methods pass,
+covering eight invalid states, an active target and suspension after deployment.
+No provider request, paid resource, application mutation or new deployment occurred.
+Existing UI evidence remains valid; outstanding API acceptance remains blocked.
+
+
 ## Products Apps section — UI LIVE; API BLOCKED 2026-10-15
 
 Frontend `c2186bcd7951f15623a0ae86a4a7cfb289f1ed04`, deployment `dpl_13ppT1z8nStM6DQ2FLRaHQYDTc4y`, passed exact-main

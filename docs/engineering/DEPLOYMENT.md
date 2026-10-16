@@ -1,5 +1,27 @@
 # Deployment and independent releases
 
+## Render capacity hold — local maintenance, 2026-10-16
+
+The owner confirms Render credits are exhausted and backend deployments are paused.
+Do not dispatch staging qualification that builds a backend, request a recovery build,
+resume a suspended service, change billing or provision paid capacity during this hold.
+Continue isolated local implementation and affected regression checks. Preserve the
+existing source-bound hosted results; they do not establish current API availability.
+A restored provider budget and the applicable release controls are required before
+new backend delivery or remaining hosted acceptance.
+
+The maintained deployment script now requires `suspended: not_suspended` and an
+explicit empty `suspenders` list before creation and again when observing `live`.
+Missing, malformed, contradictory or suspended service metadata blocks success;
+a deployment's `live` status alone is insufficient. This check does not resume,
+cancel or recreate a deployment. No availability failure is authentication evidence.
+The staging producer also applies this check before reading runtime configuration
+or requesting deployment. Offline regression: `python3 -m unittest discover -s
+scripts/release -p test_render_availability.py` (one command).
+These changes are prepared on development source; no new hosted release is claimed.
+Rollback: revert only the reviewed maintenance commit, retaining existing receipts
+and the owner-directed deployment pause.
+
 ## Branch policy and dependency releases
 
 Three permanent branches: dev, staging, main. Temporary Dependabot security-update
