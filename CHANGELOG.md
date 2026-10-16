@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-16 — Protected Oracle VM operations documentation
+
+- Added the shared VM layout, exact API routes/loopback ports, environment isolation,
+  worker/scanner boundaries, Tailscale administration and resource limits.
+- Linked read-only troubleshooting, monitoring, backup and recovery procedures from
+  maintained deployment references; private runtime values and evidence remain excluded.
+- Documentation changes do not deploy, restart or qualify an application.
+
 ## 2026-10-16 — Rounded Company interface and API monitoring live
 
 - Released frontend `8bee209a6ea82a2d63d187d1b23046f051698f0f` to the existing
