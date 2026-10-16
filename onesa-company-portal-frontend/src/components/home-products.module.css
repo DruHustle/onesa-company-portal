@@ -12,5 +12,14 @@
 .more { display: flex; justify-content: space-between; gap: 24px; padding-block: 16px; border-block-start: 1px solid var(--onesa-divider); font-size: .9rem; font-weight: 600; }
 .card:hover .more { text-decoration: underline; text-underline-offset: 5px; }
 .grid article:nth-child(even) picture { order: 2; }
-@media (max-width: 760px) { .card { grid-template-columns: minmax(0, 1fr); } .grid article:nth-child(even) picture { order: 0; } .card img { height: auto; } .content { padding: 28px; } }
+@media (max-width: 760px) {
+ .grid { gap: 24px; }
+ .card { grid-template-columns: minmax(0, 1fr); }
+ .grid article:nth-child(even) picture { order: 0; }
+ .card img { height: auto; aspect-ratio: 16 / 10; }
+ .content { padding: 24px; }
+ .content > :first-child { margin-block-end: 14px; }
+ .content h3 { margin-block-end: 16px; }
+ .summary { margin-block-end: 24px; }
+}
 @media (forced-colors: active) { .card { border-color: CanvasText; } }
