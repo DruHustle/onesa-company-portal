@@ -5,7 +5,7 @@
 - Introduced an image-led homepage hero and alternating product showcases using existing optimized Onesa artwork.
 - Separated product overviews, capability explanations and application directions, with consistent rounded actions and panels.
 - Kept server-rendered navigation, system appearance, reduced-motion and private access boundaries; no backend or dependencies changed.
-- Production deployment and hosted acceptance remain pending.
+- Cleaned the footer into Company, Products and Resources groups, with one inquiry action and a separate legal strip. Exact-source deployment status is recorded in the restricted release evidence.
 
 ## 2026-10-16 — Protected Oracle VM operations documentation
 
