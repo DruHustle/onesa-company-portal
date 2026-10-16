@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Company visual storytelling
+
+- Introduced an image-led homepage hero and alternating product showcases using existing optimized Onesa artwork.
+- Separated product overviews, capability explanations and application directions, with consistent rounded actions and panels.
+- Kept server-rendered navigation, system appearance, reduced-motion and private access boundaries; no backend or dependencies changed.
+- Production deployment and hosted acceptance remain pending.
+
 ## 2026-10-16 — Protected Oracle VM operations documentation
 
 - Added the shared VM layout, exact API routes/loopback ports, environment isolation,
