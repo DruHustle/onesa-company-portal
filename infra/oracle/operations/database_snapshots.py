@@ -12,7 +12,9 @@ import json
 import os
 import re
 import select
+import signal
 import subprocess
+import time
 import urllib.parse
 import urllib.request
 import uuid
@@ -108,8 +110,24 @@ def pg_snapshot(uri):
         )
     client = "onesa-ai-snapshot-" + uid
     pipe = None
+    deadline = time.monotonic() + 120
+
+    def remaining(maximum):
+        value = min(maximum, deadline - time.monotonic())
+        if value <= 0:
+            raise ValueError("Snapshot observation deadline")
+        return value
+
+    def checked(command, maximum):
+        result = subprocess.run(
+            command, capture_output=True, timeout=remaining(maximum), check=False
+        )
+        if result.returncode:
+            raise ValueError("Snapshot command failed")
+        return result.stdout
+
     try:
-        backup.run(
+        checked(
             [
                 "docker",
                 "run",
@@ -135,7 +153,8 @@ def pg_snapshot(uri):
                 "sleep",
                 backup.PG,
                 "180",
-            ]
+            ],
+            15,
         )
         pipe = subprocess.Popen(
             ["docker", "exec", "-i", client, "psql", "-XqAt", "-v", "ON_ERROR_STOP=1"],
@@ -144,13 +163,21 @@ def pg_snapshot(uri):
             stderr=subprocess.PIPE,
             bufsize=0,
         )
+        buffered = bytearray()
 
         def line():
-            if not select.select([pipe.stdout], [], [], 30)[0]:
-                raise ValueError("Snapshot read deadline")
-            value = pipe.stdout.readline(MAX + 1)
-            if not value or len(value) > MAX:
-                raise ValueError("Snapshot read bound")
+            while b"\n" not in buffered:
+                if not select.select([pipe.stdout], [], [], remaining(30))[0]:
+                    raise ValueError("Snapshot read deadline")
+                chunk = os.read(pipe.stdout.fileno(), 65536)
+                if not chunk or len(buffered) + len(chunk) > MAX:
+                    raise ValueError("Snapshot read bound")
+                buffered.extend(chunk)
+            index = buffered.index(b"\n")
+            value = bytes(buffered[:index])
+            del buffered[: index + 1]
+            if not value:
+                raise ValueError("Empty snapshot response")
             return value.decode().strip()
 
         pipe.stdin.write(
@@ -171,7 +198,7 @@ def pg_snapshot(uri):
             manifest.append(json.loads(value))
             if len(manifest) > 100:
                 raise ValueError("Table bound exceeded")
-        dump = backup.run(
+        dump = checked(
             [
                 "docker",
                 "exec",
@@ -181,7 +208,8 @@ def pg_snapshot(uri):
                 "--no-owner",
                 "--no-acl",
                 "--snapshot=" + snapshot,
-            ]
+            ],
+            90,
         )
         if not dump.startswith(b"PGDMP") or len(dump) > MAX:
             raise ValueError("Invalid bounded PostgreSQL snapshot")
@@ -300,7 +328,7 @@ def main(product):
             "snapshot": base64.b64encode(dump).decode(),
             "manifest": manifest,
         }
-        result = backup.run(
+        result = subprocess.run(
             [
                 "docker",
                 "run",
@@ -332,9 +360,14 @@ def main(product):
                 transport,
                 "backup.mjs",
             ],
-            json.dumps(payload).encode(),
+            input=json.dumps(payload).encode(),
+            capture_output=True,
+            timeout=90,
+            check=False,
         )
-        receipt = json.loads(result)
+        if result.returncode:
+            raise ValueError("Encrypted transport failed")
+        receipt = json.loads(result.stdout)
         if (
             not receipt["passed"]
             or receipt["product"] != product
@@ -366,6 +399,11 @@ def main(product):
 
 
 if __name__ == "__main__":
+
+    def terminated(_signum, _frame):
+        raise TimeoutError("Snapshot service stopped")
+
+    signal.signal(signal.SIGTERM, terminated)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--product", required=True, choices=tuple(TARGETS))
     args = parser.parse_args()
