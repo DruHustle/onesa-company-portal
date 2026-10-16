@@ -81,8 +81,8 @@ stories stream independently with bounded public reads. A genuine missing detail
 HTTP404; a transient content outage shows a localized noindex retry state. Required
 publication and detail checks stay fresh, preserving the browser/OS appearance.
 
-Vercel hosts the frontend, Render the API, and the qualified private Oracle worker handles
-processing. Governance currently contains draft policies; deployment does not approve
+Vercel hosts the frontend; the existing Oracle VM hosts the API and qualified private
+worker/scanner services. Governance currently contains draft policies; deployment does not approve
 retention, processor contracts, legal publication or applicant/customer processing.
 The owner-authorized pre-launch runtime mode enables existing public features while legal prerequisites remain explicitly unapproved. Default launch mode restores their global publication hold. Editorial review and every protected-data boundary remain enforced; see the deployment procedure.
 Free-provider wakeups and capacity limits are documented, without an uptime guarantee.
