@@ -327,3 +327,20 @@ the Products text. Final isolated build/lint/types and Home-placement regression
 desktop/mobile light/dark Products views and both Home locale checks PASS, with zero
 accessibility violations, browser errors, overflow or approval-status requests. Product
 and exact public documentation links remain present. Hosted production acceptance is pending.
+
+
+Company visual storytelling (prepared): homepage image-led hero and alternating product
+showcases; Products separates overviews, capability explanations and Apps directions.
+Uses existing responsive WebP assets, deterministic server rendering and no new client
+JavaScript or dependency. Verify EN/DE, mobile/desktop, light/dark, reduced motion,
+keyboard focus, artwork loading, product/Docs destinations and prompt optional-content
+streaming. Promote only through dev → staging → main; hosted acceptance remains pending.
+
+Validation: lint, TypeScript, production build, existing homepage loading regression,
+shared appearance/contrast checks, documentation validation and repository hygiene PASS.
+Sixteen isolated Chromium views (EN/DE × Home/Products × 390/1440px × light/dark)
+passed image loading, axe accessibility, overflow and browser-error checks with external
+requests blocked. Desktop hero visually inspected after browser paint. Synthetic slow
+content retained prompt hero rendering (7–18ms) and 1.5s response bounds. These local
+measurements are not hosted performance guarantees. Other browsers and hosted acceptance
+remain pending in the normal release pipeline.
