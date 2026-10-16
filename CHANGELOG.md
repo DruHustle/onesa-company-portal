@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Prepare AI/Robot database snapshots through the existing Oracle encrypted backup
+  transport, with separate product prefixes, consistent reads, target/configuration
+  pins, bounded storage and stale/failure monitoring. No new backup schedule or
+  production copy is claimed live by this source change.
+- Reject malformed snapshots, unknown products, changed Robot schemas, wrong recovery
+  keys and tampered ciphertext. Preserve existing Portal backups and their retention;
+  the new product paths perform no automatic backup deletion.
+
 ## 2026-10-16 — Mobile homepage layout live
 
 - Reduced empty space in the mobile hero, capability cards and product previews.

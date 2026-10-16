@@ -11,7 +11,16 @@ const bucket=process.env.S3_BUCKET;
 require(new URL(process.env.S3_ENDPOINT).hostname==='br-red-morning-b9d1sxnz.storage.c-7.eu-central-1.aws.neon.tech'&&bucket);
 const get=async key=>{const r=await s3.send(new GetObjectCommand({Bucket:bucket,Key:key}));require(Number(r.ContentLength)<=MAX*2);return Buffer.from(await r.Body.transformToByteArray());};
 try{
- if(input.action==='backup'){
+ if(input.action==='database-backup'){
+  const {sealDatabaseSnapshot}=await import('./oracle_backup_payload.mjs');
+  const sealed=sealDatabaseSnapshot(input,fs.readFileSync('/recovery/public.pem'));
+  const prefix='.onesa-database-backups/v1/'+input.product+'/';
+  let token,total=0,pages=0;do{const page=await s3.send(new ListObjectsV2Command({Bucket:bucket,Prefix:prefix,ContinuationToken:token}));for(const item of page.Contents||[])total+=Number(item.Size||0);token=page.NextContinuationToken;require(++pages<=10);}while(token);
+  require(total+sealed.body.length<=64*1024*1024);
+  await s3.send(new PutObjectCommand({Bucket:bucket,Key:sealed.object,Body:sealed.body,IfNoneMatch:'*',ServerSideEncryption:'AES256',ContentType:'application/json'}));
+  require(digest(await get(sealed.object))===digest(sealed.body));
+  console.log(JSON.stringify({passed:true,product:input.product,id:input.id,object_key:sealed.object,ciphertext_sha256:digest(sealed.body),snapshot_sha256:sealed.meta.snapshot_sha256,key_id:sealed.meta.key_id,database_tables:input.manifest.length,off_instance_storage_verified:true,expired_archives_removed:0,retention:'NO_AUTOMATIC_DELETION_PENDING_APPROVED_POLICY'}));
+ }else if(input.action==='backup'){
   require(/^[a-f0-9]{32}$/.test(input.id)&&Array.isArray(input.files)&&input.files.length<=1000);
   const dump=Buffer.from(input.dump,'base64');require(dump.subarray(0,5).toString()==='PGDMP'&&dump.length<MAX);
   const objects=[];let total=dump.length;
