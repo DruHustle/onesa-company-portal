@@ -1,6 +1,13 @@
 # Oracle staging worker and private scanner
 
-Use the existing owner-provisioned `onesa-portal-worker`. Provisioning and SSH
+The VM now also hosts the independent staging/production product APIs. See the
+protected [Oracle VM architecture and troubleshooting](https://onesa-engineering-docs.pages.dev/docs/engineering/ORACLE_VM_OPERATIONS)
+for the complete layout, service map, read-only diagnosis and recovery boundaries.
+This worker guide retains its detailed executor/scanner procedures.
+
+Use the existing owner-provisioned VM, now displayed in Oracle as **Onesa UG Backend**.
+The existing `onesa-portal-worker` host/SSH identity remains unchanged; the display-name
+rename does not restart services or rename network resources. Provisioning and SSH
 configuration are documented in [DEPLOYMENT](DEPLOYMENT.md); do not create another VM
 or resize any resource as part of runtime deployment. Private inventory and SSH
 receipts stay outside Git. The current target is Ubuntu 24.04 ARM64, 1 OCPU, 6 GB RAM
