@@ -121,3 +121,6 @@ button,input,select{min-height:var(--onesa-control-size)}
 /* Home capabilities use individual rounded cards, matching product previews. */
 #capabilities .capability-grid{gap:20px;border:0}
 #capabilities .capability{border:1px solid var(--line);border-radius:20px}
+
+/* Rounded homepage calls to action match the capability and product cards. */
+.hero .button,.cta .button{border-radius:20px}

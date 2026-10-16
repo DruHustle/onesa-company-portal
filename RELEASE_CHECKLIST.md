@@ -1,5 +1,14 @@
 # Production release checklist
 
+## Rounded homepage action buttons — prepared 2026-10-16
+
+“Explore our technology” and the closing “Start a conversation” button use 20px
+corners, matching the rounded homepage cards. Scoped to hero/CTA buttons; link
+labels, destinations and the hero's secondary text link remain unchanged. Four local
+CSS fixture views pass at mobile/desktop in light/dark, including links, focus and
+overflow. Full-route release acceptance remains pending; no artifact deployment.
+
+
 ## Rounded homepage capability cards — prepared 2026-10-16
 
 The “From ideas to infrastructure.” cards use 20px corners and separate borders
