@@ -33,6 +33,20 @@ def request(path, token, payload=None):
         ) from None
 
 
+def require_service_available(service):
+    """A live deployment record does not establish service availability."""
+    if not (
+        isinstance(service, dict)
+        and service.get("suspended") == "not_suspended"
+        and isinstance(service.get("suspenders"), list)
+        and service["suspenders"] == []
+    ):
+        raise SystemExit(
+            "Render service is suspended or availability is unverified; "
+            "deployment stopped without changing billing or requesting recovery"
+        )
+
+
 def main():
     token = os.environ.get("RENDER_API_KEY", "")
     service = os.environ.get("RENDER_SERVICE_ID", "")
@@ -43,6 +57,7 @@ def main():
         )
     if not re.fullmatch(r"[a-f0-9]{40}", sha):
         raise SystemExit("Deployment requires an exact GitHub commit SHA")
+    require_service_available(request(f"services/{service}", token))
     deployment = request(
         f"services/{service}/deploys",
         token,
@@ -58,6 +73,7 @@ def main():
         status = deployment.get("status", "unknown")
         print(f"Render status: {status}", flush=True)
         if status == "live":
+            require_service_available(request(f"services/{service}", token))
             if deployment.get("commit", {}).get("id") != sha:
                 raise SystemExit(
                     "Render deployed a different commit; deployment verification failed"
