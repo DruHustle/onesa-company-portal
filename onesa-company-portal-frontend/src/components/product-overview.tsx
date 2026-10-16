@@ -26,6 +26,7 @@ const applicationDirections = {
 function ApplicationDirections({locale}:{locale:Locale}) {
   const content = applicationDirections[locale];
   return <section className={styles.useCases} aria-labelledby="ai-applications-title">
+    <p className="eyebrow">{locale==='de'?'ANWENDUNGEN':'APPLICATIONS'}</p>
     <h2 id="ai-applications-title">{content.title}</h2>
     <p>{content.introduction}</p>
     <div className={styles.useCaseGrid}>
@@ -49,13 +50,20 @@ export function ProductOverview({locale}:{locale:Locale}) {
       <p className="eyebrow">{product.category}</p>
       <h2 id={`product-${product.id}`}>{product.name}</h2>
       <p>{product.description}</p>
-      <ul className={styles.features}>{product.capabilities.map(capability=><li key={capability}>{capability}</li>)}</ul>
       <div className="actions">
         <a className="button" href={applications.applications.find(app=>app.id===product.id)!.href}>{product.open} ↗</a>
         <a href={product.docs}>{product.guide} ↗</a>
       </div>
       </div>
       <ProductIllustration product={product.id} locale={locale}/>
+      <section className={styles.details} aria-label={`${product.name} — ${locale==='de'?'Möglichkeiten':'Capabilities'}`}>
+        {product.capabilities.map((capability,index)=><div key={capability}>
+          <h3>{(locale==='de'
+            ? (product.id==='ai'?['Wissen verbinden','Abläufe gestalten','Zukunft erforschen']:['Aufgaben steuern','Zustände verstehen','Integration entwickeln'])
+            : (product.id==='ai'?['Connect knowledge','Build workflows','Explore what’s next']:['Direct tasks','Understand state','Develop integration']))[index]}</h3>
+          <p>{capability}</p>
+        </div>)}
+      </section>
     </article>)}
   </section><ApplicationDirections locale={locale}/></>;
 }
