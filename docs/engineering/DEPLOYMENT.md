@@ -109,6 +109,14 @@ and latency alongside the existing scanner and workers; a short idle sample does
 qualify peak load. Existing backups/monitoring remain active. Public documentation must
 not publish the private runtime files, host inventory, source layouts or audit records.
 
+For ongoing API coverage, qualify and enable the existing monitor's optional
+`backend_monitoring_enabled` flag as described in
+[Oracle operations](ORACLE_WORKER_RUNTIME.md#api-monitoring-after-the-oracle-hosting-migration).
+It adds bounded public liveness and private container-health/restart checks to the
+existing timer/notification path, without model traffic, application-data reads,
+new credentials or a parallel monitoring system. Installation and a real timer sample
+must be verified independently; a passing local test does not enable the remote flag.
+
 
 ## Render capacity hold — local maintenance, 2026-10-16
 

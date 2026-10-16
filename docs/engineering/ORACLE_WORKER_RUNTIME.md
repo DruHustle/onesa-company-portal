@@ -475,6 +475,30 @@ existing sending-only Resend credential and approved NOTIFY_EMAIL, with a 30-min
 cooldown. Production-worker absence is not an incident before cutover; activate that
 specific expectation only when the managed production worker is enabled.
 
+### API monitoring after the Oracle hosting migration
+
+The same monitor supports `backend_monitoring_enabled: true` in its existing private
+operations configuration. Leave this absent/false on installations without the six
+approved API containers. Enable only after qualified source and actual target checks.
+It reads their Docker health, restart counts, environment/product labels and loopback
+bindings, and checks their exact Cloudflare HTTPS liveness routes in parallel. These
+unauthenticated, bounded `/health` probes do not query model readiness, generate text,
+read application data or keep otherwise idle AI databases active. HTML200, redirects,
+wrong JSON, unhealthy/missing containers and public container binds are failures.
+
+The two additional alert classes are `backend-api-unavailable` and
+`backend-api-restarted`; the original nine classes and approved sending-only notification
+path remain. Normal samples persist restart baselines; synthetic samples never overwrite
+them. No second timer, public metrics port, new credential or paid monitoring service
+is needed. This liveness monitoring complements source-bound workflow qualification;
+it does not certify inference quality, authenticated actions or peak capacity.
+
+Inspect/scanner metric calls are bounded at3 seconds, the aggregate database sample
+at20 seconds, and parallel API sampling at7 seconds including the Docker read. The
+existing20-second notification budget leaves time for evidence within the60-second
+service budget. All checks only observe services; they never restart a container,
+alter a Robot lease, change queues or stop existing workers/scanner.
+
 `scripts/oracle_operations.py simulate --commit <qualified-staging-SHA>` injects all
 nine metric failures into an isolated evaluation and sends one explicitly labelled
 synthetic alert. It never stops services, fills disks, changes queues or disconnects

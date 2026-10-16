@@ -3,6 +3,7 @@
 import importlib.util
 import io
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -168,6 +169,204 @@ class OperationsGuards(unittest.TestCase):
         source = Path(monitor.__file__).read_text()
         for command in ["'stop'", "'restart'", "'rm'", "'kill'", "'pause'"]:
             self.assertNotIn(command, source)
+
+    def test_new_backend_failures_preserve_existing_alert_rules(self):
+        for key, rule in [
+            ("backend_api_healthy", "backend-api-unavailable"),
+            ("backend_api_restarted", "backend-api-restarted"),
+        ]:
+            with self.subTest(rule=rule):
+                metrics = {**self.metrics, key: key.endswith("restarted")}
+                self.assertEqual(
+                    [k for k, v in monitor.evaluate(metrics).items() if v], [rule]
+                )
+
+
+class BackendMonitoring(unittest.TestCase):
+    def test_optional_monitor_and_acquisition_budget_preserve_existing_timer(self):
+        original_read = Path.read_text
+
+        def read(path, *args, **kwargs):
+            if str(path) == "/proc/meminfo":
+                return "MemAvailable: 1048576 kB\n"
+            return original_read(path, *args, **kwargs)
+
+        def acquire(command, timeout=35):
+            if command[1] == "inspect":
+                return json.dumps(
+                    [{"Name": "/synthetic-scanner", "RestartCount": 0}]
+                ).encode()
+            if command[1] == "exec":
+                return b""
+            return b'{"database_available":true,"scanner_ready":true}'
+
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(monitor, "STATE", Path(directory)),
+            patch.object(monitor.Path, "read_text", read),
+            patch.object(
+                monitor.shutil,
+                "disk_usage",
+                return_value=SimpleNamespace(used=20, total=100),
+            ),
+            patch.object(monitor, "run", side_effect=acquire) as commands,
+            patch.object(
+                monitor, "sample_backends", return_value={"backend_api_healthy": True}
+            ) as backends,
+        ):
+            monitor.sample({"worker_required": True, "image": "synthetic-image"})
+            backends.assert_not_called()
+            monitor.sample(
+                {
+                    "worker_required": True,
+                    "image": "synthetic-image",
+                    "backend_monitoring_enabled": True,
+                }
+            )
+            backends.assert_called_once_with({})
+        # Two3s inspect reads,3s scanner read,20s aggregate DB read, up to7s
+        # backend sampling and20s notification leave4s in the60s service budget.
+        self.assertEqual(
+            [call.kwargs["timeout"] for call in commands.call_args_list[:4]],
+            [3, 3, 3, 20],
+        )
+        self.assertLess(
+            sum(call.kwargs["timeout"] for call in commands.call_args_list[:4])
+            + 7
+            + 20,
+            60,
+        )
+
+    def containers(self):
+        return [
+            {
+                "Name": "/" + value["container"],
+                "State": {
+                    "Running": True,
+                    "Health": {"Status": "healthy"},
+                    "OOMKilled": False,
+                },
+                "Config": {
+                    "Labels": {
+                        "org.onesa.product": value["product"],
+                        "org.onesa.environment": value["environment"],
+                    },
+                    "Env": ["SYNTHETIC_PRIVATE_VALUE=never-serialize"],
+                },
+                "HostConfig": {
+                    "PortBindings": {
+                        "8000/tcp": [{"HostIp": "127.0.0.1", "HostPort": "18001"}]
+                    }
+                },
+                "RestartCount": 0,
+            }
+            for value in monitor.BACKENDS.values()
+        ]
+
+    def sample(self, rows, previous=None):
+        response = SimpleNamespace(stdout=json.dumps(rows).encode(), returncode=0)
+        with (
+            patch.object(monitor.subprocess, "run", return_value=response) as inspect,
+            patch.object(
+                monitor,
+                "probe_backend",
+                return_value={"http_healthy": True, "http_status": 200},
+            ),
+        ):
+            result = monitor.sample_backends(previous or {})
+        self.assertEqual(inspect.call_args.kwargs["timeout"], 3)
+        self.assertNotIn("never-serialize", str(result))
+        return result
+
+    def test_existing_six_targets_healthy_without_false_restart(self):
+        result = self.sample(self.containers())
+        self.assertEqual(len(result["backends"]), 6)
+        self.assertTrue(result["backend_api_healthy"])
+        self.assertFalse(result["backend_api_restarted"])
+
+    def test_missing_wrong_environment_and_public_ports_fail_closed(self):
+        rows = self.containers()
+        self.assertFalse(self.sample(rows[:-1])["backend_api_healthy"])
+        rows[0]["Config"]["Labels"]["org.onesa.environment"] = "wrong"
+        self.assertFalse(self.sample(rows)["backend_api_healthy"])
+        rows = self.containers()
+        rows[0]["HostConfig"]["PortBindings"]["8000/tcp"][0]["HostIp"] = "0.0.0.0"
+        self.assertFalse(self.sample(rows)["backend_api_healthy"])
+
+    def test_unhealthy_oom_and_unexpected_restart_are_observed_without_action(self):
+        for key, value in [
+            ("Running", False),
+            ("OOMKilled", True),
+            ("Health", {"Status": "unhealthy"}),
+        ]:
+            rows = self.containers()
+            rows[0]["State"][key] = value
+            self.assertFalse(self.sample(rows)["backend_api_healthy"])
+        rows = self.containers()
+        rows[0]["RestartCount"] = 2
+        self.assertTrue(
+            self.sample(rows, {"portal-staging": 1})["backend_api_restarted"]
+        )
+        self.assertFalse(self.sample(rows)["backend_api_restarted"])
+
+    def test_http_liveness_has_expected_json_and_bounded_credential_free_transport(
+        self,
+    ):
+        for name, value in monitor.BACKENDS.items():
+            payload = json.dumps({"status": value["status"]}).encode() + b"\n200"
+            with patch.object(
+                monitor.subprocess,
+                "run",
+                return_value=SimpleNamespace(stdout=payload, returncode=0),
+            ) as request:
+                self.assertTrue(monitor.probe_backend(name)["http_healthy"])
+            args = request.call_args.args[0]
+            self.assertEqual(
+                args[:4], ["/usr/bin/curl", "--disable", "--proto", "=https"]
+            )
+            self.assertEqual(args[-1], value["url"])
+            self.assertNotIn("/ready", args[-1])
+            self.assertNotIn("--location", args)
+            self.assertFalse(
+                any("authorization" in v.lower() or "cookie" in v.lower() for v in args)
+            )
+            self.assertEqual(request.call_args.kwargs["timeout"], 4)
+            self.assertEqual(args[args.index("--max-time") + 1], "3")
+
+    def test_html_redirect_invalid_json_and_oversize_are_not_health(self):
+        for body, code, exit_code in [
+            (b"<html>synthetic-private-body</html>", b"200", 0),
+            (b'{"status":"ok"}', b"302", 0),
+            (b"[]", b"200", 0),
+            (b'{"status":"wrong"}', b"200", 0),
+            (b"x" * 513, b"200", 0),
+            (b'{"status":"ok"}', b"200", 1),
+        ]:
+            with patch.object(
+                monitor.subprocess,
+                "run",
+                return_value=SimpleNamespace(
+                    stdout=body + b"\n" + code, returncode=exit_code
+                ),
+            ):
+                result = monitor.probe_backend("portal-production")
+                self.assertFalse(result["http_healthy"])
+                self.assertNotIn("synthetic-private-body", str(result))
+
+    def test_transport_timeout_and_unapproved_target_never_succeed(self):
+        with patch.object(
+            monitor.subprocess,
+            "run",
+            side_effect=subprocess.TimeoutExpired("synthetic", 4),
+        ):
+            self.assertEqual(
+                monitor.probe_backend("ai-production"),
+                {"http_healthy": False, "http_status": 0},
+            )
+        with patch.object(monitor.subprocess, "run") as request:
+            with self.assertRaises(KeyError):
+                monitor.probe_backend("unapproved")
+            request.assert_not_called()
 
 
 if __name__ == "__main__":
