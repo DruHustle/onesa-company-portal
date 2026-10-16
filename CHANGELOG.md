@@ -1,16 +1,18 @@
 # Changelog
 
-## 2026-10-16 — Oracle backend migration prepared
+## 2026-10-16 — Company production API moved to Oracle
 
-- Add isolated, explicit staging/production API profiles with immutable ARM64 image
-  pins, loopback-only ports, private runtime files and bounded resources. Preserve
-  existing Oracle workers/scanner, external data services and application credentials.
-- Maintain separate hardened Cloudflare connector instances using systemd credential
-  files and a scanned, checksum-verified official binary. Unit verification and nine
-  offline configuration checks pass; all six API images pass high/critical and secret
-  scanning. The tunnel routes, hosted acceptance and frontend cutover remain pending.
-- No Oracle API or tunnel is live yet. Render remains suspended by billing; prepared
-  infrastructure and passing image scans do not establish application availability.
+- Moved the existing qualified backend to an immutable, scanned ARM64 image on
+  the existing Oracle Free VM, behind a dedicated HTTPS tunnel and loopback bind.
+- Republished the identical accepted frontend artifact with its server-side API
+  origin changed. Existing authenticated access, protected reads, logout/revocation
+  and anonymous denial pass through the production website.
+- Preserved accounts, credentials, external data and existing worker/scanner services.
+  No Render build, paid resource, schema migration or physical actuation occurred.
+- Prior full application qualification is reused for unchanged source; new target
+  checks establish access and readiness, not a new feature or inference release.
+  Staging Preview acceptance remains independently recorded in restricted evidence.
+
 
 ## 2026-10-15 — Products Apps section published; API acceptance blocked
 

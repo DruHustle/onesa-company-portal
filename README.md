@@ -1,5 +1,10 @@
 # Onesa UG Company Portal
 
+Production API hosting moved to the existing Oracle Free VM on 2026-10-16; the
+Vercel frontend and existing data services remain. See the
+[verified hosting cutover](docs/engineering/DEPLOYMENT.md#verified-production-hosting-cutover--2026-10-16)
+for source identities, protected ingress, acceptance and rollback.
+
 The Company Portal is Onesa UG’s corporate website and protected business workspace.
 It combines an English/German public site with a custom CMS, enquiries, recruitment,
 private documents, background processing and database-backed privacy governance.

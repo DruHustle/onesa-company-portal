@@ -2,6 +2,52 @@
 
 ## Oracle backend migration — owner authorized 2026-10-16
 
+### Verified production hosting cutover — 2026-10-16
+
+The existing Company application now uses the Oracle API at `https://portal-api.onesa.eu`.
+The Vercel frontend at https://onesa.eu was republished from the identical accepted prebuilt
+artifact, with only its server-side `BACKEND_URL` production binding changed. Frontend
+source remains `c2186bcd7951f15623a0ae86a4a7cfb289f1ed04`; backend source remains `bfe2891487107d4d3a9126dc5ba2a4dd72f0f0ab`. This is a hosting
+cutover, not qualification or publication of subsequent development features.
+Existing owner/operator login, protected reads, logout and session revocation pass
+through the canonical frontend proxy. Anonymous and spoofed-bot private requests
+remain denied. A spoofed User-Agent is not evidence of genuine crawler traffic.
+
+Both dedicated connectors use only the approved environment-specific API hosts,
+with an observed unmatched-host `http_status:404` catch-all. Original application
+credentials and external databases remain; no schema migration, worker/scanner
+restart, billing change or physical actuation was requested. ARM64 image security
+scans and matching-source staging access checks passed before production start.
+New-target access checks reuse prior application qualification; they do not claim
+a fresh full suite or new model-generation acceptance. Restricted operator receipts
+hold the actual image, container, deployment, runtime-file and preservation identities.
+
+```mermaid
+flowchart LR
+  User[Browser] --> Frontend[Vercel same-origin frontend]
+  Frontend --> HTTPS[Cloudflare API HTTPS hostname]
+  HTTPS --> Tunnel[Environment-specific outbound tunnel]
+  Tunnel --> API[Oracle loopback-only API container]
+  API --> Data[Existing private data and configured providers]
+  Owner[Owner PC] --> Tailscale[Existing Tailscale administration route]
+  Tailscale --> SSH[Pinned-key Oracle OpenSSH]
+```
+
+The Render deployment/qualification scripts remain provider-specific and held;
+do not dispatch them for this Oracle target or relabel Oracle checks as Render
+qualification. Future application releases still need exact-source CI/security,
+matching hosted staging, preservation and the owner-controlled release process.
+Keep production credentials outside PR/Actions jobs. Separate staging bindings
+and acceptance are recorded independently from the verified production cutover.
+
+Rollback retains the preceding Vercel deployment and private origin value, plus
+the pinned Oracle image and environment files. A Vercel rollback also restores
+its earlier Render binding, which currently leads to a billing-suspended backend;
+that is not an availability recovery. Rebind/redeploy a qualified retained artifact
+to the healthy Oracle API instead. Stop promotion on uncertainty; do not restart
+old Robot source, fence a lease, edit history or delete services to force recovery.
+
+
 The owner now authorizes moving the existing staging and production APIs from Render
 to the existing Oracle worker VM. This supersedes the backend-deployment pause for
 this migration only. Keep qualification active; the Render billing hold itself remains.
@@ -23,8 +69,7 @@ The maintained `infra/oracle/operations/onesa-backend-tunnel@.service` runs sepa
 security-scanned official ARM64 connector at its versioned path. Keep each generated
 binary under `/usr/local/lib/onesa-tunnel/`, with directory/executable mode755;
 the separate `/usr/local/lib/onesa/` administration directory stays mode700.
-Keep each generated
-connector token in its matching root-owned mode-600 `tunnel-<environment>.token`
+Keep each generated connector token in its matching root-owned mode-600 `tunnel-<environment>.token`
 file under `/etc/onesa/backends/`; systemd passes it through `LoadCredential`, never
 command-line text or shared environment variables. Validate the unit with
 `systemd-analyze verify` before enabling only the intended instance. Its metrics
@@ -63,6 +108,14 @@ Staging has lower CPU shares/limits than production. Observe memory/OOM/error co
 and latency alongside the existing scanner and workers; a short idle sample does not
 qualify peak load. Existing backups/monitoring remain active. Public documentation must
 not publish the private runtime files, host inventory, source layouts or audit records.
+
+For ongoing API coverage, qualify and enable the existing monitor's optional
+`backend_monitoring_enabled` flag as described in
+[Oracle operations](ORACLE_WORKER_RUNTIME.md#api-monitoring-after-the-oracle-hosting-migration).
+It adds bounded public liveness and private container-health/restart checks to the
+existing timer/notification path, without model traffic, application-data reads,
+new credentials or a parallel monitoring system. Installation and a real timer sample
+must be verified independently; a passing local test does not enable the remote flag.
 
 
 ## Render capacity hold — local maintenance, 2026-10-16
