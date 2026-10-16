@@ -1,5 +1,15 @@
 # Production release checklist
 
+## Rounded homepage capability cards — prepared 2026-10-16
+
+The “From ideas to infrastructure.” cards use 20px corners and separate borders
+with 20px spacing, matching the homepage product cards. Scoped to #capabilities;
+technology-page grids, navigation, copy and API behavior are unchanged. Eight local
+CSS fixture views pass across EN/DE, mobile/desktop and light/dark, checking corners,
+borders, keyboard focus and overflow. Full-route release acceptance remains pending.
+No artifact deployment is authorized by this styling change.
+
+
 ## Render credit hold — prepared local guard, 2026-10-16
 
 Owner confirms exhausted Render credits: backend delivery and backend-deploying
