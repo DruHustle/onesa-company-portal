@@ -1,5 +1,31 @@
 # Deployment and independent releases
 
+## Current Company application release — 2026-10-16
+
+The owner lifted the application-artifact hold for qualified Oracle/Vercel releases;
+Render remains held. Frontend `8bee209a6ea82a2d63d187d1b23046f051698f0f`, deployment
+`dpl_CfUvaU7BZE4QQ3r2GGEsvy1Y5CzM`, is verified on the existing Company/Portal
+domains. The affected homepage cards/buttons use 20px corners. The backend remains
+the accepted `bfe2891487107d4d3a9126dc5ba2a4dd72f0f0ab` image: its application
+tree matches this main revision, so no backend restart or migration was necessary.
+Exact-main CI, eight affected Preview views, corrected Preview runtime routing and
+two canonical production views pass. Public feeds return200; the public Company host
+denies auth routes with403 HOST and the Portal host denies anonymous sessions with401.
+Keep these distinct access boundaries. Scoped receipts and the previous deployment
+are retained in `private/oracle/application-release-20261016/`.
+
+Preview deployments built from main need their verified staging API origin bound
+explicitly at deployment runtime; pulling branch-specific staging build variables
+does not establish that runtime binding. Preserve project settings, production
+bindings and protection. The confirmed missing Preview binding was corrected with
+one new Preview of the identical artifact; the failed binding and original CSS-only
+evidence remain recorded. Production uses its own existing Oracle API binding.
+
+The existing monitor is now enabled for all six APIs. Its actual timer acceptance,
+unchanged backup/configuration evidence and exact component rollback are in the
+existing restricted migration directory. Do not rerun operations bootstrap or its
+initial empty-database recovery fixture against the populated production database.
+
 ## Oracle backend migration — owner authorized 2026-10-16
 
 ### Verified production hosting cutover — 2026-10-16
