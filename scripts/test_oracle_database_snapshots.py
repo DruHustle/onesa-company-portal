@@ -145,5 +145,31 @@ class SnapshotSafety(unittest.TestCase):
             )
 
 
+
+
+class BootstrapSafety(unittest.TestCase):
+    def test_existing_install_stops_before_source_config_or_key_writes(self):
+        import oracle_operations
+
+        with (
+            patch.object(oracle_operations.worker, "qualified_source", return_value=[]),
+            patch.object(
+                oracle_operations, "run", side_effect=ValueError("Already installed")
+            ) as command,
+            patch.object(oracle_operations, "public_key") as key,
+        ):
+            with self.assertRaises(ValueError):
+                oracle_operations.install("a" * 40)
+            command.assert_called_once_with(
+                "sudo test ! -e /etc/onesa/operations.json", timeout=20
+            )
+            key.assert_not_called()
+
+    def test_archive_includes_encryption_module(self):
+        import oracle_operations
+
+        self.assertIn("scripts/oracle_backup_payload.mjs", oracle_operations.PATHS)
+
+
 if __name__ == "__main__":
     unittest.main()

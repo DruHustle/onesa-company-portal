@@ -15,6 +15,7 @@ PRIVATE = worker.PRIVATE
 PATHS = [
     "infra/oracle/operations",
     "scripts/oracle_backup_store.mjs",
+    "scripts/oracle_backup_payload.mjs",
     "scripts/oracle_metrics.mjs",
 ]
 
@@ -111,6 +112,9 @@ def recovery_fixture(runtime, identifier, cleanup=False):
 
 def install(sha):
     refs = worker.qualified_source(sha, worker.evidence.GitHub())
+    # This original bootstrap resets configuration and uses an empty synthetic DB.
+    # Never rerun it over established production operations as an upgrade.
+    run("sudo test ! -e /etc/onesa/operations.json", timeout=20)
     runtime = json.loads((PRIVATE / "deployment.json").read_text())["commit"]
     for folder in ["onesa-company-portal-backend", "infra/oracle/clamav"]:
         trees = [
