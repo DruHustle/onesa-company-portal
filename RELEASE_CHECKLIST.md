@@ -344,3 +344,17 @@ requests blocked. Desktop hero visually inspected after browser paint. Synthetic
 content retained prompt hero rendering (7–18ms) and 1.5s response bounds. These local
 measurements are not hosted performance guarantees. Other browsers and hosted acceptance
 remain pending in the normal release pipeline.
+
+Footer scope amendment: replace duplicate flat link rows with grouped Company,
+Products and Resources navigation, one enquiry action, a quieter address and a separate
+legal/administration strip. Preserve all existing destinations and approved company
+particulars; retain contact-page enquiries without public general-mail/telephone links.
+Prior Home/Products acceptance remains valid for unchanged components; qualify the new
+footer in EN/DE across 320/390/768/1440px, both system appearances, keyboard and axe.
+
+Footer validation: lint, TypeScript, production build, documentation/hygiene and 16
+isolated EN/DE × 320/390/768/1440px × light/dark browser views PASS. Checked axe,
+overflow, image loading, unique footer destinations, retained Company/Product/Docs/legal
+links, no mailto/telephone links and keyboard focus. Visually reviewed desktop EN and
+mobile DE. Earlier c199fa6 full CI and body-layout acceptance are preserved; no unrelated
+application or backend change is included. Hosted footer acceptance remains pending.
