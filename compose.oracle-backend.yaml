@@ -1,70 +1,123 @@
-name: onesa-portal-oracle-api
-services:
-  staging:
-    image: ${ORACLE_STAGING_IMAGE:?Pinned staging image required}
-    pull_policy: never
-    platform: linux/arm64
-    profiles: [staging]
-    env_file:
-      - path: /etc/onesa/backends/portal-staging.env
-        format: raw
-    environment:
-      PORT: '8300'
-    ports: ['127.0.0.1:18301:8300']
-    networks: [staging]
-    mem_limit: 256m
-    cpus: 0.25
-    cpu_shares: 128
-    restart: unless-stopped
-    init: true
-    read_only: true
-    tmpfs: [/tmp]
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    pids_limit: 128
-    stop_grace_period: 150s
-    logging:
-      driver: json-file
-      options: {max-size: 10m, max-file: '3'}
-    labels:
-      org.onesa.product: portal
-      org.onesa.environment: staging
-      org.onesa.source-commit: ${ORACLE_STAGING_COMMIT:?Exact source commit required}
-    volumes: [staging_storage:/app/storage]
-  production:
-    image: ${ORACLE_PRODUCTION_IMAGE:?Pinned production image required}
-    pull_policy: never
-    platform: linux/arm64
-    profiles: [production]
-    env_file:
-      - path: /etc/onesa/backends/portal-production.env
-        format: raw
-    environment:
-      PORT: '8300'
-    ports: ['127.0.0.1:18300:8300']
-    networks: [production]
-    mem_limit: 384m
-    cpus: 0.6
-    cpu_shares: 512
-    restart: unless-stopped
-    init: true
-    read_only: true
-    tmpfs: [/tmp]
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    pids_limit: 128
-    stop_grace_period: 150s
-    logging:
-      driver: json-file
-      options: {max-size: 10m, max-file: '3'}
-    labels:
-      org.onesa.product: portal
-      org.onesa.environment: production
-      org.onesa.source-commit: ${ORACLE_PRODUCTION_COMMIT:?Exact source commit required}
-    volumes: [production_storage:/app/storage]
-networks:
-  staging:
-  production:
-volumes:
-  staging_storage:
-  production_storage:
+{
+  "name": "onesa-portal-oracle-api",
+  "services": {
+    "staging": {
+      "image": "${ORACLE_STAGING_IMAGE:?Pinned staging image required}",
+      "pull_policy": "never",
+      "platform": "linux/arm64",
+      "profiles": [
+        "staging"
+      ],
+      "env_file": [
+        {
+          "path": "/etc/onesa/backends/portal-staging.env",
+          "format": "raw"
+        }
+      ],
+      "environment": {
+        "PORT": "8300"
+      },
+      "ports": [
+        "127.0.0.1:18301:8300"
+      ],
+      "networks": [
+        "staging"
+      ],
+      "mem_limit": "256m",
+      "cpus": 0.25,
+      "cpu_shares": 128,
+      "restart": "unless-stopped",
+      "init": true,
+      "read_only": true,
+      "tmpfs": [
+        "/tmp"
+      ],
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "pids_limit": 128,
+      "stop_grace_period": "150s",
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "labels": {
+        "org.onesa.product": "portal",
+        "org.onesa.environment": "staging",
+        "org.onesa.source-commit": "${ORACLE_STAGING_COMMIT:?Exact source commit required}"
+      },
+      "volumes": [
+        "staging_storage:/app/storage"
+      ]
+    },
+    "production": {
+      "image": "${ORACLE_PRODUCTION_IMAGE:?Pinned production image required}",
+      "pull_policy": "never",
+      "platform": "linux/arm64",
+      "profiles": [
+        "production"
+      ],
+      "env_file": [
+        {
+          "path": "/etc/onesa/backends/portal-production.env",
+          "format": "raw"
+        }
+      ],
+      "environment": {
+        "PORT": "8300"
+      },
+      "ports": [
+        "127.0.0.1:18300:8300"
+      ],
+      "networks": [
+        "production"
+      ],
+      "mem_limit": "384m",
+      "cpus": 0.6,
+      "cpu_shares": 512,
+      "restart": "unless-stopped",
+      "init": true,
+      "read_only": true,
+      "tmpfs": [
+        "/tmp"
+      ],
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "pids_limit": 128,
+      "stop_grace_period": "150s",
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "labels": {
+        "org.onesa.product": "portal",
+        "org.onesa.environment": "production",
+        "org.onesa.source-commit": "${ORACLE_PRODUCTION_COMMIT:?Exact source commit required}"
+      },
+      "volumes": [
+        "production_storage:/app/storage"
+      ]
+    }
+  },
+  "networks": {
+    "staging": null,
+    "production": null
+  },
+  "volumes": {
+    "staging_storage": null,
+    "production_storage": null
+  }
+}
