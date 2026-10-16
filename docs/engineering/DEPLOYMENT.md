@@ -18,6 +18,18 @@ Use an explicitly configured Cloudflare HTTPS tunnel for API ingress, retaining
 application authentication/CSRF/ownership checks and existing Access/WAF protections.
 No wildcard ingress or privileged crawler/session bypass is permitted.
 
+The maintained `infra/oracle/operations/onesa-backend-tunnel@.service` runs separate
+`staging` and `production` connector instances. Install only the checksum-verified,
+security-scanned official ARM64 connector at its versioned path. Keep each generated
+connector token in its matching root-owned mode-600 `tunnel-<environment>.token`
+file under `/etc/onesa/backends/`; systemd passes it through `LoadCredential`, never
+command-line text or shared environment variables. Validate the unit with
+`systemd-analyze verify` before enabling only the intended instance. Its metrics
+listener binds loopback, and its dynamic user has no application runtime secrets.
+Stopping an instance withdraws only that environment's tunnel; it does not stop the
+APIs or existing workers. Retain exact tunnel IDs, host mappings and connector
+receipts in the existing restricted migration evidence. Never publish token output.
+
 Keep matching private runtime values in root-owned mode-600 files under
 `/etc/onesa/backends/`; never copy them into Git or Actions. Preserve each environment's
 original database, origin, key and inference/storage settings. Build from credential-free
