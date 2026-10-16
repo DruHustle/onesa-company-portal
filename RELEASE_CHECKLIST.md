@@ -358,3 +358,20 @@ overflow, image loading, unique footer destinations, retained Company/Product/Do
 links, no mailto/telephone links and keyboard focus. Visually reviewed desktop EN and
 mobile DE. Earlier c199fa6 full CI and body-layout acceptance are preserved; no unrelated
 application or backend change is included. Hosted footer acceptance remains pending.
+
+Footer release closure: the above prepared work is now live from main
+`90e994757d010cf2d3ead8c7342f6bde2cc137e6`, deployment
+`dpl_Hr9rpZwXx3p38uarjNLhZb2KK69q`. Full exact-main CI/security and hygiene passed;
+16 hosted footer views, two exact-main Preview views and two production views passed,
+with the unchanged body evidence explicitly retained. Canonical Home/Products and
+public/private API boundaries passed. Restricted `company-footer-release/completion.json`
+holds the current receipt; no backend deployment or credential change occurred.
+
+Mobile homepage correction (prepared): content-sized hero, aligned stacked actions,
+compact rounded capability rows and tighter product/section spacing below 761px.
+Keep desktop composition and all public content/destinations. Twenty isolated EN/DE ×
+320/390/600/768/1440px × light/dark views passed axe, image loading, overflow and
+browser-error checks. Visually reviewed EN390 and DE320. These are local results;
+full required technical CI and exact-source hosted acceptance must pass before release.
+The owner's current direction revokes earlier technical-test bypass permission;
+pre-launch legal deferrals do not waive any technical, access, preservation or safety check.
