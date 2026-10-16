@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add reviewed-ledger erasure replay for labeled, network-isolated Portal restores.
+  Quarantine restored accounts, sessions, files, publication, transfers and jobs;
+  preserve governance history and stop on legal-hold conflicts. Synthetic tests
+  cover actual migrations, transaction rollback and idempotence. This grants no
+  production restore authority or approval of retention drafts.
+- Add authenticated independent recovery of AI/Robot encrypted envelopes through
+  the existing restricted backup reader, bound to product, key and ciphertext hash.
 - Prepare AI/Robot database snapshots through the existing Oracle encrypted backup
   transport, with separate product prefixes, consistent reads, target/configuration
   pins, bounded storage and stale/failure monitoring. No new backup schedule or

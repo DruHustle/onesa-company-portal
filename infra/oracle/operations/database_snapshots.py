@@ -377,7 +377,7 @@ def main(product):
         receipt.update(
             verified_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
             consistent_snapshot=True,
-            scheduled=True,
+            schedule_verified=False,
             automatic_deletion=False,
         )
         temp = STATE / ("database-backup-" + product + "-success.tmp")

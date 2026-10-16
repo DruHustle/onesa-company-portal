@@ -174,6 +174,31 @@ restored sessions/capabilities and reconcile post-snapshot erasures/unpublicatio
 before any service activation. An unavailable erasure ledger is a restore blocker;
 encryption and a successful database import do not establish that requirement.
 
+`openDatabaseSnapshot` in `scripts/oracle_backup_payload.mjs` verifies the recorded
+ciphertext hash, product, recovery-key identity, authenticated envelope and plaintext
+hash before returning a snapshot. Keep the private RSA key off the VM. Use the
+existing restricted backup reader for the exact recorded object; never enumerate
+or copy unrelated application objects as part of recovery evidence.
+
+For Portal, `scripts/release/restore_lockdown.py --container <isolated-container>
+--database <restore-database> --replay-ledger <private-ledger>
+--apply-isolated-replay` accepts only an explicitly labeled, running Docker target
+with network `none`, no published ports and only temporary-memory mounts. The
+snapshot hash must match the private ledger. Supply complete event and legal-hold
+categories for deleted enquiries, applications and files, unpublished content and
+disabled users, with backup and reconciliation timestamps. Missing/currentness
+evidence remains a blocker; empty categories are not proof that no erasures occurred.
+
+Replay is transactional, bounded and idempotent. Associated application files and
+notification jobs are reconciled; conflicting file holds stop the transaction.
+All restored users, sessions, recovery/enrollment capabilities, transfers, scheduled
+publication, clean/approved files and queued work are quarantined. Governance records,
+versions and approval history remain intact. Restore only surviving file objects
+from reconciled metadata; do not hydrate every backed-up object. This tool never
+deletes objects from production storage or executes a draft retention policy.
+Its receipt explicitly grants no service activation. The legacy fixed synthetic
+lockdown mode remains available and does not claim erasure reconciliation.
+
 Offline checks: `python3 -m unittest discover -s scripts -p 'test_oracle*.py'` and
 `node --test scripts/test_oracle_backup_payload.mjs`. They use synthetic fixtures
 and do not qualify production copies, schedules or recovery objectives. Stop only

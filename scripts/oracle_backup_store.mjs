@@ -38,7 +38,7 @@ try{
   let removed=0;for(const item of listed){if(new RegExp('^'+PREFIX.replaceAll('.','\\.')+'[a-f0-9]{32}\\.json$').test(item.Key)&&item.Key!==object&&item.LastModified&&Date.now()-item.LastModified.getTime()>7*86400000){await s3.send(new DeleteObjectCommand({Bucket:bucket,Key:item.Key}));removed++;}}
   console.log(JSON.stringify({passed:true,id:input.id,object_key:object,ciphertext_sha256:digest(body),dump_sha256:digest(dump),object_count:objects.length,source_bytes:total,key_id:keyId,retention_days:7,expired_archives_removed:removed,off_instance_storage_verified:true}));
  }else if(input.action==='read'){
-  require(new RegExp('^'+PREFIX.replaceAll('.','\\.')+'(?:[a-f0-9]{32}\\.json|keys/[a-f0-9]{64}\\.enc)$').test(input.key));fs.writeFileSync(1,await get(input.key));
+  require(new RegExp('^'+PREFIX.replaceAll('.','\\.')+'(?:[a-f0-9]{32}\\.json|keys/[a-f0-9]{64}\\.enc)$').test(input.key)||/^\.onesa-database-backups\/v1\/(?:ai|robot)\/[a-f0-9]{32}\.json$/.test(input.key));fs.writeFileSync(1,await get(input.key));
  }else if(input.action==='escrow'){
   require(/^[a-f0-9]{64}$/.test(input.key_id));const bytes=Buffer.from(input.ciphertext,'base64');require(bytes.length>100&&bytes.length<16384);
   const object=PREFIX+'keys/'+input.key_id+'.enc';await s3.send(new PutObjectCommand({Bucket:bucket,Key:object,Body:bytes,ServerSideEncryption:'AES256'}));require(digest(await get(object))===digest(bytes));console.log(JSON.stringify({passed:true,escrow_object_key:object,key_id:input.key_id,ciphertext_sha256:digest(bytes)}));
