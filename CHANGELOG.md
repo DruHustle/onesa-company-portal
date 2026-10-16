@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-16 — Rounded Company interface and API monitoring live
+
+- Released frontend `8bee209a6ea82a2d63d187d1b23046f051698f0f` to the existing
+  Company/Portal domains, deployment `dpl_CfUvaU7BZE4QQ3r2GGEsvy1Y5CzM`.
+  Homepage capability cards and primary action buttons now have 20px corners.
+- Exact-main CI/security passed. Eight affected-page Preview views and two corrected
+  runtime views passed; two canonical production views verify navigation, accessibility,
+  no overflow, public news availability and the public/admin authentication boundary.
+  The Oracle backend, accounts and data were unchanged.
+- Extended the existing Oracle operations timer to all six APIs. A real timer sample
+  verified HTTPS/container health, zero restarts/alerts and unchanged worker/scanner/API
+  process identities. Fourteen isolated monitoring regressions passed; existing backup,
+  notification credentials and service budgets are retained.
+
 ## 2026-10-16 — Company production API moved to Oracle
 
 - Moved the existing qualified backend to an immutable, scanned ARM64 image on

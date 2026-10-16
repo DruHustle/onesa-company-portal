@@ -1,5 +1,19 @@
 # Production release checklist
 
+## Rounded homepage and Oracle monitoring — LIVE 2026-10-16
+
+Frontend `8bee209a6ea82a2d63d187d1b23046f051698f0f`, deployment
+`dpl_CfUvaU7BZE4QQ3r2GGEsvy1Y5CzM`, is live on the existing domains. Exact-main
+verification `38867502290` and hygiene `38867502186` pass. Eight affected CSS views,
+two corrected Preview runtime views and two canonical production views pass, including
+20px cards/buttons, navigation, axe, overflow, public news200 and the existing public403/
+Portal401 private boundary. The accepted backend tree, accounts and data are unchanged.
+Existing Oracle monitoring now covers six APIs with a real healthy timer sample,
+zero restarts/alerts and preserved application/worker/scanner identities. Restricted
+receipts: `private/oracle/application-release-20261016/` and the existing migration
+directory. Earlier prepared/Render-hold entries below are historical; the owner has
+authorized current qualified Oracle/Vercel application releases, with Render still held.
+
 ## Rounded homepage action buttons — prepared 2026-10-16
 
 “Explore our technology” and the closing “Start a conversation” button use 20px
