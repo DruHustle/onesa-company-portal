@@ -21,6 +21,9 @@ No wildcard ingress or privileged crawler/session bypass is permitted.
 The maintained `infra/oracle/operations/onesa-backend-tunnel@.service` runs separate
 `staging` and `production` connector instances. Install only the checksum-verified,
 security-scanned official ARM64 connector at its versioned path. Keep each generated
+binary under `/usr/local/lib/onesa-tunnel/`, with directory/executable mode755;
+the separate `/usr/local/lib/onesa/` administration directory stays mode700.
+Keep each generated
 connector token in its matching root-owned mode-600 `tunnel-<environment>.token`
 file under `/etc/onesa/backends/`; systemd passes it through `LoadCredential`, never
 command-line text or shared environment variables. Validate the unit with
