@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased — Mobile homepage layout
+## 2026-10-16 — Mobile homepage layout live
 
 - Reduced empty space in the mobile hero, capability cards and product previews.
 - Aligned mobile actions and section spacing while retaining the desktop layout, rounded controls and system appearance.
-- Release requires full technical CI and source-bound hosted acceptance; no technical-test bypass is authorized.
+- Released frontend `a0c3365d99f7c5df22985660cbd99c2c2bbecca3`, deployment `dpl_5r6YMSRv576jUXBvEASd8epSVPbJ`, after full exact-main CI and source-bound hosted acceptance. Twenty affected staging views and final EN/DE production views passed; the Oracle backend was retained. No technical-test bypass was used.
 
 ## 2026-10-16 — Company Home, Products and footer live
 
