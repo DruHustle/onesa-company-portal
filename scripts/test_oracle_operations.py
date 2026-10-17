@@ -165,6 +165,65 @@ class OperationsGuards(unittest.TestCase):
         self.assertTrue(result["provider_accepted"])
         self.assertFalse(result["delivery_verified"])
 
+    def test_failure_details_are_scoped_and_reference_is_retained(self):
+        metrics = {"backends": {
+            "robot-production": {"container_healthy": False, "http_healthy": False,
+                                 "http_status": 503, "secret": "never-serialize"},
+            "portal-staging": {"container_healthy": True, "http_healthy": True,
+                               "http_status": 200},
+            "unapproved-host": {"container_healthy": False, "http_status": 500},
+        }}
+        values = {"MAIL_PROVIDER": "resend", "NOTIFY_EMAIL": "andrew@onesa.eu",
+                  "MAIL_FROM": "synthetic@example.invalid", "RESEND_API_KEY": "synthetic"}
+        requests = []
+        def opened(request, timeout):
+            requests.append(json.loads(request.data))
+            return io.BytesIO(b'{"id":"synthetic-receipt"}')
+        with (
+            patch.dict("sys.modules", {"backup": SimpleNamespace(checked_env=lambda: (values, None))}),
+            patch.object(monitor.urllib.request, "build_opener",
+                         return_value=SimpleNamespace(open=opened)),
+        ):
+            result = monitor.notify(["backend-api-unavailable"], metrics=metrics,
+                                    checked_at="2026-10-17T14:00:00+00:00")
+        self.assertIn("robot-production; container=unhealthy; public HTTPS=503", requests[0]["text"])
+        self.assertIn("Reference: " + result["reference"], requests[0]["text"])
+        self.assertIn("Observed at (UTC):", requests[0]["text"])
+        self.assertNotIn("never-serialize", str(result) + str(requests))
+        self.assertNotIn("unapproved-host", str(result) + str(requests))
+        self.assertEqual(list(result["affected_backends"]), ["robot-production"])
+
+    def test_failure_and_recovery_preserve_distinct_observations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            config = state / "config.json"
+            config.write_text("{}")
+            actual_read = Path.read_text
+            def read(path, *args, **kwargs):
+                return config.read_text() if str(path) == "/etc/onesa/operations.json" else actual_read(path, *args, **kwargs)
+            failed = {**self.metrics, "backend_api_healthy": False, "backends": {
+                "robot-production": {"container_healthy": False, "http_healthy": False, "http_status": 503}}}
+            with (
+                patch.object(monitor, "STATE", state),
+                patch.object(monitor.os, "geteuid", return_value=0),
+                patch.object(monitor.argparse.ArgumentParser, "parse_args", return_value=SimpleNamespace(simulate=False)),
+                patch.object(monitor.Path, "read_text", read),
+                patch.object(monitor, "sample", side_effect=[failed, self.metrics]),
+                patch.object(monitor, "notify", return_value={"reference": "synthetic-reference"}) as notify,
+                patch("builtins.print"),
+            ):
+                monitor.main()
+                preserved = (state / "last-failure.json").read_bytes()
+                monitor.main()
+            self.assertEqual(notify.call_count, 1)
+            self.assertEqual((state / "last-failure.json").read_bytes(), preserved)
+            recovery = json.loads((state / "last-recovery.json").read_text())
+            self.assertEqual(recovery["cleared_alerts"], ["backend-api-unavailable"])
+            self.assertEqual(list(recovery["previous_failed_backends"]), ["robot-production"])
+            incident = json.loads((state / "last-notified-incident.json").read_text())
+            self.assertEqual(incident["notification"]["reference"], "synthetic-reference")
+            self.assertEqual((state / "last-notified-incident.json").stat().st_mode & 0o777, 0o600)
+
     def test_monitor_never_stops_restarts_or_deletes_services(self):
         source = Path(monitor.__file__).read_text()
         for command in ["'stop'", "'restart'", "'rm'", "'kill'", "'pause'"]:
