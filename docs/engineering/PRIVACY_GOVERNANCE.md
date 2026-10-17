@@ -96,7 +96,8 @@ before making a restored system available. Never copy staging data into producti
 Provisional legacy application/enquiry TTL settings no longer delete business records.
 Existing security-session expiry, bounded-transfer cleanup and explicitly authorized
 storage-deletion outbox processing retain their original behavior. No business-data
-retention automation or data-subject-request executor is activated by governance.
+retention automation is activated by governance. Explicit owner-confirmed, bounded
+erasure requests are separate from automatic retention; imported drafts never authorize them.
 
 The supplied source has three unresolved calendar interpretations: RET-01 says six
 months while its structured period says 180 days; RET-03 says twelve months while
@@ -229,7 +230,7 @@ flowchart TD
 
 ## API, UI and evidence
 
-All nine operations are under `/api/v1/admin/governance`: overview, filtered records,
+Governance operations are under `/api/v1/admin/governance`: overview, filtered records,
 record details, paginated versions, new revisions, review, archive/restore, events and
 protected revision PDFs. Zod schemas generate OpenAPI and frontend operation types.
 No manually copied DTOs or public governance API exists. Responses and PDFs are private
@@ -242,3 +243,57 @@ owner's real drafts. Hosted evidence must independently verify target identities
 actual database counts, insert-only reruns, owner/admin access, denied ordinary-user
 access, private PDFs and production persistence. Local tests are not hosted acceptance.
 Private source packages and hosted traces/screenshots must not enter public CI artifacts.
+
+## Controlled Portal lifecycle implementation
+
+Migration 009 is additive. It adds real future closure/rejection timestamps,
+private holds, bounded request plans/target outcomes, append-only events and an
+identity-only erasure journal. Existing historical dates are not guessed or backfilled.
+No migration deletes business data, approves a policy or starts a retention timer.
+
+The protected **Data Subject Requests** view now provides:
+
+- Read-only effective/proposed impact previews. An explicit Portal target, data-class
+  scope, trigger and UTC calendar context are required. Calendar months/years clamp
+  month ends; ambiguous source wording stays blocked. Draft previews are hypothetical.
+- Owner/MFA preservation holds and recorded releases. Existing enquiry/application
+  DELETE routes and database triggers enforce direct and associated CV holds.
+- Explicit-ID erasure plans, at most 20 targets, scoped to Portal enquiries,
+  applications and private files. Application plans include their attached CV;
+  overlapping targets, standalone attached CVs and public files are excluded.
+- Cancellation before execution, owner password/fresh MFA confirmation, immutable
+  plan identity, record/child fingerprints and revalidation of current holds. Each
+  target has a transaction savepoint and result. Changed/held targets are skipped;
+  failures roll back that target. Repeating an acknowledged execution never deletes
+  additional records or dispatches another object request.
+- Exact related local mail-job/transfer cleanup and the existing durable object
+  deletion outbox. In-flight mail delivery defers its target. The reminder worker
+  rechecks the enquiry under the same identity lock so deletion cannot recreate a
+  reminder from its earlier candidate read. No worker is started by the API.
+- Separate owner-recorded completion: all local targets must be erased and object
+  requests accepted; independent processor/mailbox, backup replay and applicable
+  object-verification references are required. This is recorded owner evidence,
+  not an automatic certification that external historical copies were purged.
+
+An administrator can inspect, plan and cancel; only the owner can create/release
+holds, execute erasure or record completion. Backend role, Origin, CSRF, session,
+step-up and bounded confirmation rate limits apply. Proof secrets never enter plan
+fingerprints, events, responses or audit records. Responses remain private/no-store.
+
+The replay-candidate export binds an exact backup SHA and timestamp. It includes
+journalled local erasure identities and current associated holds in a consistent
+read-only snapshot. It explicitly returns `complete:false` and
+`activationAuthorized:false`: pre-installation history, unpublished content, disabled
+users, external processors and in-flight changes still require reconciliation. Its
+nested candidate ledger is compatible with the isolated restore tool only after the
+owner establishes authoritative coverage; downloading it does not authorize recovery.
+Journal metadata is itself protected information, with access and retention reviewed
+separately from the erased business records.
+
+This Portal adapter cannot search or erase AI/Robot databases, delivered mailbox
+copies, provider logs or historical backups. Existing product-owned deletion/cascade
+and isolated replay procedures remain separate. Do not treat a Portal case as proof
+of cross-product erasure, or a missing purpose-end date as permission to infer one.
+No real-data erasure is performed to qualify this feature: use isolated synthetic
+records. Production qualification must preserve existing records/approvals and verify
+new controls through read-only inspection plus separately authorized owned fixtures.

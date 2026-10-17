@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Implement protected Portal lifecycle previews, owner-confirmed preservation holds,
+  explicit-ID erasure plans/cancellation, per-target outcomes and evidenced completion.
+  Enforce holds on existing deletion routes and related CVs; preserve identity-only
+  recovery events. Imported draft rules and automatic business expiry stay inactive.
+  Local/hosted qualification and production migration are tracked separately.
+
 - Add reviewed-ledger erasure replay for labeled, network-isolated Portal restores.
   Quarantine restored accounts, sessions, files, publication, transfers and jobs;
   preserve governance history and stop on legal-hold conflicts. Synthetic tests
