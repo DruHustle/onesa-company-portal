@@ -78,5 +78,45 @@ def main():
 CONTAINER = "onesa-remediation-portal-db"
 SQL = "BEGIN;\nUPDATE sessions SET expires_at=LEAST(expires_at,now());\nUPDATE recovery_tokens SET expires_at=LEAST(expires_at,now());\nUPDATE bounded_transfers SET expires_at=LEAST(expires_at,now());\nUPDATE content SET state='draft' WHERE state='published';\nUPDATE files SET approval='pending' WHERE approval='approved';\nUPDATE jobs SET status='failed',last_error='Restore lockdown: operator reconciliation required' WHERE status IN ('pending','running');\nCOMMIT;\nSELECT count(*) FROM sessions WHERE expires_at>now();\nSELECT count(*) FROM recovery_tokens WHERE expires_at>now();\nSELECT count(*) FROM bounded_transfers WHERE expires_at>now();\nSELECT count(*) FROM content WHERE state='published';\nSELECT count(*) FROM files WHERE approval='approved';\nSELECT count(*) FROM jobs WHERE status IN ('pending','running');\n"
 
+# Optional additive schema: old snapshots may predate Engineering Docs identities.
+# This is executed only after the existing isolated-target authority checks.
+ENGINEERING_SQL = """DO $engineering$ BEGIN
+ IF to_regclass('public.engineering_memberships') IS NOT NULL
+ OR to_regclass('public.engineering_identity_records') IS NOT NULL
+ OR to_regclass('public.engineering_email_challenges') IS NOT NULL THEN
+  IF to_regclass('public.engineering_memberships') IS NULL
+  OR to_regclass('public.engineering_identity_records') IS NULL
+  OR to_regclass('public.engineering_email_challenges') IS NULL THEN
+   RAISE EXCEPTION 'Incomplete restored engineering identity schema';
+  END IF;
+  UPDATE public.engineering_memberships SET enabled=false;
+  DELETE FROM public.engineering_identity_records;
+  DELETE FROM public.engineering_email_challenges;
+  IF EXISTS(SELECT 1 FROM public.engineering_memberships WHERE enabled)
+  OR EXISTS(SELECT 1 FROM public.engineering_identity_records)
+  OR EXISTS(SELECT 1 FROM public.engineering_email_challenges) THEN
+   RAISE EXCEPTION 'Restored engineering identity remains active';
+  END IF;
+ END IF;
+END $engineering$;
+"""
+ACCESS_SQL = """DO $access$ BEGIN
+ IF to_regclass('public.access_links') IS NOT NULL
+ OR to_regclass('public.access_registrations') IS NOT NULL
+ OR to_regclass('public.engineering_credentials') IS NOT NULL THEN
+  IF to_regclass('public.access_links') IS NULL
+  OR to_regclass('public.access_registrations') IS NULL
+  OR to_regclass('public.engineering_credentials') IS NULL THEN
+   RAISE EXCEPTION 'Incomplete restored access registration schema';
+  END IF;
+  DELETE FROM public.access_links;
+  IF EXISTS(SELECT 1 FROM public.access_links) THEN
+   RAISE EXCEPTION 'Restored sign-in links remain active';
+  END IF;
+ END IF;
+END $access$;
+"""
+SQL = SQL.replace("COMMIT;", ENGINEERING_SQL + ACCESS_SQL + "COMMIT;", 1)
+
 if __name__ == "__main__":
     main()

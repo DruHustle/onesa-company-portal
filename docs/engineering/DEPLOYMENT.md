@@ -1,5 +1,10 @@
 # Deployment and independent releases
 
+Prepared Portal-based Engineering Docs sign-in has a separate additive migration,
+feature flags, fixed OIDC client and qualified activation sequence. Follow
+[Engineering Docs identity](ENGINEERING_DOCS_IDENTITY.md); do not enable it from
+a business-website release or weaken Access/owner authentication.
+
 ## Current Company application release — 2026-10-16
 
 The owner lifted the application-artifact hold for qualified Oracle/Vercel releases;
@@ -562,3 +567,22 @@ infer a quota from earlier usage figures, restart repeatedly or change plans.
 Preserve completed UI acceptance separately. After the provider hold is resolved,
 establish actual readiness and complete only the outstanding read-only API checks.
 The UI publication does not certify full API availability or change legal records.
+
+## Portal authentication candidate prerequisites
+
+Registration and the revised Docs login require additive migration 011 after 010,
+its restricted-role privileges, the root-only access approval configuration and
+qualified API/worker/frontend artifacts. The frontend server independently enables
+`ACCESS_REGISTRATION_ENABLED` and `ENGINEERING_SIGNIN_ENABLED` only when the matching
+API is ready. With both off, existing password/MFA administration remains available
+and pending registration routes/controls stay hidden. This permits an independently
+qualified public UI release before the authentication cutover. Preserve existing
+users, passwords and MFA.
+Use an actual Git-based staging Preview for the host-bound authentication flow;
+Vercel local prebuilt output may lack build-time Git/system environment variables.
+A matching metadata label alone does not establish the runtime branch/origin.
+Verify the actual Preview origin against the running staging API before login;
+never use a localhost fallback, weaken Origin/CSRF checks or forge main as staging.
+Reference: [Vercel prebuilt deployment behavior](https://vercel.com/docs/cli/deploy),
+checked 2026-10-17. Existing exact-source CI and owner-controlled production gates
+remain mandatory. These are deployment prerequisites, not a live activation claim.

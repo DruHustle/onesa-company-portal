@@ -251,3 +251,18 @@ scanner and email credentials. Storage additionally rejects any remote binding i
 `NODE_ENV=test` before client construction or writes. Local server adapters bind loopback;
 no production bucket or credentials are prerequisites. Remote acceptance is a separate
 explicitly approved isolated target, never a fallback from ordinary local tests.
+
+## Engineering Docs identity verification
+
+`npm --prefix onesa-company-portal-frontend run test:domains` also checks the
+identity path/callback allowlist. After a production frontend build and Chromium
+installation, run `npm --prefix onesa-company-portal-frontend run test:engineering-sign-in`.
+It starts isolated loopback synthetic services and tests eight mobile/desktop
+appearance views, validation recovery, focus and axe; it sends no email and reads
+no database/provider configuration. Existing full backend tests exercise the actual
+OIDC/PKCE/signed-email flow, code expiry/replay, membership and owner controls using
+the disposable local test database and generated synthetic keys. The preload clears
+inherited ENGINEERING configuration before tests; deterministic schema export
+disables the provider. Local tests do not establish a successful Access integration
+or email inbox receipt. The separate activation sequence is in
+[Engineering Docs identity](ENGINEERING_DOCS_IDENTITY.md).

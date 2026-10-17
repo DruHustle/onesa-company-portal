@@ -1,2 +1,2 @@
 import {AdminPortal} from '@/features/admin/portal';
-export default function Admin(){const environment=process.env.VERCEL_ENV==='production'?'PRODUCTION':process.env.VERCEL_ENV==='preview'?'STAGING':process.env.VERCEL_ENV==='development'||process.env.NODE_ENV==='development'?'DEVELOPMENT':undefined;return <AdminPortal environment={environment}/>;}
+export default function Admin(){const environment=process.env.VERCEL_ENV==='production'?'PRODUCTION':process.env.VERCEL_ENV==='preview'?'STAGING':process.env.VERCEL_ENV==='development'||process.env.NODE_ENV==='development'?'DEVELOPMENT':undefined;return <AdminPortal environment={environment} accessEnabled={process.env.ACCESS_REGISTRATION_ENABLED==='true'} engineeringEnabled={process.env.ENGINEERING_SIGNIN_ENABLED==='true'}/>;}

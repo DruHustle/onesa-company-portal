@@ -1,10 +1,27 @@
 'use client';
 import {ResponsiveLink as Link} from '@/components/responsive-link';
 import {usePathname} from 'next/navigation';
-import {useRef} from 'react';
+import {useRef,useEffect} from 'react';
 import {copy,type Locale} from '@/config/copy';
 export function Navigation({locale}:{locale:Locale}) {
   const mobile = useRef<HTMLDetailsElement>(null);
+  const header = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const element = header.current;
+    if (!element) return;
+    const root = document.documentElement, name = '--onesa-header-height';
+    const previous = root.style.getPropertyValue(name);
+    let measured = '';
+    const measure = () => {
+      const height = element.getBoundingClientRect().height;
+      if (Number.isFinite(height) && height > 0) {
+        measured = height + 'px'; root.style.setProperty(name, measured);
+      }
+    };
+    measure();
+    const observer = new ResizeObserver(measure); observer.observe(element);
+    return () => { observer.disconnect(); if (root.style.getPropertyValue(name) === measured) { if (previous) root.style.setProperty(name, previous); else root.style.removeProperty(name); } };
+  }, []);
   const path = usePathname();
   const next = locale === 'en' ? 'de' : 'en';
   const nextPath = ['/', '/en', '/de'].includes(path)
@@ -22,7 +39,7 @@ export function Navigation({locale}:{locale:Locale}) {
       <Link className="language" href={nextPath} hrefLang={next} onClick={close}>{next.toUpperCase()}</Link>
     </>;
   }
-  return <header className="site-header">
+  return <header ref={header} className="site-header">
     <Link className="wordmark" href={`/${locale}`} aria-label="Onesa UG home">onesa<span>UG</span></Link>
     <nav id="main-nav" className="desktop-navigation" aria-label={navigationLabel}>{links()}</nav>
     <details className="mobile-navigation" ref={mobile} onKeyDown={event => {
