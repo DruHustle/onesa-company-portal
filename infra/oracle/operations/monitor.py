@@ -322,7 +322,33 @@ def sample(config):
     return metrics
 
 
-def notify(alerts, simulation=False):
+def failed_backends(metrics):
+    """Only fixed service identities and bounded health fields leave private metrics."""
+    details = metrics.get("backends", {})
+    result = {}
+    for name in BACKENDS:
+        value = details.get(name)
+        if not isinstance(value, dict):
+            continue
+        if value.get("container_healthy") is True and value.get("http_healthy") is True:
+            continue
+        status = value.get("http_status", 0)
+        result[name] = {
+            "container_healthy": value.get("container_healthy") is True,
+            "http_healthy": value.get("http_healthy") is True,
+            "http_status": status if type(status) is int and 0 <= status <= 599 else 0,
+        }
+    return result
+
+
+def write_record(path, value):
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(value, indent=2) + "\n")
+    temporary.chmod(0o600)
+    temporary.replace(path)
+
+
+def notify(alerts, simulation=False, *, metrics=None, checked_at=None):
     from backup import checked_env
 
     values, _ = checked_env()
@@ -348,6 +374,14 @@ def notify(alerts, simulation=False):
             else ""
         )
         + "\n".join(alerts)
+        + ("\nObserved at (UTC): " + checked_at if checked_at else "")
+        + "".join(
+            "\nAffected API: " + name
+            + "; container=" + ("healthy" if value["container_healthy"] else "unhealthy")
+            + "; public HTTPS=" + str(value["http_status"])
+            + (" (failed health validation)" if not value["http_healthy"] else "")
+            for name, value in failed_backends(metrics or {}).items()
+        )
         + "\nReference: "
         + reference,
     }
@@ -372,6 +406,9 @@ def notify(alerts, simulation=False):
     if not isinstance(receipt.get("id"), str):
         raise TypeError("Notification receipt absent")
     return {
+        "reference": reference,
+        "checked_at": checked_at,
+        "affected_backends": failed_backends(metrics or {}),
         "provider_receipt_id": receipt["id"],
         "recipient": values["NOTIFY_EMAIL"],
         "provider_accepted": True,
@@ -419,9 +456,27 @@ def main():
         "simulation": args.simulate,
         "delivery_verified": False,
     }
-    if should_send:
-        record["notification"] = notify(alerts, args.simulate)
     path = STATE / ("simulation.json" if args.simulate else "metrics.json")
+    previous = json.loads(path.read_text()) if path.exists() else {}
+    # Preserve the latest observed failure even if notification delivery fails.
+    # A cleared sample is recorded separately; it never converts a failed sample to PASS.
+    if not args.simulate:
+        if alerts:
+            write_record(STATE / "last-failure.json", record)
+        elif previous.get("alerts"):
+            write_record(STATE / "last-recovery.json", {
+                "checked_at": record["checked_at"],
+                "previous_failure_checked_at": previous.get("checked_at"),
+                "cleared_alerts": previous["alerts"],
+                "previous_failed_backends": failed_backends(previous.get("metrics", {})),
+                "backends": metrics.get("backends", {}),
+            })
+    if should_send:
+        record["notification"] = notify(
+            alerts, args.simulate, metrics=metrics, checked_at=record["checked_at"]
+        )
+        if not args.simulate:
+            write_record(STATE / "last-notified-incident.json", record)
     path.write_text(json.dumps(record, indent=2) + "\n")
     path.chmod(0o600)
     # Baseline keeps only counter fields at the top level; never overwrite baseline with injected values.
@@ -439,7 +494,9 @@ def main():
                 "event": "portal_operations_sample",
                 "alerts": alerts,
                 "simulation": args.simulate,
-                "notification_accepted": should_send,
+                "notification_accepted": bool(should_send),
+                "failed_backends": failed_backends(metrics),
+                "reference": record.get("notification", {}).get("reference"),
             }
         )
     )

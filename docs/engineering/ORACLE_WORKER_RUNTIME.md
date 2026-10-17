@@ -657,3 +657,21 @@ ssh onesa-portal-worker 'sudo systemctl list-timers onesa-portal-backup.timer on
 
 Keep receipts in the existing restricted `private/oracle/worker` and release-audit
 locations. Do not upload environment files or full container inspection output.
+
+### Identifying an API availability notification
+
+`backend-api-unavailable` aggregates the six staging/production API probes; it does
+not establish that every production application is down. Each notification now
+identifies the affected fixed service/environment, UTC observation time, container
+health and public HTTP result. Its reference is retained with the provider receipt
+in root-only `last-notified-incident.json` under `/var/lib/onesa/operations`.
+`last-failure.json` and `last-recovery.json` preserve distinct observations; current
+`metrics.json` alone cannot explain an earlier incident. These are latest-observation
+records, not an indefinite incident archive. Export relevant sanitized evidence to
+the existing restricted audit location during incident response.
+
+Check the named container and ingress layer before replacing anything. A public
+probe failing within its three-second budget is evidence of failed liveness, not
+proof of a database failure. The monitor never restarts Robot or replays commands.
+The existing 30-minute notification interval and all failure rules remain enforced.
+A single shared VM has no host failover; no zero-downtime guarantee is claimed.
