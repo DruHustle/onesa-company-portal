@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Identify the affected API/environment and UTC time in availability alerts; retain
+  the notification reference and separate failure/recovery evidence without changing
+  health thresholds, service state or the existing notification interval.
+
 - Prevent a deadlock between owner step-up and concurrent deletion audit records.
   Account changes and fresh-factor consumption remain serialized; hold/deletion
   exclusivity and audit foreign-key validation remain enforced.
