@@ -384,3 +384,11 @@ browser-error checks. Visually reviewed EN390 and DE320. These are local results
 full required technical CI and exact-source hosted acceptance must pass before release.
 The owner's current direction revokes earlier technical-test bypass permission;
 pre-launch legal deferrals do not waive any technical, access, preservation or safety check.
+
+
+### Mobile homepage simplification — 17 October 2026
+
+- Owner requested a quieter phone hero: hide only its supporting introduction and two calls to action below 761px, while retaining desktop copy and navigation/contact access.
+- Extend the navy hero to at least one stable viewport height, so it continues beyond the opening screen below the header. Natural content sizing supports short landscape screens and enlarged text.
+- Phone/tablet-width EN/DE, system light/dark, keyboard scroll cue, overflow, production build and exact-source hosted acceptance must pass before publication. Existing release evidence is not acceptance for this new layout.
+- Source prepared; production publication is pending fresh checks and normal promotion.

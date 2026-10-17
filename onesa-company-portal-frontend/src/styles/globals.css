@@ -141,17 +141,15 @@ button,input,select{min-height:var(--onesa-control-size)}
 @media(max-width:760px) { .hero { min-height:700px; padding-block-start:72px; } .hero h1 { font-size:clamp(3rem,10vw,5rem); } .hero-art img { object-position:65% center; opacity:.35; } .hero-art::after { background:linear-gradient(90deg,rgba(8,27,50,.96),rgba(8,27,50,.55)); } .hero-bottom { gap:20px; flex-wrap:wrap; } }
 @media(forced-colors:active) { .hero-art { display:none; } .hero { background:Canvas; color:CanvasText; } .hero-intro,.accent { color:CanvasText; } }
 
-/* Mobile home follows its content rather than leaving desktop-sized empty panels. */
+/* Mobile home: a quiet full-screen hero, followed by compact editorial sections. */
 @media (max-width:760px) {
  .home-page .section { padding:44px 24px; }
- .home-page .hero { min-height:0; padding-block-start:48px; }
+ .home-page .hero { min-height:100vh; min-height:100svh; grid-template-rows:auto auto; align-content:space-between; padding-block-start:clamp(64px,10svh,104px); }
  .home-page .hero-copy > .eyebrow { margin:0; }
- .home-page .hero h1 { font-size:clamp(2.6rem,10.5vw,3rem); margin-block:16px 24px; }
- .home-page .hero-intro { margin:0; font-size:1rem; line-height:1.65; }
+ .home-page .hero h1 { font-size:clamp(2.2rem,10.5vw,4rem); margin-block:20px 0; max-width:16ch; }
+ .home-page .hero-intro,.home-page .hero .actions { display:none; }
  .home-page .hero-art { margin:0; }
- .home-page .hero-art img { object-position:75% center; opacity:.26; }
- .home-page .hero .actions { display:grid; gap:8px; max-width:360px; }
- .home-page .hero .text-link { display:flex; min-height:44px; align-items:center; justify-content:center; }
+ .home-page .hero-art img { object-position:78% center; opacity:.44; }
  .home-page .hero-bottom { flex-wrap:nowrap; align-items:center; gap:24px; margin-block-start:32px; padding-block:18px; }
  .home-page .hero-bottom > span:first-child { display:none; }
  .home-page .hero-bottom > span:nth-child(2) { max-width:28ch; line-height:1.6; }
