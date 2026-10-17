@@ -180,6 +180,15 @@ hash before returning a snapshot. Keep the private RSA key off the VM. Use the
 existing restricted backup reader for the exact recorded object; never enumerate
 or copy unrelated application objects as part of recovery evidence.
 
+The owner-host backup decoder sends its recovered payload through a private process
+pipe, never terminal output or a log. Its output callback must complete before the
+caller parses or restores it: a nonblocking pipe can reject a large synchronous
+write with `EAGAIN` after only part of the payload. Keep checksum, escrow-key and
+tamper checks intact. `python3 -m unittest discover -s scripts -p test_oracle_backup_output.py`
+uses synthetic encrypted data and a mocked object service to exercise large-payload
+backpressure and corruption/key rejection; it contacts no provider. A successful
+decoder control is separate from an actual isolated restore and live activation.
+
 For Portal, `scripts/release/restore_lockdown.py --container <isolated-container>
 --database <restore-database> --replay-ledger <private-ledger>
 --apply-isolated-replay` accepts only an explicitly labeled, running Docker target
