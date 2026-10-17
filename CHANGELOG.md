@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Simplify the mobile homepage hero: retain its heading and artwork, hide its
+  supporting introduction/actions, and extend the navy panel beyond the opening
+  phone screen. Desktop introduction and actions remain available.
+
 - Implement protected Portal lifecycle previews, owner-confirmed preservation holds,
   explicit-ID erasure plans/cancellation, per-target outcomes and evidenced completion.
   Enforce holds on existing deletion routes and related CVs; preserve identity-only
