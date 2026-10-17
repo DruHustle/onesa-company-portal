@@ -7,13 +7,29 @@ import {generatePDF} from '../documents/pdf.js';
 import {audit} from '../services/db.js';
 import * as G from './schemas.js';
 import * as store from './store.js';
+import * as L from './lifecycle-schemas.js';
+import * as lifecycle from './lifecycle-store.js';
 
 type Guard=(roles:readonly Role[])=>(request:FastifyRequest)=>Promise<void>;
 const responses={400:error,401:error,403:error,404:error,409:error,429:error,500:error,503:error};
 const meta=(operationId:string)=>({operationId,tags:['Privacy governance'],security:[{sessionCookie:[]}],description:'INTERNAL. Owner/administrator access only; no public CMS or cache. Mutations require CSRF; final decisions require owner reauthentication.'});
 const params=z.object({stableId:G.stableId});
-export async function registerGovernance(app:FastifyInstance,allow:Guard){
+export async function registerGovernance(app:FastifyInstance,allow:Guard,sensitive?:(request:FastifyRequest)=>Promise<void>){
  const api=app.withTypeProvider<ZodTypeProvider>(),guard=allow(['administrator']);
+ const confirmed=async(req:FastifyRequest)=>{await guard(req);if(sensitive)await sensitive(req);};
+ api.get('/api/v1/admin/governance/holds',{preHandler:guard,schema:{...meta('listPrivacyHolds'),querystring:L.holdsQuery,response:{200:pageOf(L.hold),...responses}}},async req=>lifecycle.listHolds(req.query));
+ api.post('/api/v1/admin/governance/holds',{preHandler:confirmed,schema:{...meta('createPrivacyHold'),body:L.holdCreate,response:{200:L.hold,...responses}}},async req=>lifecycle.createHold(req.body,req.actor!,req.cookies.onesa_session!,req.id));
+ api.post('/api/v1/admin/governance/holds/:id/release',{preHandler:confirmed,schema:{...meta('releasePrivacyHold'),params:z.object({id:z.string().uuid()}),body:L.holdRelease,response:{200:L.hold,...responses}}},async req=>lifecycle.releaseHold(req.params.id,req.body,req.actor!,req.cookies.onesa_session!,req.id));
+ api.post('/api/v1/admin/governance/lifecycle/preview',{preHandler:guard,schema:{...meta('previewPrivacyLifecycle'),body:L.previewInput,response:{200:L.preview,...responses}}},async req=>lifecycle.previewLifecycle(req.body));
+
+ api.get('/api/v1/admin/governance/requests',{preHandler:guard,schema:{...meta('listPrivacyRequests'),querystring:z.object({page:z.coerce.number().int().min(1).max(10000).default(1),limit:z.coerce.number().int().min(1).max(50).default(20)}),response:{200:pageOf(L.lifecycleCase),...responses}}},async req=>lifecycle.listCases(req.query));
+ api.post('/api/v1/admin/governance/requests',{preHandler:guard,schema:{...meta('planPrivacyRequest'),body:L.caseCreate,response:{200:L.lifecycleCase,...responses}}},async req=>lifecycle.createCase(req.body,req.actor!,req.id));
+ api.get('/api/v1/admin/governance/requests/:id',{preHandler:guard,schema:{...meta('getPrivacyRequest'),params:z.object({id:z.string().uuid()}),response:{200:L.lifecycleCase,...responses}}},async req=>lifecycle.getCase(req.params.id));
+ api.get('/api/v1/admin/governance/requests/:id/events',{preHandler:guard,schema:{...meta('privacyRequestEvents'),params:z.object({id:z.string().uuid()}),response:{200:z.object({items:z.array(L.caseEvent)}),...responses}}},async req=>lifecycle.caseEvents(req.params.id));
+ api.post('/api/v1/admin/governance/requests/:id/cancel',{preHandler:guard,schema:{...meta('cancelPrivacyRequest'),params:z.object({id:z.string().uuid()}),body:L.caseAction,response:{200:L.lifecycleCase,...responses}}},async req=>lifecycle.cancelCase(req.params.id,req.body,req.actor!,req.id));
+ api.post('/api/v1/admin/governance/requests/:id/execute',{preHandler:confirmed,schema:{...meta('executePrivacyRequest'),params:z.object({id:z.string().uuid()}),body:L.caseAction,response:{200:L.lifecycleCase,...responses}}},async req=>lifecycle.executeCase(req.params.id,req.body,req.actor!,req.cookies.onesa_session!,req.id));
+ api.post('/api/v1/admin/governance/lifecycle/replay-export',{preHandler:guard,schema:{...meta('exportPrivacyReplayCandidate'),body:L.replayExportInput,response:{200:L.replayExport,...responses}}},async req=>lifecycle.exportReplay(req.body));
+ api.post('/api/v1/admin/governance/requests/:id/complete',{preHandler:confirmed,schema:{...meta('completePrivacyRequest'),params:z.object({id:z.string().uuid()}),body:L.caseCompletion,response:{200:L.lifecycleCase,...responses}}},async req=>lifecycle.completeCase(req.params.id,req.body,req.actor!,req.cookies.onesa_session!,req.id));
  api.get('/api/v1/admin/governance/overview',{preHandler:guard,schema:{...meta('privacyGovernanceOverview'),response:{200:G.overview,...responses}}},async()=>store.summary());
  api.get('/api/v1/admin/governance/records',{preHandler:guard,schema:{...meta('listGovernanceRecords'),querystring:G.query,response:{200:pageOf(G.record),...responses}}},async req=>store.listRecords(req.query));
  api.get('/api/v1/admin/governance/records/:stableId',{preHandler:guard,schema:{...meta('getGovernanceRecord'),params,querystring:z.object({revision:z.coerce.number().int().min(1).optional()}),response:{200:G.record,...responses}}},async req=>store.getRecord(req.params.stableId,req.query.revision));
