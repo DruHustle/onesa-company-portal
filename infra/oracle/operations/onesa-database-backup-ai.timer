@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly Onesa AI encrypted snapshot
+
+[Timer]
+OnCalendar=*-*-* *:10:00
+RandomizedDelaySec=60
+Persistent=true
+Unit=onesa-database-backup@ai.service
+
+[Install]
+WantedBy=timers.target
