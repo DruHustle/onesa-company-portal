@@ -214,7 +214,7 @@ test("Email proofs have bounded attempts, expiry, membership and one-use control
   );
   await assert.rejects(consumeEngineeringChallenge(typed, expired, expiryCode));
 });
-test("OIDC code flow requires a cookie-bound interaction and email proof, then issues a narrowly scoped signed identity", async () => {
+for (const method of ["otp", "email_link", "pwd"]) test("OIDC cookie/PKCE and signed identity with " + method, async () => {
   const jar = new Map<string, string>();
   async function request(options: InjectOptions) {
     const response = await app.inject({
@@ -265,19 +265,19 @@ test("OIDC code flow requires a cookie-bound interaction and email proof, then i
     ).statusCode,
     403,
   );
-  const start = await request({
-    method: "POST",
-    url: "/api/v1/engineering-sign-in/" + uid + "/start",
-    headers: { origin: process.env.PUBLIC_ORIGIN },
-    payload: { csrf, email: "engineer@onesa.eu" },
-  });
-  assert.equal(start.statusCode, 200, start.body);
-  const finished = await request({
-    method: "POST",
-    url: "/api/v1/engineering-sign-in/" + uid + "/verify",
-    headers: { origin: process.env.PUBLIC_ORIGIN },
-    payload: { csrf, code: await codeFor(uid) },
-  });
+  let finished;
+  if (method === "pwd") {
+    await db.query("INSERT INTO engineering_credentials(membership_id,password_hash) VALUES($1,$2) ON CONFLICT(membership_id) DO NOTHING",[memberId,passwordHash("synthetic engineering password")]);
+    finished = await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/password",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf,email:"engineer@onesa.eu",password:"synthetic engineering password"}});
+  } else if (method === "email_link") {
+    const start = await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/link",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf,email:"engineer@onesa.eu"}});assert.equal(start.statusCode,200,start.body);
+    const job=(await db.query("SELECT payload FROM jobs WHERE dedupe_key LIKE 'access-link:%' AND payload->>'to'='engineer@onesa.eu' ORDER BY created_at DESC LIMIT 1")).rows[0];
+    const raw=decrypt(job.payload.encryptedText).match(/#access-link=([a-f0-9]{64})/)?.[1];assert.ok(raw);
+    finished=await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/link-verify",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf,token:raw}});
+  } else {
+    const start = await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/start",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf,email:"engineer@onesa.eu"}});assert.equal(start.statusCode,200,start.body);
+    finished=await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/verify",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf,code:await codeFor(uid)}});
+  }
   assert.equal(finished.statusCode, 200, finished.body);
   const resume = await request({ url: finished.json().continuePath });
   assert.equal(resume.statusCode, 303, resume.body);

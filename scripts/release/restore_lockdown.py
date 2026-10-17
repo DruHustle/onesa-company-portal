@@ -100,7 +100,23 @@ ENGINEERING_SQL = """DO $engineering$ BEGIN
  END IF;
 END $engineering$;
 """
-SQL = SQL.replace("COMMIT;", ENGINEERING_SQL + "COMMIT;", 1)
+ACCESS_SQL = """DO $access$ BEGIN
+ IF to_regclass('public.access_links') IS NOT NULL
+ OR to_regclass('public.access_registrations') IS NOT NULL
+ OR to_regclass('public.engineering_credentials') IS NOT NULL THEN
+  IF to_regclass('public.access_links') IS NULL
+  OR to_regclass('public.access_registrations') IS NULL
+  OR to_regclass('public.engineering_credentials') IS NULL THEN
+   RAISE EXCEPTION 'Incomplete restored access registration schema';
+  END IF;
+  DELETE FROM public.access_links;
+  IF EXISTS(SELECT 1 FROM public.access_links) THEN
+   RAISE EXCEPTION 'Restored sign-in links remain active';
+  END IF;
+ END IF;
+END $access$;
+"""
+SQL = SQL.replace("COMMIT;", ENGINEERING_SQL + ACCESS_SQL + "COMMIT;", 1)
 
 if __name__ == "__main__":
     main()

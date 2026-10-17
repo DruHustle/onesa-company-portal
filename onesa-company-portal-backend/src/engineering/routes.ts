@@ -1,3 +1,8 @@
+import {
+  requestEngineeringLink,
+  consumeEngineeringLink,
+  engineeringPasswordAccount,
+} from "../auth/access.js";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import type { IncomingMessage } from "node:http";
@@ -244,44 +249,147 @@ export async function registerEngineeringIdentity(
       },
     },
     async (req, reply) => {
-      const { config, provider } = await verifiedInteraction(
-        req,
-        reply,
-        req.body.csrf,
-      );
+      const { config } = await verifiedInteraction(req, reply, req.body.csrf);
       await limits.limit("engineering-code:" + limits.address(req), 30, 900);
       const accountId = await consumeEngineeringChallenge(
-          config,
-          req.params.uid,
-          req.body.code,
-        ),
-        grant = new provider.Grant({ accountId, clientId: config.clientId });
-      grant.addOIDCScope("openid email profile");
-      const grantId = await grant.save();
-      const next = new URL(
-        await provider.interactionResult(
-          req.raw,
-          reply.raw,
-          { login: { accountId, amr: ["otp"] }, consent: { grantId } },
-          { mergeWithLastSubmission: false },
-        ),
+        config,
+        req.params.uid,
+        req.body.code,
       );
-      if (
-        next.origin !== env.PUBLIC_ORIGIN ||
-        !new RegExp("^" + identityPath + "/auth/[A-Za-z0-9_-]{8,128}$").test(
-          next.pathname,
-        ) ||
-        next.search ||
-        next.hash
-      )
-        throw new HttpError(
-          500,
-          "ENGINEERING_CONTINUE",
-          "Sign-in could not be completed.",
-        );
-      return { continuePath: next.pathname };
+      return finish(req, reply, accountId);
     },
   );
+  async function finish(
+    req: FastifyRequest,
+    reply: FastifyReply,
+    accountId: string,
+    method = "otp",
+  ) {
+    const { config, provider } = configured();
+    const grant = new provider.Grant({ accountId, clientId: config.clientId });
+    grant.addOIDCScope("openid email profile");
+    const grantId = await grant.save();
+    const next = new URL(
+      await provider.interactionResult(
+        req.raw,
+        reply.raw,
+        { login: { accountId, amr: [method] }, consent: { grantId } },
+        { mergeWithLastSubmission: false },
+      ),
+    );
+    if (
+      next.origin !== env.PUBLIC_ORIGIN ||
+      !new RegExp("^" + identityPath + "/auth/[A-Za-z0-9_-]{8,128}$").test(
+        next.pathname,
+      ) ||
+      next.search ||
+      next.hash
+    )
+      throw new HttpError(
+        500,
+        "ENGINEERING_CONTINUE",
+        "Sign-in could not be completed.",
+      );
+    return { continuePath: next.pathname };
+  }
+  for (const action of ["link", "link-verify", "password"] as const) {
+    const body =
+      action === "link"
+        ? z.object({ csrf: proof, email: z.email().max(254) })
+        : action === "password"
+          ? z.object({
+              csrf: proof,
+              email: z.email().max(254),
+              password: z.string().min(1).max(256),
+            })
+          : z.object({
+              csrf: proof,
+              token: z.string().regex(/^[a-f0-9]{64}$/),
+            });
+    api.post(
+      identityPath.replace("engineering-identity", "engineering-sign-in") +
+        "/:uid/" +
+        action,
+      {
+        logLevel: "silent",
+        schema: {
+          ...meta(
+            {
+              link: "requestEngineeringSignInLink",
+              "link-verify": "verifyEngineeringSignInLink",
+              password: "engineeringPasswordSignIn",
+            }[action],
+          ),
+          params,
+          body,
+          response: {
+            200: z.union([
+              z.object({ ok: z.literal(true) }),
+              z.object({ continuePath: z.string() }),
+            ]),
+            ...errors,
+          },
+        },
+      },
+      async (req, reply) => {
+        const input = req.body as {
+          csrf: string;
+          email?: string;
+          password?: string;
+          token?: string;
+        };
+        const { config } = await verifiedInteraction(req, reply, input.csrf);
+        await limits.limit(
+          "engineering-access-ip:" + limits.address(req),
+          10,
+          900,
+        );
+        if (action === "link") {
+          const email = input.email!.toLowerCase();
+          await limits.limit(
+            "engineering-link-email:" + emailRateKey(config, email),
+            3,
+            3600,
+          );
+          await requestEngineeringLink(
+            email,
+            req.params.uid,
+            config.externalEmails,
+          );
+          return { ok: true as const };
+        }
+        if (action === "password") {
+          const email = input.email!.toLowerCase();
+          await limits.limit(
+            "engineering-password-email:" + emailRateKey(config, email),
+            5,
+            900,
+          );
+          return finish(
+            req,
+            reply,
+            await engineeringPasswordAccount(
+              email,
+              input.password!,
+              config.externalEmails,
+            ),
+            "pwd",
+          );
+        }
+        return finish(
+          req,
+          reply,
+          await consumeEngineeringLink(
+            input.token!,
+            req.params.uid,
+            config.externalEmails,
+          ),
+          "email_link",
+        );
+      },
+    );
+  }
+
   const owner = allow(["owner"]),
     ownerMeta = (operationId: string) => ({
       ...meta(operationId),
@@ -383,6 +491,10 @@ export async function registerEngineeringIdentity(
           )
         ).rows[0];
         if (!req.body.enabled) {
+          await client.query(
+            "DELETE FROM access_links WHERE membership_id=$1",
+            [r.id],
+          );
           await client.query(
             "DELETE FROM engineering_email_challenges WHERE membership_id=$1",
             [r.id],
