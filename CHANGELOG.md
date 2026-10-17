@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Prevent a deadlock between owner step-up and concurrent deletion audit records.
+  Account changes and fresh-factor consumption remain serialized; hold/deletion
+  exclusivity and audit foreign-key validation remain enforced.
+
 - Simplify the mobile homepage hero: retain its heading and artwork, hide its
   supporting introduction/actions, and extend the navy panel beyond the opening
   phone screen. Desktop introduction and actions remain available.

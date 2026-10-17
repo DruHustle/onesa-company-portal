@@ -1,5 +1,17 @@
 # Production release checklist
 
+## Owner step-up and concurrent deletion — correction prepared 2026-10-17
+
+Exact-main CI `39035817445` exposed a hold/deletion deadlock: step-up's exclusive
+owner-row lock blocked deletion's audit foreign-key reference while waiting for
+the deletion target. A deterministic local regression reproduces that blocked
+reference. `FOR NO KEY UPDATE` retains account/factor serialization and permits
+the foreign-key read. All 104 isolated backend tests, lint, type checks, build,
+contract drift, documentation and publication hygiene pass with the correction.
+Fresh remote CI and qualified API/worker rollout remain required; no failed
+technical check is overridden. The earlier mobile Preview acceptance is retained
+for its unchanged frontend component, rather than repeated as backend evidence.
+
 ## Portal lifecycle controls — implementation, not deployed
 
 Additive migration 009, generated contracts and the protected requests UI are
