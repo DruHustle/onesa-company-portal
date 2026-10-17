@@ -241,3 +241,29 @@ for (const locale of ['en', 'de'] as const) {
     });
   }
 }
+
+test('bookmarked topic survives late browser restoration', async ({page}) => {
+  await page.setViewportSize({width:390,height:900});
+  await page.goto('/en/technology#software-development');
+  const heading=page.getByRole('heading',{name:'Software development',exact:true});
+  await expect(heading).toBeFocused();
+  // Model the observed WebKit ordering: hydration focus, pageshow, history restore.
+  await page.evaluate(() => {
+    requestAnimationFrame(() => {
+      window.scrollTo(0,0);
+      document.documentElement.dataset.syntheticRestorationComplete='true';
+    });
+    window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:false}));
+  });
+  await expect(page.locator('html')).toHaveAttribute('data-synthetic-restoration-complete','true');
+  await expect(heading).toBeInViewport();
+  await expect.poll(() => heading.evaluate(node => Math.abs(node.getBoundingClientRect().y-parseFloat(getComputedStyle(node).scrollMarginBlockStart)))).toBeLessThan(2);
+  // A cached Back navigation must keep the reader's own position.
+  await page.evaluate(() => {
+    window.scrollTo(0,0);
+    window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));
+  });
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  expect(await page.evaluate(() => history.scrollRestoration)).toBe('auto');
+});
