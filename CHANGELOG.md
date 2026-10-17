@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Extend original editorial imagery to Research, Careers, Partnerships and planned
+  app examples, with published-story fallbacks that preserve CMS-selected images.
+  Keep semantic foreground/background appearance changes immediate to avoid transient
+  low-contrast buttons during system theme changes.
+
+- Add original industry imagery, concise English/German sector descriptions and
+  a spacious responsive card layout. Extend supporting imagery to About and Technology
+  using locally served, lazy-loaded WebP variants with reserved dimensions.
+
 - Recognize emailed access links opened in an already-open sign-in or registration
   page. Remove the fragment into memory on hash navigation while preserving explicit
   confirmation, administrator MFA and existing credentials. Hosted rollout remains pending.
