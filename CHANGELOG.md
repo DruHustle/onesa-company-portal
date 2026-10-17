@@ -10,6 +10,8 @@
   Docs, retaining explicitly approved addresses. Offer emailed one-use sign-in links
   or email/password, preserving existing administrator MFA and credentials.
   Additive migration 011 and the revised authentication flow require hosted qualification.
+  Keep new frontend controls/routes default-off until that matching API is ready;
+  existing password/MFA administration and independent public releases remain available.
 
 - Distinguish engineering-membership owner proof from user-account proof with
   specific accessible labels; keep static configuration guidance outside live feedback.

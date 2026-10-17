@@ -5,6 +5,7 @@ import { once } from "node:events";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+const accessEnabled = process.env.ONESA_TEST_ACCESS_MODE !== "disabled";
 const states = new Map(),
   proxyKey = "synthetic-ui-proxy-only",
   proof = "a".repeat(64);
@@ -81,7 +82,8 @@ const env = {
   PUBLIC_ORIGIN: origin,
   SITE_URL: origin,
   BACKEND_URL: "http://127.0.0.1:" + apiPort,
-  ENGINEERING_SIGNIN_ENABLED: "true",
+  ENGINEERING_SIGNIN_ENABLED: String(accessEnabled),
+  ACCESS_REGISTRATION_ENABLED: String(accessEnabled),
   PROXY_SHARED_KEY: proxyKey,
   NEXT_TELEMETRY_DISABLED: "1",
   AWS_EC2_METADATA_DISABLED: "true",
@@ -108,7 +110,7 @@ try {
     if (child.exitCode !== null) throw Error("Isolated renderer exited");
     try {
       const response = await fetch(
-        origin + "/engineering/sign-in/synthetic_ready_01",
+        origin + (accessEnabled ? "/engineering/sign-in/synthetic_ready_01" : "/admin"),
         { signal: AbortSignal.timeout(500) },
       );
       if (response.status === 200) {
@@ -121,8 +123,8 @@ try {
   if (!ready) throw Error("Isolated renderer readiness deadline");
   browser = await chromium.launch();
   const views = [];
-  for (const width of [320, 390, 768, 1440])
-    for (const mode of ["light", "dark"]) {
+  for (const width of (accessEnabled ? [320, 390, 768, 1440] : []))
+    for (const mode of (accessEnabled ? ["light", "dark"] : [])) {
       const uid = "synthetic_ui_" + width + "_" + mode,
         context = await browser.newContext({
           viewport: { width, height: 960 },
@@ -189,7 +191,7 @@ try {
       });
       await context.close();
     }
-  for (const mode of ["light", "dark"]) {
+  for (const mode of (accessEnabled ? ["light", "dark"] : [])) {
     const context = await browser.newContext({ viewport: { width: 390, height: 960 }, colorScheme: mode }), page = await context.newPage();
     await page.goto(origin + "/admin", { waitUntil: "networkidle" });
     await expect(page.getByRole("button", { name: "Email and password", exact: true })).toHaveAttribute("aria-pressed", "true");
@@ -224,12 +226,29 @@ try {
     views.push({ type: "registration-confirmation", mode, width: 390, emailScannerDoesNotConsume: true });
     await context.close();
   }
+  if (!accessEnabled) {
+    for (const mode of ["light", "dark"]) {
+      const context=await browser.newContext({viewport:{width:390,height:844},colorScheme:mode}),page=await context.newPage();
+      await page.goto(origin+"/admin",{waitUntil:"networkidle"});
+      await expect(page.getByLabel("Email",{exact:true}).first()).toBeVisible();
+      await expect(page.getByLabel("Password",{exact:true}).first()).toBeVisible();
+      await expect(page.getByLabel("Authenticator or recovery code",{exact:true})).toBeVisible();
+      await expect(page.getByRole("button",{name:"Email a sign-in link",exact:true})).toHaveCount(0);
+      await expect(page.getByRole("link",{name:"Register for administrator access"})).toHaveCount(0);
+      for(const path of ["/access/register","/access/confirm","/engineering/sign-in/synthetic_disabled_01"]){
+        const response=await page.request.get(origin+path);expect(response.status()).toBe(404);
+      }
+      expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa","wcag22aa"]).analyze()).violations).toEqual([]);
+      views.push({mode,width:390,pendingControlsHidden:true,existingPasswordMfaPreserved:true});await context.close();
+    }
+  }
   console.log(
     JSON.stringify({
       status: "PASS",
       scope:
         "Isolated production renderer and synthetic mock API; backend protocol tested separately; no hosted/provider acceptance claimed",
       views: views.length,
+      accessEnabled,
       mailSent: 0,
       databaseRequests: 0,
       providerRequests: 0,

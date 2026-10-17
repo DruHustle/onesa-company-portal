@@ -12,7 +12,9 @@ failure is retained. No production identity selection has changed. The revised
 source passes 123 isolated backend tests (including 9 new registration/link cases),
 15 domain/redirect/fragment tests, 12 expanded OIDC tests (including both new
 methods), 14 isolated production-renderer/accessibility views and a production
-frontend build. Full remote CI and hosted acceptance remain required.
+frontend build. A further two production-renderer views verify default-off rollout
+compatibility and existing password/MFA login. Full remote CI and hosted acceptance
+remain required.
 See the [activation and onboarding procedure](docs/engineering/ENGINEERING_DOCS_IDENTITY.md).
 
 ## Owner step-up and concurrent deletion — correction prepared 2026-10-17

@@ -4,12 +4,12 @@ import { api } from "@/lib/api/client";
 import { accessLinkToken } from "@/lib/access-link";
 import type { operations } from "@/lib/api/generated/schema";
 type SignedIn = operations["login"]["responses"][200]["content"]["application/json"];
-export function AdminSignIn({ onSignedIn }: { onSignedIn: (value: SignedIn) => void }) {
+export function AdminSignIn({ onSignedIn, accessEnabled }: { accessEnabled: boolean; onSignedIn: (value: SignedIn) => void }) {
   const [method, setMethod] = useState<"password" | "link">("password"), [link, setLink] = useState<string | null>(null), [busy, setBusy] = useState(false), [notice, setNotice] = useState(""), [error, setError] = useState(false);
   useEffect(() => {
     const raw = accessLinkToken(window.location.hash);
-    if (raw) { setLink(raw); setMethod("link"); window.history.replaceState(null, "", window.location.pathname + window.location.search); }
-  }, []);
+    if (raw && accessEnabled) { setLink(raw); setMethod("link"); window.history.replaceState(null, "", window.location.pathname + window.location.search); }
+  }, [accessEnabled]);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); if (busy) return;
     const form = e.currentTarget, data = new FormData(form); setBusy(true); setNotice(""); setError(false);
@@ -28,11 +28,11 @@ export function AdminSignIn({ onSignedIn }: { onSignedIn: (value: SignedIn) => v
     finally { setBusy(false); }
   }
   return <section aria-label="Administrator sign-in">
-    <p>Choose a sign-in method. Administrator access keeps its authenticator or recovery-code protection.</p>
-    <div className="admin-actions" aria-label="Sign-in method">
+    <p>{accessEnabled ? "Choose a sign-in method. Administrator access keeps its authenticator or recovery-code protection." : "Use your email, password and authenticator or recovery code to sign in."}</p>
+    {accessEnabled && <div className="admin-actions" aria-label="Sign-in method">
       <button type="button" aria-pressed={method === "link"} disabled={busy} onClick={() => { setMethod("link"); setNotice(""); }}>Email a sign-in link</button>
       <button type="button" aria-pressed={method === "password"} disabled={busy} onClick={() => { setMethod("password"); setNotice(""); }}>Email and password</button>
-    </div>
+    </div>}
     <form onSubmit={submit} aria-busy={busy}>
       <fieldset disabled={busy}>
         <legend>{method === "password" ? "Email and password" : link ? "Confirm your sign-in link" : "Receive a sign-in link"}</legend>
@@ -43,6 +43,6 @@ export function AdminSignIn({ onSignedIn }: { onSignedIn: (value: SignedIn) => v
       </fieldset>
     </form>
     {notice && <p role={error ? "alert" : "status"}>{notice}</p>}
-    <p>First time here? <a href="/access/register?audience=admin">Register for administrator access</a>. New requests go to the owner for approval; existing approvals are retained.</p>
+    {accessEnabled && <p>First time here? <a href="/access/register?audience=admin">Register for administrator access</a>. New requests go to the owner for approval; existing approvals are retained.</p>}
   </section>;
 }

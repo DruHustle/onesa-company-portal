@@ -572,7 +572,12 @@ The UI publication does not certify full API availability or change legal record
 
 Registration and the revised Docs login require additive migration 011 after 010,
 its restricted-role privileges, the root-only access approval configuration and
-qualified API/worker/frontend artifacts. Preserve existing users, passwords and MFA.
+qualified API/worker/frontend artifacts. The frontend server independently enables
+`ACCESS_REGISTRATION_ENABLED` and `ENGINEERING_SIGNIN_ENABLED` only when the matching
+API is ready. With both off, existing password/MFA administration remains available
+and pending registration routes/controls stay hidden. This permits an independently
+qualified public UI release before the authentication cutover. Preserve existing
+users, passwords and MFA.
 Use an actual Git-based staging Preview for the host-bound authentication flow;
 Vercel local prebuilt output may lack build-time Git/system environment variables.
 A matching metadata label alone does not establish the runtime branch/origin.
