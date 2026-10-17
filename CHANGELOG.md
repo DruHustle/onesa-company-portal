@@ -5,6 +5,8 @@
 - Link each homepage capability to its own Technology explanation, with English
   and German examples instead of repeated generic copy. Present mobile Technology
   capabilities as full-width numbered rows while preserving the desktop grid.
+  Restore topic position after WebKit page-history restoration without overriding
+  the reader’s cached Back position.
 
 - Preserve complete decrypted recovery payloads over nonblocking process pipes;
   await output completion while retaining all backup integrity and key checks.
