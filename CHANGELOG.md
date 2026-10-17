@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Place the mobile homepage introduction at the bottom of its blue hero, visible
+  before scrolling. Present mobile capabilities as four full-width rows; retain
+  hidden hero buttons, the taller navy section and desktop presentation.
+
 - Distinguish engineering-membership owner proof from user-account proof with
   specific accessible labels; keep static configuration guidance outside live feedback.
 
