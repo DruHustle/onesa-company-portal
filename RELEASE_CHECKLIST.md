@@ -1,5 +1,20 @@
 # Production release checklist
 
+## Same-page emailed access links — correction prepared 2026-10-17
+
+The hosted password flow completed signed OIDC identity and code-replay checks.
+The link flow exposed an unhandled same-document fragment navigation: an already-open
+page read its token only on mount. Admin, Engineering Docs and registration confirmation
+now observe hash changes, remove the fragment into memory and require an explicit
+confirmation. Admin MFA and default-off rollout controls remain unchanged. Targeted
+production-renderer regressions verify the document is not reloaded, no proof is sent
+automatically, fragments stay out of requests and the required MFA field remains.
+Build, lint, 15 domain/fragment tests, documentation and publication hygiene pass.
+The production-renderer regression passes 14 enabled views and two default-off
+compatibility views, with synthetic loopback mail and no provider/database requests.
+Fresh CI and an explicitly bounded hosted continuation remain required before this
+correction is called qualified or live. Prior failures remain retained.
+
 ## Mobile hero divider placement — prepared 2026-10-17
 
 The owner confirmed the mobile introduction belongs immediately above the hero

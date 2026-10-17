@@ -5,8 +5,18 @@ import { accessLinkToken } from "@/lib/access-link";
 export function AccessRegistration({ confirmation = false }: { confirmation?: boolean }) {
   const [token, setToken] = useState<string | null>(null), [busy, setBusy] = useState(false), [notice, setNotice] = useState(""), [done, setDone] = useState(false), [audience, setAudience] = useState<"admin" | "engineering">("admin");
   useEffect(() => {
-    if (confirmation) { const raw = accessLinkToken(window.location.hash); setToken(raw); window.history.replaceState(null, "", window.location.pathname); if (!raw) setNotice("This registration link is missing or invalid. Request a new one."); }
-    else if (new URLSearchParams(window.location.search).get("audience") === "engineering") setAudience("engineering");
+    if (confirmation) {
+      const receiveLink = () => {
+        const raw = accessLinkToken(window.location.hash);
+        setToken(raw); window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        if (raw) { setDone(false); setNotice(""); }
+        else setNotice("This registration link is missing or invalid. Request a new one.");
+      };
+      receiveLink();
+      window.addEventListener("hashchange", receiveLink);
+      return () => window.removeEventListener("hashchange", receiveLink);
+    }
+    if (new URLSearchParams(window.location.search).get("audience") === "engineering") setAudience("engineering");
   }, [confirmation]);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); if (busy) return; const form = e.currentTarget, data = new FormData(form); setBusy(true); setNotice("");
