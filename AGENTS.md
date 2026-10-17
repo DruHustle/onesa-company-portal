@@ -1,13 +1,12 @@
 # Onesa engineering and agent policies
 
-This is the single policy file for `onesa-company-portal`, including Codex/agent instructions,
+The policy for `onesa-company-portal` includes agent instructions,
 contribution rules, security reporting and repository governance. Keep policies here;
 do not recreate separate setup, implementation-status or session-handoff documents.
-Read README, current release checklist, relevant architecture and code before edits.
-Continue incomplete work.
+Read README, release checklist and affected architecture/code; finish incomplete work.
 Update the changelog, contracts and affected operational documentation when behavior
 changes. Record unverified functionality honestly in the applicable release checklist
-or roadmap. Explicit user instructions and previously authorized scope take precedence.
+or roadmap. Current user instructions and authorized scope take precedence.
 Preserve local modifications, history and data; stage only reviewed paths.
 Use free services only; do not provision paid resources or accept paid upgrades
 without explicit budget authorization.
@@ -32,24 +31,23 @@ no production secrets in Dependabot, unsafe pull_request_target or privileged PR
 artifact execution. Delete temporary branches only after verified incorporation or
 legitimate supersession, preserved evidence and no active review/deployment use.
 Never delete the three permanent branches or close security PRs for branch counts.
-Preserve work already staged or modified locally. The verified team has one developer: require PRs/checks and zero independent
-approvals until an authorized reviewer exists. Then require one independent review;
-seek two for authentication, personal data, infrastructure or actuation when available.
+The solo team requires PRs/checks without an unavailable reviewer. Once authorized,
+require one independent review; seek two for auth, data, infrastructure or actuation.
 Describe the problem, behavior, validation and rollout/rollback impact; update
 contracts, migrations and docs with behavior changes.
 
-Run the commands in `docs/engineering/BUILD_AND_TEST.md` and
+Run `docs/engineering/BUILD_AND_TEST.md` commands and
 `python3 scripts/repository_hygiene.py` before staging. Inspect `git diff --cached`
 and `git status --short`. Never stage private records, uploads, dumps, models or secrets.
 Use synthetic fixtures; a private repository is not a secret store. Keep environment
 examples as placeholders. New dependencies need provenance and license review.
 Do not introduce a project license until ownership and licensing are approved.
 
-Application builds and releases are independent. Changes to a shared contract must
-remain compatible during separate rollouts. Production promotion, remote pushes and
-visibility changes require explicit authorization. See `AGENTS.md` and
-`docs/engineering/DEPLOYMENT.md`. Actual protection status and activation prerequisites are recorded in
-`docs/development/BRANCH_PROTECTION_REPORT.md`; reverify remote enforcement after visibility changes.
+Independent releases need compatible contracts. Remote pushes,
+production promotion and visibility changes need current authorization. Read
+`docs/engineering/DEPLOYMENT.md`; `docs/development/BRANCH_PROTECTION_REPORT.md`
+records actual enforcement and prerequisites.
+
 
 ## Security policy
 
@@ -133,6 +131,11 @@ Preserve least-privilege runtime roles, bounded retries/leases and the current q
 Oracle consumer; cutovers require recovery and actual hosted acceptance. Governance stable
 IDs, imported drafts and immutable approvals must survive repeat imports. Never enable
 retention deletion, legal notices or real-data workflows from seed statuses.
+Register first with verified email and owner approval; retain exact prior approvals.
+Offer emailed links or email/password; preserve admin MFA and existing credentials.
+Engineering Docs identities grant no Portal roles. Preserve explicit membership,
+cookie/Origin/PKCE/code replay controls and independent Access enforcement. Read
+`docs/engineering/ENGINEERING_DOCS_IDENTITY.md` before identity or onboarding changes.
 Preserve deletion identity locks, SQL holds/cascades and immutable erasure journals.
 Manual erasure binds reviewed hashes and fresh owner proof; local/outbox success
 never proves external completion or authorizes restore activation. Amendments
@@ -156,11 +159,11 @@ Never dump environment/configuration files or arbitrary provider/database respon
 
 ## Documentation, cleanup and Definition of Done
 
-AGENTS governs agents; README introduces humans; CHANGELOG records verified release
-scope after go-live. Human contribution procedures belong in Engineering Onboarding.
-Do not recreate first-party CONTRIBUTING.md or SECURITY.md; README retains private
-reporting. Restrict technical docs and evidence; publication requires explicit classification.
-Keep small reviewable changes, validated inputs/parameterized SQL, cancellation/timeouts,
+AGENTS owns agent rules; README introduces humans and private reporting; CHANGELOG
+records verified live releases. Human contributions belong in Engineering Onboarding.
+Keep technical docs/evidence restricted and publication explicitly classified; do not
+recreate CONTRIBUTING.md or SECURITY.md.
+Use small changes, validated inputs/parameterized SQL, cancellation/timeouts,
 bounded retries, UTC event storage with explicit local display and compatible schemas.
 Inspect staged paths and concurrent worktrees; no reset/stash/broad clean/history rewrite.
 Only remove proven obsolete source after preserving unique knowledge and references.

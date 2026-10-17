@@ -37,3 +37,29 @@ transaction. Application/CV holds protect each other. Grant the existing restric
 role access to these new tables/sequences through the existing provisioning path,
 without changing its password. Keep additive schema during application rollback.
 No TTL timer, imported approval or automatic business deletion is introduced.
+
+## Separate Engineering Docs identities
+
+Prepared additive migration 010 adds `engineering_memberships`, encrypted
+`engineering_identity_records` and one-use `engineering_email_challenges`. It seeds
+no accounts, changes no existing credentials/roles and grants nothing to PUBLIC.
+The existing restricted application role needs only CRUD on these three tables;
+there are no new sequences. Identity artifacts expire after their protocol lifetime;
+the existing worker removes expired artifacts and challenges. Membership and owner
+audit evidence remain until explicitly managed. Existing Access sessions require
+separate revocation during offboarding; deleting a Portal challenge cannot revoke
+an already-issued Access session. No migration or provider configuration is claimed
+live by this source description.
+
+## Registration, approval and sign-in links
+
+Additive migration 011 adds `access_registrations`, `access_links` and
+`engineering_credentials`. Registration stores no password until email verification;
+pending password hashes are cleared after approval/rejection. Only hashed, expiring
+single-use link tokens are stored. Mail jobs retain their encrypted payloads under the
+existing mail lifecycle. Approval never overwrites existing credentials or grants an
+owner role. Engineering credentials belong only to the documentation membership.
+The restricted application role requires CRUD on these tables; no sequence or public
+privilege is introduced. Restore lockdown removes every restored sign-in/registration
+link while preserving approval evidence and inert password hashes. This source change
+is not a claim that migration 011 or the new login options are deployed.

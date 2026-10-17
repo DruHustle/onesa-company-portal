@@ -2,16 +2,49 @@
 
 ## Unreleased
 
+- Extend original editorial imagery to Research, Careers, Partnerships and planned
+  app examples, with published-story fallbacks that preserve CMS-selected images.
+  Keep semantic foreground/background appearance changes immediate to avoid transient
+  low-contrast buttons during system theme changes.
+
+- Add original industry imagery, concise English/German sector descriptions and
+  a spacious responsive card layout. Extend supporting imagery to About and Technology
+  using locally served, lazy-loaded WebP variants with reserved dimensions.
+
+- Recognize emailed access links opened in an already-open sign-in or registration
+  page. Remove the fragment into memory on hash navigation while preserving explicit
+  confirmation, administrator MFA and existing credentials. Hosted rollout remains pending.
+
+- Place the mobile homepage introduction above the divider at the bottom of its blue hero, visible
+  before scrolling. Present mobile capabilities as four full-width rows; retain
+  hidden hero buttons, the taller navy section and desktop presentation.
+
+- Add email-verified registration and owner review for administration and Engineering
+  Docs, retaining explicitly approved addresses. Offer emailed one-use sign-in links
+  or email/password, preserving existing administrator MFA and credentials.
+  Additive migration 011 and the revised authentication flow require hosted qualification.
+  Keep new frontend controls/routes default-off until that matching API is ready;
+  existing password/MFA administration and independent public releases remain available.
+
+- Distinguish engineering-membership owner proof from user-account proof with
+  specific accessible labels; keep static configuration guidance outside live feedback.
+
 - Identify the affected API/environment and UTC time in availability alerts; retain
   the notification reference and separate failure/recovery evidence without changing
   health thresholds, service state or the existing notification interval.
+
+- Prepare separate Engineering Docs sign-in through Onesa Portal, with
+  individually approved memberships, owner-only onboarding, short-lived OIDC/PKCE
+  exchange and encrypted one-use artifacts. No Portal administrator role is granted.
+  Existing Access protection and exact-email policies remain independently enforced;
+  feature flags default off until source-bound hosted qualification.
 
 - Prevent a deadlock between owner step-up and concurrent deletion audit records.
   Account changes and fresh-factor consumption remain serialized; hold/deletion
   exclusivity and audit foreign-key validation remain enforced.
 
 - Simplify the mobile homepage hero: retain its heading and artwork, hide its
-  supporting introduction/actions, and extend the navy panel beyond the opening
+  supporting actions, and extend the navy panel beyond the opening
   phone screen. Desktop introduction and actions remain available.
 
 - Implement protected Portal lifecycle previews, owner-confirmed preservation holds,

@@ -94,3 +94,9 @@ test('only the exact provider-bound staging Preview exposes the combined surface
   const saved={VERCEL_ENV:process.env.VERCEL_ENV,VERCEL_GIT_COMMIT_REF:process.env.VERCEL_GIT_COMMIT_REF,VERCEL_URL:process.env.VERCEL_URL};Object.assign(process.env,changes);assert.equal(stagingOrigin(),null);assert.equal(surface('https://synthetic-staging.vercel.app'),'unknown');Object.assign(process.env,saved);
  }
 });
+
+test('Engineering sign-in belongs to Portal while company links preserve its safe path',()=>{Object.assign(process.env,{SITE_URL:'https://www.example.com',PORTAL_URL:'https://portal.example.com',PUBLIC_ORIGIN:'https://portal.example.com'});assert.equal(routeDestination('https://www.example.com','/engineering/sign-in/abcdefgh'),'https://portal.example.com/engineering/sign-in/abcdefgh');assert.equal(routeDestination('https://portal.example.com','/engineering/sign-in/abcdefgh'),null);assert.equal(routeDestination('https://portal.example.com','/en/products'),'https://www.example.com/en/products');});
+
+test('Registration stays on Portal and does not create a public Company account route',()=>{
+ configure();assert.equal(routeDestination('https://onesa.eu','/access/register'),'https://portal.onesa.eu/access/register');assert.equal(routeDestination('https://portal.onesa.eu','/access/confirm'),null);assert.equal(routeDestination('https://portal.onesa.eu','/access/register'),null);
+});

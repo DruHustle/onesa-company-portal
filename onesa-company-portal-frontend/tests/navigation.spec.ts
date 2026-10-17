@@ -29,6 +29,33 @@ test('canonical homepage switches between EN and DE', async ({page}) => {
   await expect(page).toHaveURL(/\/de$/);
 });
 
+test('system appearance keeps action contrast throughout preference changes',async({page})=>{
+  await page.setViewportSize({width:320,height:900});
+  await page.emulateMedia({colorScheme:'light',reducedMotion:'no-preference'});
+  await page.goto('/en/contact');
+  const name=page.getByLabel('Your name',{exact:true});
+  await name.fill('Synthetic appearance draft');
+  const action=page.locator('.contact-form button[type="submit"], .contact-form button.button');
+  await expect(action).toHaveCount(1);
+  for(const colorScheme of ['dark','light'] as const){
+    await page.emulateMedia({colorScheme});
+    const samples=await action.evaluate(async element=>{
+      const luminance=(color:string)=>color.match(/[\d.]+/g)!.slice(0,3).map(Number).map(value=>{
+        value/=255;return value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
+      }).reduce((sum,value,index)=>sum+value*[.2126,.7152,.0722][index],0);
+      const ratios=[];
+      for(let frame=0;frame<12;frame++){
+        const style=getComputedStyle(element),foreground=luminance(style.color),background=luminance(style.backgroundColor);
+        ratios.push((Math.max(foreground,background)+.05)/(Math.min(foreground,background)+.05));
+        await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+      }
+      return ratios;
+    });
+    expect(Math.min(...samples),'Action text must retain 4.5:1 contrast throughout system preference changes').toBeGreaterThanOrEqual(4.5);
+    await expect(name).toHaveValue('Synthetic appearance draft');
+  }
+});
+
 for (const mode of ['dark', 'light'] as const) {
   for (const width of [390, 1440]) {
     test(`language switches preserve ${mode} system appearance at ${width}px`, async ({page}) => {
@@ -164,14 +191,20 @@ test.describe('uncluttered mobile homepage',()=>{
     await page.setViewportSize(viewport);await page.goto('/'+locale);
     const hero=page.locator('.home-page .hero');await expect(hero.locator('h1')).toBeVisible();
     await expect(hero.locator('.hero-intro')).toBeHidden();await expect(hero.locator('.actions')).toBeHidden();
+    const introduction=hero.locator('.hero-end > .mobile-hero-intro');await expect(introduction).toBeVisible();await expect(introduction).toContainText(locale==='en'?'Intelligent software':'Intelligente Software');
+    expect(await introduction.evaluate(element=>element.closest('.hero')!==null&&element.parentElement?.classList.contains('hero-end'))).toBe(true);
     const box=await hero.boundingBox();expect(box).not.toBeNull();expect(box!.height).toBeGreaterThanOrEqual(viewport.height-1);expect(box!.y+box!.height).toBeGreaterThan(viewport.height);
+    const divider=await hero.locator('.hero-bottom').boundingBox();expect(divider).not.toBeNull();
+    const introBox=await introduction.boundingBox();expect(introBox).not.toBeNull();expect(introBox!.y+introBox!.height).toBeLessThanOrEqual(divider!.y-7);expect(introBox!.y+introBox!.height).toBeLessThanOrEqual(viewport.height-8);expect(introBox!.y).toBeGreaterThan(viewport.height*.45);
+    const rows=page.locator('#capabilities .capability');await expect(rows).toHaveCount(4);const rowBoxes=await rows.evaluateAll(elements=>elements.map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,bottom:r.bottom};}));for(let i=1;i<rowBoxes.length;i++){expect(Math.abs(rowBoxes[i].x-rowBoxes[0].x)).toBeLessThan(1);expect(Math.abs(rowBoxes[i].width-rowBoxes[0].width)).toBeLessThan(1);expect(rowBoxes[i].y).toBeGreaterThanOrEqual(rowBoxes[i-1].bottom-1);}
+
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     const cue=hero.getByRole('link',{name:locale==='en'?'Explore capabilities':'Kompetenzen entdecken'});await expect(cue).toBeVisible();await cue.focus();await expect(cue).toBeFocused();await cue.click();await expect(page).toHaveURL(/#capabilities$/);
    }
   });
   test(`${locale} desktop hero retains useful introduction and actions in ${mode}`,async({page})=>{
    await page.emulateMedia({colorScheme:mode});await page.setViewportSize({width:1440,height:1000});await page.goto('/'+locale);
-   await expect(page.locator('.hero-intro')).toBeVisible();await expect(page.locator('.hero .actions')).toBeVisible();await expect(page.locator('.hero .actions a')).toHaveCount(2);
+   await expect(page.locator('.hero-intro')).toBeVisible();await expect(page.locator('.mobile-hero-intro')).toBeHidden();await expect(page.locator('.hero .actions')).toBeVisible();await expect(page.locator('.hero .actions a')).toHaveCount(2);
   });
  }
 });

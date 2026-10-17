@@ -1,5 +1,45 @@
 # Production release checklist
 
+## Same-page emailed access links — correction prepared 2026-10-17
+
+The hosted password flow completed signed OIDC identity and code-replay checks.
+The link flow exposed an unhandled same-document fragment navigation: an already-open
+page read its token only on mount. Admin, Engineering Docs and registration confirmation
+now observe hash changes, remove the fragment into memory and require an explicit
+confirmation. Admin MFA and default-off rollout controls remain unchanged. Targeted
+production-renderer regressions verify the document is not reloaded, no proof is sent
+automatically, fragments stay out of requests and the required MFA field remains.
+Build, lint, 15 domain/fragment tests, documentation and publication hygiene pass.
+The production-renderer regression passes 14 enabled views and two default-off
+compatibility views, with synthetic loopback mail and no provider/database requests.
+Fresh CI and an explicitly bounded hosted continuation remain required before this
+correction is called qualified or live. Prior failures remain retained.
+
+## Mobile hero divider placement — prepared 2026-10-17
+
+The owner confirmed the mobile introduction belongs immediately above the hero
+divider, with the tagline and downward cue below it. English/German, light/dark,
+portrait/landscape and desktop checks pass: 16 Chromium/WebKit cases and eight
+accessibility views with no violations. Build and lint pass. This correction is
+prepared for normal dev → staging → main promotion; it is not yet live.
+
+## Portal-based Engineering Docs sign-in — prepared 2026-10-17
+
+The owner now requests registration with approval, plus emailed sign-in links or
+email/password for both administration and Docs. Existing two approved addresses
+retain their decisions. Existing administrator credentials, roles and MFA remain
+unchanged; engineering approval grants no Portal role. Additive 010/011 and
+default-off identity/registration flags require source-bound hosted qualification.
+The superseded OTP-only staging Preview stopped before backend login; its original
+failure is retained. No production identity selection has changed. The revised
+source passes 123 isolated backend tests (including 9 new registration/link cases),
+15 domain/redirect/fragment tests, 12 expanded OIDC tests (including both new
+methods), 14 isolated production-renderer/accessibility views and a production
+frontend build. A further two production-renderer views verify default-off rollout
+compatibility and existing password/MFA login. Full remote CI and hosted acceptance
+remain required.
+See the [activation and onboarding procedure](docs/engineering/ENGINEERING_DOCS_IDENTITY.md).
+
 ## Owner step-up and concurrent deletion — correction prepared 2026-10-17
 
 Exact-main CI `39035817445` exposed a hold/deletion deadlock: step-up's exclusive

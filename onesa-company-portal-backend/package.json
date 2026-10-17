@@ -31,6 +31,7 @@
     "fastify": "^5.8.0",
     "fastify-type-provider-zod": "^7.0.0",
     "nodemailer": "^10.0.16",
+    "oidc-provider": "9.12.2",
     "pdfkit": "^0.17.2",
     "pg": "^8.16.3",
     "zod": "^4.1.13"
@@ -39,6 +40,7 @@
     "@apidevtools/swagger-parser": "^13.0.0",
     "@types/node": "^22.19.0",
     "@types/nodemailer": "^7.0.4",
+    "@types/oidc-provider": "9.12.1",
     "@types/pdfkit": "^0.17.3",
     "@types/pg": "^8.15.6",
     "eslint": "^9.39.0",

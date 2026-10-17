@@ -109,6 +109,9 @@ jobs:
     - name: Install browsers and OS dependencies on GitHub-hosted Ubuntu
       run: npx playwright install --with-deps chromium firefox webkit
       working-directory: onesa-company-portal-frontend
+    - name: Verify Portal engineering sign-in with isolated synthetic services
+      run: npm run test:engineering-sign-in
+      working-directory: onesa-company-portal-frontend
     - name: Verify bounded public navigation with isolated synthetic services
       run: npm run test:public-loading
       working-directory: onesa-company-portal-frontend
