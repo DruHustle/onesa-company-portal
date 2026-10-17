@@ -280,6 +280,12 @@ holds, execute erasure or record completion. Backend role, Origin, CSRF, session
 step-up and bounded confirmation rate limits apply. Proof secrets never enter plan
 fingerprints, events, responses or audit records. Responses remain private/no-store.
 
+Step-up locks the owner row with `FOR NO KEY UPDATE`: account/credential changes
+and factor consumption remain serialized, while concurrent audit foreign-key reads
+can finish. An exclusive user-row lock would create a cycle with deletion's target
+identity lock. The isolated lifecycle suite checks audit-reference compatibility,
+blocked concurrent account changes and exclusive hold/deletion outcomes.
+
 The replay-candidate export binds an exact backup SHA and timestamp. It includes
 journalled local erasure identities and current associated holds in a consistent
 read-only snapshot. It explicitly returns `complete:false` and

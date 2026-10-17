@@ -29,6 +29,7 @@ const { db } = await import('../src/services/db.js'),
 const { buildApp } = await import('../src/app.js'),
   { importGovernance } = await import('../src/governance/import.js');
 const { hash, passwordHash, encrypt } = await import('../src/auth/crypto.js');
+const { reauthenticate } = await import('../src/auth/reauthenticate.js');
 const app = await buildApp({ logging: false }),
   password = randomBytes(32).toString('hex'),
   actors = new Map<
@@ -555,6 +556,40 @@ test('Read-only policy previews require an explicit Portal binding and preserve 
   assert.equal(effective.json().wouldExpire, 0);
   assert.ok(effective.json().blockers.includes('NO_MATCHING_EFFECTIVE_APPROVAL'));
   assert.equal((await db.query('SELECT id FROM enquiries WHERE id=$1', [e.id])).rowCount, 1);
+});
+test('Owner step-up permits concurrent audit references while serializing account changes', async () => {
+  const stepUp = await proof(),
+    actor = owner(),
+    confirmation = await db.connect(),
+    concurrent = await db.connect();
+  try {
+    await confirmation.query('BEGIN');
+    await concurrent.query('BEGIN');
+    await concurrent.query("SET LOCAL lock_timeout = '500ms'");
+    assert.equal(
+      await reauthenticate(confirmation, {
+        userId: actor.id,
+        token: actor.headers.cookie.slice('onesa_session='.length),
+        csrf: actor.headers['x-csrf-token'],
+      }, stepUp),
+      'owner',
+    );
+    // A deletion may already own its target lock when it writes this audit FK.
+    // Step-up must not block that reference and form a target/user lock cycle.
+    await concurrent.query(
+      'INSERT INTO audit(actor_id,action) VALUES($1,$2)',
+      [actor.id, 'synthetic.concurrent-reference'],
+    );
+    await assert.rejects(
+      concurrent.query('UPDATE users SET disabled=true WHERE id=$1', [actor.id]),
+      (error: unknown) => (error as { code?: string }).code === '55P03',
+    );
+  } finally {
+    await concurrent.query('ROLLBACK');
+    await confirmation.query('ROLLBACK');
+    concurrent.release();
+    confirmation.release();
+  }
 });
 test('Concurrent hold creation and deletion cannot both succeed for the same target', async () => {
   const target = await enquiry(),
