@@ -9,7 +9,10 @@ const accessEnabled = process.env.ONESA_TEST_ACCESS_MODE !== "disabled";
 const states = new Map(),
   proxyKey = "synthetic-ui-proxy-only",
   proof = "a".repeat(64);
+let engineeringConfirmations = 0, adminConfirmations = 0, tokenInRequestUrl = false;
 const api = http.createServer(async (req, res) => {
+  tokenInRequestUrl ||= /access-link|a{64}/.test(req.url);
+  if (req.url === "/api/v1/access/link/verify") adminConfirmations++;
   res.setHeader("content-type", "application/json");
   if (req.headers["x-portal-proxy-key"] !== proxyKey) {
     res.writeHead(403).end("{}");
@@ -62,6 +65,10 @@ const api = http.createServer(async (req, res) => {
   if (action === "password" && input.password !== "synthetic-valid-password") {
     res.writeHead(401).end('{"error":"synthetic-invalid-code"}');
     return;
+  }
+  if (action === "link-verify") {
+    if (input.token !== proof) { res.writeHead(401).end("{}"); return; }
+    engineeringConfirmations++;
   }
   res.end(
     JSON.stringify({
@@ -180,12 +187,28 @@ try {
       await page.waitForURL(
         origin + "/api/v1/engineering-identity/auth/" + uid,
       );
+      const linkUid = uid + "_same_page", beforeConfirmation = engineeringConfirmations;
+      await page.goto(origin + "/engineering/sign-in/" + linkUid, {waitUntil: "networkidle"});
+      await page.getByLabel("Email address", {exact: true}).fill("synthetic-engineer@onesa.eu");
+      await page.getByRole("button", {name: "Send sign-in link", exact: true}).click();
+      await expect(page.getByRole("status")).toContainText("a sign-in link is on its way");
+      await page.evaluate(() => { window.__onesaLinkDocumentMarker = "same-document"; });
+      await page.goto(origin + "/engineering/sign-in/" + linkUid + "#access-link=" + proof);
+      await expect(page.getByRole("button", {name: "Confirm sign-in and open Docs", exact: true})).toBeEnabled();
+      expect(await page.evaluate(() => window.__onesaLinkDocumentMarker)).toBe("same-document");
+      expect(new URL(page.url()).hash).toBe("");
+      expect(engineeringConfirmations).toBe(beforeConfirmation);
+      await page.getByRole("button", {name: "Confirm sign-in and open Docs", exact: true}).click();
+      await page.waitForURL(origin + "/api/v1/engineering-identity/auth/" + linkUid);
+      expect(engineeringConfirmations).toBe(beforeConfirmation + 1);
+      expect(errors).toEqual([]);
       views.push({
         width,
         initialMode: mode,
         systemChangePreservesInput: true,
         failedPasswordRetained: true,
         bothMethodsAvailable: true,
+        sameDocumentEmailLinkConfirmedExplicitly: true,
         axeViolations: 0,
         overflow: false,
       });
@@ -201,8 +224,17 @@ try {
     await page.getByLabel("Email", { exact: true }).first().fill("synthetic@onesa.eu");
     await page.getByRole("button", { name: "Send sign-in link", exact: true }).click();
     await expect(page.locator('section[aria-label="Administrator sign-in"]').getByRole("status")).toContainText("a sign-in link is on its way");
+    const adminProofsBefore = adminConfirmations;
+    await page.evaluate(() => { window.__onesaLinkDocumentMarker = "same-document"; });
+    await page.goto(origin + "/admin#access-link=" + proof);
+    const adminSignIn = page.locator('section[aria-label="Administrator sign-in"]');
+    await expect(adminSignIn.getByLabel("Authenticator or recovery code", {exact: true})).toBeVisible();
+    await expect(adminSignIn.getByLabel("Authenticator or recovery code", {exact: true})).toHaveAttribute("required", "");
+    await expect(adminSignIn.getByRole("button", {name: "Sign in", exact: true})).toBeEnabled();
+    expect(await page.evaluate(() => window.__onesaLinkDocumentMarker)).toBe("same-document");
+    expect(new URL(page.url()).hash).toBe(""); expect(adminConfirmations).toBe(adminProofsBefore);
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
-    views.push({ type: "admin-signin", mode, width: 390, bothMethodsAvailable: true });
+    views.push({ type: "admin-signin", mode, width: 390, bothMethodsAvailable: true, sameDocumentLinkRetainsMfa: true });
     await page.goto(origin + "/access/register?audience=engineering", { waitUntil: "networkidle" });
     await page.getByLabel("Your name").fill("Synthetic engineer"); await page.getByLabel("Email address", { exact: true }).fill("synthetic@onesa.eu");
     await expect(page.getByLabel("Access requested")).toHaveValue("engineering");
@@ -212,7 +244,13 @@ try {
     views.push({ type: "registration", mode, width: 390, approvalExplained: true });
     let confirmations = 0;
     page.on("request", r => { if (r.url().endsWith("/api/v1/access/confirm")) confirmations++; });
-    await page.goto(origin + "/access/confirm#access-link=" + "a".repeat(64), { waitUntil: "networkidle" });
+    await page.goto(origin + "/access/confirm?source=synthetic", {waitUntil: "networkidle"});
+    await expect(page.getByRole("button", {name: "Verify email and complete registration"})).toBeDisabled();
+    await page.evaluate(() => { window.__onesaLinkDocumentMarker = "same-document"; });
+    await page.goto(origin + "/access/confirm?source=synthetic#access-link=" + proof);
+    await expect(page.getByRole("button", {name: "Verify email and complete registration"})).toBeEnabled();
+    expect(await page.evaluate(() => window.__onesaLinkDocumentMarker)).toBe("same-document");
+    expect(new URL(page.url()).search).toBe("?source=synthetic");
     expect(confirmations).toBe(0); expect(new URL(page.url()).hash).toBe("");
     await page.getByLabel("Password (at least 14 characters)").fill("synthetic-registration-password");
     await page.getByLabel("Confirm password", { exact: true }).fill("different-password");
@@ -223,7 +261,7 @@ try {
     await expect(page.getByRole("status")).toContainText("sent to the owner for approval"); expect(confirmations).toBe(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
-    views.push({ type: "registration-confirmation", mode, width: 390, emailScannerDoesNotConsume: true });
+    views.push({ type: "registration-confirmation", mode, width: 390, emailScannerDoesNotConsume: true, sameDocumentLinkRecognized: true });
     await context.close();
   }
   if (!accessEnabled) {
@@ -242,6 +280,7 @@ try {
       views.push({mode,width:390,pendingControlsHidden:true,existingPasswordMfaPreserved:true});await context.close();
     }
   }
+  expect(tokenInRequestUrl).toBe(false);
   console.log(
     JSON.stringify({
       status: "PASS",

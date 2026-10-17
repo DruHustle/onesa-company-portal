@@ -7,8 +7,14 @@ type SignedIn = operations["login"]["responses"][200]["content"]["application/js
 export function AdminSignIn({ onSignedIn, accessEnabled }: { accessEnabled: boolean; onSignedIn: (value: SignedIn) => void }) {
   const [method, setMethod] = useState<"password" | "link">("password"), [link, setLink] = useState<string | null>(null), [busy, setBusy] = useState(false), [notice, setNotice] = useState(""), [error, setError] = useState(false);
   useEffect(() => {
-    const raw = accessLinkToken(window.location.hash);
-    if (raw && accessEnabled) { setLink(raw); setMethod("link"); window.history.replaceState(null, "", window.location.pathname + window.location.search); }
+    if (!accessEnabled) return;
+    const receiveLink = () => {
+      const raw = accessLinkToken(window.location.hash);
+      if (raw) { setLink(raw); setMethod("link"); setNotice(""); setError(false); window.history.replaceState(null, "", window.location.pathname + window.location.search); }
+    };
+    receiveLink();
+    window.addEventListener("hashchange", receiveLink);
+    return () => window.removeEventListener("hashchange", receiveLink);
   }, [accessEnabled]);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); if (busy) return;

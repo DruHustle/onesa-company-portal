@@ -125,6 +125,12 @@ bind the interaction and membership revision. Global admin session revocation al
 removes outstanding admin links. Missing/expired/wrong-cookie interactions,
 wrong Origin/CSRF, expired/replayed links, excessive attempts and invalid callbacks
 fail closed. Do not send a code, session or Access bypass token to a crawler.
+An emailed link also works when its sign-in page is already open: hash navigation
+updates the in-memory proof and removes the fragment, without submitting it. An
+explicit confirmation remains necessary; an admin link still requires its MFA factor.
+The Portal mail worker uses the existing Onesa sender configuration. Cloudflare's
+interim email-code sender remains separate until the qualified Portal identity cutover;
+do not claim the new sender experience is live from source or local tests alone.
 A delivery failure stays visible in existing worker monitoring; provider acceptance
 is not inbox receipt. Codes are never logged or stored as plaintext job text.
 

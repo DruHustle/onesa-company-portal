@@ -5,13 +5,17 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
   const [csrf, setCsrf] = useState(""), [method, setMethod] = useState<"link" | "password">("link"), [link, setLink] = useState<string | null>(null), [notice, setNotice] = useState(""), [sent, setSent] = useState(false), [busy, setBusy] = useState(false), [ready, setReady] = useState(false);
   useEffect(() => {
     let active = true; const abort = new AbortController(); setReady(false); setCsrf("");
-    const raw = accessLinkToken(window.location.hash);
-    if (raw) { setLink(raw); setMethod("link"); window.history.replaceState(null, "", window.location.pathname); }
+    const receiveLink = () => {
+      const raw = accessLinkToken(window.location.hash);
+      if (raw) { setLink(raw); setMethod("link"); setNotice(""); setSent(false); window.history.replaceState(null, "", window.location.pathname + window.location.search); }
+    };
+    receiveLink();
+    window.addEventListener("hashchange", receiveLink);
     fetch("/engineering/sign-in/" + uid + "/details", { cache: "no-store", signal: abort.signal }).then(async response => {
       if (!response.ok) throw Error(); const value = await response.json(); if (!/^[a-f0-9]{64}$/.test(value.csrf)) throw Error();
       if (active) { setCsrf(value.csrf); setReady(true); }
     }).catch(() => { if (active && !abort.signal.aborted) setNotice("This sign-in request has expired or is unavailable. Return to Engineering Docs to start again in this browser."); });
-    return () => { active = false; abort.abort(); };
+    return () => { active = false; abort.abort(); window.removeEventListener("hashchange", receiveLink); };
   }, [uid]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (busy || !ready) return;
