@@ -29,6 +29,33 @@ test('canonical homepage switches between EN and DE', async ({page}) => {
   await expect(page).toHaveURL(/\/de$/);
 });
 
+test('system appearance keeps action contrast throughout preference changes',async({page})=>{
+  await page.setViewportSize({width:320,height:900});
+  await page.emulateMedia({colorScheme:'light',reducedMotion:'no-preference'});
+  await page.goto('/en/contact');
+  const name=page.getByLabel('Your name',{exact:true});
+  await name.fill('Synthetic appearance draft');
+  const action=page.locator('.contact-form button[type="submit"], .contact-form button.button');
+  await expect(action).toHaveCount(1);
+  for(const colorScheme of ['dark','light'] as const){
+    await page.emulateMedia({colorScheme});
+    const samples=await action.evaluate(async element=>{
+      const luminance=(color:string)=>color.match(/[\d.]+/g)!.slice(0,3).map(Number).map(value=>{
+        value/=255;return value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
+      }).reduce((sum,value,index)=>sum+value*[.2126,.7152,.0722][index],0);
+      const ratios=[];
+      for(let frame=0;frame<12;frame++){
+        const style=getComputedStyle(element),foreground=luminance(style.color),background=luminance(style.backgroundColor);
+        ratios.push((Math.max(foreground,background)+.05)/(Math.min(foreground,background)+.05));
+        await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+      }
+      return ratios;
+    });
+    expect(Math.min(...samples),'Action text must retain 4.5:1 contrast throughout system preference changes').toBeGreaterThanOrEqual(4.5);
+    await expect(name).toHaveValue('Synthetic appearance draft');
+  }
+});
+
 for (const mode of ['dark', 'light'] as const) {
   for (const width of [390, 1440]) {
     test(`language switches preserve ${mode} system appearance at ${width}px`, async ({page}) => {

@@ -1,8 +1,5 @@
 .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:32px; }
 .card { overflow:hidden; min-width:0; border:1px solid var(--onesa-divider); border-radius:20px; background:var(--onesa-surface); }
-.picture, .picture img { display:block; width:100%; }
-.picture { overflow:hidden; background:#081b32; }
-.picture img { height:auto; aspect-ratio:3 / 2; object-fit:cover; }
 .content { padding:clamp(24px,3vw,40px); }
 .index { color:var(--onesa-muted); font-size:.75rem; letter-spacing:.1em; }
 .content h2 { margin:18px 0 16px; font-size:clamp(1.6rem,2.5vw,2.5rem); text-wrap:balance; }

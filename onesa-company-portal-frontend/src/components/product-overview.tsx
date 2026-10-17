@@ -2,6 +2,7 @@ import {products} from '@/config/products';
 import type {Locale} from '@/config/copy';
 import applications from '@/config/onesa-applications.json';
 import {ProductIllustration} from './product-illustration';
+import {EditorialImage} from './editorial-image';
 import styles from './product-overview.module.css';
 
 const applicationDirections = {
@@ -31,12 +32,18 @@ function ApplicationDirections({locale}:{locale:Locale}) {
     <p>{content.introduction}</p>
     <div className={styles.useCaseGrid}>
       <div>
+        <EditorialImage subject="finance" locale={locale}/>
+        <div className={styles.useCaseCopy}>
         <h3>{content.recommendations}</h3>
         <p>{content.recommendationsDescription}</p>
+        </div>
       </div>
       <div>
+        <EditorialImage subject="farming" locale={locale}/>
+        <div className={styles.useCaseCopy}>
         <h3>{content.farming}</h3>
         <p>{content.farmingDescription}</p>
+        </div>
       </div>
     </div>
   </section>;

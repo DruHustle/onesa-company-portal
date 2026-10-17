@@ -342,6 +342,158 @@
         }
       ],
       "use": "Company Industries; enterprise and industrial scenes also support About and Technology. English/German descriptive alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Company editorial image: research",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial photograph suggesting applied research: a precise unbranded optical bench with a glass prism, small lenses and carefully aligned laboratory components, gentle cyan light through glass, navy background, realistic material detail. No people, no text, no logos, no readable data.",
+        "sharedPrompt": "Wide landscape 3:2 supporting editorial image for Onesa, clear subject, crop-safe center, calm professional finish; original illustrative scene, not evidence of an existing Onesa operation; no typography, watermark or UI overlays.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1979399,
+        "sha256": "a48648c61a1542d14fd19d12c215bf882d70d32ad53806e9b0425bd8b31a7a62"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/editorial-research-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 15404,
+          "sha256": "592477582bb1eed24a60454142714e06d51e5d450f714bc609f137f4f07e740f"
+        },
+        {
+          "path": "/images/editorial-research-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 37524,
+          "sha256": "97c0245c187f22316cd6a7397e91587d36d37401fcd661fd2c100d5f5be27eb4"
+        }
+      ],
+      "use": "Company Research, Careers, Partnerships and planned Smart farming app presentation; descriptive English/German alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Company editorial image: partnerships",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial still-life photograph suggesting engineering collaboration: an elegant shared table with two unbranded closed laptops, blank notebooks, a small metal mechanical component and carefully arranged material samples, a modern light-filled workspace, navy and warm neutral palette. No people, no text, no logos, no fake interface.",
+        "sharedPrompt": "Wide landscape 3:2 supporting editorial image for Onesa, clear subject, crop-safe center, calm professional finish; original illustrative scene, not evidence of an existing Onesa operation; no typography, watermark or UI overlays.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2111718,
+        "sha256": "ed92e0ae02f285b65b1c23fa4a3c3456d61a66394f437a84e4c5608b749f2578"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/editorial-partnerships-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 21228,
+          "sha256": "37a52155ac08ac079d4e5b27e8baad268d3c4cbed19db98e04c9553b1159f072"
+        },
+        {
+          "path": "/images/editorial-partnerships-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 52428,
+          "sha256": "ff99515495b8eecf37a03227405a838926cb8d5ed899edcfad0d9bcbede3c1b5"
+        }
+      ],
+      "use": "Company Research, Careers, Partnerships and planned Smart farming app presentation; descriptive English/German alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Company editorial image: careers",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial photograph suggesting a welcoming engineering workplace: a quiet modern workstation near tall windows, unbranded monitor seen from an angle with no readable display, notebook, tasteful plant, daylight and warm timber with deep blue accents, spacious and authentic. No people, no text, no logos.",
+        "sharedPrompt": "Wide landscape 3:2 supporting editorial image for Onesa, clear subject, crop-safe center, calm professional finish; original illustrative scene, not evidence of an existing Onesa operation; no typography, watermark or UI overlays.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2113501,
+        "sha256": "52d0bebb3b1d9a6e3a9a4c5e8c8de1728ce6e666a33327498b1fcb18dc573d53"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/editorial-careers-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 21848,
+          "sha256": "ad350c04a6b481d6c31b94f0f1c0f32d0faa1a565c96b8676f11e82a2ffe274d"
+        },
+        {
+          "path": "/images/editorial-careers-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 57128,
+          "sha256": "ff2975cda835612e41705736d2cd84f0fc7dd687e19546ca4b88859c97c41e74"
+        }
+      ],
+      "use": "Company Research, Careers, Partnerships and planned Smart farming app presentation; descriptive English/German alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Company editorial image: farming",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial agricultural photograph: rows of healthy green crops in a gently rolling field at early morning, one discreet unbranded soil moisture sensor in the foreground and a small irrigation line, warm low sunlight and fresh natural greens, practical believable agriculture rather than sci-fi. No people, no screens, no text, no logos, no holograms.",
+        "sharedPrompt": "Wide landscape 3:2 supporting editorial image for Onesa, clear subject, crop-safe center, calm professional finish; original illustrative scene, not evidence of an existing Onesa operation; no typography, watermark or UI overlays.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2613601,
+        "sha256": "dcaece08b8fbfcd94a4c73b638d27713f5c9f7f3a3c957a9e985b182d9030776"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/editorial-farming-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 33568,
+          "sha256": "51c9c49c6f125042c1f66384fa4cade5ed5c4d0c242a0f1a01eb1fed513ff38e"
+        },
+        {
+          "path": "/images/editorial-farming-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 94468,
+          "sha256": "1017ed8592db6c204495ac59568e4a101292a6a9499d86d2cb117672913be4da"
+        }
+      ],
+      "use": "Company Research, Careers, Partnerships and planned Smart farming app presentation; descriptive English/German alt text identifies illustrative scenes."
     }
   ]
 }
