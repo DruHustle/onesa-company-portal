@@ -6,6 +6,12 @@
   the notification reference and separate failure/recovery evidence without changing
   health thresholds, service state or the existing notification interval.
 
+- Prepare separate Engineering Docs email-code sign-in through Onesa Portal, with
+  individually approved memberships, owner-only onboarding, short-lived OIDC/PKCE
+  exchange and encrypted one-use artifacts. No Portal administrator role is granted.
+  Existing Access protection and exact-email policies remain independently enforced;
+  feature flags default off until source-bound hosted qualification.
+
 - Prevent a deadlock between owner step-up and concurrent deletion audit records.
   Account changes and fresh-factor consumption remain serialized; hold/deletion
   exclusivity and audit foreign-key validation remain enforced.

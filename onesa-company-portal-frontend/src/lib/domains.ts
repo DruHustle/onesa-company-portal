@@ -17,7 +17,9 @@ export function surface(origin:string):'company'|'portal'|'combined'|'unknown'{
  return 'unknown';
 }
 export function routeDestination(origin:string,path:string):string|null{
- const current=surface(origin),admin=path==='/admin'||path.startsWith('/admin/');
+ const current=surface(origin),admin=path==='/admin'||path.startsWith('/admin/'),engineering=path==='/engineering'||path.startsWith('/engineering/');
+ if(current==='company'&&engineering)return `${process.env.PORTAL_URL}${path}`;
+ if(current==='portal'&&engineering)return null;
  if(current==='portal'&&(path.startsWith('/brand/')||path.startsWith('/social/')))return null;
  if(current==='company'&&admin)return `${process.env.PORTAL_URL}${path}`;
  if(current==='portal'&&(path==='/'||admin))return path==='/'?`${process.env.PORTAL_URL}/admin`:null;

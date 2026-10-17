@@ -76,3 +76,18 @@ require fresh owner password/MFA proof, with account/peer rate limits. Execution
 binds the saved plan/version, rechecks hashes and holds, and reports per-target
 outcomes. It never claims external erasure from a successful local DELETE.
 See [governance architecture](../engineering/PRIVACY_GOVERNANCE.md).
+
+## Engineering Docs identity (prepared, feature disabled by default)
+
+The internal `engineering-sign-in` details/start/verify operations bind an OIDC
+interaction cookie, exact Portal Origin and interaction proof. Codes expire after
+ten minutes, allow at most five failed proofs and are redeemed once transactionally.
+The existing mail outbox stores encrypted message text; no new mail provider is used.
+The separately encrypted OIDC store enforces expiry, grant revocation and one-use
+authorization codes. Protocol endpoints are excluded from generated business schemas.
+
+Owner-only `admin/engineering/memberships` lists and updates individually approved
+memberships. Changes require a current owner session, CSRF, password/fresh MFA,
+expected revision and access-policy evidence. An engineering identity has no Portal
+role. The exact Cloudflare email policy remains an independent requirement. See
+[Engineering Docs access](../engineering/ENGINEERING_DOCS_IDENTITY.md).

@@ -1,5 +1,10 @@
 # Deployment and independent releases
 
+Prepared Portal-based Engineering Docs sign-in has a separate additive migration,
+feature flags, fixed OIDC client and qualified activation sequence. Follow
+[Engineering Docs identity](ENGINEERING_DOCS_IDENTITY.md); do not enable it from
+a business-website release or weaken Access/owner authentication.
+
 ## Current Company application release — 2026-10-16
 
 The owner lifted the application-artifact hold for qualified Oracle/Vercel releases;

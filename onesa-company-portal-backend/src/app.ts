@@ -1,3 +1,4 @@
+import {registerEngineeringIdentity} from './engineering/routes.js';
 import {guardHeldDeletion} from './governance/lifecycle-store.js';
 import {admitFile} from './services/workflows.js';
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
@@ -104,6 +105,7 @@ export async function buildApp(options:{logging?:boolean}={}){
  app.get('/api/v1/admin/settings',{preHandler:allow(['administrator']),schema:{...adminSchema('getSettings','Company'),response:{200:z.object({legal:z.object({impressumApproved:z.boolean(),privacyApproved:z.boolean(),recruitmentApproved:z.boolean(),providersReviewed:z.boolean()}),retention:z.object({enquiryDays:z.number(),applicationDays:z.number()})}),...errors}}},async()=>{const r=await db.query("SELECT * FROM settings WHERE key IN ('legal','retention')");return Object.fromEntries(r.rows.map(r=>[r.key,r.value])) as {legal:{impressumApproved:boolean;privacyApproved:boolean;recruitmentApproved:boolean;providersReviewed:boolean};retention:{enquiryDays:number;applicationDays:number}};});
  app.put('/api/v1/admin/settings',{preHandler:allow(['administrator']),schema:{...adminSchema('saveSettings','Company'),body:z.object({legal:z.object({impressumApproved:z.boolean(),privacyApproved:z.boolean(),recruitmentApproved:z.boolean(),providersReviewed:z.boolean()}),retention:z.object({enquiryDays:z.number().int().min(1).max(3650),applicationDays:z.number().int().min(1).max(3650)})}),response:{200:C.ok,...errors}}},async req=>{await transaction(async c=>{for(const [key,value] of Object.entries(req.body))await c.query('UPDATE settings SET value=$1 WHERE key=$2',[value,key]);});await audit(req.actor!.id,'settings.reviewed',null,req.id);return {ok:true as const};});
  app.get('/api/v1/admin/export',{preHandler:allow(['administrator']),schema:{...adminSchema('exportBusinessData','Administration'),response:{200:z.object({enquiries:z.array(C.enquiry),applications:z.array(C.application)}),...errors}}},async req=>{await audit(req.actor!.id,'data.exported',null,req.id);return {enquiries:normalize<z.infer<typeof C.enquiry>[]>((await db.query('SELECT * FROM enquiries ORDER BY id')).rows),applications:normalize<z.infer<typeof C.application>[]>((await db.query('SELECT * FROM applications ORDER BY id')).rows)};});
+ await registerEngineeringIdentity(app,allow,{limit,address:clientAddress});
  metrics(app);
  await registerProcessing(app,allow);
  transfers(app,{allow,fileRoles:permissions.files,address:clientAddress,publication:ensurePublication,limit});
