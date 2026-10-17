@@ -100,7 +100,7 @@ export function EngineeringMemberships() {
         </button>
       )}
       {ready && !configured && (
-        <p role="status">
+        <p>
           Portal-based Engineering sign-in is not configured in this
           environment.
         </p>
@@ -178,7 +178,7 @@ export function EngineeringMemberships() {
               cannot be reused.
             </p>
             <label>
-              Your current password
+              Owner password for this membership change
               <input
                 name="password"
                 type="password"
@@ -187,7 +187,7 @@ export function EngineeringMemberships() {
               />
             </label>
             <label>
-              Fresh authenticator or unused recovery code
+              Owner authenticator or recovery code for this membership change
               <input
                 name="code"
                 autoComplete="one-time-code"

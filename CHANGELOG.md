@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Distinguish engineering-membership owner proof from user-account proof with
+  specific accessible labels; keep static configuration guidance outside live feedback.
+
 - Identify the affected API/environment and UTC time in availability alerts; retain
   the notification reference and separate failure/recovery evidence without changing
   health thresholds, service state or the existing notification interval.
