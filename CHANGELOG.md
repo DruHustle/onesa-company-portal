@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Place the mobile homepage introduction at the bottom of its blue hero, visible
+- Place the mobile homepage introduction above the divider at the bottom of its blue hero, visible
   before scrolling. Present mobile capabilities as four full-width rows; retain
   hidden hero buttons, the taller navy section and desktop presentation.
 

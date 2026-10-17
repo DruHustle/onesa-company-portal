@@ -1,5 +1,13 @@
 # Production release checklist
 
+## Mobile hero divider placement — prepared 2026-10-17
+
+The owner confirmed the mobile introduction belongs immediately above the hero
+divider, with the tagline and downward cue below it. English/German, light/dark,
+portrait/landscape and desktop checks pass: 16 Chromium/WebKit cases and eight
+accessibility views with no violations. Build and lint pass. This correction is
+prepared for normal dev → staging → main promotion; it is not yet live.
+
 ## Portal-based Engineering Docs sign-in — prepared 2026-10-17
 
 The owner now requests registration with approval, plus emailed sign-in links or

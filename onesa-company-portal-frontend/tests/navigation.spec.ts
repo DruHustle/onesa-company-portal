@@ -164,10 +164,11 @@ test.describe('uncluttered mobile homepage',()=>{
     await page.setViewportSize(viewport);await page.goto('/'+locale);
     const hero=page.locator('.home-page .hero');await expect(hero.locator('h1')).toBeVisible();
     await expect(hero.locator('.hero-intro')).toBeHidden();await expect(hero.locator('.actions')).toBeHidden();
-    const introduction=hero.locator('.hero-bottom .mobile-hero-intro');await expect(introduction).toBeVisible();await expect(introduction).toContainText(locale==='en'?'Intelligent software':'Intelligente Software');
-    expect(await introduction.evaluate(element=>element.closest('.hero')!==null&&element.parentElement?.classList.contains('hero-bottom'))).toBe(true);
+    const introduction=hero.locator('.hero-end > .mobile-hero-intro');await expect(introduction).toBeVisible();await expect(introduction).toContainText(locale==='en'?'Intelligent software':'Intelligente Software');
+    expect(await introduction.evaluate(element=>element.closest('.hero')!==null&&element.parentElement?.classList.contains('hero-end'))).toBe(true);
     const box=await hero.boundingBox();expect(box).not.toBeNull();expect(box!.height).toBeGreaterThanOrEqual(viewport.height-1);expect(box!.y+box!.height).toBeGreaterThan(viewport.height);
-    const introBox=await introduction.boundingBox();expect(introBox).not.toBeNull();expect(introBox!.y+introBox!.height).toBeLessThanOrEqual(viewport.height-8);expect(introBox!.y).toBeGreaterThan(viewport.height*.45);
+    const divider=await hero.locator('.hero-bottom').boundingBox();expect(divider).not.toBeNull();
+    const introBox=await introduction.boundingBox();expect(introBox).not.toBeNull();expect(introBox!.y+introBox!.height).toBeLessThanOrEqual(divider!.y-7);expect(introBox!.y+introBox!.height).toBeLessThanOrEqual(viewport.height-8);expect(introBox!.y).toBeGreaterThan(viewport.height*.45);
     const rows=page.locator('#capabilities .capability');await expect(rows).toHaveCount(4);const rowBoxes=await rows.evaluateAll(elements=>elements.map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,bottom:r.bottom};}));for(let i=1;i<rowBoxes.length;i++){expect(Math.abs(rowBoxes[i].x-rowBoxes[0].x)).toBeLessThan(1);expect(Math.abs(rowBoxes[i].width-rowBoxes[0].width)).toBeLessThan(1);expect(rowBoxes[i].y).toBeGreaterThanOrEqual(rowBoxes[i-1].bottom-1);}
 
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
