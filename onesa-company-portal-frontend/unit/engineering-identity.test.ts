@@ -74,3 +74,9 @@ test("OIDC callbacks require the exact configured Access authority, path and cla
     null,
   );
 });
+
+import {accessLinkToken} from '../src/lib/access-link.ts';
+test('Email proof accepts exactly one bounded fragment token and rejects duplicate/redirect parameters',()=>{
+ const token='a'.repeat(64);assert.equal(accessLinkToken('#access-link='+token),token);
+ for(const value of ['#access-link=short','#access-link='+token+'&access-link='+token,'#access-link='+token+'&next=https://attacker.invalid','#token='+token,'#access-link='+('A'.repeat(64))])assert.equal(accessLinkToken(value),null);
+});

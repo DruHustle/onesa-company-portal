@@ -1,15 +1,29 @@
 # Production release checklist
 
+## Mobile hero divider placement — prepared 2026-10-17
+
+The owner confirmed the mobile introduction belongs immediately above the hero
+divider, with the tagline and downward cue below it. English/German, light/dark,
+portrait/landscape and desktop checks pass: 16 Chromium/WebKit cases and eight
+accessibility views with no violations. Build and lint pass. This correction is
+prepared for normal dev → staging → main promotion; it is not yet live.
+
 ## Portal-based Engineering Docs sign-in — prepared 2026-10-17
 
-Separate documentation identities, owner-managed individual memberships, emailed
-one-use codes and a fixed confidential OIDC/PKCE client are implemented behind
-default-off flags. Additive migration 010 seeds no users and changes no existing
-credentials. Existing Access exact-email/asset enforcement remains independent.
-The isolated source passes112backend tests,13domain/redirect tests and8responsive
-UI views; hosted staging, actual provider configuration, owner email-code sign-in
-and source-bound production acceptance remain required. See the protected
-[activation and onboarding procedure](docs/engineering/ENGINEERING_DOCS_IDENTITY.md).
+The owner now requests registration with approval, plus emailed sign-in links or
+email/password for both administration and Docs. Existing two approved addresses
+retain their decisions. Existing administrator credentials, roles and MFA remain
+unchanged; engineering approval grants no Portal role. Additive 010/011 and
+default-off identity/registration flags require source-bound hosted qualification.
+The superseded OTP-only staging Preview stopped before backend login; its original
+failure is retained. No production identity selection has changed. The revised
+source passes 123 isolated backend tests (including 9 new registration/link cases),
+15 domain/redirect/fragment tests, 12 expanded OIDC tests (including both new
+methods), 14 isolated production-renderer/accessibility views and a production
+frontend build. A further two production-renderer views verify default-off rollout
+compatibility and existing password/MFA login. Full remote CI and hosted acceptance
+remain required.
+See the [activation and onboarding procedure](docs/engineering/ENGINEERING_DOCS_IDENTITY.md).
 
 ## Owner step-up and concurrent deletion — correction prepared 2026-10-17
 

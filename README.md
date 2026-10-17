@@ -9,8 +9,10 @@ The Company Portal is Onesa UG’s corporate website and protected business work
 It combines an English/German public site with a custom CMS, enquiries, recruitment,
 private documents, background processing and database-backed privacy governance.
 Public content requires editorial approval; private records require backend authorization.
-Engineering Docs can use separately qualified Portal email-code sign-in with
+Engineering Docs can use separately qualified Portal email-link/password sign-in with
 owner-managed individual memberships; this grants no Portal administrator role.
+First-time users register and verify their email before owner review. Existing
+explicit approvals are retained; new administrator access keeps MFA.
 See the [protected access procedure](docs/engineering/ENGINEERING_DOCS_IDENTITY.md)
 for its prepared status, qualification and onboarding boundaries.
 The protected privacy workspace includes policy review and explicit Portal lifecycle

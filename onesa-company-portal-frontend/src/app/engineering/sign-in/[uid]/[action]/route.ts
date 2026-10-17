@@ -23,7 +23,7 @@ async function proxy(
     return Response.json({ error: "Sign-in unavailable" }, { status: 404 });
   if (
     !/^[A-Za-z0-9_-]{8,128}$/.test(uid) ||
-    !["details", "start", "verify"].includes(action) ||
+    !["details", "start", "verify", "link", "link-verify", "password"].includes(action) ||
     (request.method === "GET") !== (action === "details")
   )
     return Response.json({ error: "Invalid sign-in request" }, { status: 400 });

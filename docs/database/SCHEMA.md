@@ -50,3 +50,16 @@ audit evidence remain until explicitly managed. Existing Access sessions require
 separate revocation during offboarding; deleting a Portal challenge cannot revoke
 an already-issued Access session. No migration or provider configuration is claimed
 live by this source description.
+
+## Registration, approval and sign-in links
+
+Additive migration 011 adds `access_registrations`, `access_links` and
+`engineering_credentials`. Registration stores no password until email verification;
+pending password hashes are cleared after approval/rejection. Only hashed, expiring
+single-use link tokens are stored. Mail jobs retain their encrypted payloads under the
+existing mail lifecycle. Approval never overwrites existing credentials or grants an
+owner role. Engineering credentials belong only to the documentation membership.
+The restricted application role requires CRUD on these tables; no sequence or public
+privilege is introduced. Restore lockdown removes every restored sign-in/registration
+link while preserving approval evidence and inert password hashes. This source change
+is not a claim that migration 011 or the new login options are deployed.
