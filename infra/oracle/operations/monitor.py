@@ -60,7 +60,8 @@ def evaluate(metrics):
         "clamav-unavailable": not metrics.get("scanner_ready", False),
         "signature-update-failed": not metrics["signature_current"],
         "backup-failed": metrics["backup_failed"]
-        or metrics["backup_age_seconds"] > 7200,
+        or metrics["backup_age_seconds"] > 7200
+        or metrics.get("database_backup_failed", False),
         "resource-exhaustion": metrics["disk_used_percent"] >= 80
         or metrics["memory_available_bytes"] < 512 * 1024 * 1024,
         "database-unavailable": not metrics.get("database_available", False),
@@ -76,6 +77,38 @@ def run(command, timeout=35):
     if r.returncode:
         raise ValueError("Private metric acquisition failed")
     return r.stdout
+
+
+def database_backup_health(products, state, now):
+    """Fail closed for missing, failed, stale or malformed configured snapshots."""
+    if not products or not set(products) <= {"ai", "robot"}:
+        raise ValueError("Invalid configured backup products")
+    ages = {}
+    failed = False
+    for product in products:
+        try:
+            receipt = json.loads(
+                (state / f"database-backup-{product}-success.json").read_text()
+            )
+            age = (
+                now
+                - datetime.datetime.fromisoformat(receipt["verified_at"]).timestamp()
+            )
+            valid = (
+                receipt["product"] == product
+                and receipt["passed"] is True
+                and receipt["off_instance_storage_verified"] is True
+                and receipt["consistent_snapshot"] is True
+                and 0 <= age <= 7200
+            )
+            ages[product] = max(0, int(age))
+        except (OSError, ValueError, TypeError, KeyError, OverflowError):
+            valid = False
+            ages[product] = None
+        failed |= (
+            not valid or (state / f"database-backup-{product}-failure.json").exists()
+        )
+    return {"database_backup_failed": failed, "database_backup_age_seconds": ages}
 
 
 def probe_backend(name):
@@ -221,6 +254,14 @@ def sample(config):
             time.time()
             - datetime.datetime.fromisoformat(saved["verified_at"]).timestamp()
         )
+    if Path("/etc/onesa/database-backups.json").exists():
+        try:
+            from database_snapshots import CONFIG, private_json
+
+            profiles = private_json(CONFIG)["products"]
+            metrics.update(database_backup_health(profiles, STATE, time.time()))
+        except (OSError, ValueError, TypeError, KeyError):
+            metrics["database_backup_failed"] = True
     try:
         run(
             [

@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly Onesa Robot encrypted snapshot
+
+[Timer]
+OnCalendar=*-*-* *:20:00
+RandomizedDelaySec=60
+Persistent=true
+Unit=onesa-database-backup@robot.service
+
+[Install]
+WantedBy=timers.target

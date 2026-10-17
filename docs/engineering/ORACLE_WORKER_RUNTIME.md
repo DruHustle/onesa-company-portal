@@ -131,6 +131,80 @@ See [netfilter modes](https://tailscale.com/docs/reference/netfilter-modes) and
 
 ## Artifact and resource limits
 
+### AI and Robot recovery coverage
+
+`infra/oracle/operations/database_snapshots.py` prepares the remaining database
+profiles through the existing Portal backup transport and recovery public key.
+It is separate from application deployment and is **not enabled by checking in
+source or timer units**. Before installation, review the exact production bindings,
+off-instance destination, independent recovery-key custody and authorized copy scope.
+
+The root-only `/etc/onesa/database-backups.json` uses schema `1` and a `products`
+object containing only `ai` and/or `robot`. Each profile pins `runtime_sha256` for
+its existing root-owned runtime file and `target_sha256` for the parsed
+`scheme|hostname|port|username|path` database identity. Never put runtime values,
+credentials or this private configuration in Git. A changed binding stops backup
+until reviewed; production and staging are not interchangeable.
+
+AI exports a read-only repeatable-read PostgreSQL snapshot with matching table
+counts/fingerprints. Robot exports both durable journal tables in one read-only SQL
+statement, including schema and exact serialized rows; unexpected schema objects
+stop the export rather than silently reducing coverage. Operator credentials and
+the existing runtime configuration remain separate recovery dependencies.
+
+The existing `oracle_backup_store.mjs` accepts these profiles with the pure
+`oracle_backup_payload.mjs` encryption module mounted alongside it. AES-256-GCM
+authenticates snapshot metadata and contents; a fresh key is wrapped by the existing
+RSA recovery public key. Ciphertext goes to separate `.onesa-database-backups/v1/ai/`
+and `robot/` prefixes in the existing private off-instance store. Each prefix has a
+64 MiB ceiling; reaching it fails closed and raises the existing backup alarm.
+These paths never delete archives automatically. Their retention policy remains an
+owner decision; the existing Portal seven-day policy is unchanged.
+
+The prepared `onesa-database-backup@.service` bounds execution to four minutes.
+Separate hourly timers stagger AI at minute 10 and Robot at minute 20. Enable only
+after a reviewed first snapshot, authenticated off-instance readback, isolated
+restore and independent key-recovery check pass. The existing monitor reports
+missing, failed, malformed, future-dated or older-than-two-hours snapshots for
+configured products. Do not send duplicate test alerts.
+
+Snapshot success does not authorize restoration into a live service. Restore into
+an isolated destination, validate schema, complete counts and fingerprints, revoke
+restored sessions/capabilities and reconcile post-snapshot erasures/unpublication
+before any service activation. An unavailable erasure ledger is a restore blocker;
+encryption and a successful database import do not establish that requirement.
+
+`openDatabaseSnapshot` in `scripts/oracle_backup_payload.mjs` verifies the recorded
+ciphertext hash, product, recovery-key identity, authenticated envelope and plaintext
+hash before returning a snapshot. Keep the private RSA key off the VM. Use the
+existing restricted backup reader for the exact recorded object; never enumerate
+or copy unrelated application objects as part of recovery evidence.
+
+For Portal, `scripts/release/restore_lockdown.py --container <isolated-container>
+--database <restore-database> --replay-ledger <private-ledger>
+--apply-isolated-replay` accepts only an explicitly labeled, running Docker target
+with network `none`, no published ports and only temporary-memory mounts. The
+snapshot hash must match the private ledger. Supply complete event and legal-hold
+categories for deleted enquiries, applications and files, unpublished content and
+disabled users, with backup and reconciliation timestamps. Missing/currentness
+evidence remains a blocker; empty categories are not proof that no erasures occurred.
+
+Replay is transactional, bounded and idempotent. Associated application files and
+notification jobs are reconciled; conflicting file holds stop the transaction.
+All restored users, sessions, recovery/enrollment capabilities, transfers, scheduled
+publication, clean/approved files and queued work are quarantined. Governance records,
+versions and approval history remain intact. Restore only surviving file objects
+from reconciled metadata; do not hydrate every backed-up object. This tool never
+deletes objects from production storage or executes a draft retention policy.
+Its receipt explicitly grants no service activation. The legacy fixed synthetic
+lockdown mode remains available and does not claim erasure reconciliation.
+
+Offline checks: `python3 -m unittest discover -s scripts -p 'test_oracle*.py'` and
+`node --test scripts/test_oracle_backup_payload.mjs`. They use synthetic fixtures
+and do not qualify production copies, schedules or recovery objectives. Stop only
+the two new timers to roll back scheduling; preserve ciphertext, key custody,
+existing Portal backup/monitoring and all application services.
+
 `compose.oracle-staging.yaml` runs only the existing Portal background executor and
 ClamAV. It creates no database, API or frontend. The worker consumes the existing
 staging database, encrypted job payloads and private object bucket. Production worker
