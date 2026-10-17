@@ -26,3 +26,14 @@ keys are deferred until transaction completion; version payloads are immutable
 snapshots. Approved versions and append-only review events cannot be altered or
 deleted. Restrict access through the existing owner/admin API roles and preserve
 these records during restores. See [the governance architecture](../engineering/PRIVACY_GOVERNANCE.md).
+
+## Lifecycle control and replay journal
+
+Migration 009 adds explicit outcome timestamps without backfilling history,
+`privacy_holds`, `privacy_lifecycle_requests`, `privacy_lifecycle_targets`,
+`privacy_lifecycle_events` and `privacy_erasure_journal`. Holds/history/events are
+protected by triggers; erasure identities append within the business-delete
+transaction. Application/CV holds protect each other. Grant the existing restricted
+role access to these new tables/sequences through the existing provisioning path,
+without changing its password. Keep additive schema during application rollback.
+No TTL timer, imported approval or automatic business deletion is introduced.

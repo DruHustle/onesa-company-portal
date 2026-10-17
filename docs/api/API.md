@@ -13,7 +13,7 @@ Role permissions are enforced by the backend. Drafts/private files are not publi
 Generate with backend `npm run api:export`, then frontend `npm run api:generate`.
 Run `python3 scripts/check-contracts.py` and `scripts/test-contract-break.py` from
 repository root. Generated client source remains committed; build outputs do not.
-Vercel forwards API calls to Render, so browsers retain one origin and cookie scope.
+Vercel forwards API calls to the qualified Oracle APIs, so browsers retain one origin and cookie scope.
 
 
 ## Sensitive user changes and own-password changes (2026-10-10)
@@ -61,3 +61,18 @@ result. The protected dashboard exposes corresponding `publicationStage` and
 `publicationEnabled` fields. Pre-launch is an explicit owner-authorized runtime
 exception to the global legal hold; it does not publish drafts, grant permissions,
 approve files, enable retention deletion or change recorded legal decisions.
+
+## Protected lifecycle controls
+
+Under `/admin/governance`, holds support bounded listing, owner-confirmed creation
+and release. Requests support exact-ID impact plans, bounded listing, details,
+events, pre-execution cancellation, owner-confirmed execution and evidenced
+completion. `/lifecycle/preview` is read-only and distinguishes proposed from
+effective rules; `/lifecycle/replay-export` returns an explicitly incomplete
+private recovery candidate. Generated OpenAPI/client types define all fields.
+
+Mutation requests require Origin/CSRF. Hold changes, execution and completion
+require fresh owner password/MFA proof, with account/peer rate limits. Execution
+binds the saved plan/version, rechecks hashes and holds, and reports per-target
+outcomes. It never claims external erasure from a successful local DELETE.
+See [governance architecture](../engineering/PRIVACY_GOVERNANCE.md).

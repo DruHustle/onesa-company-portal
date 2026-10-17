@@ -9,6 +9,10 @@ The Company Portal is Onesa UG’s corporate website and protected business work
 It combines an English/German public site with a custom CMS, enquiries, recruitment,
 private documents, background processing and database-backed privacy governance.
 Public content requires editorial approval; private records require backend authorization.
+The protected privacy workspace includes policy review and explicit Portal lifecycle
+controls: read-only impact plans, preservation holds and owner-confirmed erasure.
+Draft rules never activate automatic expiry. See the [governance architecture](docs/engineering/PRIVACY_GOVERNANCE.md)
+and [release checklist](RELEASE_CHECKLIST.md) for source behavior and deployment status.
 
 ```mermaid
 flowchart LR

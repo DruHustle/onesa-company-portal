@@ -1,5 +1,14 @@
 # Production release checklist
 
+## Portal lifecycle controls — implementation, not deployed
+
+Additive migration 009, generated contracts and the protected requests UI are
+prepared. The original 41 production governance records and approvals must remain
+unchanged. Do not run real erasure for acceptance or enable draft-driven retention.
+Full backend, three-engine CI, relevant UI, migration/restore and exact-source hosted
+qualification are required before promotion/deployment. Keep the existing production
+artifacts until those checks pass; no technical bypass is authorized.
+
 ## Rounded homepage and Oracle monitoring — LIVE 2026-10-16
 
 Frontend `8bee209a6ea82a2d63d187d1b23046f051698f0f`, deployment
