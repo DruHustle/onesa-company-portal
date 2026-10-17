@@ -154,3 +154,24 @@ test('an unknown published detail keeps HTTP404 and noindex',async({page}) => {
   expect(directives.length).toBeGreaterThan(0);
   expect(directives.every(content => content.includes('noindex'))).toBe(true);
 });
+
+
+test.describe('uncluttered mobile homepage',()=>{
+ for(const locale of ['en','de'])for(const mode of ['light','dark'] as const){
+  test(`${locale} mobile hero fills the opening screen in ${mode}`,async({page})=>{
+   await page.emulateMedia({colorScheme:mode,reducedMotion:'reduce'});
+   for(const viewport of [{width:320,height:568},{width:390,height:844},{width:430,height:932},{width:640,height:360}]){
+    await page.setViewportSize(viewport);await page.goto('/'+locale);
+    const hero=page.locator('.home-page .hero');await expect(hero.locator('h1')).toBeVisible();
+    await expect(hero.locator('.hero-intro')).toBeHidden();await expect(hero.locator('.actions')).toBeHidden();
+    const box=await hero.boundingBox();expect(box).not.toBeNull();expect(box!.height).toBeGreaterThanOrEqual(viewport.height-1);expect(box!.y+box!.height).toBeGreaterThan(viewport.height);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    const cue=hero.getByRole('link',{name:locale==='en'?'Explore capabilities':'Kompetenzen entdecken'});await expect(cue).toBeVisible();await cue.focus();await expect(cue).toBeFocused();await cue.click();await expect(page).toHaveURL(/#capabilities$/);
+   }
+  });
+  test(`${locale} desktop hero retains useful introduction and actions in ${mode}`,async({page})=>{
+   await page.emulateMedia({colorScheme:mode});await page.setViewportSize({width:1440,height:1000});await page.goto('/'+locale);
+   await expect(page.locator('.hero-intro')).toBeVisible();await expect(page.locator('.hero .actions')).toBeVisible();await expect(page.locator('.hero .actions a')).toHaveCount(2);
+  });
+ }
+});
