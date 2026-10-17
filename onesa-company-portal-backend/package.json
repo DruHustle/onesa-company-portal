@@ -43,7 +43,7 @@
     "@types/oidc-provider": "9.12.1",
     "@types/pdfkit": "^0.17.3",
     "@types/pg": "^8.15.6",
-    "eslint": "^9.39.0",
+    "eslint": "^10.12.0",
     "prettier": "^3.9.9",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
