@@ -208,3 +208,36 @@ test.describe('uncluttered mobile homepage',()=>{
   });
  }
 });
+
+for (const locale of ['en', 'de'] as const) {
+  for (const width of [390, 1440]) {
+    test(`homepage capabilities open distinct useful topics in ${locale} at ${width}px`, async ({page}) => {
+      await page.setViewportSize({width, height:900});
+      await page.goto(`/${locale}`);
+      const links = page.locator('#capabilities a.capability');
+      await expect(links).toHaveCount(4);
+      const destinations = await links.evaluateAll(nodes => nodes.map(node => node.getAttribute('href')));
+      expect(new Set(destinations).size).toBe(4);
+      const explanations = new Set<string>();
+      for (let index=0; index<4; index++) {
+        const link = links.nth(index);
+        const title = await link.locator('h3').innerText();
+        await link.focus();
+        await page.keyboard.press('Enter');
+        await expect(page).toHaveURL(new RegExp(`/${locale}/technology#.+$`));
+        const heading = page.getByRole('heading', {name:title, exact:true});
+        await expect(heading).toBeInViewport();
+        const article = page.getByRole('article', {name:title, exact:true});
+        await expect(article.locator('p')).toHaveCount(2);
+        const explanation = await article.innerText();
+        expect(explanation.length).toBeGreaterThan(150);
+        explanations.add(explanation);
+        // A bookmarked topic must also open correctly without prior client navigation.
+        await page.reload();
+        await expect(heading).toBeInViewport();
+        await page.goto(`/${locale}`);
+      }
+      expect(explanations.size).toBe(4);
+    });
+  }
+}
