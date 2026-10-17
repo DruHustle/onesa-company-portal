@@ -114,6 +114,234 @@
         }
       ],
       "use": "Company Products AI Platform presentation; illustrative AI interaction, not a photograph of existing Onesa hardware"
+    },
+    {
+      "role": "Industry editorial image: enterprise",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial architectural photograph of a contemporary enterprise technology workspace: glass meeting room, discreet unbranded laptop workstations, layered reflections, navy and muted cyan accents, natural daylight. No people, no readable screens or text.",
+        "sharedPrompt": "Wide 3:2 editorial image for Onesa industry cards, clear subject, navy/steel/cyan palette, natural material detail; no typography, logos, watermark, UI overlays or sci-fi holograms.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2195300,
+        "sha256": "c4921911802bfd393ca33d43cbe294e04f0ac920ac73317b4f23205ee9211295"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/industry-enterprise-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 20458,
+          "sha256": "a97dc862b93293d76d5844b8fabfd06c4635b5b52528fd6d96243b822afc3391"
+        },
+        {
+          "path": "/images/industry-enterprise-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 54716,
+          "sha256": "97e71a3665b2f2e124e33b68bbaa961d4c616726c51c4d358ffd687ee1132e89"
+        }
+      ],
+      "use": "Company Industries; enterprise and industrial scenes also support About and Technology. English/German descriptive alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Industry editorial image: industrial",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial photograph of an industrial digitalization setting: precision sensor attached to a clean industrial pipework system, orderly cables, brushed metal and softly glowing cyan sensor light, dark blue depth, believable contemporary engineering. No people, no logos, no screens or text.",
+        "sharedPrompt": "Wide 3:2 editorial image for Onesa industry cards, clear subject, navy/steel/cyan palette, natural material detail; no typography, logos, watermark, UI overlays or sci-fi holograms.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1921452,
+        "sha256": "235e8fcca7f8a6b7189e60c60a04dbdf4363adad67f9320c8174fca5d6f7013a"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/industry-industrial-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 16864,
+          "sha256": "d3fdd0411f0d48f2d0ab29210f535d3df02907b11eb4a7a175e02c25e443188c"
+        },
+        {
+          "path": "/images/industry-industrial-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 39786,
+          "sha256": "c71cabbd12cb8614797cb4cf332ce63a2f57f003881c2c8273f265b0d75548f1"
+        }
+      ],
+      "use": "Company Industries; enterprise and industrial scenes also support About and Technology. English/German descriptive alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Industry editorial image: manufacturing",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial photograph of precision manufacturing: close view of an unbranded industrial robotic arm beside a milled metal component on an orderly factory production cell, dark navy and steel materials, restrained cyan lighting. No people, no text.",
+        "sharedPrompt": "Wide 3:2 editorial image for Onesa industry cards, clear subject, navy/steel/cyan palette, natural material detail; no typography, logos, watermark, UI overlays or sci-fi holograms.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2068670,
+        "sha256": "7f1519e530dd901113262c6cf34d0cb00b10b7efce470242fe023ec7a089e35e"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/industry-manufacturing-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 22686,
+          "sha256": "0315628123d82282b5d3ceec59b75588c6de1992bc5bd1af23d0346618cdf4d1"
+        },
+        {
+          "path": "/images/industry-manufacturing-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 54146,
+          "sha256": "9b70d2d2930c2f84e5b4c1ded3821a3ee28b58187c068129071f84b377ced830"
+        }
+      ],
+      "use": "Company Industries; enterprise and industrial scenes also support About and Technology. English/German descriptive alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Industry editorial image: travel",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial travel photograph: Lisbon-inspired waterfront at early morning, warm stone architecture and quiet blue water, contemporary transport connections in distant view, understated premium editorial composition. No identifiable people, no logos or text.",
+        "sharedPrompt": "Wide 3:2 editorial image for Onesa industry cards, clear subject, navy/steel/cyan palette, natural material detail; no typography, logos, watermark, UI overlays or sci-fi holograms.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2658175,
+        "sha256": "1f8dc976eafb3f4cdc44f45982f10a66dbe30982854fe770092d385173ebb5e1"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/industry-travel-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 22276,
+          "sha256": "fef8c6a2baca980ff7f22419b998afec2ffe1a515a2b9fd83bb93cde08f93102"
+        },
+        {
+          "path": "/images/industry-travel-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 79226,
+          "sha256": "b958c317cde1e911e6a0fc6996bf8eee4b52c31d8d52dc16cc263e3393c2c17e"
+        }
+      ],
+      "use": "Company Industries; enterprise and industrial scenes also support About and Technology. English/German descriptive alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Industry editorial image: commerce",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial photograph of modern commerce infrastructure: beautifully organized small parcels and an unbranded handheld scanner on a clean fulfillment workstation, deep navy shelving, warm neutral cardboard, subtle cyan details. No people, no readable text, no logos.",
+        "sharedPrompt": "Wide 3:2 editorial image for Onesa industry cards, clear subject, navy/steel/cyan palette, natural material detail; no typography, logos, watermark, UI overlays or sci-fi holograms.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1958600,
+        "sha256": "6150f2513ada1fd3c710f69ca768c5175aac779c4c1538d43bc6d2c7179b27ba"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/industry-commerce-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 11954,
+          "sha256": "cdeed864af4ebe8a2e1f3e26312c164194f507125046400e9c952faaf74cba35"
+        },
+        {
+          "path": "/images/industry-commerce-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 28704,
+          "sha256": "e5218052fb5738b423d2cbe6d5274c4616805c024e3030983614746fed2338cf"
+        }
+      ],
+      "use": "Company Industries; enterprise and industrial scenes also support About and Technology. English/German descriptive alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Industry editorial image: finance",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial architectural photograph suggesting financial technology: sculptural glass towers seen through a layered modern atrium, elegant blue reflections and warm natural sunlight, precise geometric rhythm, no money symbols, no charts, no logos or text.",
+        "sharedPrompt": "Wide 3:2 editorial image for Onesa industry cards, clear subject, navy/steel/cyan palette, natural material detail; no typography, logos, watermark, UI overlays or sci-fi holograms.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2489596,
+        "sha256": "582c8ffcc7f3800ddc592ce3cb3eb124f27d443b57ebbe2bd20b5736d5fe6ad3"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/industry-finance-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 28012,
+          "sha256": "2e8b156254222b35e01477edf017bf02686446b746305b97a8846432f8406d34"
+        },
+        {
+          "path": "/images/industry-finance-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 87828,
+          "sha256": "031bfd3900da31e7c5eabf9d1ed618b40f6c3e5f41c043e2a7fea99b62b62d0c"
+        }
+      ],
+      "use": "Company Industries; enterprise and industrial scenes also support About and Technology. English/German descriptive alt text identifies illustrative scenes."
     }
   ]
 }
