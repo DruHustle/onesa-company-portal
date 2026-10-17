@@ -4,6 +4,9 @@ import SwaggerParser from '@apidevtools/swagger-parser';
 process.env.DATABASE_URL ||= 'postgresql://export:export@127.0.0.1:1/export';
 process.env.SESSION_KEY ||= 'schema-export-placeholder-only-not-a-production-key';
 process.env.NODE_ENV='test';
+// Protocol credentials are never needed for a deterministic schema export.
+delete process.env.ENGINEERING_IDENTITY_ENABLED;
+delete process.env.ENGINEERING_OIDC_CONFIG_B64;
 const {buildApp}=await import('../app.js');
 const app=await buildApp({logging:false});await app.ready();
 const spec=app.swagger();await SwaggerParser.validate(JSON.parse(JSON.stringify(spec)));

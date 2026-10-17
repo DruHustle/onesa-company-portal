@@ -1,5 +1,16 @@
 # Production release checklist
 
+## Portal-based Engineering Docs sign-in — prepared 2026-10-17
+
+Separate documentation identities, owner-managed individual memberships, emailed
+one-use codes and a fixed confidential OIDC/PKCE client are implemented behind
+default-off flags. Additive migration 010 seeds no users and changes no existing
+credentials. Existing Access exact-email/asset enforcement remains independent.
+The isolated source passes112backend tests,13domain/redirect tests and8responsive
+UI views; hosted staging, actual provider configuration, owner email-code sign-in
+and source-bound production acceptance remain required. See the protected
+[activation and onboarding procedure](docs/engineering/ENGINEERING_DOCS_IDENTITY.md).
+
 ## Owner step-up and concurrent deletion — correction prepared 2026-10-17
 
 Exact-main CI `39035817445` exposed a hold/deletion deadlock: step-up's exclusive
