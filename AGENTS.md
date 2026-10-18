@@ -80,13 +80,12 @@ human data-classification review before publishing or uploading CI artifacts.
 
 ## Repository governance and CI/CD
 
-Credential-free PR validation uses GitHub-hosted runners. Keep the dormant private-only
-local runner isolated; never require it for untrusted PRs. Current remotes are public,
-default main; no visibility/billing/access change is authorized. GitHub Free safeguards
-must not assume paid protection. Read actual enforcement before claiming it: PR discipline
-cannot block privileged writers. Restrict write access and keep production credentials
-outside editable repository Actions. See `docs/development/PRIVATE_FREE_SAFEGUARDS.md`
-and `docs/development/BRANCH_PROTECTION_REPORT.md` for enforcement and owner actions.
+Credential-free PR jobs use hosted runners; local runners are removed. GitHub Free
+is permanent; only the owner changes current public visibility. Keep main as default;
+no billing/access change is authorized. Public main protection includes administrators;
+private eligibility requires readback. Administrators can still edit settings. Restrict
+write access and keep production credentials outside editable Actions. See
+`docs/development/BRANCH_PROTECTION_REPORT.md`.
 
 Use reviewed dev PRs to staging and qualified staging PRs to main. Prior acceptance
 commits remain in restricted recovery bundles. Reviewdog is CI evidence, never independent
@@ -177,3 +176,6 @@ Done means source/contracts/docs agree, required tests pass, cleanup and diffs a
 and authorized releases have exact-source hosted receipts. Report each real failed,
 blocked or untested gate with its next executable action. Owner authorization is not test
 evidence and this file grants no future session blanket production/credential authority.
+
+Private hosted checks require included-allowance opt-in; no paid overages.
+See docs/development/FREE_GITHUB_PLAN.md for transition checks.

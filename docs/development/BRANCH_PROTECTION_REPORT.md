@@ -1,3 +1,53 @@
+# Main branch protection — current public repository state
+
+Verified 2026-10-18: **ENFORCED** for `DruHustle/onesa-company-portal`. Repository visibility
+is public, default branch is `main`, and owner administrative access was verified.
+Classic branch protection is active; no ruleset or paid plan was added.
+
+- Require a PR, with **zero required independent approvals** for the solo owner.
+- Require current-base checks from GitHub Actions (App `15368`), including the
+  unconditional fail-closed `ci-summary`, publication hygiene and workflow security.
+- Enforce for administrators; prohibit force pushes and branch deletion; require
+  resolved review conversations. No permanent bypass allowance is configured.
+- Required checks: `changes`, `ci-summary`, `image-security (clamav)`, `image-security (onesa-company-portal-backend)`, `image-security (onesa-company-portal-frontend)`, `pipeline-security / workflow-security`, `publication-hygiene`, `verify`.
+
+Path-selected jobs can legitimately be skipped on unrelated PRs. The unconditional
+summary verifies the selection and requires every selected job to succeed, including
+aggregate matrix results. A cancelled, failed or unexpectedly skipped selected job
+fails the summary. Release-source pushes run full coverage. Portal includes its
+ClamAV runtime image scan. Do not require a workflow that can disappear via top-level
+path filtering. A pending/failed required check must block the normal PR path.
+
+Normal promotion remains `dev → staging → main`; temporary security-fix branches
+remain permitted. Production credentials and the qualified external release verifier
+remain outside PR execution. Branch protection is not production authorization.
+An administrator can still edit repository settings; this is not immutable governance.
+
+Prepared payloads use verified successful PR check names and the personal-repository
+schema. An initial HTTP 422 rejected an empty organization-only bypass field; it
+changed no protection. The corrected PUT and GET succeeded on all three repositories.
+Restricted before/after receipts and harmless PR enforcement observations are retained
+in the existing remediation evidence index. PR merge-behaviour acceptance is pending
+until the current normally promoted candidate supplies those observations.
+
+## Permanent Free budget and later private visibility
+
+The owner keeps public visibility temporarily and will perform any later private
+transition personally. No local runners remain. Public main protection is active now;
+private GitHub Free eligibility must be read back after the change. Unsupported
+branch/environment/review protections become procedural, without an unavailable
+independent reviewer. Included hosted capacity and the external owner release gate
+remain mandatory. See [the transition procedure](FREE_GITHUB_PLAN.md).
+
+## Historical inspection — superseded, not current configuration
+
+The following original report describes the earlier private-repository inspection.
+Its plan failures, provider observations and pending settings are historical only.
+Current public-state enforcement above supersedes those claims; no visibility or
+billing change was made by this remediation.
+
+<details><summary>Preserved historical report</summary>
+
 # Branch protection report
 
 Inspected 2026-10-10T21:30:44+02:00 (Europe/Berlin). **BLOCKED — NOT ENFORCED.**
@@ -83,3 +133,5 @@ All 4 selected contexts match observed successful PR jobs and resolve uniquely i
 ## Sources
 
 [GitHub ruleset availability](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets) · [Ruleset REST API](https://docs.github.com/en/rest/repos/rules) · [Branch-protection REST API](https://docs.github.com/en/rest/branches/branch-protection).
+
+</details>

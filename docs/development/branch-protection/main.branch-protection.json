@@ -3,11 +3,15 @@
     "strict": true,
     "checks": [
       {
-        "context": "verify",
+        "context": "changes",
         "app_id": 15368
       },
       {
-        "context": "publication-hygiene",
+        "context": "ci-summary",
+        "app_id": 15368
+      },
+      {
+        "context": "image-security (clamav)",
         "app_id": 15368
       },
       {
@@ -17,6 +21,18 @@
       {
         "context": "image-security (onesa-company-portal-frontend)",
         "app_id": 15368
+      },
+      {
+        "context": "pipeline-security / workflow-security",
+        "app_id": 15368
+      },
+      {
+        "context": "publication-hygiene",
+        "app_id": 15368
+      },
+      {
+        "context": "verify",
+        "app_id": 15368
       }
     ]
   },
@@ -25,12 +41,7 @@
     "dismiss_stale_reviews": true,
     "require_code_owner_reviews": false,
     "required_approving_review_count": 0,
-    "require_last_push_approval": false,
-    "bypass_pull_request_allowances": {
-      "users": [],
-      "teams": [],
-      "apps": []
-    }
+    "require_last_push_approval": false
   },
   "restrictions": null,
   "required_conversation_resolution": true,

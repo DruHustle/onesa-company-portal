@@ -37,8 +37,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   authorization:
-    if: github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor ==
-      'DruHustle' && github.ref == 'refs/heads/main'
+    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
