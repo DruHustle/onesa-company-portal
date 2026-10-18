@@ -1,5 +1,25 @@
 # Production release checklist
 
+## Homepage composition — prepared 2026-10-19
+
+Onesa AI Platform leads with one headline, a short explanation, one primary action
+and an original static workspace illustration. The scrolling story separates platform
+capabilities, technology, Robot development, company purpose and updates/contact.
+One scoped homepage stylesheet replaces the competing hero overrides. The mobile
+menu remains a native disclosure, supports Escape and works before hydration.
+
+Production-renderer screenshots and checks are in the existing restricted
+`private/oracle/application-release-20261016/homepage-refinement-20261019/` evidence.
+Final local checks pass:24 three-engine composition cases,24 rendered homepage
+views with verified200% text controls, and18 affected-page accessibility/layout views.
+The initial failures and corrected case results are retained. Actual-source CI,
+staging acceptance and canonical production verification remain
+required. Local browser screenshots are not physical-device or human acceptance.
+Tesla denied automated access; Terafab and SpaceX reference screenshots were captured
+without copying their assets. No backend, identity, data, billing or visibility change
+is part of this frontend release.
+
+
 ## Same-page emailed access links — correction prepared 2026-10-17
 
 The hosted password flow completed signed OIDC identity and code-replay checks.
