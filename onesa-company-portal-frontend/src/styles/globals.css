@@ -197,3 +197,12 @@ button,input,select{min-height:var(--onesa-control-size)}
 
 .technology-capabilities h2 { scroll-margin-block-start:calc(var(--onesa-header-height,85px) + 24px); }
 .technology-capabilities .capability-description p + p { margin-block-start:12px; }
+
+/* Task-oriented administration: names stay readable at narrow viewports. */
+.admin-task-group{display:grid;gap:4px;min-width:0}.admin-task-group h2{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 0 6px}.admin-task-group button{width:100%;min-width:0;overflow-wrap:anywhere}.admin-card{border-radius:16px}.admin-card fieldset{min-width:0;border:0;margin:0 0 20px;padding:0}.admin-card legend{font-weight:650;margin:8px 0 12px}.admin-content :is(input,select,textarea){max-width:100%;min-width:0}.admin-stats button{text-align:left;color:var(--ink);cursor:pointer}.admin-content :is(p,code){overflow-wrap:anywhere}.admin-content h2:focus-visible{outline:2px solid var(--blue);outline-offset:5px}.admin-content details{margin:16px 0}.admin-content summary{cursor:pointer;padding:8px 0}.admin-content figure{margin:12px 0}.admin-content form{max-width:850px}
+@media(max-width:900px){.admin-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.admin-task-group h2{margin-top:4px}.admin-main{padding:24px 16px}.admin-card{padding:18px}.admin-grid{grid-template-columns:minmax(0,1fr)}.admin-actions>*{max-width:100%}}
+@media(max-width:390px){.admin-stats{grid-template-columns:minmax(0,1fr)}.admin-header{padding:16px}.admin-tabs{grid-template-columns:minmax(0,1fr)}}
+
+/* The offer and next step lead on phones; artwork remains a background. */
+.contact-form fieldset{border:0;padding:0;margin:0;min-width:0}.contact-form legend{font-size:1.3rem;font-weight:600;margin-bottom:20px}.contact-form [aria-invalid=true]{border:2px solid var(--onesa-error)}
+@media(max-width:760px){.home-page .hero{min-height:calc(100svh - var(--onesa-header-height,85px));grid-template-rows:auto auto;padding-block:36px 28px;row-gap:28px}.home-page .hero-copy{max-width:35rem}.home-page .hero-intro{display:block;font-size:1rem;line-height:1.6;max-width:34ch;margin-block:24px}.home-page .hero .actions{display:flex;flex-wrap:wrap;gap:12px}.home-page .hero .actions .text-link{display:none}.home-page .hero .actions .button{white-space:normal;max-width:100%;text-align:center}.home-page .mobile-hero-intro{display:none}.home-page .hero-end{margin-block-start:0;align-self:end}.home-page .hero-art img{opacity:.25}.home-page .hero h1{max-width:15ch}}

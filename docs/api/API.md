@@ -91,3 +91,30 @@ memberships. Changes require a current owner session, CSRF, password/fresh MFA,
 expected revision and access-policy evidence. An engineering identity has no Portal
 role. The exact Cloudflare email policy remains an independent requirement. See
 [Engineering Docs access](../engineering/ENGINEERING_DOCS_IDENTITY.md).
+
+## Working drafts and published editions
+
+Migration 012 adds a private published snapshot and the `published_content` read
+view. Public lists, details, categories, legal readiness and vacancy intake use
+that approved edition while `/admin/content` exposes the editable working row.
+Saving or restoring a draft does not unpublish it. Editors may save replacements
+and submit `pending_review`; only publishers approve, schedule, publish or unpublish.
+Text/media changes invalidate review. Publication requires matching revision/digest
+and atomically replaces the snapshot; stale revisions return 409.
+
+`POST /admin/content/{id}/unpublish` requires `expectedRevision` and publisher
+permission. It removes the public edition and schedule, retains the draft/history,
+and invalidates approval. Archive also withdraws publication. Restoration includes
+kind/slug/locale and text/media, remains a draft and never automatically republishes.
+
+`GET /admin/content/media` returns only approved, clean, unarchived public images
+for editorial roles. `GET /admin/enquiries/assignees` returns only ID/email of active
+assignable business staff to enquiry-authorized roles; it does not grant `/admin/users`.
+Users, templates and audit now apply their bounded `search` server-side. Existing
+Origin/CSRF, object permissions, holds, legal settings and erasure safeguards remain.
+
+`GET /admin/files/{id}` returns metadata only after the existing document's role/
+classification checks. It supports the selected CV's scan state without changing
+application or export response shapes. The UI requires a clean result for that exact
+file before offering Download; the download endpoint independently rechecks quarantine
+and authorization. A stale or failed metadata read never enables another CV.

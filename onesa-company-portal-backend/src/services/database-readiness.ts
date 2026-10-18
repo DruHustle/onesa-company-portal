@@ -17,6 +17,8 @@ export async function databaseReady(connection:Connection, production:boolean) {
    if(checksums.get(name)!==checksum)throw new HttpError(503,'DATABASE_SCHEMA','Database migrations do not match this application');
   }
   const permissions=await connection.query("SELECT bool_and(has_table_privilege(current_user, c.oid, 'SELECT') AND has_table_privilege(current_user, c.oid, 'INSERT') AND has_table_privilege(current_user, c.oid, 'UPDATE') AND has_table_privilege(current_user, c.oid, 'DELETE')) AS allowed FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relname<>'schema_migrations'");
+  const publication=await connection.query("SELECT has_table_privilege(current_user,'public.published_content','SELECT') AS allowed");
+  if(publication.rows[0]?.allowed!==true)throw new HttpError(503,'DATABASE_PERMISSIONS','Published edition read privileges are incomplete');
   const sequences=await connection.query("SELECT bool_and(has_sequence_privilege(current_user,c.oid,'USAGE') AND has_sequence_privilege(current_user,c.oid,'SELECT')) AS allowed FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='S'");
   if(sequences.rows[0]?.allowed===false)throw new HttpError(503,'DATABASE_PERMISSIONS','Application sequence privileges are incomplete');
   if(permissions.rows[0]?.allowed!==true)throw new HttpError(503,'DATABASE_PERMISSIONS','Application table privileges are incomplete');
