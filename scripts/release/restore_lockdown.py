@@ -78,6 +78,26 @@ def main():
 CONTAINER = "onesa-remediation-portal-db"
 SQL = "BEGIN;\nUPDATE sessions SET expires_at=LEAST(expires_at,now());\nUPDATE recovery_tokens SET expires_at=LEAST(expires_at,now());\nUPDATE bounded_transfers SET expires_at=LEAST(expires_at,now());\nUPDATE content SET state='draft' WHERE state='published';\nUPDATE files SET approval='pending' WHERE approval='approved';\nUPDATE jobs SET status='failed',last_error='Restore lockdown: operator reconciliation required' WHERE status IN ('pending','running');\nCOMMIT;\nSELECT count(*) FROM sessions WHERE expires_at>now();\nSELECT count(*) FROM recovery_tokens WHERE expires_at>now();\nSELECT count(*) FROM bounded_transfers WHERE expires_at>now();\nSELECT count(*) FROM content WHERE state='published';\nSELECT count(*) FROM files WHERE approval='approved';\nSELECT count(*) FROM jobs WHERE status IN ('pending','running');\n"
 
+# Published editions are a separate capability from working drafts. Old backups
+# may predate this column/view; the same isolated-target guards remain mandatory.
+PUBLICATION_SQL = """DO $publication$ BEGIN
+ UPDATE public.content SET state=CASE WHEN state='published' THEN 'draft' ELSE state END,publish_at=NULL;
+ IF EXISTS(SELECT 1 FROM information_schema.columns
+  WHERE table_schema='public' AND table_name='content' AND column_name='published_snapshot') THEN
+  UPDATE public.content SET published_snapshot=NULL;
+  IF EXISTS(SELECT 1 FROM public.content WHERE published_snapshot IS NOT NULL) THEN
+   RAISE EXCEPTION 'Restored published snapshot remains active';
+  END IF;
+ END IF;
+ IF to_regclass('public.published_content') IS NOT NULL THEN
+  IF EXISTS(SELECT 1 FROM public.published_content) THEN
+   RAISE EXCEPTION 'Restored public edition remains active';
+  END IF;
+ END IF;
+END $publication$;
+"""
+SQL = SQL.replace("UPDATE content SET state='draft' WHERE state='published';", PUBLICATION_SQL, 1)
+
 # Optional additive schema: old snapshots may predate Engineering Docs identities.
 # This is executed only after the existing isolated-target authority checks.
 ENGINEERING_SQL = """DO $engineering$ BEGIN
