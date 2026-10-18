@@ -6,7 +6,7 @@
   "local_artifacts": [
     "onesa-company-portal-frontend/src/styles/onesa-foundation.css"
   ],
-  "guide": "https://onesa-engineering-docs.pages.dev/docs/architecture/ONESA_DESIGN_SYSTEM",
+  "guide": "https://docs.engineering.onesa.eu/docs/architecture/ONESA_DESIGN_SYSTEM",
   "adoption": "Review the versioned owner artifact, verify SHA256, copy into this repository, test affected consumers, promote dev \u2192 staging \u2192 main. No sibling imports or mutable runtime dependency.",
   "applications": {
     "version": "1.0.0",

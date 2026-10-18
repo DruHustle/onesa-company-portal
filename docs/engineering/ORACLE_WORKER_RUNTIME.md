@@ -1,7 +1,7 @@
 # Oracle staging worker and private scanner
 
 The VM now also hosts the independent staging/production product APIs. See the
-protected [Oracle VM architecture and troubleshooting](https://onesa-engineering-docs.pages.dev/docs/engineering/ORACLE_VM_OPERATIONS)
+protected [Oracle VM architecture and troubleshooting](https://docs.engineering.onesa.eu/docs/engineering/ORACLE_VM_OPERATIONS)
 for the complete layout, service map, read-only diagnosis and recovery boundaries.
 This worker guide retains its detailed executor/scanner procedures.
 
