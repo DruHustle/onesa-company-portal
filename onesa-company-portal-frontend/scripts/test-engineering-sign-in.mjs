@@ -10,6 +10,8 @@ const states = new Map(),
   proxyKey = "synthetic-ui-proxy-only",
   proof = "a".repeat(64);
 let engineeringConfirmations = 0, adminConfirmations = 0, tokenInRequestUrl = false;
+const registrationRequests = [];
+let registrationConfirmation = {status: "pending", audience: "engineering"};
 const api = http.createServer(async (req, res) => {
   tokenInRequestUrl ||= /access-link|a{64}/.test(req.url);
   if (req.url === "/api/v1/access/link/verify") adminConfirmations++;
@@ -23,14 +25,19 @@ const api = http.createServer(async (req, res) => {
   }
   if (["/api/v1/access/link", "/api/v1/access/register"].includes(req.url)) {
     let body = ""; for await (const c of req) body += c;
-    if (!JSON.parse(body).email) { res.writeHead(400).end("{}"); return; }
+    const input = JSON.parse(body);
+    if (!input.email) { res.writeHead(400).end("{}"); return; }
+    if (req.url === "/api/v1/access/register") {
+      if (typeof input.name !== "string" || input.name.length < 1 || input.name.length > 120) { res.writeHead(400).end("{}"); return; }
+      registrationRequests.push(input);
+    }
     res.writeHead(202).end('{"ok":true}'); return;
   }
   if (req.url === "/api/v1/access/confirm") {
     let body = ""; for await (const c of req) body += c;
     const input = JSON.parse(body);
     if (input.token !== "a".repeat(64) || input.password.length < 14) { res.writeHead(401).end("{}"); return; }
-    res.end('{"status":"pending","audience":"engineering"}'); return;
+    res.end(JSON.stringify(registrationConfirmation)); return;
   }
   const match = req.url.match(
     /^\/api\/v1\/engineering-sign-in\/([A-Za-z0-9_-]+)\/(details|link|password|link-verify)$/,
@@ -236,12 +243,24 @@ try {
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
     views.push({ type: "admin-signin", mode, width: 390, bothMethodsAvailable: true, sameDocumentLinkRetainsMfa: true });
     await page.goto(origin + "/access/register?audience=engineering", { waitUntil: "networkidle" });
-    await page.getByLabel("Your name").fill("Synthetic engineer"); await page.getByLabel("Email address", { exact: true }).fill("synthetic@onesa.eu");
+    await expect(page.locator('input[name="name"]')).toHaveCount(0);
+    await page.getByLabel("Email address", { exact: true }).fill("Synthetic@Onesa.eu");
     await expect(page.getByLabel("Access requested")).toHaveValue("engineering");
     await page.getByRole("button", { name: "Email my registration link" }).click();
     await expect(page.getByRole("status")).toContainText("Check your email");
+    expect(registrationRequests.at(-1)).toEqual({email: "synthetic@onesa.eu", name: "synthetic@onesa.eu", audience: "engineering"});
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
     views.push({ type: "registration", mode, width: 390, approvalExplained: true });
+    await page.goto(origin + "/access/register", {waitUntil: "networkidle"});
+    const longEmail = "a".repeat(60) + "@" + "b".repeat(60) + "." + "c".repeat(60) + ".example.eu";
+    await expect(page.locator('input[name="name"]')).toHaveCount(0);
+    await expect(page.getByLabel("Access requested")).toHaveValue("admin");
+    await page.getByLabel("Email address", {exact: true}).fill(longEmail);
+    await page.getByRole("button", {name: "Email my registration link"}).click();
+    await expect(page.getByRole("status")).toContainText("Check your email");
+    expect(registrationRequests.at(-1)).toEqual({email: longEmail, name: longEmail.slice(0, 120), audience: "admin"});
+    views.push({type: "registration-email-identifier", mode, width: 390, fullEmailPreserved: true});
+    registrationConfirmation = {status: "pending", audience: "engineering"};
     let confirmations = 0;
     page.on("request", r => { if (r.url().endsWith("/api/v1/access/confirm")) confirmations++; });
     await page.goto(origin + "/access/confirm?source=synthetic", {waitUntil: "networkidle"});
@@ -262,6 +281,19 @@ try {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
     views.push({ type: "registration-confirmation", mode, width: 390, emailScannerDoesNotConsume: true, sameDocumentLinkRecognized: true });
+    for (const audience of ["engineering", "admin"]) {
+      registrationConfirmation = {status: "approved", audience};
+      await page.goto(origin + "/access/confirm?approved=" + audience + "#access-link=" + proof, {waitUntil: "networkidle"});
+      await page.getByLabel("Password (at least 14 characters)").fill("synthetic-registration-password");
+      await page.getByLabel("Confirm password", {exact: true}).fill("synthetic-registration-password");
+      await page.getByRole("button", {name: "Verify email and complete registration"}).click();
+      await expect(page.getByRole("status")).toContainText("Registration is complete");
+      if (audience === "engineering") {
+        await expect(page.getByRole("status")).toContainText("You can now sign in to Engineering Docs");
+        await expect(page.getByRole("status")).not.toContainText("authenticator");
+      } else await expect(page.getByRole("status")).toContainText("New administrators must enroll their authenticator");
+      views.push({type: "approved-registration", audience, mode, width: 390, correctAudienceInstructions: true});
+    }
     await context.close();
   }
   if (!accessEnabled) {
