@@ -1,3 +1,19 @@
+> Owner update — 2026-10-18: GitHub Free is permanent; public visibility is temporary.
+> Local-runner implementation has now been removed, superseding earlier private-first
+> runner plans below. Use standard hosted runners while public and included hosted
+> allowance after a future owner visibility change. No local executor is a fallback.
+> Historical runner/plan observations are retained as history, not current instructions.
+
+> Current configuration — verified 2026-10-18: this repository is **public** and
+> `main` now enforces PRs, current-base GitHub Actions checks (including the
+> unconditional fail-closed summary and hygiene), resolved conversations, and
+> force-push/deletion prevention, including administrators. Zero unavailable
+> independent approvals are required. See [actual protection readback](BRANCH_PROTECTION_REPORT.md).
+> Earlier private-plan failures and provider snapshots below are historical;
+> they do not describe current eligibility or current runtime. External owner-held
+> production qualification and credential isolation remain required. No visibility,
+> billing or production credential setting changed in this activation.
+
 # Private GitHub Free safeguards and implementation report
 
 > Current pipeline: [automated review, staging qualification and owner activation](CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.
@@ -65,8 +81,8 @@ main checks. PR validation now targets main and uses disposable GitHub-hosted
 runners with read-only permissions, no provider credentials and no mandatory local
 runner dependency. Private Free hosted usage consumes the included quota; if it is
 exhausted, incomplete checks block the release. Do not provision paid overage.
-The retained private-only reusable runner is not called by these workflows; never
-attach an untrusted PR to a persistent local runner or production machine.
+The local reusable runner workflow and all provisioning have been removed.
+Do not register a persistent runner or execute PR code on a production machine.
 Official Actions are pinned to API-resolved commit digests for reproducibility.
 
 Portal and Platform's legacy `RELEASE_QUALIFICATION_JSON` approval fallback is

@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   publication-hygiene:
-    if: ${{ always() && true }}
+    if: ${{ always() && (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (always() && true) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:

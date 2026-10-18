@@ -23,10 +23,7 @@ jobs:
       STAGING_VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
   verify:
     name: deploy-qualification
-    if: ${{ github.event.repository.private == false && ((always() && true && (github.repository == 'DruHustle/onesa-company-portal'
-      && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name
-      == github.repository && github.event.pull_request.user.login == 'DruHustle')))) && github.repository == 'DruHustle/onesa-company-portal'
-      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production') }}
+    if: ${{ always() && (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event.repository.private == false && ((always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')))) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -74,12 +71,7 @@ jobs:
     needs:
     - verify
     - backend
-    if: ${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor
-      == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository
-      && github.event.pull_request.user.login == 'DruHustle')) && (always() && needs.verify.result == 'success' && (inputs.application
-      == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success'))))
-      && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production')
-      }}
+    if: ${{ always() && (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (always() && needs.verify.result == 'success' && (inputs.application == 'frontend' || (inputs.application == 'both' && needs.backend.result == 'success')))) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
@@ -154,11 +146,7 @@ jobs:
   backend:
     name: deploy-backend
     needs: verify
-    if: ${{ github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor
-      == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository
-      && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application ==
-      'both')) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production')
-      }}
+    if: ${{ (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event.repository.private == false && ((github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) && (inputs.application == 'backend' || inputs.application == 'both')) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -209,11 +197,7 @@ jobs:
         if-no-files-found: error
     environment: Production
   post-deployment:
-    if: ${{ github.event.repository.private == false && ((always() && (inputs.approval_run != '' && needs.verify.result ==
-      'success' && (inputs.application == 'frontend' && needs.frontend.result == 'success' || inputs.application == 'backend'
-      && needs.backend.result == 'success' || inputs.application == 'both' && needs.frontend.result
-      == 'success' && needs.backend.result == 'success'))) && github.repository == 'DruHustle/onesa-company-portal'
-      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production') }}
+    if: ${{ always() && (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event.repository.private == false && ((always() && (inputs.approval_run != '' && needs.verify.result == 'success' && (inputs.application == 'frontend' && needs.frontend.result == 'success' || inputs.application == 'backend' && needs.backend.result == 'success' || inputs.application == 'both' && needs.frontend.result == 'success' && needs.backend.result == 'success'))) && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && inputs.target == 'production')) }}
     needs:
     - verify
     - frontend

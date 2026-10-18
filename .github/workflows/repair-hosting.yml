@@ -23,10 +23,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   inspect:
-    if: ${{ github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal'
-      && github.actor == 'DruHustle' && inputs.portal_action != 'repair-staging-layout' && inputs.portal_action != 'repair-staging-database' && inputs.portal_action != 'repair-staging-preview' && (github.event_name != 'pull_request'
-      || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle'))))
-      }}
+    if: ${{ always() && (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && inputs.portal_action != 'repair-staging-layout' && inputs.portal_action != 'repair-staging-database' && inputs.portal_action != 'repair-staging-preview' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle'))))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -99,8 +96,7 @@ jobs:
 
         '
   staging-layout:
-    if: ${{ github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal'
-      && github.actor == 'DruHustle' && inputs.portal_action == 'repair-staging-layout')) }}
+    if: ${{ always() && (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && inputs.portal_action == 'repair-staging-layout'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -137,7 +133,7 @@ jobs:
         RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       run: python scripts/repair_hosting.py
   staging-database:
-    if: github.event.repository.private == false && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/staging' && inputs.portal_action == 'repair-staging-database'
+    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event.repository.private == false && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/staging' && inputs.portal_action == 'repair-staging-database')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -172,7 +168,7 @@ jobs:
       run: node --import tsx src/services/render-role-repair.ts --repair-staging-database
 
   staging-preview:
-    if: github.event.repository.private == false && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/dev' && inputs.portal_action == 'repair-staging-preview'
+    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event.repository.private == false && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/dev' && inputs.portal_action == 'repair-staging-preview')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

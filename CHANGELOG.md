@@ -2,31 +2,17 @@
 
 ## Unreleased
 
-- Request protected access with email and scope only. Use the complete email in
-  owner review, preserving existing API compatibility, accounts and approvals.
-  Explain authenticator enrollment only for administrator registration; approved
-  Engineering Docs members can proceed directly to sign-in.
+- Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
+  Keep standard hosted validation and prepare the owner-managed private GitHub Free
+  transition; exhausted included allowance blocks validation instead of paid fallback.
 
-- Link each homepage capability to its own Technology explanation, with English
-  and German examples instead of repeated generic copy. Present mobile Technology
-  capabilities as full-width numbered rows while preserving the desktop grid.
-  Restore topic position after WebKit page-history restoration without overriding
-  the reader’s cached Back position.
+- Activate public-repository main PR/check protection using actual successful check
+  identities, including the fail-closed summary and all applicable image scans.
+  Preserve solo-owner review, administrator enforcement and external release authority.
 
 - Preserve complete decrypted recovery payloads over nonblocking process pipes;
   await output completion while retaining all backup integrity and key checks.
   Synthetic regressions cover large payloads, tampering and wrong escrow keys.
-
-- Recognize emailed access links opened in an already-open sign-in or registration
-  page. Remove the fragment into memory on hash navigation while preserving explicit
-  confirmation, administrator MFA and existing credentials. Hosted rollout remains pending.
-
-- Add email-verified registration and owner review for administration and Engineering
-  Docs, retaining explicitly approved addresses. Offer emailed one-use sign-in links
-  or email/password, preserving existing administrator MFA and credentials.
-  Additive migration 011 and the revised authentication flow require hosted qualification.
-  Keep new frontend controls/routes default-off until that matching API is ready;
-  existing password/MFA administration and independent public releases remain available.
 
 - Distinguish engineering-membership owner proof from user-account proof with
   specific accessible labels; keep static configuration guidance outside live feedback.
@@ -34,12 +20,6 @@
 - Identify the affected API/environment and UTC time in availability alerts; retain
   the notification reference and separate failure/recovery evidence without changing
   health thresholds, service state or the existing notification interval.
-
-- Prepare separate Engineering Docs sign-in through Onesa Portal, with
-  individually approved memberships, owner-only onboarding, short-lived OIDC/PKCE
-  exchange and encrypted one-use artifacts. No Portal administrator role is granted.
-  Existing Access protection and exact-email policies remain independently enforced;
-  feature flags default off until source-bound hosted qualification.
 
 - Prevent a deadlock between owner step-up and concurrent deletion audit records.
   Account changes and fresh-factor consumption remain serialized; hold/deletion
@@ -65,6 +45,46 @@
 - Reject malformed snapshots, unknown products, changed Robot schemas, wrong recovery
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
+
+## 2026-10-18 — Verified Portal access and public navigation releases
+
+- Production frontend `56dfb8656b88b0234d96f087bfb5973afd7c9366` is accepted
+  at deployment `dpl_GigYt5JSfRLvxNjessE9Wu2oKtEB`. Existing qualified API/worker
+  source `d845311ac70084c1be6152a681584eb110fcc673` is retained, with migrations
+  010/011 and identity registration active. Source defaults do not describe effective runtime flags.
+- Actual owner Portal OIDC connection passed; only the two Engineering Docs Access
+  apps select Portal, preserving exact membership and sessions. Production offers
+  Onesa email links or registered email/password; administrator MFA remains intact.
+- Historical pending/off statements in the shipped change descriptions below refer
+  to their preparation stage; the release receipts above supersede them.
+
+- Request protected access with email and scope only. Use the complete email in
+  owner review, preserving existing API compatibility, accounts and approvals.
+  Explain authenticator enrollment only for administrator registration; approved
+  Engineering Docs members can proceed directly to sign-in.
+
+- Link each homepage capability to its own Technology explanation, with English
+  and German examples instead of repeated generic copy. Present mobile Technology
+  capabilities as full-width numbered rows while preserving the desktop grid.
+  Restore topic position after WebKit page-history restoration without overriding
+  the reader’s cached Back position.
+
+- Recognize emailed access links opened in an already-open sign-in or registration
+  page. Remove the fragment into memory on hash navigation while preserving explicit
+  confirmation, administrator MFA and existing credentials. Hosted rollout is verified in the production release above.
+
+- Add email-verified registration and owner review for administration and Engineering
+  Docs, retaining explicitly approved addresses. Offer emailed one-use sign-in links
+  or email/password, preserving existing administrator MFA and credentials.
+  Additive migration 011 and the revised authentication flow passed hosted qualification.
+  Source defaults remain off; the verified matching production API and controls are enabled;
+  existing password/MFA administration and independent public releases remain available.
+
+- Prepare separate Engineering Docs sign-in through Onesa Portal, with
+  individually approved memberships, owner-only onboarding, short-lived OIDC/PKCE
+  exchange and encrypted one-use artifacts. No Portal administrator role is granted.
+  Existing Access protection and exact-email policies remain independently enforced;
+  feature flags default off until source-bound hosted qualification.
 
 ## 2026-10-17 — Company imagery and mobile refinement live
 

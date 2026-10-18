@@ -14,10 +14,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   qualify:
-    if: always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name
-      == 'workflow_dispatch' || ((github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')
-      && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_sha ==
-      github.sha)))
+    if: always() && (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name == 'workflow_dispatch' || ((github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_sha == github.sha))))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

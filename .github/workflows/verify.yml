@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   verify:
-    if: ${{ needs.changes.result == 'success' && needs.changes.outputs.verify == 'true' }}
+    if: ${{ (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (needs.changes.result == 'success' && needs.changes.outputs.verify == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
@@ -95,7 +95,6 @@ jobs:
         sh -n infra/oracle/install-tailscale.sh
         sh -n infra/oracle/clamav/start.sh
         sh -n infra/oracle/clamav/health.sh
-    - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'
     - run: python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src tests && python3 ../scripts/ci/analyze.py
         tsc -- node_modules/.bin/tsc --pretty false && npm test && npm audit --audit-level=high
       working-directory: onesa-company-portal-backend
@@ -144,7 +143,7 @@ jobs:
     needs:
     - changes
   image-security:
-    if: ${{ needs.changes.result == 'success' && needs.changes.outputs.containers == 'true' }}
+    if: ${{ (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (needs.changes.result == 'success' && needs.changes.outputs.containers == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -211,6 +210,7 @@ jobs:
     permissions:
       contents: read
   changes:
+    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (success())
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -238,7 +238,7 @@ jobs:
     - pipeline-security
     - verify
     - image-security
-    if: always()
+    if: always() && (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (always())
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

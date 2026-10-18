@@ -21,9 +21,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   inspect:
-    if: ${{ inputs.secret_scope == 'providers' && github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal'
-      && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name
-      == github.repository && github.event.pull_request.user.login == 'DruHustle')))) }}
+    if: ${{ always() && (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (inputs.secret_scope == 'providers' && github.event.repository.private == false && (always() && true && (github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle'))))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -55,7 +53,7 @@ jobs:
     - name: Read configuration and deployment status without revealing credentials
       run: python scripts/inspect_hosting.py
   staging-environment-availability:
-    if: github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging') && inputs.secret_scope == 'environment'
+    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging') && inputs.secret_scope == 'environment')
     environment: Staging
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -81,7 +79,7 @@ jobs:
         if(!all) process.exitCode=1;
         NODE
   staging-repository-availability:
-    if: github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging') && inputs.secret_scope == 'repository'
+    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging') && inputs.secret_scope == 'repository')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
