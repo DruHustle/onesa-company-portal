@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   release-artifacts:
-    if: ${{ always() && true && (inputs.authorization == 'approved') }}
+    if: ${{ always() && (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (always() && true && (inputs.authorization == 'approved')) }}
     runs-on: ubuntu-latest
     steps:
     - name: Verify GitHub-hosted execution and actual visibility

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
+  Keep standard hosted validation and prepare the owner-managed private GitHub Free
+  transition; exhausted included allowance blocks validation instead of paid fallback.
+
 - Activate public-repository main PR/check protection using actual successful check
   identities, including the fail-closed summary and all applicable image scans.
   Preserve solo-owner review, administrator enforcement and external release authority.

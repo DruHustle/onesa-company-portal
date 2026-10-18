@@ -30,6 +30,15 @@ Restricted before/after receipts and harmless PR enforcement observations are re
 in the existing remediation evidence index. PR merge-behaviour acceptance is pending
 until the current normally promoted candidate supplies those observations.
 
+## Permanent Free budget and later private visibility
+
+The owner keeps public visibility temporarily and will perform any later private
+transition personally. No local runners remain. Public main protection is active now;
+private GitHub Free eligibility must be read back after the change. Unsupported
+branch/environment/review protections become procedural, without an unavailable
+independent reviewer. Included hosted capacity and the external owner release gate
+remain mandatory. See [the transition procedure](FREE_GITHUB_PLAN.md).
+
 ## Historical inspection — superseded, not current configuration
 
 The following original report describes the earlier private-repository inspection.

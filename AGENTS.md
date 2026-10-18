@@ -80,8 +80,7 @@ human data-classification review before publishing or uploading CI artifacts.
 
 ## Repository governance and CI/CD
 
-Credential-free PR validation uses GitHub-hosted runners. Keep the dormant private-only
-local runner isolated; never require it for untrusted PRs. Current remotes are public,
+Credential-free PR validation uses GitHub-hosted runners. Local/self-hosted runner implementation is removed; do not register or reactivate it. Current remotes are public,
 default main; no visibility/billing/access change is authorized. GitHub Free safeguards
 must not assume paid protection. Read actual enforcement before claiming it: PR discipline
 cannot block privileged writers. Restrict write access and keep production credentials
@@ -177,3 +176,11 @@ Done means source/contracts/docs agree, required tests pass, cleanup and diffs a
 and authorized releases have exact-source hosted receipts. Report each real failed,
 blocked or untested gate with its next executable action. Owner authorization is not test
 evidence and this file grants no future session blanket production/credential authority.
+
+GitHub Free is the permanent budget; repositories stay public until the owner changes
+visibility. All hosted jobs require public visibility or the explicit private-hosted
+validation allowance flag, default off. Never enable paid overages or recreate local
+runners. On private Free, unavailable PR/environment enforcement is procedural; exact
+source, passing CI and external owner production gates remain mandatory. Follow the
+visibility-transition procedure in docs/development/FREE_GITHUB_PLAN.md and read back
+actual provider/security eligibility after any owner visibility change.

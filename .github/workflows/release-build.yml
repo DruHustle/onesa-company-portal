@@ -9,8 +9,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   build:
-    if: ${{ github.event.repository.private == false && (always() && true && github.repository == 'DruHustle/onesa-company-portal'
-      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}
+    if: ${{ always() && (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event.repository.private == false && (always() && true && github.repository == 'DruHustle/onesa-company-portal' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:

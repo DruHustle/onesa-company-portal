@@ -1,7 +1,0 @@
-{
-  "repository": "DruHustle/onesa-company-portal",
-  "name": "onesa-portal-local-arm64",
-  "label": "onesa-portal-local",
-  "user": "portalci",
-  "directory": "/opt/onesa-actions-runner"
-}
