@@ -6,7 +6,7 @@ import {access, stat} from 'node:fs/promises';
 import {performance} from 'node:perf_hooks';
 import {setTimeout as delay} from 'node:timers/promises';
 import {chromium, webkit} from '@playwright/test';
-import {publicProductShellReady} from './public-shell-ready.mjs';
+import {publicProductShellReady,armPublicNavigationTiming,readPublicNavigationTiming} from './public-shell-ready.mjs';
 
 // Actual production renderer; anonymous synthetic loopback fixtures, no database.
 await access('.next/BUILD_ID');
@@ -250,6 +250,27 @@ try {
         }
         await control.setContent(h1+ai+robot+docs+'</main>');
         assert.equal(await control.evaluate(publicProductShellReady,{pathname:'/wrong-route',measureOnly:false}),false,'A different URL cannot qualify');
+        // Driver delays after readiness must not alter the recorded app duration.
+        await control.setContent(h1+ai+robot+docs+'<a id="go" href="#go">Go</a></main>');
+        await control.evaluate(armPublicNavigationTiming,{pathname});
+        assert.equal(await control.evaluate(readPublicNavigationTiming),null,'No readiness result exists before a trusted click');
+        await control.locator('#go').click();
+        await control.waitForFunction(publicProductShellReady,{pathname});
+        const first=await control.evaluate(readPublicNavigationTiming);
+        await new Promise(resolve=>setTimeout(resolve,150));
+        const later=await control.evaluate(readPublicNavigationTiming);
+        assert.equal(first.readyAt,later.readyAt,'Later inspection cannot move the app-ready timestamp');
+        assert.ok(first.elapsed<900,'The immediate synthetic shell is ready within the unchanged budget');
+        // A real content delay must still exceed and fail that same900ms criterion.
+        await control.setContent(h1+'<a id="go" href="#go">Go</a></main>');
+        await control.evaluate(fragment=>document.querySelector('#go').addEventListener('click',event=>{
+          event.preventDefault();setTimeout(()=>document.querySelector('main').insertAdjacentHTML('beforeend',fragment),950);
+        },{once:true}),ai+robot+docs);
+        await control.evaluate(armPublicNavigationTiming,{pathname});
+        await control.locator('#go').click();
+        await control.waitForFunction(publicProductShellReady,{pathname});
+        const slow=await control.evaluate(readPublicNavigationTiming);
+        assert.ok(slow.elapsed>=900,'Actual content slower than900ms cannot pass the readiness gate');
       } finally {await control.close();}
       for (const locale of ['en','de']) for (const width of [390,1440]) {
         const context=await browser.newContext({viewport:{width,height:900},colorScheme:'dark',reducedMotion:'reduce'});
@@ -266,6 +287,7 @@ try {
         copyDelay=2200;feedDelay=2200;
         const navigation=page.locator(width===390?'#mobile-main-nav':'#main-nav');
         if(width===390) await page.locator('.mobile-toggle').click();
+        await page.evaluate(armPublicNavigationTiming,{pathname:`/${locale}/products`});
         const start=performance.now();
         await navigation.getByRole('link',{name:locale==='en'?'Products':'Produkte',exact:true}).click();
         // Observe the same URL, visible headings and exact documentation links in
@@ -274,8 +296,11 @@ try {
         await page.waitForFunction(publicProductShellReady, {
           pathname: `/${locale}/products`, measureOnly,
         });
-        const elapsed=performance.now()-start;
-        console.log(`${name} ${locale} ${width}px slow products navigation: ${Math.round(elapsed)} ms`);
+        const automationElapsed=performance.now()-start;
+        const timing=await page.evaluate(readPublicNavigationTiming);
+        assert.ok(timing,'The trusted click and current visible shell must have a valid monotonic browser timing');
+        const elapsed=timing.elapsed;
+        console.log(`${name} ${locale} ${width}px slow products navigation: ${Math.round(elapsed)} ms (driver total ${Math.round(automationElapsed)}ms; pre-click ${Math.round(timing.preClick)}ms)`);
         if(!measureOnly) assert.ok(elapsed<900,'Click reaches the section shell before optional backend deadline');
         copyDelay=0;feedDelay=0;
         await page.goBack();

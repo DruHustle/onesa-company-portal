@@ -3,8 +3,10 @@
 ## Unreleased
 
 - Measure public navigation readiness with one atomic browser observation of the
-  same URL, visible product headings and exact documentation links. Preserve the
-  900ms threshold and reject incomplete, hidden or duplicated content.
+  same URL, visible product headings and exact documentation links. Start its
+  clock at the trusted browser click and report driver delay separately. Preserve
+  the900ms threshold; reject incomplete, hidden or duplicated content and prove
+  that an actual950ms content delay fails that criterion.
 
 
 - Refine the Company homepage around Onesa AI Platform, a concise explanation and
