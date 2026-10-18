@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Prepare `docs.engineering.onesa.eu` as the protected Engineering Docs production
+  address; keep provider-origin and Preview access private and preserve Onesa Portal sign-in.
+
 - Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
   Keep standard hosted validation and prepare the owner-managed private GitHub Free
   transition; exhausted included allowance blocks validation instead of paid fallback.

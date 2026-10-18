@@ -106,7 +106,7 @@ Review [agent policies](AGENTS.md), [deployment](docs/engineering/DEPLOYMENT.md)
 [qualification](docs/engineering/AUTOMATED_QUALIFICATION.md). Current CI is available in
 [GitHub Actions](https://github.com/DruHustle/onesa-company-portal/actions).
 [Onesa Developer Docs](https://docs.onesa.eu) contains approved public guides;
-[Onesa Engineering Docs](https://onesa-engineering-docs.pages.dev) requires authorized access
+[Onesa Engineering Docs](https://docs.engineering.onesa.eu) requires authorized access
 and includes Architecture & Workflows, Engineering Onboarding and the design system.
 
 ## Private vulnerability reporting
