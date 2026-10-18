@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Wait for the final PostgreSQL server over container-loopback TCP during isolated
+  recovery; the initialization-only socket server is not restore readiness.
+
 - Prepare separate working drafts and approved public snapshots, exact-revision review,
   explicit unpublishing and migration preservation. Editors can submit saved replacements
   without replacing the published edition. Source validation and hosted rollout remain separate.
