@@ -6,6 +6,7 @@ import {access, stat} from 'node:fs/promises';
 import {performance} from 'node:perf_hooks';
 import {setTimeout as delay} from 'node:timers/promises';
 import {chromium, webkit} from '@playwright/test';
+import {publicProductShellReady} from './public-shell-ready.mjs';
 
 // Actual production renderer; anonymous synthetic loopback fixtures, no database.
 await access('.next/BUILD_ID');
@@ -238,6 +239,18 @@ try {
   for (const [name,engine] of [['chromium',chromium],['webkit',webkit]]) {
     const browser=await engine.launch();
     try {
+      const control=await browser.newPage();
+      try {
+        const pathname=await control.evaluate(()=>location.pathname);
+        const h1='<main><h1>Products</h1>',ai='<h2 id="product-ai">Onesa AI Platform</h2>',robot='<h2 id="product-robot">Onesa AI Robot</h2>';
+        const docs='<a href="https://docs.onesa.eu/docs/public/ai-platform">AI docs</a><a href="https://docs.onesa.eu/docs/public/robot">Robot docs</a>';
+        for(const [html,ready] of [[h1,false],[h1+ai,false],[h1+ai+robot,false],[h1+ai+robot+docs,true],[h1+ai+robot.replace('<h2 ','<h2 hidden ')+docs,false],[h1+ai+robot+docs+docs,false],[h1+'<h1>Duplicate</h1>'+ai+robot+docs,false],[h1+ai+robot.replace('<h2 ','<h2 aria-hidden="true" ')+docs,false]]){
+          await control.setContent(html+'</main>');
+          assert.equal(await control.evaluate(publicProductShellReady,{pathname,measureOnly:false}),ready,'Atomic navigation readiness rejects incomplete, hidden and ambiguous content');
+        }
+        await control.setContent(h1+ai+robot+docs+'</main>');
+        assert.equal(await control.evaluate(publicProductShellReady,{pathname:'/wrong-route',measureOnly:false}),false,'A different URL cannot qualify');
+      } finally {await control.close();}
       for (const locale of ['en','de']) for (const width of [390,1440]) {
         const context=await browser.newContext({viewport:{width,height:900},colorScheme:'dark',reducedMotion:'reduce'});
         const external=[];
@@ -255,12 +268,12 @@ try {
         if(width===390) await page.locator('.mobile-toggle').click();
         const start=performance.now();
         await navigation.getByRole('link',{name:locale==='en'?'Products':'Produkte',exact:true}).click();
-        await page.waitForURL(`**/${locale}/products`);
-        await page.getByRole('heading',{level:1}).waitFor({state:'visible'});
-        if(!measureOnly){
-          for(const name of ['Onesa AI Platform','Onesa AI Robot'])await page.getByRole('heading',{name,exact:true}).waitFor({state:'visible'});
-          for(const path of ['ai-platform','robot'])assert.equal(await page.locator(`a[href="https://docs.onesa.eu/docs/public/${path}"]`).count(),1);
-        }
+        // Observe the same URL, visible headings and exact documentation links in
+        // one browser evaluation. Sequential inspector calls add runner/transport
+        // overhead to the application latency without strengthening the predicate.
+        await page.waitForFunction(publicProductShellReady, {
+          pathname: `/${locale}/products`, measureOnly,
+        });
         const elapsed=performance.now()-start;
         console.log(`${name} ${locale} ${width}px slow products navigation: ${Math.round(elapsed)} ms`);
         if(!measureOnly) assert.ok(elapsed<900,'Click reaches the section shell before optional backend deadline');

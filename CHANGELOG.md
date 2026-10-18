@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Measure public navigation readiness with one atomic browser observation of the
+  same URL, visible product headings and exact documentation links. Preserve the
+  900ms threshold and reject incomplete, hidden or duplicated content.
+
+
 - Refine the Company homepage around Onesa AI Platform, a concise explanation and
   one primary action. Replace the robotic-hand opening with an original static
   workspace illustration; keep Robot in its own development section. Consolidate
