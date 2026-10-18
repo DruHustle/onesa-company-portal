@@ -19,7 +19,7 @@ export function AccessRequests() {
     {notice && <p role="status">{notice}</p>}
     <button type="button" disabled={busy} onClick={() => void load().catch(() => setNotice("Access requests could not be loaded."))}>Refresh access requests</button>
     {items.length === 0 && <p>No verified access requests.</p>}
-    <div className="admin-grid"><div className="admin-list">{items.map(item => <button type="button" key={item.id} disabled={busy || item.state !== "pending"} aria-pressed={selected?.id === item.id} onClick={() => setSelected(item)}>{item.display_name} · {item.email}<small>{item.audience === "admin" ? "Company administration" : "Engineering Docs"} · {item.state}</small></button>)}</div>
+    <div className="admin-grid"><div className="admin-list">{items.map(item => <button type="button" key={item.id} disabled={busy || item.state !== "pending"} aria-pressed={selected?.id === item.id} onClick={() => setSelected(item)}>{item.email}<small>{item.audience === "admin" ? "Company administration" : "Engineering Docs"} · {item.state}</small></button>)}</div>
       {selected && <form key={selected.id} onSubmit={review} className="admin-card" aria-busy={busy}><fieldset disabled={busy}><legend>Review {selected.email}</legend>
         <p>{selected.audience === "engineering" ? "Confirm the exact-email Docs Access policy and alias bindings first. This approval grants no Portal administration role." : "Choose the minimum necessary administration role. Registration cannot create an owner."}</p>
         <label>Access decision<select name="decision"><option value="approve">Approve requested access</option><option value="reject">Reject request</option></select></label>

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Request protected access with email and scope only. Use the complete email in
+  owner review, preserving existing API compatibility, accounts and approvals.
+  Explain authenticator enrollment only for administrator registration; approved
+  Engineering Docs members can proceed directly to sign-in.
+
 - Link each homepage capability to its own Technology explanation, with English
   and German examples instead of repeated generic copy. Present mobile Technology
   capabilities as full-width numbered rows while preserving the desktop grid.
