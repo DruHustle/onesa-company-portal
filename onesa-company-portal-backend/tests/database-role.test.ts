@@ -24,6 +24,11 @@ test('Production role has CRUD access without database administration or migrati
   assert.equal(await applicationRoleSafe(app),true);
   await databaseReady(app,true);
   await app.query('SELECT count(*) FROM users');
+  await app.query('SELECT count(*) FROM published_content');
+  await db.query('REVOKE SELECT ON published_content FROM onesa_portal_app_test');
+  await assert.rejects(databaseReady(app,true),{code:'DATABASE_PERMISSIONS'});
+  await db.query('GRANT SELECT ON published_content TO onesa_portal_app_test');
+  await databaseReady(app,true);
   await app.query('SELECT count(*) FROM schema_migrations');
   await assert.rejects(app.query('CREATE TABLE forbidden_test_table(id integer)'),{code:'42501'});
   await assert.rejects(app.query("INSERT INTO schema_migrations(name,checksum) VALUES('forbidden','fixture')"),{code:'42501'});

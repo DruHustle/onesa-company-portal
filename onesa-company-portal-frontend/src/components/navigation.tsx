@@ -1,6 +1,6 @@
 'use client';
 import {ResponsiveLink as Link} from '@/components/responsive-link';
-import {usePathname} from 'next/navigation';
+import {usePathname,useSearchParams} from 'next/navigation';
 import {useRef,useEffect} from 'react';
 import {copy,type Locale} from '@/config/copy';
 export function Navigation({locale}:{locale:Locale}) {
@@ -22,11 +22,13 @@ export function Navigation({locale}:{locale:Locale}) {
     const observer = new ResizeObserver(measure); observer.observe(element);
     return () => { observer.disconnect(); if (root.style.getPropertyValue(name) === measured) { if (previous) root.style.setProperty(name, previous); else root.style.removeProperty(name); } };
   }, []);
-  const path = usePathname();
+  const path = usePathname(), search=useSearchParams();
   const next = locale === 'en' ? 'de' : 'en';
   const nextPath = ['/', '/en', '/de'].includes(path)
     ? (next === 'en' ? '/' : '/de')
     : path.replace(/^\/(en|de)/, `/${next}`);
+  const carried=new URLSearchParams();for(const key of ['topic','q','category','page']){const value=search.get(key);if(value)carried.set(key,value.slice(0,200));}
+  const languagePath=nextPath+(carried.size?'?'+carried.toString():'');
   const navigationLabel = locale === 'de' ? 'Hauptnavigation' : 'Main navigation';
   function closeMobile() {
     if (mobile.current) mobile.current.open = false;
@@ -36,7 +38,7 @@ export function Navigation({locale}:{locale:Locale}) {
       {Object.entries(copy[locale].nav)
         .filter(([key]) => ['about','products','technology','careers','contact'].includes(key))
         .map(([key,label]) => <Link key={key} href={`/${locale}/${key}`} onClick={close}>{label}</Link>)}
-      <Link className="language" href={nextPath} hrefLang={next} onClick={close}>{next.toUpperCase()}</Link>
+      <Link className="language" href={languagePath} hrefLang={next} onClick={close}>{next.toUpperCase()}</Link>
     </>;
   }
   return <header ref={header} className="site-header">

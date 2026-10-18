@@ -1,5 +1,49 @@
 # Deployment and independent releases
 
+## Primary release path
+
+Start a normal release from the reviewed `dev → staging → main` candidate in the
+existing owner-controlled Oracle/Vercel release procedure. Select the changed
+component scope first; retain and independently verify unchanged backend images.
+Do not begin with an old Render deployment command or repeat a successful build
+without a source, artifact or environment change that invalidates its evidence.
+
+1. Record the exact commit and component diff. Require its actual first-attempt
+   GitHub CI/security results; skipped, missing, cancelled and local-only checks do
+   not count as passing GitHub status checks.
+2. Build immutable artifacts with isolated dependencies and no production credentials
+   in PR jobs. Bind source, schema, image/artifact digests and retained components.
+3. Qualify the candidate in the existing isolated staging environment, preserving
+   data and using synthetic fixtures. Keep existing source-specific attempt limits.
+4. Consume the existing source/evidence-bound owner authorization, then deploy only
+   the qualified changed components through external owner credential custody.
+   Actions `free-qualification.yml` / `free-authorization.yml` retain their supported
+   provenance roles. External Oracle observations have run ID 0 and must never be
+   relabelled as an Actions staging run or uploaded as a fabricated Actions PASS.
+5. Read the provider's actual serving revisions and verify the canonical hosts,
+   access boundaries and changed journeys. Only then record production acceptance.
+   A deployment receipt without hosted acceptance is **deployed, not accepted**.
+
+| State | Meaning |
+| --- | --- |
+| Skipped / blocked / failed | Required evidence is absent or unsuccessful; no promotion |
+| Checks passed | The named checks passed for that exact source and environment |
+| Qualified | Source-bound staging and required release evidence passed |
+| Authorized | The owner decision binds the candidate and evidence; it is not a test result |
+| Deployed | The provider accepted/serves the recorded artifact; acceptance is still separate |
+| Accepted | Canonical-host verification passed for the actual serving components |
+
+Alternate native-protection workflows are retained for their documented supported
+targets; they are not a parallel automatic production authority. Render-specific
+observers are for reconciling existing Render deployment IDs, not Oracle releases.
+Recovery is exceptional and follows the existing pinned preservation/rollback plan;
+normal release authorization never grants SQL repair, credential resets or old-source
+Robot restarts. For the owner-managed future private transition, follow
+[GitHub Free and hosted allowance](../development/FREE_GITHUB_PLAN.md). There is no
+local-runner fallback, paid overage, unavailable reviewer requirement or missing-check
+exception. G14 remains owner-deferred and unapproved.
+
+
 Prepared Portal-based Engineering Docs sign-in has a separate additive migration,
 feature flags, fixed OIDC client and qualified activation sequence. Follow
 [Engineering Docs identity](ENGINEERING_DOCS_IDENTITY.md); do not enable it from

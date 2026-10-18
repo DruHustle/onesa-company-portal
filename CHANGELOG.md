@@ -2,8 +2,13 @@
 
 ## Unreleased
 
-- Prepare `docs.engineering.onesa.eu` as the protected Engineering Docs production
-  address; keep provider-origin and Preview access private and preserve Onesa Portal sign-in.
+- Prepare separate working drafts and approved public snapshots, exact-revision review,
+  explicit unpublishing and migration preservation. Editors can submit saved replacements
+  without replacing the published edition. Source validation and hosted rollout remain separate.
+- Reorganize administration by task, add scoped search and staff/media/version selection,
+  per-section queues, cancellation of stale reads, deletion confirmation and unsaved-work guards.
+- Clarify product scope and mobile next actions; retain selected enquiry topics, entered
+  data on failure and saved-record references without claiming email delivery.
 
 - Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
   Keep standard hosted validation and prepare the owner-managed private GitHub Free
@@ -48,6 +53,21 @@
 - Reject malformed snapshots, unknown products, changed Robot schemas, wrong recovery
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
+
+
+## 2026-10-18 — Protected Engineering Docs production hostname verified
+
+- Engineering Docs is accepted at `https://docs.engineering.onesa.eu/`, source
+  `0f2f19067cf4dc55b4fd2156571c7b612319aee1`, Pages deployment
+  `2daea640-3c73-40da-8b01-397bec2ca3ea`. All 741 asset/hash checks, 741 anonymous
+  denials and 18 layout/accessibility views passed. The provider origin remains
+  protected; it was a production provider address, not a development environment.
+- Portal navigation source `40cbdcbb5460b2cea2078fe22005d8d6c60c6e6a`, Vercel
+  deployment `dpl_TZfvysWGbjASje3bcw2WCoostdLG`, redirects `/engineering` to that
+  exact protected hostname. Existing Onesa sign-in, audience and approved membership
+  boundaries are retained. Other application/backend identities were not relabelled.
+- Later second-review changes above remain unreleased until their own exact-source
+  CI, qualification and canonical-host acceptance are recorded.
 
 ## 2026-10-18 — Verified Portal access and public navigation releases
 

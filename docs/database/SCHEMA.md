@@ -63,3 +63,29 @@ The restricted application role requires CRUD on these tables; no sequence or pu
 privilege is introduced. Restore lockdown removes every restored sign-in/registration
 link while preserving approval evidence and inert password hashes. This source change
 is not a claim that migration 011 or the new login options are deployed.
+
+## Editorial publication snapshots (prepared migration 012)
+
+Additive migration 012 backfills each existing published row into `published_snapshot`
+without altering its public fields, revision or schedule. `published_content` provides
+its typed public edition independently from the working draft. A partial unique index
+protects published kind/locale/slug routes. Draft-only rows remain unpublished.
+
+Run the ordinary checksum-verified migration and grant the existing restricted API/worker
+role SELECT on the new view through `provisionApplicationRole`; preserve its password.
+The readiness check requires the view permission. The new API and scheduled publisher
+must be released together so scheduled replacements capture their approved snapshot.
+Retain this additive schema during application rollback and use the preserved qualified
+component/data recovery procedure; do not drop snapshots or rewrite revisions.
+This describes source behavior, not a claim that migration 012 is already deployed.
+
+Rollback compatibility: older APIs read the working row rather than its publication
+snapshot. Once replacement drafts have been saved, rolling back to such a writer can
+hide the still-approved edition or expose the wrong working state. Do not restore
+rows, drop the new column or restart that older writer as an automatic rollback.
+Keep the compatible backend when reverting a frontend; a backend recovery needs a
+reviewed compatible candidate and the established preservation/restore controls.
+
+Isolated restore quarantine clears both scheduled publication and published snapshots,
+including backups predating migration 012. This extends the existing disposable-target
+lockdown; it grants no live-restore, erasure, credential or production-data authority.

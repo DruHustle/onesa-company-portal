@@ -13,13 +13,23 @@ const sectors = [
 ] as const;
 
 export function IndustryOverview({locale}:{locale:Locale}) {
-  return <div className={styles.grid}>{sectors.map((sector,index)=><article className={styles.card} key={sector.image}>
+  return <div className={styles.grid}>{sectors.map((sector,index)=><article className={styles.card} key={sector.image} id={`industry-${sector.image}`}>
     <EditorialImage subject={sector.image} locale={locale}/>
     <div className={styles.content}>
       <span className={styles.index}>0{index+1}</span>
       <h2>{industries[locale][index]}</h2>
       <p>{locale==='de'?sector.de:sector.en}</p>
-      <Link href={`/${locale}/contact`}>{locale==='de'?'Möglichkeiten besprechen':'Discuss the possibilities'}</Link>
+      <p>{locale==='de'?'Anwendungsrichtung — die konkrete Integration ist projektabhängig.':'Application direction — each integration requires its own implementation.'}</p>
+      <dl>{(locale==='de'?[
+       ['Eingabe',['Interne Dokumente und Teamfragen','Sensordaten und Betriebsmeldungen','Produktionsinformationen und Prüfkriterien','Reisewünsche, Budget und Reisedaten','Produktinformationen und Kundenfragen','Quellen, Annahmen und Unternehmensdaten'][index]],
+       ['Ablauf',['Berechtigte Quellen abrufen und Antworten belegen','Meldungen zusammenführen und zur Prüfung aufbereiten','Abweichungen zur menschlichen Prüfung zusammenstellen','Optionen vergleichen und einen Reiseplan entwerfen','Informationen abrufen und Optionen vergleichen','Szenarien vergleichen und Unsicherheiten kennzeichnen'][index]],
+       ['Ergebnis',['Nachvollziehbare Antworten für Mitarbeitende','Eine priorisierte Übersicht für das Betriebsteam','Eine nachvollziehbare Prüfgrundlage','Ein editierbarer Vorschlag ohne Buchung','Quellenbasierte Entscheidungshilfe','Eine Recherchegrundlage, keine Anlageempfehlung'][index]]
+      ]:[
+       ['Input',['Team documents and questions','Sensor readings and operational reports','Production information and inspection criteria','Travel preferences, budget and dates','Product information and customer questions','Sources, assumptions and business information'][index]],
+       ['Workflow',['Retrieve permitted sources and ground answers','Combine reports for operator review','Prepare exceptions for human inspection','Compare options and draft an itinerary','Retrieve information and compare options','Compare scenarios and identify uncertainty'][index]],
+       ['Outcome',['Traceable answers for the team','A prioritized view for the operations team','An auditable basis for inspection','An editable proposal with no booking','Source-backed decision support','Research material, not investment advice'][index]]
+      ]).map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+      <Link href={`/${locale}/contact?topic=${sector.image}`}>{locale==='de'?'Möglichkeiten besprechen':'Discuss the possibilities'}</Link>
     </div>
   </article>)}</div>;
 }

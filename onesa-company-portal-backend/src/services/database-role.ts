@@ -18,6 +18,8 @@ export async function provisionApplicationRole(owner:Connection, password:string
   const table='"'+String(tablename).replaceAll('"','""')+'"';
   await owner.query(`GRANT SELECT,INSERT,UPDATE,DELETE ON TABLE public.${table} TO ${quoted}`);
  }
+ const publicationView=await owner.query("SELECT to_regclass('public.published_content') AS relation");
+ if(publicationView.rows[0]?.relation)await owner.query(`GRANT SELECT ON public.published_content TO ${quoted}`);
  await owner.query(`GRANT SELECT ON TABLE public.schema_migrations TO ${quoted}`);
  await owner.query(`GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA public TO ${quoted}`);
 }

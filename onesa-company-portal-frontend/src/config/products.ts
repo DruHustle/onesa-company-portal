@@ -3,7 +3,7 @@ export const products = {
   en: [
     {
       id: 'ai',
-      summary: 'An AI engine for applications, knowledge and intelligent workflows, with a vision that extends to robotics and physical AI.',
+      summary: 'Our primary platform: conversations, private knowledge, guided agents and travel planning in a protected workspace.',
       image: 'ai-platform',
       imageAlt: 'A robotic hand interacting with a blue Onesa interface.',
       name: 'Onesa AI Platform',
@@ -21,7 +21,7 @@ export const products = {
       imageAlt: 'Onesa concept artwork of a humanoid robot in an open city landscape.',
       name: 'Onesa AI Robot',
       category: 'Robotics & cloud simulation',
-      description: 'A robotics product connecting an operator workspace with a cloud simulation. Explore task execution, simulated robot state and the foundations for future physical AI integrations.',
+      description: 'A separate robotics development line built around a protected one-joint software simulator. Propose and review a bounded task, then inspect its simulated state and result. Hardware control remains a future integration.',
       capabilities: ['An authenticated operator workspace for robot tasks.', 'Protected telemetry and task history.', 'Explicit simulation status and controlled execution. The current cloud experience uses simulation; physical integration is a separate development direction.'],
       docs: 'https://docs.onesa.eu/docs/public/robot',
       open: 'Explore AI Robot',
@@ -31,7 +31,7 @@ export const products = {
   de: [
     {
       id: 'ai',
-      summary: 'Eine KI-Engine für Anwendungen, Wissen und intelligente Abläufe – mit einer Vision, die Robotik und physische KI einschließt.',
+      summary: 'Unsere zentrale Plattform: Gespräche, privates Wissen, geführte Agenten und Reiseplanung in einem geschützten Arbeitsbereich.',
       image: 'ai-platform',
       imageAlt: 'Eine Roboterhand interagiert mit einer blauen Onesa-Oberfläche.',
       name: 'Onesa AI Platform',
@@ -49,7 +49,7 @@ export const products = {
       imageAlt: 'Onesa-Konzeptillustration eines humanoiden Roboters in einer offenen Stadtlandschaft.',
       name: 'Onesa AI Robot',
       category: 'Robotik & Cloud-Simulation',
-      description: 'Ein Robotikprodukt, das einen Operator-Arbeitsbereich mit einer Cloud-Simulation verbindet. Erkunden Sie Aufgabenabläufe, simulierte Roboterzustände und die Grundlagen zukünftiger physischer KI-Integrationen.',
+      description: 'Eine separate Robotik-Entwicklung mit einem geschützten Software-Simulator für ein Gelenk. Begrenzte Aufgaben vorschlagen und prüfen, anschließend simulierten Zustand und Ergebnis ansehen. Die Hardwaresteuerung ist eine zukünftige Integration.',
       capabilities: ['Ein geschützter Operator-Arbeitsbereich für Roboteraufgaben.', 'Geschützte Telemetrie und Aufgabenhistorie.', 'Ein klarer Simulationsstatus und kontrollierte Ausführung. Die aktuelle Cloud-Anwendung arbeitet in Simulation; die physische Integration ist eine eigene Entwicklungsrichtung.'],
       docs: 'https://docs.onesa.eu/docs/public/robot',
       open: 'AI Robot entdecken',

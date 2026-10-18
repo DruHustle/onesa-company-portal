@@ -75,7 +75,7 @@ export function EngineeringMemberships() {
       <h2 id="engineering-memberships-title">Engineering Docs access</h2>
       <p>
         Onboard individual approved Onesa email addresses without granting
-        Portal administration. Engineers sign in with an emailed code. Existing
+        Portal administration. Engineers sign in with an Onesa emailed sign-in link or their registered email and password. Existing
         approved external members can be retained.
       </p>
       <p>

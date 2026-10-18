@@ -1,3 +1,4 @@
+import {ResponsiveLink as Link} from './responsive-link';
 import {products} from '@/config/products';
 import type {Locale} from '@/config/copy';
 import applications from '@/config/onesa-applications.json';
@@ -56,10 +57,10 @@ export function ProductOverview({locale}:{locale:Locale}) {
       <div>
       <p className="eyebrow">{product.category}</p>
       <h2 id={`product-${product.id}`}>{product.name}</h2>
-      <p>{product.description}</p>
+      <p>{product.description}</p><p><strong>{locale==='de'?'Entwicklungsstand':'Current scope'}</strong> — {product.id==='ai'?(locale==='de'?'Plattform in Entwicklung. Chat, Knowledge, Agents und Travel stehen im geschützten Arbeitsbereich zur Verfügung.':'Platform under development. Chat, Knowledge, Agents and Travel are available in the protected workspace.'):(locale==='de'?'Separate Robotik-Entwicklung. Derzeit ein geschützter Software-Simulator mit einem Gelenk; keine vollständige humanoide Simulation.':'A separate robotics development line. Currently a protected one-joint software simulator, not a complete humanoid simulation.')}</p>
       <div className="actions">
         <a className="button" href={applications.applications.find(app=>app.id===product.id)!.href}>{product.open} ↗</a>
-        <a href={product.docs}>{product.guide} ↗</a>
+        <a href={product.docs}>{product.guide}</a><Link href={`/${locale}/contact?topic=${product.id==='ai'?'ai-platform':'robot'}`}>{locale==='de'?'Dieses Produkt besprechen':'Discuss this product'}</Link>
       </div>
       </div>
       <ProductIllustration product={product.id} locale={locale}/>
