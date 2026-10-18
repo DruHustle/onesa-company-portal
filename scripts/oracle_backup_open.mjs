@@ -23,5 +23,7 @@ try{
  for(const file of payload.objects){const bytes=Buffer.from(file.bytes,'base64');require(bytes.length===file.size&&hash(bytes)===file.sha256);}
  const changed=Buffer.from(body);changed[0]^=1;let rejected=false;try{decrypt(key,nonce,tag,changed,aad);}catch{rejected=true;}require(rejected);
  require(payload.objects.length===sealed.meta.objects&&typeof payload.session_key==='string'&&payload.session_key.length>=48);
- fs.writeFileSync(1,JSON.stringify({...payload,checks:{key_recovered_from_off_instance_escrow:true,original_private_key_file_not_used:true,ciphertext_integrity_verified:true,tampered_archive_rejected:true,object_count:payload.objects.length}}));
+ // stdout may be a nonblocking pipe after SDK initialization. Wait for the stream
+ // callback so a large recovered payload cannot truncate at the pipe capacity.
+ await new Promise((resolve,reject)=>process.stdout.write(JSON.stringify({...payload,checks:{key_recovered_from_off_instance_escrow:true,original_private_key_file_not_used:true,ciphertext_integrity_verified:true,tampered_archive_rejected:true,object_count:payload.objects.length}}),error=>error?reject(error):resolve()));
 }catch{console.error('Independent backup recovery rejected; private diagnostics required');process.exitCode=1;}

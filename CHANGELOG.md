@@ -2,22 +2,19 @@
 
 ## Unreleased
 
-- Extend original editorial imagery to Research, Careers, Partnerships and planned
-  app examples, with published-story fallbacks that preserve CMS-selected images.
-  Keep semantic foreground/background appearance changes immediate to avoid transient
-  low-contrast buttons during system theme changes.
+- Link each homepage capability to its own Technology explanation, with English
+  and German examples instead of repeated generic copy. Present mobile Technology
+  capabilities as full-width numbered rows while preserving the desktop grid.
+  Restore topic position after WebKit page-history restoration without overriding
+  the reader’s cached Back position.
 
-- Add original industry imagery, concise English/German sector descriptions and
-  a spacious responsive card layout. Extend supporting imagery to About and Technology
-  using locally served, lazy-loaded WebP variants with reserved dimensions.
+- Preserve complete decrypted recovery payloads over nonblocking process pipes;
+  await output completion while retaining all backup integrity and key checks.
+  Synthetic regressions cover large payloads, tampering and wrong escrow keys.
 
 - Recognize emailed access links opened in an already-open sign-in or registration
   page. Remove the fragment into memory on hash navigation while preserving explicit
   confirmation, administrator MFA and existing credentials. Hosted rollout remains pending.
-
-- Place the mobile homepage introduction above the divider at the bottom of its blue hero, visible
-  before scrolling. Present mobile capabilities as four full-width rows; retain
-  hidden hero buttons, the taller navy section and desktop presentation.
 
 - Add email-verified registration and owner review for administration and Engineering
   Docs, retaining explicitly approved addresses. Offer emailed one-use sign-in links
@@ -43,10 +40,6 @@
   Account changes and fresh-factor consumption remain serialized; hold/deletion
   exclusivity and audit foreign-key validation remain enforced.
 
-- Simplify the mobile homepage hero: retain its heading and artwork, hide its
-  supporting actions, and extend the navy panel beyond the opening
-  phone screen. Desktop introduction and actions remain available.
-
 - Implement protected Portal lifecycle previews, owner-confirmed preservation holds,
   explicit-ID erasure plans/cancellation, per-target outcomes and evidenced completion.
   Enforce holds on existing deletion routes and related CVs; preserve identity-only
@@ -67,6 +60,20 @@
 - Reject malformed snapshots, unknown products, changed Robot schemas, wrong recovery
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
+
+## 2026-10-17 — Company imagery and mobile refinement live
+
+- Released frontend `ac8c452c74a3cb1c0b0577da06371f162ca3e0f9`, deployment
+  `dpl_66q1cHvvhT62m9aaSVdgzxxjQURS`, after required exact-main CI and source-bound
+  staging qualification. Production acceptance verified 36 English/German page
+  views and all 20 optimized image assets. The existing API and worker were retained;
+  new registration and Engineering Docs identity features remain off in production.
+- Added original imagery across Industries, About, Technology, Research, Careers,
+  Partnerships and planned applications. Published-story fallbacks preserve CMS images.
+- Kept system-theme button contrast readable throughout appearance changes.
+- Placed the mobile introduction above the hero divider before scrolling and
+  presented capabilities as four full-width rows. Mobile hero actions stay hidden;
+  the taller blue section and desktop presentation are retained.
 
 ## 2026-10-16 — Mobile homepage layout live
 
