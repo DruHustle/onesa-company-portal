@@ -1,3 +1,13 @@
+> Current configuration — verified 2026-10-18: this repository is **public** and
+> `main` now enforces PRs, current-base GitHub Actions checks (including the
+> unconditional fail-closed summary and hygiene), resolved conversations, and
+> force-push/deletion prevention, including administrators. Zero unavailable
+> independent approvals are required. See [actual protection readback](BRANCH_PROTECTION_REPORT.md).
+> Earlier private-plan failures and provider snapshots below are historical;
+> they do not describe current eligibility or current runtime. External owner-held
+> production qualification and credential isolation remain required. No visibility,
+> billing or production credential setting changed in this activation.
+
 # GitHub Free operating policy
 
 > Current pipeline: [automated review, staging qualification and owner activation](CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.

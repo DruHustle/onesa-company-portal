@@ -31,15 +31,17 @@
     {
       "type": "required_status_checks",
       "parameters": {
-        "strict_required_status_checks_policy": true,
-        "do_not_enforce_on_create": false,
         "required_status_checks": [
           {
-            "context": "verify",
+            "context": "changes",
             "integration_id": 15368
           },
           {
-            "context": "publication-hygiene",
+            "context": "ci-summary",
+            "integration_id": 15368
+          },
+          {
+            "context": "image-security (clamav)",
             "integration_id": 15368
           },
           {
@@ -49,8 +51,21 @@
           {
             "context": "image-security (onesa-company-portal-frontend)",
             "integration_id": 15368
+          },
+          {
+            "context": "pipeline-security / workflow-security",
+            "integration_id": 15368
+          },
+          {
+            "context": "publication-hygiene",
+            "integration_id": 15368
+          },
+          {
+            "context": "verify",
+            "integration_id": 15368
           }
-        ]
+        ],
+        "strict_required_status_checks_policy": true
       }
     }
   ]
