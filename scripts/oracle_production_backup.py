@@ -224,7 +224,7 @@ try:
             + [
                 "sudo docker exec "
                 + restore
-                + " pg_isready -U postgres -d portal_restore"
+                + " pg_isready -h 127.0.0.1 -U postgres -d portal_restore"
             ],
             capture_output=True,
             timeout=20,
