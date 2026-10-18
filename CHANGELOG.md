@@ -5,13 +5,6 @@
 - Wait for the final PostgreSQL server over container-loopback TCP during isolated
   recovery; the initialization-only socket server is not restore readiness.
 
-- Prepare separate working drafts and approved public snapshots, exact-revision review,
-  explicit unpublishing and migration preservation. Editors can submit saved replacements
-  without replacing the published edition. Source validation and hosted rollout remain separate.
-- Reorganize administration by task, add scoped search and staff/media/version selection,
-  per-section queues, cancellation of stale reads, deletion confirmation and unsaved-work guards.
-- Clarify product scope and mobile next actions; retain selected enquiry topics, entered
-  data on failure and saved-record references without claiming email delivery.
 
 - Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
   Keep standard hosted validation and prepare the owner-managed private GitHub Free
@@ -58,6 +51,28 @@
   the new product paths perform no automatic backup deletion.
 
 
+## 2026-10-18 — Portal editorial and task experience accepted
+
+- Prepare separate working drafts and approved public snapshots, exact-revision review,
+  explicit unpublishing and migration preservation. Editors can submit saved replacements
+  without replacing the published edition. Production rollout is verified below.
+- Reorganize administration by task, add scoped search and staff/media/version selection,
+  per-section queues, cancellation of stale reads, deletion confirmation and unsaved-work guards.
+- Clarify product scope and mobile next actions; retain selected enquiry topics, entered
+  data on failure and saved-record references without claiming email delivery.
+
+- Frontend `a4b106cfea9e44efb665192b8254a67986835636`, Vercel deployment
+  `dpl_3z6GckPkhqS4NhBv1csz1rhVJnpW`, is accepted on the existing Company/Portal hosts.
+  API/worker artifact source `3fad26e460e6903d51e5e1428b6bb14658609813` has the same full
+  Git tree. Migration 012 preserved existing records, both published news editions,
+  role attributes and credentials.
+- Exact-main CI/security, 13 authenticated staging task cases, 48 canonical EN/DE
+  mobile/desktop light/dark views and 13 production content/access reads passed.
+  Production task checks were anonymous; authenticated staff task coverage is staging.
+- Reconcile the persistent worker binding with its actual accepted identity-enabled
+  Compose definition. Runtime settings, scanner and seven other service identities
+  remain unchanged. Pre-launch is an owner deferral, not legal approval.
+
 ## 2026-10-18 — Protected Engineering Docs production hostname verified
 
 - Engineering Docs is accepted at `https://docs.engineering.onesa.eu/`, source
@@ -69,8 +84,7 @@
   deployment `dpl_TZfvysWGbjASje3bcw2WCoostdLG`, redirects `/engineering` to that
   exact protected hostname. Existing Onesa sign-in, audience and approved membership
   boundaries are retained. Other application/backend identities were not relabelled.
-- Later second-review changes above remain unreleased until their own exact-source
-  CI, qualification and canonical-host acceptance are recorded.
+- This historical release precedes the accepted second-review release recorded above.
 
 ## 2026-10-18 — Verified Portal access and public navigation releases
 

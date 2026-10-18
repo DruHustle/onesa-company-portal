@@ -5,6 +5,9 @@ Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md#verified-production-hosting-cutover--2026-10-16)
 for source identities, protected ingress, acceptance and rollback.
 
+The 2026-10-18 editorial/task release is accepted; see the
+[current component identities and acceptance](docs/engineering/DEPLOYMENT.md#current-portal-editorial-release--2026-10-18).
+
 The Company Portal is Onesa UG’s corporate website and protected business workspace.
 It combines an English/German public site with a custom CMS, enquiries, recruitment,
 private documents, background processing and database-backed privacy governance.

@@ -49,7 +49,30 @@ feature flags, fixed OIDC client and qualified activation sequence. Follow
 [Engineering Docs identity](ENGINEERING_DOCS_IDENTITY.md); do not enable it from
 a business-website release or weaken Access/owner authentication.
 
-## Current Company application release — 2026-10-16
+## Current Portal editorial release — 2026-10-18
+
+Frontend `a4b106cfea9e44efb665192b8254a67986835636` is accepted at Vercel deployment
+`dpl_3z6GckPkhqS4NhBv1csz1rhVJnpW` on the existing Company and Portal hosts.
+API/worker artifact source is `3fad26e460e6903d51e5e1428b6bb14658609813`, whose full
+Git tree equals that qualified main. Migration 012 preserves prior records, both
+published news editions, roles and credentials. Exact-main CI/security, 13 authenticated
+staging tasks, 48 canonical layout/accessibility views and 13 production content/access
+reads passed. Production authenticated tasks were not replayed. Anonymous/spoofed-bot
+private requests remain denied; those reads do not establish genuine bot traffic.
+
+The previous running worker's identity-enabled Compose definition differed from its
+systemd `current` symlink. The initial guard stopped before writes. Read-only reconciliation
+identified the actual accepted definition; the new persistent release copies it and
+preserves its environment, scanner and seven other service identities. Subsequent
+releases must inspect actual running Compose labels and immutable bindings rather than
+assume an old symlink or repository defaults describe the effective runtime.
+Pre-launch preserves exact editorial approval while deferring the legal gate; it is
+not legal approval. Restricted receipts and screenshots are in
+`private/oracle/application-release-20261016/second-review-20261018/portal-production/`.
+Retain prior immutable artifacts and schema-compatible rollback. Never remove existing
+editions or restore data into production as a deployment rollback.
+
+## Previous Company application release — 2026-10-16
 
 The owner lifted the application-artifact hold for qualified Oracle/Vercel releases;
 Render remains held. Frontend `8bee209a6ea82a2d63d187d1b23046f051698f0f`, deployment
