@@ -1,3 +1,13 @@
+<!-- Current runtime receipt is distinct from source defaults. -->
+
+> Verified production activation — 2026-10-18: Portal API/worker `d845311` supports
+> registration and identity; frontend `56dfb865` provides email-only requests.
+> Actual owner connection passed and the two protected Docs Access applications
+> now select Onesa Portal. Existing exact-email membership, sessions and admin MFA
+> remain enforced. The default-off configuration below is a safe source default,
+> not evidence that current production is disabled. Activation steps describe the
+> qualified rollout procedure and rollback, not outstanding production work.
+
 # Engineering Docs sign-in through Onesa Portal
 
 Classification: INTERNAL. Owner: Onesa engineering owner. Status: prepared, not

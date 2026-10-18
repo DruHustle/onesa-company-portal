@@ -67,13 +67,13 @@
 
 - Recognize emailed access links opened in an already-open sign-in or registration
   page. Remove the fragment into memory on hash navigation while preserving explicit
-  confirmation, administrator MFA and existing credentials. Hosted rollout remains pending.
+  confirmation, administrator MFA and existing credentials. Hosted rollout is verified in the production release above.
 
 - Add email-verified registration and owner review for administration and Engineering
   Docs, retaining explicitly approved addresses. Offer emailed one-use sign-in links
   or email/password, preserving existing administrator MFA and credentials.
-  Additive migration 011 and the revised authentication flow require hosted qualification.
-  Keep new frontend controls/routes default-off until that matching API is ready;
+  Additive migration 011 and the revised authentication flow passed hosted qualification.
+  Source defaults remain off; the verified matching production API and controls are enabled;
   existing password/MFA administration and independent public releases remain available.
 
 - Prepare separate Engineering Docs sign-in through Onesa Portal, with
