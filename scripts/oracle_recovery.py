@@ -127,6 +127,8 @@ def recover(sha):
                 "exec",
                 name,
                 "pg_isready",
+                "-h",
+                "127.0.0.1",
                 "-U",
                 "postgres",
                 "-d",

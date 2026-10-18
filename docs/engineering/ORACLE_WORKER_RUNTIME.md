@@ -189,6 +189,16 @@ uses synthetic encrypted data and a mocked object service to exercise large-payl
 backpressure and corruption/key rejection; it contacts no provider. A successful
 decoder control is separate from an actual isolated restore and live activation.
 
+For a disposable PostgreSQL restore, wait for `pg_isready -h 127.0.0.1`
+inside the isolated container. The image's temporary initialization server accepts
+Unix-socket connections and then shuts down; socket readiness can precede the final
+server. Container-loopback TCP excludes that temporary server without publishing a
+port or changing network isolation. Retain the existing bounded startup deadline.
+Do not unconditionally drop the empty `public` schema: inspect the archive's schema
+declarations first. An archive that omits `CREATE SCHEMA public` needs the initialized
+schema for its functions and tables. Preserve failed observations and compare complete
+record fingerprints before treating any corrected rehearsal as successful.
+
 For Portal, `scripts/release/restore_lockdown.py --container <isolated-container>
 --database <restore-database> --replay-ledger <private-ledger>
 --apply-isolated-replay` accepts only an explicitly labeled, running Docker target
