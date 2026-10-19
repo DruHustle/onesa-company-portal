@@ -49,6 +49,15 @@ sequenceDiagram
  A-->>E: Protected documentation
 ```
 
+## Sign-in presentation
+
+The Portal displays one active step: preparation, link/password entry, or explicit
+email-link confirmation. Preparation does not expose an inactive form. Confirmation
+hides method selection and registration so its action is unambiguous. Access guidance
+and restart/contact links live in the Help with access disclosure. These presentation
+states preserve the existing interaction, CSRF, same-browser link and membership checks;
+they do not authenticate automatically or change approvals.
+
 ## Registration and owner approval
 
 First-time users select Company administration or Engineering Docs at `/access/register`.

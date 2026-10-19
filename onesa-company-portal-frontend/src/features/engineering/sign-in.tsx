@@ -31,21 +31,27 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
     } catch (error) { setNotice(error instanceof Error ? error.message : "Sign-in could not be completed."); }
     finally { setBusy(false); }
   }
-  return <main className="admin-main"><div className="container"><a className="skip-link" href="#engineering-sign-in">Skip to sign-in</a><section className="admin-login" aria-labelledby="engineering-title">
-    <div className="admin-product-title"><a href="https://onesa.eu/" aria-label="Onesa company homepage"><img src="/brand/icons/v1/onesa-company.svg" width="48" height="48" alt="Onesa" /></a><small>ONESA PORTAL · ENGINEERING DOCS</small><span className="governance-status">Protected access · {environment}</span></div>
-    <h1 id="engineering-title">Sign in to Engineering Docs</h1><p>Use an emailed sign-in link or your registered email and password.</p>
+  const confirming = method === "link" && Boolean(link);
+  return <main className="admin-main admin-auth-shell engineering-auth-shell"><div className="container"><a className="skip-link" href="#engineering-sign-in">Skip to sign-in</a><section className="admin-login" aria-labelledby="engineering-title">
+    <div className="admin-product-title"><a href="https://onesa.eu/" aria-label="Onesa company homepage"><img src="/brand/icons/v1/onesa-company.svg" width="48" height="48" alt="Onesa" /></a><small>ONESA PORTAL</small><span className="engineering-access-context">Protected access · {environment}</span></div>
+    <h1 id="engineering-title">{confirming ? "Open Engineering Docs" : "Sign in to Engineering Docs"}</h1>
+    <p className="engineering-signin-intro">{confirming ? "Confirm your email link to continue securely." : "Use your approved email to continue."}</p>
     <div id="engineering-sign-in">
-      <div className="admin-actions" aria-label="Sign-in method"><button type="button" disabled={busy} aria-pressed={method === "link"} onClick={() => { setMethod("link"); setNotice(""); }}>Email a sign-in link</button><button type="button" disabled={busy} aria-pressed={method === "password"} onClick={() => { setMethod("password"); setNotice(""); }}>Email and password</button></div>
       {notice && <p role="alert">{notice}</p>}
       {!ready && !notice && <p role="status">Preparing secure sign-in…</p>}
-      <form onSubmit={submit} aria-busy={busy}><fieldset disabled={!ready || busy}><legend>{method === "password" ? "Email and password" : link ? "Confirm your sign-in link" : "Your approved email"}</legend>
-        {!(method === "link" && link) && <label>Email address<input name="email" type="email" autoComplete="username" maxLength={254} required /></label>}
-        {method === "password" && <label>Password<input name="password" type="password" autoComplete="current-password" maxLength={256} required /></label>}
-        <button className="button" type="submit">{busy ? "Please wait…" : method === "password" ? "Sign in to Docs" : link ? "Confirm sign-in and open Docs" : "Send sign-in link"}</button>
-      </fieldset></form>
-      {sent && <p role="status">If this address has approved access, a sign-in link is on its way. It expires in 15 minutes. Open it in the same browser where you started.</p>}
-      <p>First time here? <a href="/access/register?audience=engineering">Register for Engineering Docs</a>. New access requires owner approval; existing approvals are retained.</p>
-      <p><a href="/engineering">Return to Engineering Docs</a></p><p>Need help? <a href="https://onesa.eu/en/contact">Contact Onesa</a>.</p>
+      {ready && <>
+        {!confirming && <div className="signin-methods" role="group" aria-label="Sign-in method"><button type="button" disabled={busy} aria-pressed={method === "link"} onClick={() => { setMethod("link"); setNotice(""); }}>Email a sign-in link</button><button type="button" disabled={busy} aria-pressed={method === "password"} onClick={() => { setMethod("password"); setNotice(""); }}>Email and password</button></div>}
+        <form onSubmit={submit} aria-busy={busy}><fieldset disabled={busy}><legend className="sr-only">{method === "password" ? "Email and password" : confirming ? "Confirm your sign-in link" : "Your approved email"}</legend>
+          {!confirming && <label>Email address<input name="email" type="email" autoComplete="username" maxLength={254} required /></label>}
+          {method === "password" && <label>Password<input name="password" type="password" autoComplete="current-password" maxLength={256} required /></label>}
+          <button className="button" type="submit">{busy ? "Please wait…" : method === "password" ? "Sign in to Docs" : confirming ? "Confirm sign-in and open Docs" : "Send sign-in link"}</button>
+        </fieldset></form>
+        {sent && !confirming && method === "link" && <p role="status">If this address has approved access, a sign-in link is on its way. It expires in 15 minutes. Open it in the same browser where you started.</p>}
+      </>}
+      <div className="engineering-signin-support">
+        {!confirming && <p className="signin-registration">First time here? <a href="/access/register?audience=engineering">Register for Engineering Docs</a></p>}
+        <details className="signin-help"><summary>Help with access</summary><p>New access requires owner approval. Existing approvals are retained.</p><p><a href="/engineering">Start a new sign-in</a> · <a href="https://onesa.eu/en/contact">Contact Onesa</a></p></details>
+      </div>
     </div>
   </section></div></main>;
 }

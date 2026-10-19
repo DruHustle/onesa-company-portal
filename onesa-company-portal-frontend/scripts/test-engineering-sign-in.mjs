@@ -1,5 +1,7 @@
 /** Isolated production-renderer UI regression. No provider, database or email access. */
 import http from "node:http";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { setTimeout as delay } from "node:timers/promises";
@@ -136,6 +138,31 @@ try {
   }
   if (!ready) throw Error("Isolated renderer readiness deadline");
   browser = await chromium.launch();
+  if (accessEnabled) {
+    const context = await browser.newContext({ viewport: { width: 320, height: 568 } });
+    const page = await context.newPage();
+    let releaseDetails;
+    const detailsGate = new Promise(resolve => { releaseDetails = resolve; });
+    await page.route("**/engineering/sign-in/synthetic_loading_01/details", async route => {
+      await detailsGate;
+      await route.continue();
+    });
+    try {
+      await page.goto(origin + "/engineering/sign-in/synthetic_loading_01", { waitUntil: "domcontentloaded" });
+      await expect(page.getByRole("status")).toHaveText("Preparing secure sign-in…");
+      await expect(page.getByRole("group", { name: "Sign-in method" })).toHaveCount(0);
+      await expect(page.locator("form")).toHaveCount(0);
+      releaseDetails();
+      await expect(page.getByLabel("Email address")).toBeEnabled();
+      await expect(page.getByRole("group", { name: "Sign-in method" })).toBeVisible();
+      await expect(page.getByRole("status")).toHaveCount(0);
+      await expect(page.getByText("New access requires owner approval. Existing approvals are retained.")).toBeHidden();
+      await page.getByText("Help with access", { exact: true }).click();
+      await expect(page.getByText("New access requires owner approval. Existing approvals are retained.")).toBeVisible();
+    } finally { releaseDetails(); await context.close(); }
+  }
+  const screenshotDir = process.env.ONESA_SIGNIN_SCREENSHOTS;
+  if (screenshotDir) await mkdir(screenshotDir, { recursive: true, mode: 0o700 });
   const views = [];
   for (const width of (accessEnabled ? [320, 390, 768, 1440] : []))
     for (const mode of (accessEnabled ? ["light", "dark"] : [])) {
@@ -154,6 +181,7 @@ try {
       await expect(
         page.getByRole("heading", { name: "Sign in to Engineering Docs" }),
       ).toBeVisible();
+      if (screenshotDir) await page.screenshot({ path: join(screenshotDir, `signin-${width}-${mode}.png`), fullPage: true });
       const email = page.getByLabel("Email address");
       await expect(email).toBeEnabled();
       await email.fill("synthetic-engineer@onesa.eu");
@@ -204,6 +232,12 @@ try {
       await expect(page.getByRole("button", {name: "Confirm sign-in and open Docs", exact: true})).toBeEnabled();
       expect(await page.evaluate(() => window.__onesaLinkDocumentMarker)).toBe("same-document");
       expect(new URL(page.url()).hash).toBe("");
+      await expect(page.getByRole("heading", { name: "Open Engineering Docs" })).toBeVisible();
+      await expect(page.getByRole("group", { name: "Sign-in method" })).toHaveCount(0);
+      await expect(page.getByLabel("Email address", { exact: true })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Confirm sign-in and open Docs", exact: true })).toHaveCount(1);
+      await expect(page.getByRole("status")).toHaveCount(0);
+      if (screenshotDir) await page.screenshot({ path: join(screenshotDir, `confirm-${width}-${mode}.png`), fullPage: true });
       expect(engineeringConfirmations).toBe(beforeConfirmation);
       await page.getByRole("button", {name: "Confirm sign-in and open Docs", exact: true}).click();
       await page.waitForURL(origin + "/api/v1/engineering-identity/auth/" + linkUid);
