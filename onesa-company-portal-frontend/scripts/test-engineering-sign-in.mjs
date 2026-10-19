@@ -159,6 +159,20 @@ try {
       await expect(page.getByText("New access requires owner approval. Existing approvals are retained.")).toBeHidden();
       await page.getByText("Help with access", { exact: true }).click();
       await expect(page.getByText("New access requires owner approval. Existing approvals are retained.")).toBeVisible();
+      await page.clock.install();
+      await page.getByLabel("Email address").fill("synthetic-engineer@onesa.eu");
+      await page.getByRole("button", { name: "Send sign-in link", exact: true }).click();
+      await expect(page.getByRole("status")).toHaveText("Link sent.");
+      await expect(page.getByLabel("Email address")).toBeHidden();
+      await expect(page.getByRole("button", { name: "Send again in 15s", exact: true })).toBeDisabled();
+      await page.clock.fastForward(15000);
+      const resend = page.getByRole("button", { name: "Send another link", exact: true });
+      await expect(resend).toBeEnabled();
+      const resent = page.waitForResponse(r => r.url() === origin + "/engineering/sign-in/synthetic_loading_01/link");
+      await resend.click();
+      expect((await resent).status()).toBe(200);
+      await expect(page.getByRole("button", { name: "Send again in 15s", exact: true })).toBeDisabled();
+      await expect(page.getByLabel("Email address")).toBeHidden();
     } finally { releaseDetails(); await context.close(); }
   }
   const screenshotDir = process.env.ONESA_SIGNIN_SCREENSHOTS;
@@ -196,7 +210,7 @@ try {
         .getByRole("button", { name: "Send sign-in link" })
         .click();
       expect((await started).status()).toBe(200);
-      await expect(page.getByRole("status")).toHaveText("Email sent.");
+      await expect(page.getByRole("status")).toHaveText("Link sent.");
       await expect(page.locator("form")).toBeHidden();
       await expect(page.getByRole("link", { name: "Register for Engineering Docs" })).toHaveCount(0);
       await page.getByRole("button", {name:"Email and password",exact:true}).click();
@@ -228,7 +242,7 @@ try {
       await page.goto(origin + "/engineering/sign-in/" + linkUid, {waitUntil: "networkidle"});
       await page.getByLabel("Email address", {exact: true}).fill("synthetic-engineer@onesa.eu");
       await page.getByRole("button", {name: "Send sign-in link", exact: true}).click();
-      await expect(page.getByRole("status")).toHaveText("Email sent.");
+      await expect(page.getByRole("status")).toHaveText("Link sent.");
       await page.evaluate(() => { window.__onesaLinkDocumentMarker = "same-document"; });
       await page.goto(origin + "/engineering/sign-in/" + linkUid + "#access-link=" + proof);
       await expect(page.getByRole("button", {name: "Confirm sign-in and open Docs", exact: true})).toBeEnabled();

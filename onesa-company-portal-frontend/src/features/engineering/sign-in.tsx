@@ -1,8 +1,18 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { accessLinkToken } from "@/lib/access-link";
 export function EngineeringSignIn({ uid, environment }: { uid: string; environment: string }) {
   const [csrf, setCsrf] = useState(""), [method, setMethod] = useState<"link" | "password">("link"), [link, setLink] = useState<string | null>(null), [notice, setNotice] = useState(""), [sent, setSent] = useState(false), [busy, setBusy] = useState(false), [ready, setReady] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [resendSeconds, setResendSeconds] = useState(0);
+  const [resendUntil, setResendUntil] = useState(0);
+  useEffect(() => {
+    if (!resendUntil) return;
+    const update = () => setResendSeconds(Math.max(0, Math.ceil((resendUntil - performance.now()) / 1000)));
+    update();
+    const timer = window.setInterval(() => { update(); if (performance.now() >= resendUntil) window.clearInterval(timer); }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendUntil]);
   useEffect(() => {
     let active = true; const abort = new AbortController(); setReady(false); setCsrf("");
     const receiveLink = () => {
@@ -25,7 +35,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
       const response = await fetch("/engineering/sign-in/" + uid + "/" + action, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ csrf, ...(method === "password" ? { email: String(data.get("email")), password: String(data.get("password")) } : link ? { token: link } : { email: String(data.get("email")) }) }) });
       const value = await response.json();
       if (!response.ok) throw Error(response.status === 429 ? "Please wait before trying again." : "Sign-in could not be completed. Check your credentials or return to Engineering Docs to request a new link.");
-      if (action === "link") { setSent(true); return; }
+      if (action === "link") { setSent(true); setResendSeconds(15); setResendUntil(performance.now() + 15000); return; }
       if (typeof value.continuePath !== "string" || !/^\/api\/v1\/engineering-identity\/auth\/[A-Za-z0-9_-]{8,128}$/.test(value.continuePath)) throw Error("Sign-in could not be completed.");
       setLink(null); window.location.assign(value.continuePath);
     } catch (error) { setNotice(error instanceof Error ? error.message : "Sign-in could not be completed."); }
@@ -41,12 +51,12 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
       {!ready && !notice && <p role="status">Preparing secure sign-in…</p>}
       {ready && <>
         {!confirming && <div className="signin-methods" role="group" aria-label="Sign-in method"><button type="button" disabled={busy} aria-pressed={method === "link"} onClick={() => { setMethod("link"); setNotice(""); }}>Email a sign-in link</button><button type="button" disabled={busy} aria-pressed={method === "password"} onClick={() => { setMethod("password"); setNotice(""); }}>Email and password</button></div>}
-        <form onSubmit={submit} aria-busy={busy} hidden={sent && method === "link" && !confirming}><fieldset disabled={busy}><legend className="sr-only">{method === "password" ? "Email and password" : confirming ? "Confirm your sign-in link" : "Your approved email"}</legend>
+        <form ref={formRef} onSubmit={submit} aria-busy={busy} hidden={sent && method === "link" && !confirming}><fieldset disabled={busy}><legend className="sr-only">{method === "password" ? "Email and password" : confirming ? "Confirm your sign-in link" : "Your approved email"}</legend>
           {!confirming && <label>Email address<input name="email" type="email" autoComplete="username" maxLength={254} required /></label>}
           {method === "password" && <label>Password<input name="password" type="password" autoComplete="current-password" maxLength={256} required /></label>}
           <button className="button" type="submit">{busy ? "Please wait…" : method === "password" ? "Sign in to Docs" : confirming ? "Confirm sign-in and open Docs" : "Send sign-in link"}</button>
         </fieldset></form>
-        {sent && !confirming && method === "link" && <p role="status">Email sent.</p>}
+        {sent && !confirming && method === "link" && <div className="engineering-link-sent"><p role="status">Link sent.</p><button className="button" type="button" disabled={busy || resendSeconds > 0} onClick={() => formRef.current?.requestSubmit()}>{busy ? "Sending…" : resendSeconds > 0 ? `Send again in ${resendSeconds}s` : "Send another link"}</button></div>}
       </>}
       <div className="engineering-signin-support">
         {!confirming && !sent && <p className="signin-registration">First time here? <a href="/access/register?audience=engineering">Register for Engineering Docs</a></p>}

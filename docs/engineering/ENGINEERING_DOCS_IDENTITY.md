@@ -56,7 +56,9 @@ email-link confirmation. Preparation does not expose an inactive form. Confirmat
 hides method selection and registration so its action is unambiguous. Access guidance
 and restart/contact links live in the Help with access disclosure. These presentation
 states preserve the existing interaction, CSRF, same-browser link and membership checks;
-they do not authenticate automatically or change approvals.
+they do not authenticate automatically or change approvals. Successful link requests
+show “Link sent.”, hide the email input and offer explicit resend after 15 seconds.
+The client cooldown complements existing server rate limits and never resends automatically.
 
 ## Registration and owner approval
 
