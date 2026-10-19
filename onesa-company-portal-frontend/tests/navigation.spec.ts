@@ -194,7 +194,7 @@ test.describe('clear homepage composition',()=>{
     const next=hero.getByRole('link',{name:locale==='en'?'Explore the platform':'Plattform entdecken'});await expect(next).toBeVisible();await expect(next).toHaveAttribute('href',`/${locale}/products#product-ai`);await expect(hero.getByRole('link')).toHaveCount(1);
     const nextBox=await next.boundingBox();expect(nextBox).not.toBeNull();if(viewport.height>=568||viewport.width===844)expect(nextBox!.y+nextBox!.height,'The complete primary action fits before scrolling').toBeLessThanOrEqual(viewport.height);
     await expect(hero.locator('figure')).toHaveCount(1);await expect(hero.locator('figcaption')).toBeVisible();
-    if(viewport.width===320){await page.evaluate(async()=>{document.documentElement.style.setProperty('font-size','200%','important');await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));});expect(await page.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).fontSize))).toBeGreaterThanOrEqual(32);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await expect(next).toBeVisible();}
+    if(viewport.width===320){await page.evaluate(async()=>{document.documentElement.style.setProperty('font-size','200%','important');await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));});await expect(page.locator('html')).toHaveCSS('font-size','32px');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await expect(next).toBeVisible();}
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     if(viewport.width<=760){const rows=page.locator('#capabilities .capability');await expect(rows).toHaveCount(4);const boxes=await rows.evaluateAll(elements=>elements.map(e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,bottom:r.bottom};}));for(let i=1;i<boxes.length;i++){expect(Math.abs(boxes[i].x-boxes[0].x)).toBeLessThan(1);expect(boxes[i].y).toBeGreaterThanOrEqual(boxes[i-1].bottom-1);}}
    }
@@ -263,4 +263,15 @@ test('bookmarked topic survives late browser restoration', async ({page}) => {
   await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
   expect(await page.evaluate(() => history.scrollRestoration)).toBe('auto');
+});
+
+
+test('secondary company pages reflow at doubled text size in both locales', async ({page}) => {
+ for(const locale of ['en','de'])for(const section of ['about','technology'])for(const colorScheme of ['light','dark'] as const)for(const viewport of [{width:320,height:568},{width:844,height:390}]) {
+  await page.setViewportSize(viewport);await page.emulateMedia({colorScheme,reducedMotion:'reduce'});await page.goto(`/${locale}/${section}`);
+  await expect(page.getByRole('heading',{level:1})).toBeVisible();
+  await page.evaluate(()=>document.documentElement.style.setProperty('font-size','200%','important'));
+  await expect(page.locator('html')).toHaveCSS('font-size','32px');
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ }
 });

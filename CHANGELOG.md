@@ -2,20 +2,20 @@
 
 ## Unreleased
 
+- Third review: track controlled Governance drafts and protect internal/browser navigation;
+  block selection and repeated submissions during mutations. Add protected live-edition,
+  working-revision, review and scheduling summaries without changing public payloads.
+- Refine About with the owner-confirmed 2026 founding year and sourced leadership
+  background; explain the actual platform approach and simplify mobile administrator
+  sign-in. Preserve the accepted homepage and existing MFA/approval requirements.
+  These changes require their own qualified release; local checks are not deployment.
+
 - Measure public navigation readiness with one atomic browser observation of the
   same URL, visible product headings and exact documentation links. Start its
   clock at the trusted browser click and report driver delay separately. Preserve
   the900ms threshold; reject incomplete, hidden or duplicated content and prove
   that an actual950ms content delay fails that criterion.
 
-
-- Refine the Company homepage around Onesa AI Platform, a concise explanation and
-  one primary action. Replace the robotic-hand opening with an original static
-  workspace illustration; keep Robot in its own development section. Consolidate
-  hero styles and compact the accessible mobile navigation. Source verification,
-  rendered visual checks, qualification and deployment are recorded separately.
-- Keep genuine public404 pages non-indexable in route metadata as well as the
-  response status; do not inherit the public layout’s index directive.
 
 
 - Wait for the final PostgreSQL server over container-loopback TCP during isolated
@@ -66,6 +66,19 @@
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
 
+
+## 2026-10-19 — Company homepage accepted independently
+
+- The focused AI Platform homepage, original workspace illustration, separate Robot
+  development section and compact mobile navigation are accepted at source
+  `69803e028848c897013d2416785cccbb7043a84c`, Vercel deployment
+  `dpl_5xvWCSRXaMnkrQes3DM5dQaKpohR`. Exact-source CI and canonical mobile/desktop
+  light/dark checks passed. The API and worker retain source
+  `3fad26e460e6903d51e5e1428b6bb14658609813`; they were not redeployed for the homepage.
+- Genuine public 404s retain non-indexable metadata. The restricted readback records
+  the remaining inherited crawler-specific directive combination; this is not a claim
+  that every robots tag is uniform. Third-review About and administration changes above
+  are separate, unreleased source changes.
 
 ## 2026-10-18 — Portal editorial and task experience accepted
 

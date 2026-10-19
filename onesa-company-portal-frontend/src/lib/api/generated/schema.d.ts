@@ -5205,6 +5205,22 @@ export interface operations {
                             author_id: string | null;
                             revision: number;
                             updated_at: string;
+                            publication?: {
+                                live: {
+                                    revision: number;
+                                    /** @enum {string} */
+                                    kind: "page" | "product" | "article" | "job" | "research" | "section";
+                                    slug: string;
+                                    /** @enum {string} */
+                                    locale: "en" | "de";
+                                    title: string;
+                                    publishedAt: string | null;
+                                } | null;
+                                everPublished: boolean;
+                                hasUnpublishedChanges: boolean;
+                                scheduledAt: string | null;
+                                scheduledRevision: number | null;
+                            };
                         }[];
                         page: number;
                         limit: number;
@@ -5444,6 +5460,22 @@ export interface operations {
                         author_id: string | null;
                         revision: number;
                         updated_at: string;
+                        publication?: {
+                            live: {
+                                revision: number;
+                                /** @enum {string} */
+                                kind: "page" | "product" | "article" | "job" | "research" | "section";
+                                slug: string;
+                                /** @enum {string} */
+                                locale: "en" | "de";
+                                title: string;
+                                publishedAt: string | null;
+                            } | null;
+                            everPublished: boolean;
+                            hasUnpublishedChanges: boolean;
+                            scheduledAt: string | null;
+                            scheduledRevision: number | null;
+                        };
                     };
                 };
             };
@@ -5845,6 +5877,22 @@ export interface operations {
                         author_id: string | null;
                         revision: number;
                         updated_at: string;
+                        publication?: {
+                            live: {
+                                revision: number;
+                                /** @enum {string} */
+                                kind: "page" | "product" | "article" | "job" | "research" | "section";
+                                slug: string;
+                                /** @enum {string} */
+                                locale: "en" | "de";
+                                title: string;
+                                publishedAt: string | null;
+                            } | null;
+                            everPublished: boolean;
+                            hasUnpublishedChanges: boolean;
+                            scheduledAt: string | null;
+                            scheduledRevision: number | null;
+                        };
                     };
                 };
             };
@@ -6051,6 +6099,22 @@ export interface operations {
                         author_id: string | null;
                         revision: number;
                         updated_at: string;
+                        publication?: {
+                            live: {
+                                revision: number;
+                                /** @enum {string} */
+                                kind: "page" | "product" | "article" | "job" | "research" | "section";
+                                slug: string;
+                                /** @enum {string} */
+                                locale: "en" | "de";
+                                title: string;
+                                publishedAt: string | null;
+                            } | null;
+                            everPublished: boolean;
+                            hasUnpublishedChanges: boolean;
+                            scheduledAt: string | null;
+                            scheduledRevision: number | null;
+                        };
                     };
                 };
             };
@@ -6260,6 +6324,22 @@ export interface operations {
                         author_id: string | null;
                         revision: number;
                         updated_at: string;
+                        publication?: {
+                            live: {
+                                revision: number;
+                                /** @enum {string} */
+                                kind: "page" | "product" | "article" | "job" | "research" | "section";
+                                slug: string;
+                                /** @enum {string} */
+                                locale: "en" | "de";
+                                title: string;
+                                publishedAt: string | null;
+                            } | null;
+                            everPublished: boolean;
+                            hasUnpublishedChanges: boolean;
+                            scheduledAt: string | null;
+                            scheduledRevision: number | null;
+                        };
                     };
                 };
             };
@@ -6473,6 +6553,22 @@ export interface operations {
                                 author_id: string | null;
                                 revision: number;
                                 updated_at: string;
+                                publication?: {
+                                    live: {
+                                        revision: number;
+                                        /** @enum {string} */
+                                        kind: "page" | "product" | "article" | "job" | "research" | "section";
+                                        slug: string;
+                                        /** @enum {string} */
+                                        locale: "en" | "de";
+                                        title: string;
+                                        publishedAt: string | null;
+                                    } | null;
+                                    everPublished: boolean;
+                                    hasUnpublishedChanges: boolean;
+                                    scheduledAt: string | null;
+                                    scheduledRevision: number | null;
+                                };
                             };
                             /** Format: uuid */
                             actor_id: string | null;
@@ -6688,6 +6784,22 @@ export interface operations {
                         author_id: string | null;
                         revision: number;
                         updated_at: string;
+                        publication?: {
+                            live: {
+                                revision: number;
+                                /** @enum {string} */
+                                kind: "page" | "product" | "article" | "job" | "research" | "section";
+                                slug: string;
+                                /** @enum {string} */
+                                locale: "en" | "de";
+                                title: string;
+                                publishedAt: string | null;
+                            } | null;
+                            everPublished: boolean;
+                            hasUnpublishedChanges: boolean;
+                            scheduledAt: string | null;
+                            scheduledRevision: number | null;
+                        };
                     };
                 };
             };

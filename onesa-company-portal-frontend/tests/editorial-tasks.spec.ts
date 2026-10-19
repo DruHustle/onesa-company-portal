@@ -356,3 +356,63 @@ for (const width of [320, 390, 768, 1440])
         "A draft retained on preference change",
       );
     });
+
+test('pending enquiry save blocks selection, repeated submission and navigation until A is reconciled',async({page})=>{
+ await signIn(page,'business');await page.getByRole('button',{name:'Enquiries and follow-ups',exact:true}).click();await search(page,prefix);
+ const choices=page.locator('.admin-list button');await expect(choices.first()).toBeVisible();
+ const a=choices.nth(0),b=choices.nth(1),bName=(await b.innerText()).replace(/\s+/g," ").trim();await a.click();
+ const heading=await page.locator('form[data-workspace-draft] h2').innerText();
+ await page.getByLabel('Internal notes').fill('Synthetic pending A notes');
+ let release!:()=>void,writes=0;const gate=new Promise<void>(resolve=>{release=resolve;});
+ await page.route('**/api/v1/admin/enquiries/*',async route=>{
+  if(route.request().method()!=='PATCH')return route.continue();writes++;const response=await route.fetch();await gate;await route.fulfill({response});
+ });
+ try{
+  await page.getByRole('button',{name:'Update enquiry',exact:true}).click();
+  await expect(b).toBeDisabled();await expect(page.getByLabel('Internal notes')).toBeDisabled();
+  await page.locator('form[data-workspace-draft]').filter({has:page.getByRole('heading',{name:heading,exact:true})}).evaluate(form=>(form as HTMLFormElement).requestSubmit());
+  await expect.poll(()=>writes).toBe(1);
+  page.once('dialog',dialog=>dialog.dismiss());await page.evaluate(()=>history.back());
+  await expect(page.locator('form[data-workspace-draft] h2')).toHaveText(heading);
+  release();await saved(page);await expect(page.getByLabel('Internal notes')).toHaveValue('Synthetic pending A notes');
+  await page.getByRole('button',{name:bName,exact:true}).click();await page.getByLabel('Internal notes').fill('Synthetic B remains selected');
+  await expect(page.locator('form[data-workspace-draft] h2')).not.toHaveText(heading);expect(writes).toBe(1);
+ }finally{release();}
+});
+
+test('failed enquiry save releases pending navigation but retains unsaved notes',async({page})=>{
+ await signIn(page,'business');await page.getByRole('button',{name:'Enquiries and follow-ups',exact:true}).click();await search(page,prefix);
+ await page.locator('.admin-list button').first().click();await page.getByLabel('Internal notes').fill('Synthetic failure notes retained');
+ await page.route('**/api/v1/admin/enquiries/*',route=>route.request().method()==='PATCH'?route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:{code:'SYNTHETIC_FAILURE',message:'Synthetic enquiry save unavailable'}})}):route.continue());
+ await page.getByRole('button',{name:'Update enquiry',exact:true}).click();
+ await expect(page.locator('[data-workspace-notice]')).toContainText('Synthetic enquiry save unavailable');
+ await expect(page.getByLabel('Internal notes')).toBeEnabled();await expect(page.getByLabel('Internal notes')).toHaveValue('Synthetic failure notes retained');
+ page.once('dialog',dialog=>dialog.dismiss());await page.locator('.admin-list button').nth(1).click();
+ await expect(page.getByLabel('Internal notes')).toHaveValue('Synthetic failure notes retained');
+});
+
+test('publication summary distinguishes never published, live, replacement, scheduled and unpublished',async({page},info)=>{
+ await signIn(page,'owner');await page.getByRole('button',{name:'Content and publication',exact:true}).click();
+ await page.getByLabel('URL slug').fill('publication-summary-'+randomUUID());
+ await page.getByLabel('Title',{exact:true}).fill('Synthetic live-edition summary');
+ await page.getByLabel('Body — plain text, with blank lines between paragraphs').fill('Synthetic first approved edition.');
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();
+ const summary=page.getByRole('region',{name:'Publication status',exact:true});
+ await expect(summary.getByRole('heading',{name:'Never published',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Unpublish',exact:true})).toHaveCount(0);
+ async function approve(){await page.getByRole('combobox',{name:'Next action',exact:true}).selectOption('approved');await page.getByLabel('Review note').fill('Synthetic exact-version approval for isolated tests.');await page.getByRole('button',{name:'Record review decision'}).click();await expect(summary).toContainText(/Approved for revision/);}
+ await approve();await page.getByRole('button',{name:'Publish or schedule this revision'}).click();
+ await expect(summary.getByRole('heading',{name:'Published — no pending content changes',exact:true})).toBeVisible();
+ await expect(summary.getByRole('link',{name:'View live edition'})).toHaveAttribute('href',/\/en\/news\/publication-summary-/);
+ await page.getByLabel('Title',{exact:true}).fill('Synthetic replacement not yet public');await page.getByRole('button',{name:'Save draft',exact:true}).click();
+ await expect(summary.getByRole('heading',{name:'Live edition and replacement draft',exact:true})).toBeVisible();
+ await expect(summary).toContainText('The live edition remains unchanged');await expect(summary).toContainText('Synthetic live-edition summary');
+ await approve();await page.getByLabel('Schedule (optional, your local time)').fill('2099-06-01T10:00');await page.getByRole('button',{name:'Publish or schedule this revision'}).click();
+ await expect(summary.getByRole('heading',{name:'Replacement scheduled',exact:true})).toBeVisible();
+ await expect(summary).toContainText('Synthetic live-edition summary');
+ await page.screenshot({path:info.outputPath('publication-summary-scheduled.png'),fullPage:true});
+ page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Unpublish',exact:true}).click();
+ await expect(summary.getByRole('heading',{name:'Unpublished — draft retained',exact:true})).toBeVisible();
+ await expect(summary.getByRole('link',{name:'View live edition'})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Unpublish',exact:true})).toHaveCount(0);
+});

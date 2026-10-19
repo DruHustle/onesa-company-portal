@@ -653,3 +653,19 @@ never use a localhost fallback, weaken Origin/CSRF checks or forge main as stagi
 Reference: [Vercel prebuilt deployment behavior](https://vercel.com/docs/cli/deploy),
 checked 2026-10-17. Existing exact-source CI and owner-controlled production gates
 remain mandatory. These are deployment prerequisites, not a live activation claim.
+
+## Third-review editorial summary rollout
+
+The optional managed-content `publication` response is additive on schema 012. Release
+the qualified API before the frontend so live/replacement metadata is immediately
+available. An older response produces an explicit unavailable summary rather than an
+inferred public state. The worker retains its existing capture/publication postconditions
+and needs no restart solely for this protected response addition. Record frontend, API
+and retained worker source/image identities separately, including hosted acceptance.
+
+The 19 October third-review source changes are not proof that previous deployment
+receipts now cover them. The previously accepted Company homepage remains bound to
+source `69803e028848c897013d2416785cccbb7043a84c`, Vercel
+`dpl_5xvWCSRXaMnkrQes3DM5dQaKpohR`; its retained API/worker source is
+`3fad26e460e6903d51e5e1428b6bb14658609813`. New About, workflow and sign-in source
+requires its own qualification. G14 stays owner-deferred, not approved.

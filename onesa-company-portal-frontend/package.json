@@ -21,7 +21,8 @@
     "test:homepage-loading": "node scripts/test-homepage-loading.mjs",
     "test:public-loading": "node scripts/test-public-loading.mjs",
     "test:public-fetch": "node --test unit/public-fetch.test.ts",
-    "test:engineering-sign-in": "node scripts/test-engineering-sign-in.mjs && ONESA_TEST_ACCESS_MODE=disabled node scripts/test-engineering-sign-in.mjs"
+    "test:engineering-sign-in": "node scripts/test-engineering-sign-in.mjs && ONESA_TEST_ACCESS_MODE=disabled node scripts/test-engineering-sign-in.mjs",
+    "test:workspace-drafts": "node --test unit/draft-history.test.ts"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.17",
