@@ -183,25 +183,25 @@ test('an unknown published detail keeps HTTP404 and noindex',async({page}) => {
 });
 
 
-test.describe('uncluttered mobile homepage',()=>{
+test.describe('clear homepage composition',()=>{
  for(const locale of ['en','de'])for(const mode of ['light','dark'] as const){
-  test(`${locale} mobile hero explains the product and offers a next action in ${mode}`,async({page})=>{
+  test(`${locale} hero has one visible next action in ${mode}`,async({page})=>{
    await page.emulateMedia({colorScheme:mode,reducedMotion:'reduce'});
-   for(const viewport of [{width:320,height:568},{width:390,height:844},{width:430,height:932},{width:640,height:360}]){
+   for(const viewport of [{width:320,height:568},{width:390,height:844},{width:430,height:932},{width:844,height:390},{width:768,height:1024},{width:1440,height:1000}]){
     await page.setViewportSize(viewport);await page.goto('/'+locale);
-    const hero=page.locator('.home-page .hero');await expect(hero.locator('h1')).toBeVisible();
-    const introduction=hero.locator('.hero-intro');await expect(introduction).toBeVisible();await expect(introduction).toContainText('Onesa AI Platform');await expect(hero.locator('.mobile-hero-intro')).toBeHidden();
-    const next=hero.getByRole('link',{name:locale==='en'?'Discover Onesa AI Platform':'Onesa AI Platform entdecken'});await expect(next).toBeVisible();await expect(next).toHaveAttribute('href',`/${locale}/products#product-ai`);
-    const introBox=await introduction.boundingBox(),nextBox=await next.boundingBox();expect(introBox).not.toBeNull();expect(nextBox).not.toBeNull();expect(introBox!.y+introBox!.height).toBeLessThanOrEqual(nextBox!.y);if(viewport.height>=568)expect(nextBox!.y).toBeLessThan(viewport.height);
-    const rows=page.locator('#capabilities .capability');await expect(rows).toHaveCount(4);const rowBoxes=await rows.evaluateAll(elements=>elements.map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,bottom:r.bottom};}));for(let i=1;i<rowBoxes.length;i++){expect(Math.abs(rowBoxes[i].x-rowBoxes[0].x)).toBeLessThan(1);expect(Math.abs(rowBoxes[i].width-rowBoxes[0].width)).toBeLessThan(1);expect(rowBoxes[i].y).toBeGreaterThanOrEqual(rowBoxes[i-1].bottom-1);}
-
+    const hero=page.locator('.home-page .hero');await expect(hero.getByRole('heading',{level:1})).toHaveText('Onesa AI Platform');
+    const introduction=hero.locator('.hero-intro');await expect(introduction).toBeVisible();
+    const next=hero.getByRole('link',{name:locale==='en'?'Explore the platform':'Plattform entdecken'});await expect(next).toBeVisible();await expect(next).toHaveAttribute('href',`/${locale}/products#product-ai`);await expect(hero.getByRole('link')).toHaveCount(1);
+    const nextBox=await next.boundingBox();expect(nextBox).not.toBeNull();if(viewport.height>=568||viewport.width===844)expect(nextBox!.y+nextBox!.height,'The complete primary action fits before scrolling').toBeLessThanOrEqual(viewport.height);
+    await expect(hero.locator('figure')).toHaveCount(1);await expect(hero.locator('figcaption')).toBeVisible();
+    if(viewport.width===320){await page.evaluate(async()=>{document.documentElement.style.setProperty('font-size','200%','important');await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));});expect(await page.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).fontSize))).toBeGreaterThanOrEqual(32);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await expect(next).toBeVisible();}
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-    const cue=hero.getByRole('link',{name:locale==='en'?'Explore capabilities':'Kompetenzen entdecken'});await expect(cue).toBeVisible();await cue.focus();await expect(cue).toBeFocused();await cue.click();await expect(page).toHaveURL(/#capabilities$/);
+    if(viewport.width<=760){const rows=page.locator('#capabilities .capability');await expect(rows).toHaveCount(4);const boxes=await rows.evaluateAll(elements=>elements.map(e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,bottom:r.bottom};}));for(let i=1;i<boxes.length;i++){expect(Math.abs(boxes[i].x-boxes[0].x)).toBeLessThan(1);expect(boxes[i].y).toBeGreaterThanOrEqual(boxes[i-1].bottom-1);}}
    }
   });
-  test(`${locale} desktop hero retains useful introduction and actions in ${mode}`,async({page})=>{
-   await page.emulateMedia({colorScheme:mode});await page.setViewportSize({width:1440,height:1000});await page.goto('/'+locale);
-   await expect(page.locator('.hero-intro')).toBeVisible();await expect(page.locator('.mobile-hero-intro')).toBeHidden();await expect(page.locator('.hero .actions')).toBeVisible();await expect(page.locator('.hero .actions a')).toHaveCount(2);
+  test(`${locale} mobile menu keeps its anchor and returns keyboard focus in ${mode}`,async({page},info)=>{
+   await page.setViewportSize({width:390,height:844});await page.emulateMedia({colorScheme:mode});await page.goto('/'+locale);
+   const toggle=page.locator('.mobile-toggle'),header=page.locator('.site-header'),before=await header.boundingBox();await toggle.focus();await page.keyboard.press('Enter');await expect(page.locator('#mobile-main-nav')).toBeVisible();const after=await header.boundingBox();expect(after!.height).toBeCloseTo(before!.height,0);await page.keyboard.press(info.project.name==='webkit'?'Alt+Tab':'Tab');await expect(page.locator('#mobile-main-nav a').first()).toBeFocused();await page.keyboard.press('Escape');await expect(toggle).toBeFocused();await expect(page.locator('#mobile-main-nav')).toBeHidden();
   });
  }
 });
