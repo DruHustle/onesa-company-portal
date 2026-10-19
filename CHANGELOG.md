@@ -4,6 +4,7 @@
 
 - Simplify Engineering Docs sign-in into one active step: separate loading,
   method selection and email-link confirmation; collapse secondary access help.
+  Show “Email sent.” and hide the email form after a successful link request.
   Preserve explicit confirmation, existing approvals and both sign-in methods.
 
 - Measure public navigation readiness with one atomic browser observation of the

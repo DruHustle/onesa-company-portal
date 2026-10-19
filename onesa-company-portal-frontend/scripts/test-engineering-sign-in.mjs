@@ -196,7 +196,9 @@ try {
         .getByRole("button", { name: "Send sign-in link" })
         .click();
       expect((await started).status()).toBe(200);
-      await expect(page.getByRole("status")).toContainText("a sign-in link is on its way");
+      await expect(page.getByRole("status")).toHaveText("Email sent.");
+      await expect(page.locator("form")).toBeHidden();
+      await expect(page.getByRole("link", { name: "Register for Engineering Docs" })).toHaveCount(0);
       await page.getByRole("button", {name:"Email and password",exact:true}).click();
       const password = page.getByLabel("Password", {exact:true});
       await password.fill("synthetic-invalid-password");
@@ -226,7 +228,7 @@ try {
       await page.goto(origin + "/engineering/sign-in/" + linkUid, {waitUntil: "networkidle"});
       await page.getByLabel("Email address", {exact: true}).fill("synthetic-engineer@onesa.eu");
       await page.getByRole("button", {name: "Send sign-in link", exact: true}).click();
-      await expect(page.getByRole("status")).toContainText("a sign-in link is on its way");
+      await expect(page.getByRole("status")).toHaveText("Email sent.");
       await page.evaluate(() => { window.__onesaLinkDocumentMarker = "same-document"; });
       await page.goto(origin + "/engineering/sign-in/" + linkUid + "#access-link=" + proof);
       await expect(page.getByRole("button", {name: "Confirm sign-in and open Docs", exact: true})).toBeEnabled();

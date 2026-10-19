@@ -41,15 +41,15 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
       {!ready && !notice && <p role="status">Preparing secure sign-in…</p>}
       {ready && <>
         {!confirming && <div className="signin-methods" role="group" aria-label="Sign-in method"><button type="button" disabled={busy} aria-pressed={method === "link"} onClick={() => { setMethod("link"); setNotice(""); }}>Email a sign-in link</button><button type="button" disabled={busy} aria-pressed={method === "password"} onClick={() => { setMethod("password"); setNotice(""); }}>Email and password</button></div>}
-        <form onSubmit={submit} aria-busy={busy}><fieldset disabled={busy}><legend className="sr-only">{method === "password" ? "Email and password" : confirming ? "Confirm your sign-in link" : "Your approved email"}</legend>
+        <form onSubmit={submit} aria-busy={busy} hidden={sent && method === "link" && !confirming}><fieldset disabled={busy}><legend className="sr-only">{method === "password" ? "Email and password" : confirming ? "Confirm your sign-in link" : "Your approved email"}</legend>
           {!confirming && <label>Email address<input name="email" type="email" autoComplete="username" maxLength={254} required /></label>}
           {method === "password" && <label>Password<input name="password" type="password" autoComplete="current-password" maxLength={256} required /></label>}
           <button className="button" type="submit">{busy ? "Please wait…" : method === "password" ? "Sign in to Docs" : confirming ? "Confirm sign-in and open Docs" : "Send sign-in link"}</button>
         </fieldset></form>
-        {sent && !confirming && method === "link" && <p role="status">If this address has approved access, a sign-in link is on its way. It expires in 15 minutes. Open it in the same browser where you started.</p>}
+        {sent && !confirming && method === "link" && <p role="status">Email sent.</p>}
       </>}
       <div className="engineering-signin-support">
-        {!confirming && <p className="signin-registration">First time here? <a href="/access/register?audience=engineering">Register for Engineering Docs</a></p>}
+        {!confirming && !sent && <p className="signin-registration">First time here? <a href="/access/register?audience=engineering">Register for Engineering Docs</a></p>}
         <details className="signin-help"><summary>Help with access</summary><p>New access requires owner approval. Existing approvals are retained.</p><p><a href="/engineering">Start a new sign-in</a> · <a href="https://onesa.eu/en/contact">Contact Onesa</a></p></details>
       </div>
     </div>
