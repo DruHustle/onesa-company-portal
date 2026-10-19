@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "@/lib/api/client";
+import {PublicationSummary} from "./publication-summary";
 import type { operations } from "@/lib/api/generated/schema";
 type Content =
   operations["createContent"]["responses"][201]["content"]["application/json"];
@@ -170,13 +171,14 @@ export function EditorialWorkspace({
             >
               {item.title}
               <small>
-                {item.kind} · {item.locale.toUpperCase()} · {item.state} ·
-                revision {item.revision}
+                {item.kind} · {item.locale.toUpperCase()} · working r{item.revision}
+                {item.publication?.live?` · live r${item.publication.live.revision}`:item.publication?.everPublished?" · unpublished":" · no live edition"}
               </small>
             </button>
           ))}
         </div>
         <div>
+          {content&&<PublicationSummary content={content} dirty={draftDirty} publisher={publisher}/>}
           <form
             data-editorial-draft
             data-workspace-draft
@@ -462,7 +464,7 @@ export function EditorialWorkspace({
                   <button className="button" disabled={busy || draftDirty || !approved}>
                     Publish or schedule this revision
                   </button>
-                  <button
+                  {content.publication?.live&&<button
                     type="button"
                     disabled={busy||draftDirty}
                     onClick={() => {
@@ -486,7 +488,7 @@ export function EditorialWorkspace({
                     }}
                   >
                     Unpublish
-                  </button>
+                  </button>}
                 </form>
               )}
               <details className="admin-card">

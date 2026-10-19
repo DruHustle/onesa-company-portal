@@ -14,6 +14,7 @@ test.beforeAll(async()=>{
  await db.query('DELETE FROM rate_limits');
  await db.query('INSERT INTO users(id,email,password_hash,role,mfa_secret) VALUES($1,$2,$3,$4,$5)',[ownerId,email,passwordHash(password),'owner',encrypt('JBSWY3DPEHPK3PXP')]);
 });
+test.beforeEach(async()=>{await db.query('DELETE FROM rate_limits WHERE key=ANY($1::text[])',[['login:127.0.0.1','account:'+hash(email.toLowerCase())]]);});
 test.afterAll(async()=>{await db.query('TRUNCATE governance_events,governance_versions,governance_records CASCADE');await db.query('TRUNCATE privacy_lifecycle_events,privacy_lifecycle_targets,privacy_lifecycle_requests,privacy_holds CASCADE');await db.query('DELETE FROM audit WHERE actor_id=$1',[ownerId]);await db.query('DELETE FROM users WHERE id=$1',[ownerId]);});
 async function recovery(){const code=randomUUID();await db.query('INSERT INTO mfa_recovery(user_id,code_hash) VALUES($1,$2)',[ownerId,hash(code)]);return code;}
 async function login(page:import('@playwright/test').Page){
@@ -72,4 +73,45 @@ test('Actual privacy workspace plans, preserves, releases, erases and records ow
  const execute=page.locator('details').filter({has:page.locator('summary').filter({hasText:/^Owner: review and execute this exact plan$/})});await execute.locator('summary').click();await execute.getByLabel('Execution scope and review note').fill('Synthetic browser scope confirmed');await execute.getByLabel('I have verified identity').check();await execute.getByLabel('Current password',{exact:true}).fill(password);await execute.getByLabel('Authenticator or unused recovery code',{exact:true}).fill(await recovery());await execute.getByRole('button',{name:'Execute reviewed local erasure'}).click();await expect(page.getByText('Local results recorded. Review each target and complete external actions separately.')).toBeVisible();expect((await db.query('SELECT id FROM enquiries WHERE id=$1',[id])).rowCount).toBe(0);
  const complete=page.locator('details').filter({has:page.locator('summary').filter({hasText:/^Record independently verified completion$/})});await complete.locator('summary').click();await complete.getByLabel('Processor/mailbox reconciliation references').fill('tests/synthetic/no-provider-copies');await complete.getByLabel('Backup deletion-replay evidence').fill('tests/synthetic/local-replay');await complete.getByLabel('Completion scope and limitations').fill('Synthetic isolated fixture only, no real customer data');await complete.getByLabel('Current password',{exact:true}).fill(password);await complete.getByLabel('Authenticator or unused recovery code',{exact:true}).fill(await recovery());await complete.getByRole('button',{name:'Record verified completion'}).click();await expect(page.getByRole('heading',{name:'External reconciliation recorded'})).toBeVisible();
  expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze()).violations).toEqual([]);
+});
+
+test('Controlled document edits protect panel, view, Portal and browser navigation',async({page})=>{
+ await login(page);await page.getByRole('button',{name:'Policies & Documents',exact:true}).click();
+ await page.getByRole('button',{name:/^Synthetic (amended )?retention policy$/}).click();
+ await page.getByRole('button',{name:'Create amendment',exact:true}).click();
+ const body=page.getByRole('textbox',{name:'Document content',exact:true});const draft='Synthetic unsaved governance body '+randomUUID();
+ await body.fill(draft);
+ for(const name of ['Read document','Review & decision','Versions & audit','Policies & Documents','Enquiries and follow-ups']){
+  page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name,exact:true}).click();
+  await expect(body).toHaveValue(draft);
+ }
+ page.once('dialog',dialog=>dialog.dismiss());await page.evaluate(()=>history.back());
+ await expect(body).toHaveValue(draft);
+ expect(await page.evaluate(text=>JSON.stringify([localStorage,sessionStorage,history.state]).includes(text),draft)).toBe(false);
+ page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Read document',exact:true}).click();
+ await page.getByRole('button',{name:'Create amendment',exact:true}).click();await expect(body).not.toHaveValue(draft);
+});
+test('Unnamed processor controls and named review notes both require explicit discard',async({page})=>{
+ await login(page);await page.getByRole('button',{name:'Processors & Transfers',exact:true}).click();
+ await page.getByRole('button',{name:'Synthetic provider 1',exact:true}).click();await page.getByRole('button',{name:'Create amendment',exact:true}).click();
+ const geography=page.getByRole('textbox',{name:'Processing Geography',exact:true});await geography.fill('Synthetic changed geography');
+ page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Read document',exact:true}).click();await expect(geography).toHaveValue('Synthetic changed geography');
+ page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Review & decision',exact:true}).click();
+ await page.getByLabel('Review notes').fill('Synthetic private review notes retained');
+ page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Versions & audit',exact:true}).click();
+ await expect(page.getByLabel('Review notes')).toHaveValue('Synthetic private review notes retained');
+ page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Versions & audit',exact:true}).click();
+ await expect(page.getByLabel('Review notes')).toHaveCount(0);
+});
+test('Failed governance amendment preserves controlled data and a confirmed save clears its guard',async({page})=>{
+ await login(page);await page.getByRole('button',{name:'Policies & Documents',exact:true}).click();await page.getByRole('button',{name:/^Synthetic (amended )?retention policy$/}).click();await page.getByRole('button',{name:'Create amendment',exact:true}).click();
+ const body=page.getByRole('textbox',{name:'Document content',exact:true}), draft='Synthetic regression body '+randomUUID();await body.fill(draft);
+ const endpoint='**/api/v1/admin/governance/records/*/revisions';
+ await page.route(endpoint,route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:{code:'SYNTHETIC_FAILURE',message:'Synthetic amendment unavailable'}})}));
+ await page.getByRole('button',{name:'Save new draft revision'}).click();await expect(page.getByText('Synthetic amendment unavailable',{exact:false})).toBeVisible();
+ await expect(body).toHaveValue(draft);page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Read document',exact:true}).click();await expect(body).toHaveValue(draft);
+ await page.unroute(endpoint);await page.getByRole('button',{name:'Save new draft revision'}).click();
+ await expect(page.locator('.governance-prose')).toContainText(draft);
+ const unexpected:string[]=[];page.on('dialog',dialog=>{unexpected.push(dialog.message());void dialog.dismiss();});
+ await page.getByRole('button',{name:'Policies & Documents',exact:true}).click();expect(unexpected).toEqual([]);
 });

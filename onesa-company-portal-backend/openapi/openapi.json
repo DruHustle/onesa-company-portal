@@ -8954,6 +8954,85 @@
                           },
                           "updated_at": {
                             "type": "string"
+                          },
+                          "publication": {
+                            "type": "object",
+                            "properties": {
+                              "live": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "revision": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "page",
+                                      "product",
+                                      "article",
+                                      "job",
+                                      "research",
+                                      "section"
+                                    ]
+                                  },
+                                  "slug": {
+                                    "type": "string"
+                                  },
+                                  "locale": {
+                                    "type": "string",
+                                    "enum": [
+                                      "en",
+                                      "de"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "publishedAt": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "revision",
+                                  "kind",
+                                  "slug",
+                                  "locale",
+                                  "title",
+                                  "publishedAt"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "everPublished": {
+                                "type": "boolean"
+                              },
+                              "hasUnpublishedChanges": {
+                                "type": "boolean"
+                              },
+                              "scheduledAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "scheduledRevision": {
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "live",
+                              "everPublished",
+                              "hasUnpublishedChanges",
+                              "scheduledAt",
+                              "scheduledRevision"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -9625,6 +9704,85 @@
                     },
                     "updated_at": {
                       "type": "string"
+                    },
+                    "publication": {
+                      "type": "object",
+                      "properties": {
+                        "live": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revision": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "page",
+                                "product",
+                                "article",
+                                "job",
+                                "research",
+                                "section"
+                              ]
+                            },
+                            "slug": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string",
+                              "enum": [
+                                "en",
+                                "de"
+                              ]
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "publishedAt": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "revision",
+                            "kind",
+                            "slug",
+                            "locale",
+                            "title",
+                            "publishedAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "everPublished": {
+                          "type": "boolean"
+                        },
+                        "hasUnpublishedChanges": {
+                          "type": "boolean"
+                        },
+                        "scheduledAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "scheduledRevision": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "live",
+                        "everPublished",
+                        "hasUnpublishedChanges",
+                        "scheduledAt",
+                        "scheduledRevision"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -10292,6 +10450,85 @@
                     },
                     "updated_at": {
                       "type": "string"
+                    },
+                    "publication": {
+                      "type": "object",
+                      "properties": {
+                        "live": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revision": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "page",
+                                "product",
+                                "article",
+                                "job",
+                                "research",
+                                "section"
+                              ]
+                            },
+                            "slug": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string",
+                              "enum": [
+                                "en",
+                                "de"
+                              ]
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "publishedAt": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "revision",
+                            "kind",
+                            "slug",
+                            "locale",
+                            "title",
+                            "publishedAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "everPublished": {
+                          "type": "boolean"
+                        },
+                        "hasUnpublishedChanges": {
+                          "type": "boolean"
+                        },
+                        "scheduledAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "scheduledRevision": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "live",
+                        "everPublished",
+                        "hasUnpublishedChanges",
+                        "scheduledAt",
+                        "scheduledRevision"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -11238,6 +11475,85 @@
                     },
                     "updated_at": {
                       "type": "string"
+                    },
+                    "publication": {
+                      "type": "object",
+                      "properties": {
+                        "live": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revision": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "page",
+                                "product",
+                                "article",
+                                "job",
+                                "research",
+                                "section"
+                              ]
+                            },
+                            "slug": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string",
+                              "enum": [
+                                "en",
+                                "de"
+                              ]
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "publishedAt": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "revision",
+                            "kind",
+                            "slug",
+                            "locale",
+                            "title",
+                            "publishedAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "everPublished": {
+                          "type": "boolean"
+                        },
+                        "hasUnpublishedChanges": {
+                          "type": "boolean"
+                        },
+                        "scheduledAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "scheduledRevision": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "live",
+                        "everPublished",
+                        "hasUnpublishedChanges",
+                        "scheduledAt",
+                        "scheduledRevision"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -11817,6 +12133,85 @@
                     },
                     "updated_at": {
                       "type": "string"
+                    },
+                    "publication": {
+                      "type": "object",
+                      "properties": {
+                        "live": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revision": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "page",
+                                "product",
+                                "article",
+                                "job",
+                                "research",
+                                "section"
+                              ]
+                            },
+                            "slug": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string",
+                              "enum": [
+                                "en",
+                                "de"
+                              ]
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "publishedAt": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "revision",
+                            "kind",
+                            "slug",
+                            "locale",
+                            "title",
+                            "publishedAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "everPublished": {
+                          "type": "boolean"
+                        },
+                        "hasUnpublishedChanges": {
+                          "type": "boolean"
+                        },
+                        "scheduledAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "scheduledRevision": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "live",
+                        "everPublished",
+                        "hasUnpublishedChanges",
+                        "scheduledAt",
+                        "scheduledRevision"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -12453,6 +12848,85 @@
                               },
                               "updated_at": {
                                 "type": "string"
+                              },
+                              "publication": {
+                                "type": "object",
+                                "properties": {
+                                  "live": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "revision": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "exclusiveMinimum": true,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "page",
+                                          "product",
+                                          "article",
+                                          "job",
+                                          "research",
+                                          "section"
+                                        ]
+                                      },
+                                      "slug": {
+                                        "type": "string"
+                                      },
+                                      "locale": {
+                                        "type": "string",
+                                        "enum": [
+                                          "en",
+                                          "de"
+                                        ]
+                                      },
+                                      "title": {
+                                        "type": "string"
+                                      },
+                                      "publishedAt": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "revision",
+                                      "kind",
+                                      "slug",
+                                      "locale",
+                                      "title",
+                                      "publishedAt"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "everPublished": {
+                                    "type": "boolean"
+                                  },
+                                  "hasUnpublishedChanges": {
+                                    "type": "boolean"
+                                  },
+                                  "scheduledAt": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "scheduledRevision": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "live",
+                                  "everPublished",
+                                  "hasUnpublishedChanges",
+                                  "scheduledAt",
+                                  "scheduledRevision"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -13061,6 +13535,85 @@
                     },
                     "updated_at": {
                       "type": "string"
+                    },
+                    "publication": {
+                      "type": "object",
+                      "properties": {
+                        "live": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revision": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "page",
+                                "product",
+                                "article",
+                                "job",
+                                "research",
+                                "section"
+                              ]
+                            },
+                            "slug": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string",
+                              "enum": [
+                                "en",
+                                "de"
+                              ]
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "publishedAt": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "revision",
+                            "kind",
+                            "slug",
+                            "locale",
+                            "title",
+                            "publishedAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "everPublished": {
+                          "type": "boolean"
+                        },
+                        "hasUnpublishedChanges": {
+                          "type": "boolean"
+                        },
+                        "scheduledAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "scheduledRevision": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "live",
+                        "everPublished",
+                        "hasUnpublishedChanges",
+                        "scheduledAt",
+                        "scheduledRevision"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
