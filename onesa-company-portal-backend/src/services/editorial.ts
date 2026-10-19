@@ -2,10 +2,10 @@ import {createHash,randomUUID} from 'node:crypto';
 import {z} from 'zod';
 import type {PoolClient} from 'pg';
 import {contentInput,publicContentMetadata} from '../api/schemas.js';
-import {editorialReview} from '../api/contracts.js';
+import {editorialReview,contentPublication,publicationEdition} from '../api/contracts.js';
 import type {Actor} from '../access/roles.js';
 import {permitted,permissions} from '../access/roles.js';
-import {transaction} from './db.js';
+import {db,transaction} from './db.js';
 import {required,HttpError,enqueue,notify} from './workflows.js';
 
 type ContentFields={kind:string;slug:string;locale:string;title:string;summary:string;body:string;metadata:unknown};
@@ -14,6 +14,29 @@ export function editorialDigest(row:ContentFields){
  return createHash('sha256').update(JSON.stringify({kind:row.kind,slug:row.slug,locale:row.locale,title:row.title,summary:row.summary,body:row.body,metadata})).digest('hex');
 }
 const draftReview=()=>({status:'draft' as const,reviewedRevision:null,sourceRevision:null,digest:null,reviewedBy:null,reviewedAt:null,note:''});
+type PublicationRow=ContentFields&{id:string;revision:number;state:string;publish_at:string|Date|null;published_snapshot?:unknown};
+/** Protected metadata only. Never serialize the private snapshot or its body. */
+export function describeEditorialPublication(row:PublicationRow,unpublishedBefore=false,now=Date.now()):z.infer<typeof contentPublication>{
+ const snapshot=row.published_snapshot as (PublicationRow&{metadata:{publishedAt?:string}})|null|undefined;
+ const candidate=snapshot||(row.state==='published'?row:null);
+ const live=candidate&&(!candidate.publish_at||new Date(candidate.publish_at).getTime()<=now)?candidate:null;
+ const publishedAt=(value:ContentFields)=>((value.metadata as {publishedAt?:string})?.publishedAt)||null;
+ const scheduled=!!row.publish_at&&new Date(row.publish_at).getTime()>now&&editorialApproved(row);
+ return contentPublication.parse({
+  live:live?publicationEdition.parse({revision:live.revision,kind:live.kind,slug:live.slug,locale:live.locale,title:live.title,publishedAt:publishedAt(live)}):null,
+  everPublished:!!live||unpublishedBefore||(!!publishedAt(row)&&(!row.publish_at||new Date(row.publish_at).getTime()<=now)),
+  hasUnpublishedChanges:!live||editorialDigest(row)!==editorialDigest(live),
+  scheduledAt:scheduled?new Date(row.publish_at!).toISOString():null,
+  scheduledRevision:scheduled?row.revision:null,
+ });
+}
+export async function withEditorialPublication<T extends PublicationRow>(rows:T[]){
+ if(!rows.length)return [];
+ // One bounded batch; reveal only whether an edition was explicitly unpublished.
+ const prior=await db.query("SELECT DISTINCT record_id FROM audit WHERE record_id=ANY($1::text[]) AND action='content.unpublished'",[rows.map(row=>row.id)]);
+ const unpublished=new Set(prior.rows.map(row=>String(row.record_id)));
+ return rows.map(row=>({...row,publication:describeEditorialPublication(row,unpublished.has(row.id))}));
+}
 export function editorialApproved(row:ContentFields&{revision:number}){
  const parsed=editorialReview.safeParse((row.metadata as {editorialReview?:unknown})?.editorialReview);
  return parsed.success&&parsed.data.status==='approved'&&parsed.data.reviewedRevision===row.revision&&parsed.data.digest===editorialDigest(row);
@@ -43,8 +66,8 @@ export async function updateEditorialContent(id:string,b:z.infer<typeof contentI
   const metadata={...b.metadata,...old.metadata.publishedAt?{publishedAt:old.metadata.publishedAt}:{},editorialReview:approved?{...old.metadata.editorialReview,reviewedRevision:next}:draftReview()};
   if(state==='published')metadata.publishedAt=old.metadata.publishedAt??new Date().toISOString();
   const row=required((await c.query('UPDATE content SET kind=$1,slug=$2,locale=$3,title=$4,summary=$5,body=$6,metadata=$7,state=$8,publish_at=$9,revision=revision+1,updated_at=now() WHERE id=$10 RETURNING *',[b.kind,b.slug,b.locale,b.title,b.summary,b.body,metadata,state,b.publishAt||null,id])).rows[0]);
-  if(state==='published')await capturePublication(c,row.id);
-  if(state==='archived')await c.query('UPDATE content SET published_snapshot=NULL WHERE id=$1',[id]);
+  if(state==='published')row.published_snapshot=await capturePublication(c,row.id);
+  if(state==='archived'){await c.query('UPDATE content SET published_snapshot=NULL WHERE id=$1',[id]);row.published_snapshot=null;}
   await history(c,row,actor.id,'content.updated',requestId);
   if(state==='published')await enqueue(c,'publish:'+row.id+':'+row.revision,notify('Content publication',b.title));return row;
  });
@@ -78,7 +101,7 @@ export async function publishScheduledContent(c:PoolClient,id:string){
 
 // The row lock held by every caller binds publication to the reviewed revision.
 async function capturePublication(c:PoolClient,id:string){
- await c.query("UPDATE content c SET published_snapshot=to_jsonb(c)-'published_snapshot' WHERE id=$1",[id]);
+ return required((await c.query("UPDATE content c SET published_snapshot=to_jsonb(c)-'published_snapshot' WHERE id=$1 RETURNING published_snapshot",[id])).rows[0]).published_snapshot;
 }
 export async function unpublishEditorialContent(id:string,expectedRevision:number,actor:Actor,requestId:string){
  if(!permitted(actor.role,permissions.publish))throw new HttpError(403,'PUBLISH','Publisher role required.');

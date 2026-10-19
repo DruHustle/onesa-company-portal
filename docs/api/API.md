@@ -118,3 +118,15 @@ classification checks. It supports the selected CV's scan state without changing
 application or export response shapes. The UI requires a clean result for that exact
 file before offering Download; the download endpoint independently rechecks quarantine
 and authorization. A stale or failed metadata read never enables another CV.
+
+### Protected editorial publication summary
+
+Managed content responses optionally include `publication` for additive compatibility:
+`live` contains only edition revision, kind, locale, slug, title and publication time;
+`everPublished`, `hasUnpublishedChanges`, `scheduledAt` and `scheduledRevision` describe
+the working row relative to that public edition. Scheduling requires the exact approved
+revision and digest. Explicit unpublishing retains draft/history and removes live access.
+The public content contract excludes this summary, working review metadata and snapshots.
+Older clients ignore the added property; a new client receiving an older response reports
+that live-edition details are unavailable rather than inferring publication from a draft.
+The change uses schema 012 and retains the worker's existing publication postconditions.

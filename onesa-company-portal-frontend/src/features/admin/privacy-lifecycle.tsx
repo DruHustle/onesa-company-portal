@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError } from '@/lib/api/client';
 import { EvidenceLink } from './governance-document';
+import {useWorkspaceGuard,useWorkspaceMutation} from './use-unsaved-work';
 import type { operations } from '@/lib/api/generated/schema';
 type Hold =
   operations['listPrivacyHolds']['responses'][200]['content']['application/json']['items'][number];
@@ -19,6 +20,7 @@ const lines = (value: string) =>
     .filter(Boolean);
 const human = (value: string) => value.toLowerCase().replaceAll('_', ' ');
 export function PrivacyLifecycle({ owner }: { owner: boolean }) {
+  const guard=useWorkspaceGuard(),mutation=useWorkspaceMutation();
   const [holds, setHolds] = useState<Hold[]>([]),
     [cases, setCases] = useState<Case[]>([]),
     [selected, setSelected] = useState<Case | null>(null),
@@ -94,6 +96,7 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
     action: 'hold' | 'plan' | 'preview' | 'execute' | 'cancel' | 'release' | 'complete' | 'export',
   ) {
     e.preventDefault();
+    const release=mutation.start();if(!release)return;
     const form = e.currentTarget,
       data = new FormData(form),
       value = (name: string) => String(data.get(name) || '');
@@ -213,10 +216,12 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
             : 'Local results recorded. Review each target and complete external actions separately.',
         );
       }
+      guard.saved(form);
       setEpoch((v) => v + 1);
     } catch (error) {
       failed(error);
     } finally {
+      release();
       for (const input of form.querySelectorAll<HTMLInputElement>('input[type=password]'))
         input.value = '';
       setBusy(false);
@@ -254,7 +259,7 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
           Effective previews require a matching approved version and an explicit data-class binding.
           Proposed previews are hypothetical. Neither executes deletion.
         </p>
-        <form onSubmit={(e) => void submit(e, 'preview')}>
+        <form data-workspace-draft onSubmit={(e) => void submit(e, 'preview')}>
           <div className="form-grid">
             <label>
               Retention rule
@@ -321,7 +326,7 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
           <>
             <details>
               <summary>Create a hold</summary>
-              <form onSubmit={(e) => void submit(e, 'hold')}>
+              <form data-workspace-draft onSubmit={(e) => void submit(e, 'hold')}>
                 <label>
                   Record type
                   <select name="kind">
@@ -347,7 +352,7 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
             </details>
             <details>
               <summary>Release a hold</summary>
-              <form onSubmit={(e) => void submit(e, 'release')}>
+              <form data-workspace-draft onSubmit={(e) => void submit(e, 'release')}>
                 <label>
                   Active hold
                   <select name="hold" aria-label="Active hold" required defaultValue="">
@@ -383,7 +388,7 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
           applications and private files. It does not search or erase AI/Robot data, delivered
           email, provider logs or historical backups.
         </p>
-        <form onSubmit={(e) => void submit(e, 'plan')}>
+        <form data-workspace-draft onSubmit={(e) => void submit(e, 'plan')}>
           <label>
             Internal case reference
             <input name="reference" required maxLength={2000} />
@@ -410,7 +415,7 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
               <button
                 className="governance-record-link"
                 disabled={busy}
-                onClick={() => setSelected(c)}
+                onClick={() => guard.navigate(()=>setSelected(c))}
               >
                 {c.caseReference}
               </button>{' '}
@@ -468,7 +473,7 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
             </p>
             {selected.state === 'planned' && (
               <>
-                <form onSubmit={(e) => void submit(e, 'cancel')}>
+                <form data-workspace-draft onSubmit={(e) => void submit(e, 'cancel')}>
                   <label>
                     Cancellation reason
                     <textarea name="reason" minLength={10} maxLength={2000} required />
@@ -478,7 +483,7 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
                 {owner && (
                   <details>
                     <summary>Owner: review and execute this exact plan</summary>
-                    <form onSubmit={(e) => void submit(e, 'execute')}>
+                    <form data-workspace-draft onSubmit={(e) => void submit(e, 'execute')}>
                       <p>
                         This permanently removes eligible local records and queues attached-object
                         deletion. Changed or held records are skipped. Review target IDs, identity
@@ -504,7 +509,7 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
             {owner && ['partial', 'storage_pending'].includes(selected.state) && (
               <details>
                 <summary>Record independently verified completion</summary>
-                <form onSubmit={(e) => void submit(e, 'complete')}>
+                <form data-workspace-draft onSubmit={(e) => void submit(e, 'complete')}>
                   <p>
                     Every target must be locally erased and each storage request accepted. These
                     references record your independent review, including limitations of retained
@@ -546,7 +551,7 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
           is incomplete until historical, external and in-flight changes are reconciled. It cannot
           authorize restored-service activation.
         </p>
-        <form onSubmit={(e) => void submit(e, 'export')}>
+        <form data-workspace-draft onSubmit={(e) => void submit(e, 'export')}>
           <label>
             Backup SHA-256
             <input name="backupHash" pattern="[a-f0-9]{64}" required />
@@ -561,11 +566,11 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
         </form>
       </section>
       <div className="admin-actions">
-        <button disabled={busy || page === 1} onClick={() => setPage((v) => v - 1)}>
+        <button disabled={busy || page === 1} onClick={() => guard.navigate(()=>setPage((v) => v - 1))}>
           Previous records
         </button>
         <span>Page {page}</span>
-        <button disabled={busy || !more} onClick={() => setPage((v) => v + 1)}>
+        <button disabled={busy || !more} onClick={() => guard.navigate(()=>setPage((v) => v + 1))}>
           Next records
         </button>
       </div>

@@ -16,7 +16,7 @@ import { AdminSignIn } from "./sign-in";
 import { AccessRequests } from "./access-requests";
 import {ApplicationCv} from "./application-cv";
 import { RecordPicker } from "./record-picker";
-import { useUnsavedWork } from "./use-unsaved-work";
+import { useUnsavedWork, WorkspaceDraftContext } from "./use-unsaved-work";
 import { EditorialWorkspace } from "./editorial-workspace";
 import {
   tabRoles,
@@ -167,6 +167,7 @@ export function AdminPortal({
   async function perform(fn: () => Promise<void>, success = "Saved") {
     if (mutation.current) return;
     mutation.current = true;
+    const release = unsaved.beginMutation();
     setBusy(true);
     setNotice("");
     try {
@@ -182,6 +183,7 @@ export function AdminPortal({
       );
     } finally {
       mutation.current = false;
+      release();
       setBusy(false);
     }
   }
@@ -453,12 +455,12 @@ export function AdminPortal({
   if (loading) return <main className="section"><h1>Company administration</h1><p role="status">Checking your Portal session…</p></main>;
   if (!user)
     return (
-      <main className="admin-shell">
+      <main className="admin-shell admin-auth-shell">
         <header className="admin-header">
           <a className="wordmark" href="/en">
             onesa<span>UG</span>
           </a>
-          <span>Company administration</span>
+          <span>Onesa Company Portal</span>
         </header>
         <div className="admin-login">
           <h1 style={{ fontSize: "2rem" }}>Sign in</h1>
@@ -495,7 +497,7 @@ export function AdminPortal({
                 type="password"
                 required
               />
-              <button disabled={busy}>Start enrollment</button>
+              <button disabled={busy || unsaved.pending}>Start enrollment</button>
             </form>
             {enrollment && (
               <>
@@ -519,7 +521,7 @@ export function AdminPortal({
                   })}
                 >
                   <Field label="Authenticator code" name="code" required />
-                  <button disabled={busy}>Verify enrollment</button>
+                  <button disabled={busy || unsaved.pending}>Verify enrollment</button>
                 </form>
               </>
             )}
@@ -535,7 +537,7 @@ export function AdminPortal({
               })}
             >
               <Field label="Email" name="email" type="email" required />
-              <button disabled={busy}>Request recovery</button>
+              <button disabled={busy || unsaved.pending}>Request recovery</button>
             </form>
             <form
               data-workspace-draft
@@ -555,7 +557,7 @@ export function AdminPortal({
                 type="password"
                 required
               />
-              <button disabled={busy}>Reset password</button>
+              <button disabled={busy || unsaved.pending}>Reset password</button>
             </form>
             <p>
               MFA remains required after password recovery. Email must be
@@ -571,14 +573,14 @@ export function AdminPortal({
               </button>
             </div>
           )}
-          <p role="status" className="admin-notice">
+          {notice&&<p role="status" className="admin-notice">
             {notice}
-          </p>
+          </p>}
         </div>
       </main>
     );
   return (
-    <main className="admin-shell">
+    <WorkspaceDraftContext.Provider value={unsaved.controller}><main className="admin-shell">
       <header className="admin-header">
         <a href="/en" className="wordmark">
           onesa<span>UG</span>
@@ -603,7 +605,7 @@ export function AdminPortal({
               });
             })
           }
-          disabled={busy}
+          disabled={busy || unsaved.pending}
         >
           Sign out
         </button>
@@ -623,7 +625,7 @@ export function AdminPortal({
                   {tabs.map((name) => (
                     <button
                       key={name}
-                      disabled={busy}
+                      disabled={busy || unsaved.pending}
                       aria-current={tab === name ? "page" : undefined}
                       aria-pressed={tab === name}
                       onClick={() => openSection(name)}
@@ -635,8 +637,10 @@ export function AdminPortal({
               ) : null;
             })}
           </nav>
-          <div
+          <fieldset
             className="admin-content"
+            aria-label="Administration tasks"
+            disabled={busy || unsaved.pending}
             onFocusCapture={unsaved.focus}
             onChangeCapture={unsaved.input}
           >
@@ -732,7 +736,7 @@ export function AdminPortal({
                   Page {page} · {total} records
                 </span>
                 <button
-                  disabled={busy}
+                  disabled={busy || unsaved.pending}
                   onClick={() =>
                     navigate(() =>
                       setQueues((old) => ({ ...old, [tab]: emptyQueue() })),
@@ -834,6 +838,7 @@ export function AdminPortal({
                   {enquiries.map((e) => (
                     <button
                       key={e.id}
+                      disabled={busy || unsaved.pending}
                       onClick={() => navigate(() => setEnquiry(e))}
                     >
                       {e.name} · {e.organization}
@@ -901,13 +906,13 @@ export function AdminPortal({
                         defaultValue={enquiry.notes}
                       />
                     </label>
-                    <button className="button" disabled={busy}>
+                    <button className="button" disabled={busy || unsaved.pending}>
                       Update enquiry
                     </button>
                     <div className="admin-actions">
                       <button
                         type="button"
-                        disabled={busy}
+                        disabled={busy || unsaved.pending}
                         onClick={() =>
                           void perform(async () => {
                             if (
@@ -941,6 +946,7 @@ export function AdminPortal({
                   {applications.map((a) => (
                     <button
                       key={a.id}
+                      disabled={busy || unsaved.pending}
                       onClick={() => navigate(() => setApplication(a))}
                     >
                       {a.name}
@@ -994,14 +1000,14 @@ export function AdminPortal({
                         defaultValue={application.notes}
                       />
                     </label>
-                    <button className="button" disabled={busy}>
+                    <button className="button" disabled={busy || unsaved.pending}>
                       Update application
                     </button>
                     <div className="admin-actions">
                       <ApplicationCv key={application.file_id} fileId={application.file_id} busy={busy} onDownload={filename=>void download(application.file_id,filename)}/>
                       <button
                         type="button"
-                        disabled={busy}
+                        disabled={busy || unsaved.pending}
                         onClick={() =>
                           void perform(async () => {
                             if (
@@ -1098,7 +1104,7 @@ export function AdminPortal({
                           required
                         />
                       </label>
-                      <button className="button" disabled={busy}>
+                      <button className="button" disabled={busy || unsaved.pending}>
                         Upload to quarantine
                       </button>
                     </form>
@@ -1191,7 +1197,7 @@ export function AdminPortal({
                           />
                           Archived
                         </label>
-                        <button className="button" disabled={busy}>
+                        <button className="button" disabled={busy || unsaved.pending}>
                           Save approval and classification
                         </button>
                       </form>
@@ -1263,7 +1269,7 @@ export function AdminPortal({
                         values={["draft", "approved", "archived"]}
                         defaultValue={template.status}
                       />
-                      <button className="button" disabled={busy}>
+                      <button className="button" disabled={busy || unsaved.pending}>
                         Save template
                       </button>
                     </form>
@@ -1422,7 +1428,7 @@ export function AdminPortal({
                       />
                     </>
                   )}
-                  <button className="button" disabled={busy}>
+                  <button className="button" disabled={busy || unsaved.pending}>
                     Save user
                   </button>
                   <p>
@@ -1500,7 +1506,7 @@ export function AdminPortal({
                       name="source"
                       defaultValue={f.source}
                     />
-                    <button className="button" disabled={busy}>
+                    <button className="button" disabled={busy || unsaved.pending}>
                       Record verification
                     </button>
                   </form>
@@ -1568,7 +1574,7 @@ export function AdminPortal({
                     approved legal content. Environment publication gates remain
                     separate.
                   </p>
-                  <button className="button" disabled={busy}>
+                  <button className="button" disabled={busy || unsaved.pending}>
                     Save reviewed settings
                   </button>
                 </form>
@@ -1653,7 +1659,7 @@ export function AdminPortal({
                     type="password"
                     required
                   />
-                  <button className="button" disabled={busy}>
+                  <button className="button" disabled={busy || unsaved.pending}>
                     Change password and sign out
                   </button>
                 </form>
@@ -1710,7 +1716,7 @@ export function AdminPortal({
                       name="code"
                       required
                     />
-                    <button className="button" disabled={busy}>
+                    <button className="button" disabled={busy || unsaved.pending}>
                       Generate new recovery codes
                     </button>
                   </form>
@@ -1725,9 +1731,9 @@ export function AdminPortal({
                 </div>
               </div>
             )}
-          </div>
+          </fieldset>
         </div>
       </div>
-    </main>
+    </main></WorkspaceDraftContext.Provider>
   );
 }

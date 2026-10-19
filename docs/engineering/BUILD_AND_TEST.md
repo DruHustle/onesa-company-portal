@@ -266,3 +266,14 @@ inherited ENGINEERING configuration before tests; deterministic schema export
 disables the provider. Local tests do not establish a successful Access integration
 or email inbox receipt. The separate activation sequence is in
 [Engineering Docs identity](ENGINEERING_DOCS_IDENTITY.md).
+
+## Controlled workspace draft regressions
+
+With Node 24, run `npm --prefix onesa-company-portal-frontend run test:workspace-drafts`
+for history-event ordering, including native confirmation's nested event loop. The
+Governance and editorial Playwright suites use the guarded loopback `_test` database
+and real synthetic accounts. They cover unnamed controlled payloads, review notes,
+failed saves, pending-mutation navigation, duplicate submission and all five publication
+summary states. Keep server rate limits intact; clear only the fixture's local login
+limiter between independent synthetic cases. Browser transport fixtures are not hosted
+authorization evidence. The full hosted CI and release qualification remain required.
