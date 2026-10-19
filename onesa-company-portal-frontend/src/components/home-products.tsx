@@ -2,6 +2,7 @@ import type {Locale} from '@/config/copy';
 import {products} from '@/config/products';
 import {ResponsiveLink as Link} from './responsive-link';
 import styles from './home-products.module.css';
+import {PlatformVisual} from './platform-visual';
 
 export function HomePlatform({locale}:{locale:Locale}) {
  const de=locale==='de';
@@ -16,7 +17,7 @@ export function HomePlatform({locale}:{locale:Locale}) {
  ];
  return <section id="products" className={`section ${styles.platform}`} aria-labelledby="home-products-title">
   <div><p className="eyebrow">{de?'DIE PLATTFORM':'THE PLATFORM'}</p><h2 id="home-products-title">{de?'Wissen, das Sie weiterbringt.':'Put your knowledge to work.'}</h2><p className={styles.intro}>{de?'Für Menschen und Teams, die Informationen verstehen und daraus nächste Schritte entwickeln möchten. Modular aufgebaut, aus Europa für den internationalen Einsatz.':'For people and teams turning information into useful next steps. Modular software, developed in Europe for international use.'}</p><Link className={styles.more} href={`/${locale}/products#product-ai`}>{de?'Onesa AI Platform kennenlernen':'Meet Onesa AI Platform'}<span aria-hidden="true">→</span></Link></div>
-  <div className={styles.features}>{features.map(([title,text])=><div key={title}><h3>{title}</h3><p>{text}</p></div>)}</div>
+  <div className={styles.platformDetail}><PlatformVisual locale={locale}/><div className={styles.features}>{features.map(([title,text])=><div key={title}><h3>{title}</h3><p>{text}</p></div>)}</div></div>
  </section>;
 }
 
