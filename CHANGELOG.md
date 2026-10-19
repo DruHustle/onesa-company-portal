@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Adapt the workspace illustration caption to the Products surface contrast and
+  align the retained homepage integration assertion with the company heading.
 - Remove location-led marketing copy from Home, About and shared page descriptions;
   retain statutory company particulars on the legal pages.
 - Introduce Onesa as the company in the homepage hero and company-first story;
