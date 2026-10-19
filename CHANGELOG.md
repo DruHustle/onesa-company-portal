@@ -2,10 +2,6 @@
 
 ## Unreleased
 
-- Feature the owner-supplied Onesa artwork in a responsive, prioritized homepage
-  hero. Move the workspace illustration into the Platform section and add lazy
-  industry image previews while retaining mobile technology rows and product links.
-
 - Measure public navigation readiness with one atomic browser observation of the
   same URL, visible product headings and exact documentation links. Start its
   clock at the trusted browser click and report driver delay separately. Preserve
@@ -62,6 +58,17 @@
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
 
+
+## 2026-10-19 — Homepage imagery accepted
+
+- Publish the optimized owner-supplied hero artwork, Platform illustration and lazy
+  industry previews. Frontend source `df7e8d64eefcef978235716731c07096f4260e02`,
+  Vercel deployment `dpl_G7JtEqSXzeyXZ2MxUwDjeh1PABg5`, is accepted at `onesa.eu`.
+- All 24 hosted composition cases across three browser engines, 24 canonical views
+  and eight anonymous private-route denials passed. Supplemental mobile inspection
+  confirmed all six industry images and the news image decode after scrolling.
+  API source `4e47e3102a3a90054725cc06ad46b95339e0e544` and the previously accepted
+  worker/scanner remain separate retained components; this release restarted none.
 
 ## 2026-10-19 — Portal workflows and company context accepted
 
