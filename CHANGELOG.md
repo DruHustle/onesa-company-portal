@@ -2,14 +2,6 @@
 
 ## Unreleased
 
-- Third review: track controlled Governance drafts and protect internal/browser navigation;
-  block selection and repeated submissions during mutations. Add protected live-edition,
-  working-revision, review and scheduling summaries without changing public payloads.
-- Refine About with the owner-confirmed 2026 founding year and sourced leadership
-  background; explain the actual platform approach and simplify mobile administrator
-  sign-in. Preserve the accepted homepage and existing MFA/approval requirements.
-  These changes require their own qualified release; local checks are not deployment.
-
 - Measure public navigation readiness with one atomic browser observation of the
   same URL, visible product headings and exact documentation links. Start its
   clock at the trusted browser click and report driver delay separately. Preserve
@@ -67,6 +59,27 @@
   the new product paths perform no automatic backup deletion.
 
 
+## 2026-10-19 — Portal workflows and company context accepted
+
+- Protect controlled Governance amendments and review notes across internal and browser
+  navigation. Block selection and repeated submissions during pending mutations;
+  preserve drafts after failed saves. Protected editorial summaries distinguish live
+  editions, working drafts, review status and scheduled replacements.
+- Publish the owner-confirmed 2026 founding context and sourced leadership background,
+  explain the platform approach and simplify administrator sign-in. The accepted
+  homepage, MFA, approval and private-data requirements remain intact.
+- Frontend `0a6bc387ed42e9f68b37f0833d23de0ec15e7468`, Vercel deployment
+  `dpl_445Y3XztN6zHtyyijP9xRHXBhtBr`, and API artifact source
+  `4e47e3102a3a90054725cc06ad46b95339e0e544` have separate verified production receipts.
+  The API artifact has the qualified main tree. Worker source remains
+  `3fad26e460e6903d51e5e1428b6bb14658609813`; worker/scanner, credentials and schema 012
+  are unchanged. Other operational entries above retain their separate activation scope.
+- Exact-main CI/security, 18 authenticated synthetic staging cases, 24 canonical
+  EN/DE mobile/desktop light/dark Chromium views and eight anonymous private-access
+  denials passed. Six representative production screenshots were visually inspected.
+  Authenticated production staff walkthroughs, native Safari and real-device acceptance
+  are not claimed by this release. No real email was sent; G14 remains owner-deferred.
+
 ## 2026-10-19 — Company homepage accepted independently
 
 - The focused AI Platform homepage, original workspace illustration, separate Robot
@@ -77,8 +90,8 @@
   `3fad26e460e6903d51e5e1428b6bb14658609813`; they were not redeployed for the homepage.
 - Genuine public 404s retain non-indexable metadata. The restricted readback records
   the remaining inherited crawler-specific directive combination; this is not a claim
-  that every robots tag is uniform. Third-review About and administration changes above
-  are separate, unreleased source changes.
+  that every robots tag is uniform. Third-review About and administration changes were
+  subsequently accepted in the separate release entry above.
 
 ## 2026-10-18 — Portal editorial and task experience accepted
 
