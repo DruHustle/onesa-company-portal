@@ -1,6 +1,5 @@
 import {technologyTopics} from '@/config/technology';
 import {HomePlatform,HomeRobot} from '@/components/home-products';
-import {PlatformVisual} from '@/components/platform-visual';
 import styles from './home.module.css';
 import {company} from '@/config/company';
 import {companyMetadata} from '@/lib/metadata';
@@ -21,12 +20,12 @@ export default async function Home({params}:{params:Promise<{locale:Locale}>}) {
   const origin=companyOrigin();
   return <main id="main" className={`home-page ${styles.home}`}>
     <section className={`hero ${styles.hero}`} aria-labelledby="home-title">
+      <picture className={styles.heroImage} aria-hidden="true"><img src="/images/onesa-home-hero-1536.webp" srcSet="/images/onesa-home-hero-640.webp 640w, /images/onesa-home-hero-1024.webp 1024w, /images/onesa-home-hero-1536.webp 1536w" sizes="100vw" width="1536" height="1024" fetchPriority="high" alt=""/></picture>
       <div className={styles.opening}>
         <h1 id="home-title">Onesa AI <br/>Platform</h1>
         <p className="hero-intro">{de?'Gespräche, eigenes Wissen und geführte Abläufe. Ein geschützter Arbeitsbereich.':'Conversations, your knowledge and guided workflows. One protected workspace.'}</p>
         <Link className={`button ${styles.primary}`} href={`/${locale}/products#product-ai`}>{de?'Plattform entdecken':'Explore the platform'}<span aria-hidden="true">→</span></Link>
       </div>
-      <PlatformVisual locale={locale}/>
     </section>
     <HomePlatform locale={locale}/>
     <section id="capabilities" className="section">
@@ -36,7 +35,7 @@ export default async function Home({params}:{params:Promise<{locale:Locale}>}) {
     <HomeRobot locale={locale}/>
     <section className={`section two-columns ${styles.company}`}>
       <div><p className="eyebrow">{de?'ÜBER ONESA UG':'ABOUT ONESA UG'}</p><h2>{de?'In Europa verwurzelt. International ausgerichtet.':'European roots. An international outlook.'}</h2><p>{t.missionText}</p><Link className={styles.readMore} href={`/${locale}/about`}>{de?'Unser Unternehmen':'Our company'} <span aria-hidden="true">→</span></Link></div>
-      <div><h3>{de?'Für unterschiedliche Branchen.':'Built for different industries.'}</h3><div className="industry-list">{industries[locale].map((name,index)=><Link href={`/${locale}/industries#industry-${['enterprise','industrial','manufacturing','travel','commerce','finance'][index]}`} key={name}><span>{name}</span><span aria-hidden="true">→</span></Link>)}</div></div>
+      <div><h3>{de?'Für unterschiedliche Branchen.':'Built for different industries.'}</h3><div className={`industry-list ${styles.visualIndustries}`}>{industries[locale].map((name,index)=>{const topic=['enterprise','industrial','manufacturing','travel','commerce','finance'][index];return <Link href={`/${locale}/industries#industry-${topic}`} key={name}><img src={`/images/industry-${topic}-480.webp`} width="480" height="320" alt="" loading="lazy" decoding="async"/><span>{name}</span><span aria-hidden="true">→</span></Link>;})}</div></div>
     </section>
     <Suspense fallback={null}><HomepageContent content={pages}/></Suspense>
     <section className="section"><div className="section-head"><p className="eyebrow">{de?'NEUIGKEITEN':'UPDATES'}</p><h2>{t.latest}</h2></div><Suspense fallback={<div className="empty-state" role="status"><p>{de?'Aktuelle Meldungen werden geladen…':'Loading latest news…'}</p></div>}><LatestNews content={result} locale={locale}/></Suspense><Link href={`/${locale}/research`}>{t.nav.research} <span aria-hidden="true">→</span></Link></section>

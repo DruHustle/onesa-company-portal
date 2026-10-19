@@ -494,6 +494,44 @@
         }
       ],
       "use": "Company Research, Careers, Partnerships and planned Smart farming app presentation; descriptive English/German alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Homepage opening visual",
+      "source": "Owner-supplied Onesa robotic-hand artwork, supplied for homepage publication on 2026-10-19",
+      "original": {
+        "filename": "Pasted 17-10-2026 at 00.07.27.png",
+        "sha256": "45c59bba459b86ef4cdb593f80f5b61194a82ab0cd606292674dad227aff2495"
+      },
+      "processing": {
+        "tool": "sharp",
+        "format": "WebP",
+        "quality": 80,
+        "operation": "Proportional resizing; responsive CSS crops presentation only"
+      },
+      "images": [
+        {
+          "path": "/images/onesa-home-hero-640.webp",
+          "width": 640,
+          "height": 427,
+          "bytes": 27904,
+          "sha256": "e8f91af5c5e0b15d76d0c3c1479b92ab080857b9b0d35d4fac7b0448fbd05276"
+        },
+        {
+          "path": "/images/onesa-home-hero-1024.webp",
+          "width": 1024,
+          "height": 683,
+          "bytes": 53164,
+          "sha256": "66d10495d47b455772eeeebf91d68283ef9574a0a1af69e958123c9b44e0b332"
+        },
+        {
+          "path": "/images/onesa-home-hero-1536.webp",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 90556,
+          "sha256": "02a3f7574c970c31a6d55acf61c5b08e6034d0e1b506abd1f8de4318919f8037"
+        }
+      ],
+      "use": "Homepage hero artwork; does not represent available physical hardware"
     }
   ]
 }
