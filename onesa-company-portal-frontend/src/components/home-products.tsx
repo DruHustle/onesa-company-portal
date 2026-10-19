@@ -2,22 +2,12 @@ import type {Locale} from '@/config/copy';
 import {products} from '@/config/products';
 import {ResponsiveLink as Link} from './responsive-link';
 import styles from './home-products.module.css';
-import {PlatformVisual} from './platform-visual';
 
 export function HomePlatform({locale}:{locale:Locale}) {
  const de=locale==='de';
- const features=de?[
-  ['Mit Kontext fragen.','Gespräche mit relevantem Wissen verbinden und Quellen nachvollziehen.'],
-  ['Abläufe gestalten.','Mit geführten Agenten und Werkzeugen Aufgaben Schritt für Schritt bearbeiten.'],
-  ['Möglichkeiten erkunden.','Reisen planen, Ideen vergleichen und Anwendungen auf einer gemeinsamen Plattform entwickeln.'],
- ]:[
-  ['Ask with context.','Connect conversations to relevant knowledge and follow the supporting sources.'],
-  ['Shape a workflow.','Work through tasks step by step with guided agents and tools.'],
-  ['Explore possibilities.','Plan travel, compare ideas and build applications on a shared platform.'],
- ];
  return <section id="products" className={`section ${styles.platform}`} aria-labelledby="home-products-title">
-  <div><p className="eyebrow">{de?'DIE PLATTFORM':'THE PLATFORM'}</p><h2 id="home-products-title">{de?'Wissen, das Sie weiterbringt.':'Put your knowledge to work.'}</h2><p className={styles.intro}>{de?'Für Menschen und Teams, die Informationen verstehen und daraus nächste Schritte entwickeln möchten. Modular aufgebaut, aus Europa für den internationalen Einsatz.':'For people and teams turning information into useful next steps. Modular software, developed in Europe for international use.'}</p><Link className={styles.more} href={`/${locale}/products#product-ai`}>{de?'Onesa AI Platform kennenlernen':'Meet Onesa AI Platform'}<span aria-hidden="true">→</span></Link></div>
-  <div className={styles.platformDetail}><PlatformVisual locale={locale}/><div className={styles.features}>{features.map(([title,text])=><div key={title}><h3>{title}</h3><p>{text}</p></div>)}</div></div>
+  <div><p className="eyebrow">{de?'UNSER PRODUKT':'OUR PRODUCT'}</p><h2 id="home-products-title">Onesa AI Platform</h2><p className={styles.intro}>{de?'Unsere KI-Engine für Anwendungen, vernetztes Wissen und geführte Abläufe. Lernen Sie die Möglichkeiten, den aktuellen Entwicklungsstand und die Produktdokumentation kennen.':'Our AI engine for applications, connected knowledge and guided workflows. Explore its capabilities, current development and product documentation.'}</p><Link className={styles.more} href={`/${locale}/products#product-ai`}>{de?'Plattform entdecken':'Explore the platform'}<span aria-hidden="true">→</span></Link></div>
+  <figure className={`${styles.platformDetail} ${styles.previewImage}`}><picture><source media="(max-width:640px)" srcSet="/images/ai-platform-concept-640.webp"/><img src="/images/ai-platform-concept-1280.webp" width="1280" height="853" loading="lazy" decoding="async" alt={products[locale][0].imageAlt}/></picture></figure>
  </section>;
 }
 

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Remove location-led marketing copy from Home, About and shared page descriptions;
+  retain statutory company particulars on the legal pages.
+- Introduce Onesa as the company in the homepage hero and company-first story;
+  restore the cyan headline accent, keep product summaries separate and move the AI workspace illustration to its
+  product details. Restore the square UG wordmark badge and preserve the supplied
+  opening image, system appearance and mobile technology rows.
+- Scope the Engineering Docs password-error regression to its sign-in panel so
+  Next.js's separate screen-reader route announcer cannot create an ambiguous match.
+
+
 - Simplify Engineering Docs sign-in into one active step: separate loading,
   method selection and email-link confirmation; collapse secondary access help.
   Show “Link sent.” and hide the email form after a successful link request;

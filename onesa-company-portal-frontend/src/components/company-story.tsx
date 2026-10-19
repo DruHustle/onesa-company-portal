@@ -8,14 +8,14 @@ export function CompanyStory({ locale }: { locale: Locale }) {
   return (
     <div className={styles.story}>
       <section>
-        <p className="eyebrow">ONESA UG · HEIDELBERG</p>
+        <p className="eyebrow">ONESA UG</p>
         <h2>
           {de ? "Warum wir Onesa entwickeln" : "Why we are building Onesa"}
         </h2>
         <p>
           {de
-            ? "Onesa wurde 2026 gegründet und hat seinen Sitz in Heidelberg. Wir entwickeln eine gemeinsame KI-Grundlage für Anwendungen in unterschiedlichen Branchen und für künftige intelligente Maschinen."
-            : "Founded in 2026 and based in Heidelberg, Onesa is developing a shared AI foundation for applications across industries and future intelligent machines."}
+            ? "Onesa wurde 2026 gegründet. Wir entwickeln eine gemeinsame KI-Grundlage für Anwendungen in unterschiedlichen Branchen und für künftige intelligente Maschinen."
+            : "Founded in 2026, Onesa is developing a shared AI foundation for applications across industries and future intelligent machines."}
         </p>
         <p>
           {de
@@ -24,8 +24,8 @@ export function CompanyStory({ locale }: { locale: Locale }) {
         </p>
         <p>
           {de
-            ? "Unser Ausgangspunkt ist praktische Software: klare Oberflächen, geschützte Arbeitsbereiche und nachvollziehbare Ergebnisse. Wir entwickeln aus Heidelberg für Menschen und Organisationen in Europa und darüber hinaus."
-            : "Our starting point is practical software: clear interfaces, protected workspaces and results people can examine. We develop from Heidelberg for people and organizations in Europe and beyond."}
+            ? "Unser Ausgangspunkt ist praktische Software: klare Oberflächen, geschützte Arbeitsbereiche und nachvollziehbare Ergebnisse."
+            : "Our starting point is practical software: clear interfaces, protected workspaces and results people can examine."}
         </p>
       </section>
       <section>
@@ -84,11 +84,6 @@ export function CompanyStory({ locale }: { locale: Locale }) {
             >
               AFRIKA KOMMT!
             </a>
-          </p>
-          <p>
-            {de
-              ? `Onesa hat seinen Sitz in Heidelberg und ist beim ${company.registerCourt} unter ${company.registerNumber} eingetragen.`
-              : `Onesa is based in Heidelberg and registered with ${company.registerCourt} under ${company.registerNumber}.`}
           </p>
           <Link href={`/${locale}/impressum`}>
             {de

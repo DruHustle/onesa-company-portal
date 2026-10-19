@@ -217,7 +217,7 @@ try {
       const password = page.getByLabel("Password", {exact:true});
       await password.fill("synthetic-invalid-password");
       await page.getByRole("button", {name:"Sign in to Docs",exact:true}).click();
-      await expect(page.getByRole("alert")).toBeVisible();
+      await expect(page.locator("#engineering-sign-in").getByRole("alert")).toBeVisible();
       await expect(password).toHaveValue("synthetic-invalid-password");
       await expect(page.getByRole("button", {name:"Sign in to Docs",exact:true})).toBeEnabled();
       expect(
