@@ -9,7 +9,7 @@
 .sidebar span{padding:10px 12px;font-size:12px;color:#4c5f79}
 .sidebar .selected{background:white;border-radius:7px;color:#302ab4;font-weight:600}
 .conversation{padding:24px;display:flex;flex-direction:column;gap:24px;min-width:0}
-.context{font-size:8.96px;letter-spacing:.11em;color:#566780;margin:0}
+.figure .context{font-size:8.96px;letter-spacing:.11em;color:#566780;margin:0}
 .question{padding:12px 16px;border-radius:12px 12px 0 12px;background:#e5e8f7;align-self:flex-end;font-size:12.8px;line-height:1.5}
 .answer{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;align-items:start}
 .mark{display:grid;place-items:center;width:28px;height:28px;color:#fff;background:#4f46e5;border-radius:8px;font-size:20.8px;font-weight:600;line-height:1}
@@ -19,7 +19,7 @@
 .source span{font-size:8.8px;color:#675ce0}
 .composer{margin-top:auto;border:1px solid #c8d4e5;border-radius:10px;background:white;padding:12px 14px;font-size:11.52px;display:flex;align-items:center;justify-content:space-between;color:#66758b}
 .composer span{background:#4f46e5;color:white;border-radius:6px;width:24px;height:24px;display:grid;place-items:center;font-size:14.4px}
-.figure figcaption{margin-top:16px;color:#b9cbe4;font-size:.65rem;line-height:1.5;text-align:right}
+.figure figcaption{margin-top:16px;color:var(--onesa-muted);font-size:.65rem;line-height:1.5;text-align:right}
 @media(min-width:1100px){.workspace{transform:perspective(1400px) rotateY(-6deg) rotateX(2deg)}.figure figcaption{margin-top:24px}}
-@media(max-width:760px){.workspace{border-radius:12px}.bar{height:44px;padding:0 16px}.bar strong{font-size:16px}.bar strong span{font-size:9.6px}.body{grid-template-columns:72px minmax(0,1fr);min-height:208px}.sidebar{padding:16px 6px;gap:7px}.sidebar span{padding:7px 6px;font-size:9.28px}.conversation{padding:16px;gap:14px}.context{font-size:7.2px;letter-spacing:.08em}.question{font-size:10.56px;padding:8px 10px}.answer{grid-template-columns:22px minmax(0,1fr);gap:8px}.mark{width:22px;height:22px;font-size:16px}.answer strong{font-size:10.4px}.lines{gap:6px;margin:10px 0}.lines i{height:4px}.source{font-size:8.64px;padding:6px 8px;gap:14px}.composer{padding:8px 10px;font-size:9.6px}.composer span{width:20px;height:20px}.figure figcaption{font-size:.6rem;margin-top:12px}}
-@media(forced-colors:active){.workspace,.bar,.sidebar,.question,.composer,.source{background:Canvas;color:CanvasText;border-color:CanvasText}.mark,.composer span{background:Highlight;color:HighlightText}.lines i{background:CanvasText}.figure figcaption{color:CanvasText}}
+@media(max-width:760px){.workspace{border-radius:12px}.bar{height:44px;padding:0 16px}.bar strong{font-size:16px}.bar strong span{font-size:9.6px}.body{grid-template-columns:72px minmax(0,1fr);min-height:208px}.sidebar{padding:16px 6px;gap:7px}.sidebar span{padding:7px 6px;font-size:9.28px}.conversation{padding:16px;gap:14px}.figure .context{font-size:7.2px;letter-spacing:.08em}.question{font-size:10.56px;padding:8px 10px}.answer{grid-template-columns:22px minmax(0,1fr);gap:8px}.mark{width:22px;height:22px;font-size:16px}.answer strong{font-size:10.4px}.lines{gap:6px;margin:10px 0}.lines i{height:4px}.source{font-size:8.64px;padding:6px 8px;gap:14px}.composer{padding:8px 10px;font-size:9.6px}.composer span{width:20px;height:20px}.figure figcaption{font-size:.6rem;margin-top:12px}}
+@media(forced-colors:active){.workspace,.bar,.sidebar,.question,.composer,.source{background:Canvas;color:CanvasText;border-color:CanvasText}.mark,.composer span{background:Highlight;color:HighlightText}.lines i{background:CanvasText}.figure figcaption,.figure .context{color:CanvasText}}

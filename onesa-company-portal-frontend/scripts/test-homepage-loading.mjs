@@ -55,7 +55,7 @@ function probe(origin, path) {
       response.setEncoding('utf8');
       response.on('data', chunk => {
         html += chunk;
-        if (heroAt === undefined && /<h1\b[^>]*>Onesa AI\s*<br\s*\/?>(?:<!-- -->)?Platform/s.test(html)) {
+        if (heroAt === undefined && /<h1\b[^>]*id="home-title"[^>]*>Onesa\./s.test(html)) {
           heroAt = performance.now() - started;
         }
       });

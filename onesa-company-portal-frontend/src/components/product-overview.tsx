@@ -3,6 +3,7 @@ import {products} from '@/config/products';
 import type {Locale} from '@/config/copy';
 import applications from '@/config/onesa-applications.json';
 import {ProductIllustration} from './product-illustration';
+import {PlatformVisual} from './platform-visual';
 import {EditorialImage} from './editorial-image';
 import styles from './product-overview.module.css';
 
@@ -72,6 +73,7 @@ export function ProductOverview({locale}:{locale:Locale}) {
           <p>{capability}</p>
         </div>)}
       </section>
+      {product.id==='ai'&&<section className={styles.workspace} aria-labelledby="ai-workspace-title"><div><p className="eyebrow">{locale==='de'?'IM PRODUKT':'INSIDE THE PRODUCT'}</p><h3 id="ai-workspace-title">{locale==='de'?'Ein Arbeitsbereich für Wissen und nächste Schritte.':'A workspace for knowledge and next steps.'}</h3><p>{locale==='de'?'Chat, Knowledge, Agents und Travel verbinden Gespräche mit eigenem Wissen und geführten Aufgaben. Die Produktdokumentation erklärt die verfügbaren Funktionen und ihre Grenzen.':'Chat, Knowledge, Agents and Travel connect conversations with your knowledge and guided tasks. The product documentation explains the available features and their boundaries.'}</p></div><PlatformVisual locale={locale}/></section>}
     </article>)}
   </section><ApplicationDirections locale={locale}/></>;
 }

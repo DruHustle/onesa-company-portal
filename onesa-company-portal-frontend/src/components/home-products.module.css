@@ -18,3 +18,5 @@
 .robotCopy>p:not(:first-child){color:var(--muted);max-width:44ch}
 .robotCopy .imageNote{font-size:.75rem;line-height:1.6}
 @media(max-width:760px){.platform,.robot{grid-template-columns:minmax(0,1fr);gap:32px}.features{padding:0;gap:24px}.features>div{padding-bottom:20px}.platform h2{max-width:18ch}.robotImage img{aspect-ratio:4/3;object-position:50% 35%}.robotCopy h2{font-size:2.5rem}.robotCopy>.eyebrow{margin-top:0}}
+
+.previewImage{margin:0;overflow:hidden;border-radius:16px;align-self:center}.previewImage picture,.previewImage img{display:block;width:100%;height:auto}.previewImage img{aspect-ratio:3/2;object-fit:cover}
