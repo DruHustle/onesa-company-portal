@@ -49,6 +49,25 @@ feature flags, fixed OIDC client and qualified activation sequence. Follow
 [Engineering Docs identity](ENGINEERING_DOCS_IDENTITY.md); do not enable it from
 a business-website release or weaken Access/owner authentication.
 
+## Current Company and sign-in release — 2026-10-19
+
+Frontend `56eb17c80cfff656608005c60c3ca8d2c9da09a2`, Vercel `dpl_BcvxvfeoSCa3zLapdrWx1F5wAXZh`, is accepted at the canonical Company
+and Portal hosts. Home introduces Onesa as the company; detailed Platform content
+belongs to Products. The square UG badge, cyan headline and mobile hero placement
+are retained. Geography-led marketing is removed; legal particulars remain.
+
+API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker `3fad26e460e6903d51e5e1428b6bb14658609813`, scanner, schema012,
+configuration and credentials are retained. The independently verified API image
+and container matched their accepted receipt before frontend publication.
+
+Fresh full CI,36 staged navigation cases,24 public/eight sign-in accessibility
+views,10 canonical synthetic sign-in journeys and24 canonical public views passed.
+The30 earlier sign-in journeys retain their original source; unchanged sign-in
+code and new staged shared-style coverage justify reuse. No production user,
+password, mailbox or membership was changed. Actual approved-engineer sign-in
+and protected Docs publication remain independent of intercepted synthetic tests.
+The original failed heading/contrast checks are retained with their corrections.
+
 ## Current Portal editorial release — 2026-10-18
 
 Frontend `a4b106cfea9e44efb665192b8254a67986835636` is accepted at Vercel deployment
