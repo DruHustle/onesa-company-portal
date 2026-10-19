@@ -5,6 +5,12 @@ Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md#verified-production-hosting-cutover--2026-10-16)
 for source identities, protected ingress, acceptance and rollback.
 
+The latest company-first Home and concise Engineering Docs sign-in frontend
+`56eb17c80cfff656608005c60c3ca8d2c9da09a2` is accepted at Vercel `dpl_BcvxvfeoSCa3zLapdrWx1F5wAXZh` on the existing Company/Portal
+hosts. API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker `3fad26e` and scanner remain independently retained.
+No backend activation or migration accompanied this frontend release. See the
+[current component release](docs/engineering/DEPLOYMENT.md#current-company-and-sign-in-release--2026-10-19).
+
 The 2026-10-18 editorial/task release is accepted; see the
 [current component identities and acceptance](docs/engineering/DEPLOYMENT.md#current-portal-editorial-release--2026-10-18).
 

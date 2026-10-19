@@ -2,24 +2,6 @@
 
 ## Unreleased
 
-- Adapt the workspace illustration caption to the Products surface contrast and
-  align the retained homepage integration assertion with the company heading.
-- Remove location-led marketing copy from Home, About and shared page descriptions;
-  retain statutory company particulars on the legal pages.
-- Introduce Onesa as the company in the homepage hero and company-first story;
-  restore the cyan headline accent, keep product summaries separate and move the AI workspace illustration to its
-  product details. Restore the square UG wordmark badge and preserve the supplied
-  opening image, system appearance and mobile technology rows.
-- Scope the Engineering Docs password-error regression to its sign-in panel so
-  Next.js's separate screen-reader route announcer cannot create an ambiguous match.
-
-
-- Simplify Engineering Docs sign-in into one active step: separate loading,
-  method selection and email-link confirmation; collapse secondary access help.
-  Show “Link sent.” and hide the email form after a successful link request;
-  enable explicit resend after a 15-second cooldown.
-  Preserve explicit confirmation, existing approvals and both sign-in methods.
-
 - Measure public navigation readiness with one atomic browser observation of the
   same URL, visible product headings and exact documentation links. Start its
   clock at the trusted browser click and report driver delay separately. Preserve
@@ -76,6 +58,27 @@
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
 
+
+## 2026-10-19 — Company-first Home and Engineering Docs sign-in accepted
+
+- Introduce Onesa as the company with the cyan “what comes next” heading, square
+  UG badge, owner-supplied opening image and company/industry story. Keep a short
+  product preview on Home and detailed Platform workspace information on Products.
+  Remove location-led marketing while retaining legal company particulars.
+- Simplify Engineering Docs sign-in: one active step, collapsed help, “Link sent.”,
+  hidden email input and explicit resend after 15 seconds. Authentication protocol,
+  approvals, administrator MFA and backend authorization are unchanged.
+- Frontend `56eb17c80cfff656608005c60c3ca8d2c9da09a2` / Vercel `dpl_BcvxvfeoSCa3zLapdrWx1F5wAXZh` is accepted on `onesa.eu` and
+  `portal.onesa.eu`. API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker `3fad26e460e6903d51e5e1428b6bb14658609813`
+  and scanner are retained independently, with no restart or migration.
+- Fresh full source CI, 36 hosted navigation cases, 24 public and eight sign-in
+  layout/accessibility views passed. Thirty previously passed sign-in journeys
+  are reused with explicit source equivalence; ten canonical synthetic sign-in
+  views and 24 canonical public views pass. Captured-mailbox protocol tests remain
+  separate from actual approved-user production authentication.
+- Preserve the original failed source checks: the old homepage expectation and
+  Products light/dark contrast defects were corrected, without a failed-test bypass.
+  Protected Engineering Docs publication has its own current-session requirement.
 
 ## 2026-10-19 — Homepage imagery accepted
 
