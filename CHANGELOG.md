@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Feature the owner-supplied Onesa artwork in a responsive, prioritized homepage
+  hero. Move the workspace illustration into the Platform section and add lazy
+  industry image previews while retaining mobile technology rows and product links.
+
 - Measure public navigation readiness with one atomic browser observation of the
   same URL, visible product headings and exact documentation links. Start its
   clock at the trusted browser click and report driver delay separately. Preserve

@@ -3,7 +3,9 @@
 ## Homepage composition — prepared 2026-10-19
 
 Onesa AI Platform leads with one headline, a short explanation, one primary action
-and an original static workspace illustration. The scrolling story separates platform
+and the owner's Onesa robotic-hand artwork. Responsive WebP variants are28–91KB,
+prioritized for the opening view. The workspace illustration sits in the Platform
+section; lazy image previews accompany the industry links. The scrolling story separates platform
 capabilities, technology, Robot development, company purpose and updates/contact.
 One scoped homepage stylesheet replaces the competing hero overrides. The mobile
 menu remains a native disclosure, supports Escape and works before hydration.
