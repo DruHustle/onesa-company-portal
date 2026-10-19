@@ -14,7 +14,7 @@ export const socialImage = {
 
 export function homepageMetadata(): Metadata {
   const title = 'Onesa | Engineering Intelligent Possibilities';
-  const description = 'Onesa develops AI platforms, digital products and intelligent applications for businesses, developers and institutions across Europe and global markets.';
+  const description = copy.en.intro;
   const origin = companyOrigin();
   const url = companyPageUrl(origin, 'en');
   return {

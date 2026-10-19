@@ -22,10 +22,20 @@ export default async function Home({params}:{params:Promise<{locale:Locale}>}) {
     <section className={`hero ${styles.hero}`} aria-labelledby="home-title">
       <picture className={styles.heroImage} aria-hidden="true"><img src="/images/onesa-home-hero-1536.webp" srcSet="/images/onesa-home-hero-640.webp 640w, /images/onesa-home-hero-1024.webp 1024w, /images/onesa-home-hero-1536.webp 1536w" sizes="100vw" width="1536" height="1024" fetchPriority="high" alt=""/></picture>
       <div className={styles.opening}>
-        <h1 id="home-title">Onesa AI <br/>Platform</h1>
-        <p className="hero-intro">{de?'Gespräche, eigenes Wissen und geführte Abläufe. Ein geschützter Arbeitsbereich.':'Conversations, your knowledge and guided workflows. One protected workspace.'}</p>
-        <Link className={`button ${styles.primary}`} href={`/${locale}/products#product-ai`}>{de?'Plattform entdecken':'Explore the platform'}<span aria-hidden="true">→</span></Link>
+        <div className={styles.heroHeading}>
+          <p className={`eyebrow ${styles.heroEyebrow}`}>ONESA UG</p>
+          <h1 id="home-title">Onesa.<br/>{de?<>Wir entwickeln <span className={styles.heroAccent}>die Zukunft.</span></>:<>Engineering <span className={styles.heroAccent}>what comes next.</span></>}</h1>
+          <Link className={`button ${styles.primary}`} href={`/${locale}/about`}>{de?'Onesa kennenlernen':'Discover Onesa'}<span aria-hidden="true">→</span></Link>
+        </div>
+        <div className={styles.heroCompany}>
+          <p className="hero-intro">{t.intro}</p>
+          <div className={styles.heroFooter}><span aria-hidden="true">↓</span></div>
+        </div>
       </div>
+    </section>
+    <section id="company-introduction" className={`section two-columns ${styles.company}`}>
+      <div><p className="eyebrow">{de?'ÜBER ONESA UG':'ABOUT ONESA UG'}</p><h2>{de?'Technologie für den nächsten Schritt.':'Technology for what comes next.'}</h2><p>{t.missionText}</p><Link className={styles.readMore} href={`/${locale}/about`}>{de?'Unser Unternehmen':'Our company'} <span aria-hidden="true">→</span></Link></div>
+      <div><h3>{de?'Für unterschiedliche Branchen.':'Built for different industries.'}</h3><div className={`industry-list ${styles.visualIndustries}`}>{industries[locale].map((name,index)=>{const topic=['enterprise','industrial','manufacturing','travel','commerce','finance'][index];return <Link href={`/${locale}/industries#industry-${topic}`} key={name}><img src={`/images/industry-${topic}-480.webp`} width="480" height="320" alt="" loading="lazy" decoding="async"/><span>{name}</span><span aria-hidden="true">→</span></Link>;})}</div></div>
     </section>
     <HomePlatform locale={locale}/>
     <section id="capabilities" className="section">
@@ -33,10 +43,7 @@ export default async function Home({params}:{params:Promise<{locale:Locale}>}) {
       <div className="capability-grid">{technologyTopics(locale).slice(0,4).map((topic,i)=><Link href={`/${locale}/technology#${topic.id}`} className="capability" key={topic.id}><span className="index">0{i+1}</span><h3>{topic.title}</h3><span className="card-arrow" aria-hidden="true">→</span></Link>)}</div>
     </section>
     <HomeRobot locale={locale}/>
-    <section className={`section two-columns ${styles.company}`}>
-      <div><p className="eyebrow">{de?'ÜBER ONESA UG':'ABOUT ONESA UG'}</p><h2>{de?'In Europa verwurzelt. International ausgerichtet.':'European roots. An international outlook.'}</h2><p>{t.missionText}</p><Link className={styles.readMore} href={`/${locale}/about`}>{de?'Unser Unternehmen':'Our company'} <span aria-hidden="true">→</span></Link></div>
-      <div><h3>{de?'Für unterschiedliche Branchen.':'Built for different industries.'}</h3><div className={`industry-list ${styles.visualIndustries}`}>{industries[locale].map((name,index)=>{const topic=['enterprise','industrial','manufacturing','travel','commerce','finance'][index];return <Link href={`/${locale}/industries#industry-${topic}`} key={name}><img src={`/images/industry-${topic}-480.webp`} width="480" height="320" alt="" loading="lazy" decoding="async"/><span>{name}</span><span aria-hidden="true">→</span></Link>;})}</div></div>
-    </section>
+
     <Suspense fallback={null}><HomepageContent content={pages}/></Suspense>
     <section className="section"><div className="section-head"><p className="eyebrow">{de?'NEUIGKEITEN':'UPDATES'}</p><h2>{t.latest}</h2></div><Suspense fallback={<div className="empty-state" role="status"><p>{de?'Aktuelle Meldungen werden geladen…':'Loading latest news…'}</p></div>}><LatestNews content={result} locale={locale}/></Suspense><Link href={`/${locale}/research`}>{t.nav.research} <span aria-hidden="true">→</span></Link></section>
     <section className={`cta section ${styles.contact}`}><p className="eyebrow">{de?'MIT UNS ENTWICKELN':'BUILD WITH US'}</p><h2>{de?'Was möchten Sie entwickeln?':'What would you like to build?'}</h2><Link className="button" href={`/${locale}/contact`}>{t.talk}<span aria-hidden="true">→</span></Link></section>

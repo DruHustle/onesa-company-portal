@@ -185,17 +185,16 @@ test('an unknown published detail keeps HTTP404 and noindex',async({page}) => {
 
 test.describe('clear homepage composition',()=>{
  for(const locale of ['en','de'])for(const mode of ['light','dark'] as const){
-  test(`${locale} hero has one visible next action in ${mode}`,async({page})=>{
+  test(`${locale} hero introduces the company and separates product information in ${mode}`,async({page})=>{
    await page.emulateMedia({colorScheme:mode,reducedMotion:'reduce'});
    for(const viewport of [{width:320,height:568},{width:390,height:844},{width:430,height:932},{width:844,height:390},{width:768,height:1024},{width:1440,height:1000}]){
     await page.setViewportSize(viewport);await page.goto('/'+locale);
-    const hero=page.locator('.home-page .hero');await expect(hero.getByRole('heading',{level:1})).toHaveText('Onesa AI Platform');
+    const hero=page.locator('.home-page .hero');await expect(hero.getByRole('heading',{level:1})).toContainText('Onesa.');await expect(hero.getByRole('heading',{level:1})).not.toContainText('AI Platform');
     const introduction=hero.locator('.hero-intro');await expect(introduction).toBeVisible();
-    const next=hero.getByRole('link',{name:locale==='en'?'Explore the platform':'Plattform entdecken'});await expect(next).toBeVisible();await expect(next).toHaveAttribute('href',`/${locale}/products#product-ai`);await expect(hero.getByRole('link')).toHaveCount(1);
-    const nextBox=await next.boundingBox();expect(nextBox).not.toBeNull();if(viewport.height>=568||viewport.width===844)expect(nextBox!.y+nextBox!.height,'The complete primary action fits before scrolling').toBeLessThanOrEqual(viewport.height);
+    const next=hero.locator('a.button');await expect(next).toHaveAttribute('href',`/${locale}/about`);const compact=viewport.width<=760||viewport.height<=480;if(compact)await expect(next).toBeHidden();else await expect(next).toBeVisible();await expect(introduction).toContainText('Onesa');await expect(introduction).not.toContainText(/Heidelberg|Europe|Europa/);await expect(hero).not.toContainText(/European roots|EUROPEAN ROOTS|HEIDELBERG|EUROPÄISCH/);const badge=page.locator('.site-header .wordmark span');await expect(badge).toHaveText('UG');await expect(badge).toHaveCSS('border-top-width','1px');const badgeBox=await badge.boundingBox();expect(badgeBox).not.toBeNull();expect(Math.abs(badgeBox!.width-badgeBox!.height)).toBeLessThan(1);if(viewport.width<=760&&viewport.height>=568){const introBox=await introduction.boundingBox();expect(introBox!.y+introBox!.height).toBeLessThanOrEqual(viewport.height);}
     const artwork=hero.locator('picture img');await expect(artwork).toBeVisible();await expect(artwork).toHaveAttribute('fetchpriority','high');expect(await artwork.evaluate((image:HTMLImageElement)=>image.complete&&image.naturalWidth>0)).toBe(true);
-    await expect(page.locator('#products figure')).toHaveCount(1);await expect(page.locator('#products figcaption')).toBeVisible();
-    if(viewport.width===320){await page.evaluate(async()=>{document.documentElement.style.setProperty('font-size','200%','important');await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));});await expect(page.locator('html')).toHaveCSS('font-size','32px');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await expect(next).toBeVisible();}
+    await expect(page.locator('#products figure')).toHaveCount(1);await expect(page.locator('#products figure img')).toBeVisible();await expect(page.locator('#products figure img')).toHaveAttribute('loading','lazy');
+    if(viewport.width===320){await page.evaluate(async()=>{document.documentElement.style.setProperty('font-size','200%','important');await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));});await expect(page.locator('html')).toHaveCSS('font-size','32px');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await expect(introduction).toBeVisible();}
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     if(viewport.width<=760){const rows=page.locator('#capabilities .capability');await expect(rows).toHaveCount(4);const boxes=await rows.evaluateAll(elements=>elements.map(e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,bottom:r.bottom};}));for(let i=1;i<boxes.length;i++){expect(Math.abs(boxes[i].x-boxes[0].x)).toBeLessThan(1);expect(boxes[i].y).toBeGreaterThanOrEqual(boxes[i-1].bottom-1);}}
    }
@@ -276,3 +275,17 @@ test('secondary company pages reflow at doubled text size in both locales', asyn
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  }
 });
+
+for(const locale of ['en','de'])for(const width of [390,1440]){
+ test(`company home opens dedicated AI Platform information in ${locale} at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:900});await page.goto('/'+locale);
+  await expect(page.locator('#home-title')).toContainText('Onesa.');
+  await expect(page.locator('#ai-workspace-title')).toHaveCount(0);
+  const product=page.locator('#products');await expect(product.getByRole('heading',{name:'Onesa AI Platform',exact:true})).toBeVisible();
+  await product.getByRole('link',{name:locale==='de'?'Plattform entdecken':'Explore the platform',exact:true}).click();
+  await expect(page).toHaveURL(new RegExp('/'+locale+'/products#product-ai$'));
+  await expect(page.locator('#product-ai')).toHaveText('Onesa AI Platform');
+  await expect(page.locator('#ai-workspace-title')).toBeVisible();
+  await expect(page.getByRole('link',{name:locale==='de'?'Dokumentation zur AI Platform':'AI Platform documentation',exact:true})).toHaveAttribute('href','https://docs.onesa.eu/docs/public/ai-platform');
+ });
+}
