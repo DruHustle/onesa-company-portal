@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Simplify Engineering Docs sign-in into one active step: separate loading,
+  method selection and email-link confirmation; collapse secondary access help.
+  Show “Link sent.” and hide the email form after a successful link request;
+  enable explicit resend after a 15-second cooldown.
+  Preserve explicit confirmation, existing approvals and both sign-in methods.
+
 - Measure public navigation readiness with one atomic browser observation of the
   same URL, visible product headings and exact documentation links. Start its
   clock at the trusted browser click and report driver delay separately. Preserve

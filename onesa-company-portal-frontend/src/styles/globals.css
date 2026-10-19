@@ -181,3 +181,11 @@ fieldset.admin-content{border:0;margin:0;padding:0;min-inline-size:0}
 
 /* Secondary-page headings and topic names reflow with enlarged text. */
 .page-hero,.technology-capabilities .capability{overflow-wrap:anywhere;min-width:0}
+
+/* Engineering identity shows one active step, with secondary access guidance collapsed. */
+.engineering-auth-shell .admin-product-title{margin-bottom:24px}
+.engineering-auth-shell .engineering-access-context{font-size:.75rem;color:var(--muted)}
+.engineering-auth-shell h1{font-size:clamp(1.85rem,5vw,2.35rem);line-height:1.15;overflow-wrap:anywhere}
+.engineering-auth-shell .engineering-signin-intro{margin:0 0 24px;color:var(--muted)}
+.engineering-auth-shell .engineering-signin-support{margin-top:24px;border-top:1px solid var(--line);padding-top:4px}
+.engineering-auth-shell .signin-help a{text-decoration:underline;text-underline-offset:3px}
