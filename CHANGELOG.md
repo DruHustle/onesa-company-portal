@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Measure public navigation readiness with one atomic browser observation of the
+  same URL, visible product headings and exact documentation links. Start its
+  clock at the trusted browser click and report driver delay separately. Preserve
+  the900ms threshold; reject incomplete, hidden or duplicated content and prove
+  that an actual950ms content delay fails that criterion.
+
+
+- Refine the Company homepage around Onesa AI Platform, a concise explanation and
+  one primary action. Replace the robotic-hand opening with an original static
+  workspace illustration; keep Robot in its own development section. Consolidate
+  hero styles and compact the accessible mobile navigation. Source verification,
+  rendered visual checks, qualification and deployment are recorded separately.
+- Keep genuine public404 pages non-indexable in route metadata as well as the
+  response status; do not inherit the public layout’s index directive.
+
+
 - Wait for the final PostgreSQL server over container-loopback TCP during isolated
   recovery; the initialization-only socket server is not restore readiness.
 

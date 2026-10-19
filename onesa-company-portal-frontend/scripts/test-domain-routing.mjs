@@ -35,7 +35,7 @@ for (const agent of ['Mozilla/5.0', 'facebookexternalhit/1.1 (+http://www.facebo
   assert.equal(crawlerRobots.body.toString(), robots.body.toString());
   assert.match(head, /name="twitter:card" content="summary_large_image"/);
   assert.match(head, /property="og:image" content="https:\/\/onesa.eu\/social\/onesa-social-card.png"/);
-  assert.ok(homepage.body.toString().includes('Engineering what'));
+  assert.ok(homepage.body.toString().includes('Onesa AI'));
   const image = await request('onesa.eu', '/social/onesa-social-card.png', {'User-Agent': agent});
   assert.equal(image.status, 200);
   assert.match(image.headers['content-type'], /image\/png/);
