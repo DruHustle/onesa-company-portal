@@ -1,6 +1,8 @@
 .platform{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8vw;border-bottom:1px solid var(--line)}
 .platform h2{max-width:15ch;text-wrap:balance}
 .intro{max-width:45ch;color:var(--muted)}
+.tracks{display:grid;gap:0;margin-top:24px;border-top:1px solid var(--line)}
+.tracks a{display:flex;justify-content:space-between;gap:20px;align-items:center;min-height:52px;padding:12px 0;border-bottom:1px solid var(--line);font-weight:600}
 .platformDetail{min-width:0}
 .platformDetail figure{margin-bottom:32px}
 .platformDetail figure>div{transform:none;box-shadow:0 16px 48px #081b3214}

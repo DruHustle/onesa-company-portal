@@ -20,6 +20,10 @@ No backend activation or migration accompanied this frontend release. See the
 The 2026-10-18 editorial/task release is accepted; see the
 [current component identities and acceptance](docs/engineering/DEPLOYMENT.md#current-portal-editorial-release--2026-10-18).
 
+Onesa UG is the company. Its product hierarchy is Onesa AI Platform—Applications
+and the planned Industrial AI track—and Onesa Robotics / Physical AI. Product
+status and each demonstrated capability remain distinct from integration directions.
+
 The Company Portal is Onesa UG’s corporate website and protected business workspace.
 It combines an English/German public site with a custom CMS, enquiries, recruitment,
 private documents, background processing and database-backed privacy governance.

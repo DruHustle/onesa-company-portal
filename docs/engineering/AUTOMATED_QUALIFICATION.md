@@ -1,5 +1,32 @@
 # Automated release qualification
 
+## Current execution: Oracle / Vercel
+
+Use the [primary deployment procedure](DEPLOYMENT.md#primary-release-path) and
+current restricted component receipts. The repositories remain public on GitHub
+Free with standard hosted CI; local runners are removed. Normal promotion is
+`dev → staging → main`, with exact-source required checks and external owner-controlled
+release. Keep frontend, API, worker/scanner and Docs identities separate.
+
+Select changed components before qualification. Reuse unchanged-component evidence
+only after checking source/artifact/configuration equivalence, its validity and actual
+current health. A current outage invalidates an availability claim even when source
+has not changed. No unchanged API restart is implied by a public-copy or CSS release.
+
+A failed technical check stops that candidate's promotion. Preserve its result and
+use the existing review's bounded correction ledger for diagnosis and repair. Do not
+create a new human approval request for every ordinary corrective commit already
+within scope. Request only a genuinely exceeded explicit attempt limit, protected
+access step or separately restricted operation. This is not permission to retry
+indefinitely, bypass tests, invent PASS values or restart old Robot source.
+
+The native-protection / Render design below records an earlier target-specific path.
+Its old branch names, remote-activation status and provider commands are historical;
+they do not configure or authorize the current Oracle services. Applicable validation
+implementations remain required. GitHub settings and hosted receipts must be read
+back before claiming enforcement or acceptance. G14 remains owner-deferred, not approved.
+
+
 > Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
 
 Implemented locally on `release/automated-qualification`; remote activation and hosted
