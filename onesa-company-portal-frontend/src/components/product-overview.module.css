@@ -5,7 +5,7 @@
 .details { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; padding-block-start: 32px; border-block-start: 1px solid var(--onesa-divider); }
 .details h3 { font-size: 1.25rem; letter-spacing: -.025em; margin-block: 0 12px; }
 .details p { margin: 0; font-size: .95rem; }
-.useCases { margin-block-start: 64px; padding-block-start: 48px; border-block-start: 1px solid var(--onesa-divider); min-width: 0; }
+.useCases { overflow-wrap: anywhere; margin-block-start: 64px; padding-block-start: 48px; border-block-start: 1px solid var(--onesa-divider); min-width: 0; }
 .useCases > h2 { margin-block: 0 20px; max-width: 24ch; text-wrap: balance; }
 .useCases > p { max-width: 65ch; color: var(--onesa-muted); }
 .useCaseGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-block: 32px; }
