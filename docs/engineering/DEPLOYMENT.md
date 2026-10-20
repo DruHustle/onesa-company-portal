@@ -44,12 +44,39 @@ local-runner fallback, paid overage, unavailable reviewer requirement or missing
 exception. G14 remains owner-deferred and unapproved.
 
 
-Prepared Portal-based Engineering Docs sign-in has a separate additive migration,
-feature flags, fixed OIDC client and qualified activation sequence. Follow
-[Engineering Docs identity](ENGINEERING_DOCS_IDENTITY.md); do not enable it from
-a business-website release or weaken Access/owner authentication.
+Portal-based Engineering Docs sign-in has separately recorded migrations, feature
+flags, fixed OIDC client and an identity activation sequence. The protected host
+currently redirects to Onesa Portal; an approved-user walkthrough and updated
+protected Docs publication remain separate verification. Follow [Engineering Docs
+identity](ENGINEERING_DOCS_IDENTITY.md); a public website release changes none of
+those controls or Access/owner authentication.
 
-## Current About leadership release
+## Current Company product hierarchy release — 2026-10-20
+
+Frontend `cb0221ed90c1088827f414f4fab00cf3930b160c`, Vercel `dpl_DR5BQ8TeAYwGuYS5XnrU6FMxF6U4`, is accepted on the canonical Company
+and Portal hosts. Home introduces Onesa, then presents AI Platform Applications /
+planned Industrial AI and Robotics / Physical AI. Industry directions and a static
+synthetic industrial example follow. Actual UI frames use local synthetic fixtures;
+they are not live user data, model output or demonstrated industrial/hardware work.
+
+The approved hero markup/CSS/posters are unchanged. Full source CI,48 staged public
+views and16 canonical EN/DE light/dark mobile/desktop enlarged-text/accessibility
+views pass. Public product Docs links return200. Existing About and private Portal
+source are retained; no new full administration acceptance is claimed from public
+page checks. Actual owner/approved-engineer walkthroughs remain separate.
+
+API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker `3fad26e460e6903d51e5e1428b6bb14658609813`
+and scanner remain independently identified. Direct immutable API/configuration/
+health verification preceded publication. Readiness200 and anonymous session401
+pass. No backend/worker restart, migration, account or production-data change ran.
+Subsequent documentation-only main commits do not relabel these serving artifacts.
+Original failures and the local waiting timeout remain in restricted evidence;
+no required technical result was bypassed. G14 remains owner-deferred.
+
+<a id="current-about-leadership-release"></a>
+
+## About leadership release — 2026-10-20 (earlier frontend)
+
 
 Accepted 2026-10-20: frontend `a5c742cfa305f039be9e1ec4b76ed57c025ed8ed`, Vercel `dpl_BNXcsQvXM7S5NbmNrr3VB9pwkmhC`, serves the canonical Company
 and Portal hosts. This supersedes only the previous frontend identity; Home, sign-in,

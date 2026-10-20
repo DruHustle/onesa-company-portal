@@ -5,7 +5,15 @@ Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md#verified-production-hosting-cutover--2026-10-16)
 for source identities, protected ingress, acceptance and rollback.
 
-The current About leadership update is frontend `a5c742cfa305f039be9e1ec4b76ed57c025ed8ed` at Vercel `dpl_BNXcsQvXM7S5NbmNrr3VB9pwkmhC`.
+The current public product hierarchy frontend `cb0221ed90c1088827f414f4fab00cf3930b160c` is accepted at Vercel
+`dpl_DR5BQ8TeAYwGuYS5XnrU6FMxF6U4` on Company/Portal. It preserves the approved Home hero and About
+portrait, separates Applications / planned Industrial AI from Robotics / Physical AI,
+and adds explicitly synthetic interface examples.48 staged and16 canonical views
+pass. API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker and scanner are retained;
+no backend activation or production record mutation accompanied this release.
+See the [current public component release](docs/engineering/DEPLOYMENT.md#current-company-product-hierarchy-release--2026-10-20).
+
+The previously accepted About leadership update is frontend `a5c742cfa305f039be9e1ec4b76ed57c025ed8ed` at Vercel `dpl_BNXcsQvXM7S5NbmNrr3VB9pwkmhC`.
 The owner-supplied portrait and engineering/renewable-energy biography passed source
 CI and staged/canonical responsive accessibility checks. Backend, worker, scanner and
 identity services are retained. See the
@@ -15,10 +23,10 @@ The previously accepted company-first Home and concise Engineering Docs sign-in 
 `56eb17c80cfff656608005c60c3ca8d2c9da09a2` is accepted at Vercel `dpl_BcvxvfeoSCa3zLapdrWx1F5wAXZh` on the existing Company/Portal
 hosts. API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker `3fad26e` and scanner remain independently retained.
 No backend activation or migration accompanied this frontend release. See the
-[current component release](docs/engineering/DEPLOYMENT.md#current-company-and-sign-in-release--2026-10-19).
+[earlier Company/sign-in release](docs/engineering/DEPLOYMENT.md#current-company-and-sign-in-release--2026-10-19).
 
 The 2026-10-18 editorial/task release is accepted; see the
-[current component identities and acceptance](docs/engineering/DEPLOYMENT.md#current-portal-editorial-release--2026-10-18).
+[earlier editorial/API identities and acceptance](docs/engineering/DEPLOYMENT.md#current-portal-editorial-release--2026-10-18).
 
 Onesa UG is the company. Its product hierarchy is Onesa AI Platform—Applications
 and the planned Industrial AI track—and Onesa Robotics / Physical AI. Product
@@ -33,7 +41,7 @@ owner-managed individual memberships; this grants no Portal administrator role.
 First-time users register and verify their email before owner review. Existing
 explicit approvals are retained; new administrator access keeps MFA.
 See the [protected access procedure](docs/engineering/ENGINEERING_DOCS_IDENTITY.md)
-for its prepared status, qualification and onboarding boundaries.
+for source behavior, deployment records and onboarding boundaries.
 The protected privacy workspace includes policy review and explicit Portal lifecycle
 controls: read-only impact plans, preservation holds and owner-confirmed erasure.
 Draft rules never activate automatic expiry. See the [governance architecture](docs/engineering/PRIVACY_GOVERNANCE.md)
