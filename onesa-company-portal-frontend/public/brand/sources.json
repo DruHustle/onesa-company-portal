@@ -37,6 +37,15 @@
       "height": 630,
       "sha256": "55b539d18fc716499e7cfb1fdf06b59fb7a8b64695e9de779d0481e5832ec67c",
       "role": "Homepage Open Graph and Twitter preview"
+    },
+    {
+      "path": "/images/andrew-gotora-800.webp",
+      "width": 800,
+      "height": 800,
+      "bytes": 75070,
+      "sha256": "ac95538b6b86d671e896ee1097af96cd1c6248082e23b5f1eeacf3d950d7b604",
+      "source": "Owner-supplied portrait, 2026-10-20",
+      "role": "About leadership portrait; resized WebP without retouching"
     }
   ],
   "processing": "Owner-supplied originals preserved byte-for-byte. Version1.0.0 source-traced product icons, SVG/16-32-64 ICO/180PNG, are generated with the existing browser renderer; see /brand/icons/v1/sources.json.",
