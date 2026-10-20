@@ -2,12 +2,6 @@
 
 ## Unreleased
 
-- Reflow long German application and Industrial AI paragraphs at enlarged text; retain the approved hero and avoid fixed-count wording in the platform introduction.
-
-- Await the completed selected picture request before decoding product examples in browser regressions; preserve light/dark image and no-layout-shift assertions, including Firefox lazy loading.
-
-- Present the preserved Company Home with separate AI Platform (Applications / planned Industrial AI) and Robotics / Physical AI pillars; add a labelled synthetic industrial example and topic-specific links. Fix Products reflow at320px with enlarged German text. Source is prepared; no production acceptance is claimed.
-
 - Measure public navigation readiness with one atomic browser observation of the
   same URL, visible product headings and exact documentation links. Start its
   clock at the trusted browser click and report driver delay separately. Preserve
@@ -19,14 +13,6 @@
 - Wait for the final PostgreSQL server over container-loopback TCP during isolated
   recovery; the initialization-only socket server is not restore readiness.
 
-
-- Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
-  Keep standard hosted validation and prepare the owner-managed private GitHub Free
-  transition; exhausted included allowance blocks validation instead of paid fallback.
-
-- Activate public-repository main PR/check protection using actual successful check
-  identities, including the fail-closed summary and all applicable image scans.
-  Preserve solo-owner review, administrator enforcement and external release authority.
 
 - Preserve complete decrypted recovery payloads over nonblocking process pipes;
   await output completion while retaining all backup integrity and key checks.
@@ -64,6 +50,39 @@
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
 
+
+## 2026-10-20 — Company product hierarchy and interface examples accepted
+
+- Frontend `cb0221ed90c1088827f414f4fab00cf3930b160c`, Vercel `dpl_DR5BQ8TeAYwGuYS5XnrU6FMxF6U4`, is accepted at `onesa.eu` and
+  the existing Portal host. Introduce Onesa as the company, with AI Platform
+  Applications / planned Industrial AI and Robotics / Physical AI product tracks.
+  Topic links open their distinct details. The approved hero markup, CSS and
+  responsive posters are byte-identical; About and protected administration remain.
+- Show a labelled static synthetic industrial example and actual locally rendered
+  AI/Robot interface frames using isolated synthetic data. No industrial integration,
+  live operator data, model result or physical capability is implied by those images.
+- Fix German enlarged-text wrapping and selected light/dark image decoding without
+  changing appearance policy or image dimensions. Full first-attempt final source
+  CI,48 hosted staging views and16 canonical EN/DE light/dark responsive/reflow/
+  accessibility views pass. Both live public product documentation links return200.
+- Retain API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker `3fad26e` and scanner.
+  Direct retained API/container/configuration proof passed before publication;
+  readiness200 and anonymous session401 pass. No backend activation, migration,
+  account change, production record write or new full administrator context ran.
+- Preserve the original failed image/overflow observations and observer-only wait
+  timeout. Correct source, require fresh full CI and reuse only valid unchanged
+  component evidence. No failed technical gate was overridden. G14 stays deferred.
+
+## 2026-10-20 — Repository safeguards verified separately
+
+- Source and actual repository settings distinguish three permanent branches from
+  temporary security branches. Public main checks enforce administrators with zero
+  unavailable independent approvals. Dependabot fix preparation remains enabled.
+- Local-runner implementation is removed; readback verifies zero registered
+  self-hosted runners in each Onesa repository. Use standard hosted validation;
+  future private GitHub Free validation stays within the included allowance and
+  must block when unavailable. No visibility, billing or protection was changed
+  by this verification. These are repository controls, not application deployments.
 
 ## 2026-10-20 — About leadership biography and portrait accepted
 
