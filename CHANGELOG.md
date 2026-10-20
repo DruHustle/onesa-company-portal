@@ -2,12 +2,6 @@
 
 ## Unreleased
 
-- Update the English/German About biography with owner-confirmed engineering work
-  at Gearral, thyssenkrupp and HENSOLDT, and Sasol Solar Challenge participation.
-  Remove the AFRIKA KOMMT! reference and link, update the LinkedIn destination and
-  add the owner-supplied portrait with responsive sizing. Publication remains subject
-  to the normal release controls.
-
 - Measure public navigation readiness with one atomic browser observation of the
   same URL, visible product headings and exact documentation links. Start its
   clock at the trusted browser click and report driver delay separately. Preserve
@@ -64,6 +58,21 @@
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
 
+
+## 2026-10-20 — About leadership biography and portrait accepted
+
+- Update English/German engineering background with owner-confirmed work at Gearral,
+  thyssenkrupp and HENSOLDT, and renewable-energy experience through participation
+  in the Sasol Solar Challenge in South Africa. Remove the programme reference/link
+  and use the current LinkedIn destination without adding employment dates or titles.
+- Use the exact owner-supplied portrait, encoded as a75KB800px WebP with reserved
+  dimensions and responsive rounded presentation. Source provenance is recorded.
+- Actual frontend `a5c742cfa305f039be9e1ec4b76ed57c025ed8ed` / Vercel `dpl_BNXcsQvXM7S5NbmNrr3VB9pwkmhC` is accepted at `onesa.eu` and
+  `portal.onesa.eu`. Full first-attempt source CI,16 staged and16 canonical About
+  layout/accessibility views pass in EN/DE/light/dark, with enlarged-text checks.
+- API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker and scanner remain retained;
+  the API image, container and runtime configuration were directly verified. No
+  backend activation, migration, account change or production-data write occurred.
 
 ## 2026-10-19 — Company-first Home and Engineering Docs sign-in accepted
 
