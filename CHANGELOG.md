@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Update the English/German About biography with owner-confirmed engineering work
+  at Gearral, thyssenkrupp and HENSOLDT, and Sasol Solar Challenge participation.
+  Remove the AFRIKA KOMMT! reference and link, update the LinkedIn destination and
+  add the owner-supplied portrait with responsive sizing. Publication remains subject
+  to the normal release controls.
+
 - Measure public navigation readiness with one atomic browser observation of the
   same URL, visible product headings and exact documentation links. Start its
   clock at the trusted browser click and report driver delay separately. Preserve
