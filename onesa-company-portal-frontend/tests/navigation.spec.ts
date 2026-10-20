@@ -289,3 +289,23 @@ for(const locale of ['en','de'])for(const width of [390,1440]){
   await expect(page.getByRole('link',{name:locale==='de'?'Dokumentation zur AI Platform':'AI Platform documentation',exact:true})).toHaveAttribute('href','https://docs.onesa.eu/docs/public/ai-platform');
  });
 }
+
+for(const locale of ['en','de'] as const)test(`${locale}: the company introduces two product pillars and each platform track has its own detail`,async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto(`/${locale}`);
+ const hero=page.locator('.hero');await expect(hero.locator('#home-title')).toContainText('Onesa.');
+ // The owner-approved mobile hero remains uncluttered; its next section carries the action.
+ await expect(hero.locator('a.button')).toBeHidden();
+ const introduction=page.locator('#company-introduction');const productsLink=introduction.getByRole('link',{name:locale==='en'?'Explore our products':'Unsere Produkte',exact:true});
+ await expect(productsLink).toBeVisible();await expect(productsLink).toHaveAttribute('href',`/${locale}/products`);
+ await expect(introduction.locator('.industry-list')).toHaveCount(0);
+ const tracks=page.getByRole('navigation',{name:locale==='en'?'AI Platform tracks':'Bereiche der AI Platform'});
+ await tracks.getByRole('link',{name:'Industrial AI',exact:false}).click();
+ await expect(page).toHaveURL(new RegExp(`/${locale}/products#industrial-ai$`));
+ const industrial=page.locator('#industrial-ai');await expect(industrial).toBeInViewport();
+ await expect(industrial.getByRole('figure')).toContainText(locale==='en'?'Cause unknown':'Ursache unbekannt');
+ await expect(industrial.getByRole('figure')).toContainText(locale==='en'?'No AI-generated result':'Keine KI-Ausgabe');
+ await expect(industrial.getByRole('link')).toHaveAttribute('href',`/${locale}/contact?topic=industrial`);
+ await expect(page.locator('#platform-applications')).toContainText(locale==='en'?'planned applications':'geplante Anwendungen');
+ await expect(page.locator('#product-ai').locator('xpath=..')).not.toContainText(/AGI|autonomous ground|autonome Boden/);
+ await industrial.getByRole('link').click();await expect(page.locator('select[name=topic]')).toHaveValue('industrial');
+});

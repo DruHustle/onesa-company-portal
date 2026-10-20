@@ -542,5 +542,40 @@
       ],
       "use": "Homepage hero artwork; does not represent available physical hardware"
     }
-  ]
+  ],
+  "product_interface_examples": {
+    "captured_at": "2026-10-20",
+    "rights": "Onesa product interface; invented local transport fixtures; no customer or real operator data",
+    "qualification_limit": "Source-interface examples, not actual hosted model output or industrial/hardware acceptance",
+    "files": [
+      {
+        "path": "onesa-company-portal-frontend/public/images/ai-workspace-example-light.png",
+        "bytes": 84415,
+        "sha256": "3b7c55df33b27bd662502703791fcd53e0c88a52ab7de737ada60cb4b09b77d4",
+        "product": "ai",
+        "scheme": "light"
+      },
+      {
+        "path": "onesa-company-portal-frontend/public/images/ai-workspace-example-dark.png",
+        "bytes": 86433,
+        "sha256": "45d64cba63417c43c1d11eb6c83b448fe394a284c4c17b8ca2a0835da3cec4d6",
+        "product": "ai",
+        "scheme": "dark"
+      },
+      {
+        "path": "onesa-company-portal-frontend/public/images/robot-workspace-example-light.png",
+        "bytes": 116126,
+        "sha256": "fa8859bf1f044698a9d82ad108cfb9a7a82c84b24f21468b668e2e2e90025816",
+        "product": "robot",
+        "scheme": "light"
+      },
+      {
+        "path": "onesa-company-portal-frontend/public/images/robot-workspace-example-dark.png",
+        "bytes": 118349,
+        "sha256": "6208a295108c23e3fcbb0e100af28fbaf72b856678ad10291ff533782f151244",
+        "product": "robot",
+        "scheme": "dark"
+      }
+    ]
+  }
 }
