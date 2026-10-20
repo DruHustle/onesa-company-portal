@@ -3,9 +3,11 @@ import {products} from '@/config/products';
 import type {Locale} from '@/config/copy';
 import applications from '@/config/onesa-applications.json';
 import {ProductIllustration} from './product-illustration';
-import {PlatformVisual} from './platform-visual';
+import {ProductProof} from './product-proof';
 import {EditorialImage} from './editorial-image';
 import styles from './product-overview.module.css';
+import {Fragment} from 'react';
+import {IndustrialAI} from './industrial-ai';
 
 const applicationDirections = {
   en: {
@@ -28,7 +30,7 @@ const applicationDirections = {
 
 function ApplicationDirections({locale}:{locale:Locale}) {
   const content = applicationDirections[locale];
-  return <section className={styles.useCases} aria-labelledby="ai-applications-title">
+  return <section id="platform-applications" className={styles.useCases} aria-labelledby="ai-applications-title">
     <p className="eyebrow">{locale==='de'?'ANWENDUNGEN':'APPLICATIONS'}</p>
     <h2 id="ai-applications-title">{content.title}</h2>
     <p>{content.introduction}</p>
@@ -54,7 +56,7 @@ function ApplicationDirections({locale}:{locale:Locale}) {
 /** Product information renders with the page, without waiting for the content API. */
 export function ProductOverview({locale}:{locale:Locale}) {
   return <><section aria-label={locale==='de'?'Onesa Produkte':'Onesa products'}>
-    {products[locale].map(product=><article className={`product-section ${styles.product}`} key={product.id} aria-labelledby={`product-${product.id}`}>
+    {products[locale].map(product=><Fragment key={product.id}><article className={`product-section ${styles.product}`} aria-labelledby={`product-${product.id}`}>
       <div>
       <p className="eyebrow">{product.category}</p>
       <h2 id={`product-${product.id}`}>{product.name}</h2>
@@ -68,12 +70,13 @@ export function ProductOverview({locale}:{locale:Locale}) {
       <section className={styles.details} aria-label={`${product.name} — ${locale==='de'?'Möglichkeiten':'Capabilities'}`}>
         {product.capabilities.map((capability,index)=><div key={capability}>
           <h3>{(locale==='de'
-            ? (product.id==='ai'?['Wissen verbinden','Abläufe gestalten','Zukunft erforschen']:['Aufgaben steuern','Zustände verstehen','Integration entwickeln'])
-            : (product.id==='ai'?['Connect knowledge','Build workflows','Explore what’s next']:['Direct tasks','Understand state','Develop integration']))[index]}</h3>
+            ? (product.id==='ai'?['Wissen verbinden','Abläufe gestalten','Industrial AI vorbereiten']:['Aufgaben steuern','Zustände verstehen','Integration entwickeln'])
+            : (product.id==='ai'?['Connect knowledge','Build workflows','Prepare Industrial AI']:['Direct tasks','Understand state','Develop integration']))[index]}</h3>
           <p>{capability}</p>
         </div>)}
       </section>
-      {product.id==='ai'&&<section className={styles.workspace} aria-labelledby="ai-workspace-title"><div><p className="eyebrow">{locale==='de'?'IM PRODUKT':'INSIDE THE PRODUCT'}</p><h3 id="ai-workspace-title">{locale==='de'?'Ein Arbeitsbereich für Wissen und nächste Schritte.':'A workspace for knowledge and next steps.'}</h3><p>{locale==='de'?'Chat, Knowledge, Agents und Travel verbinden Gespräche mit eigenem Wissen und geführten Aufgaben. Die Produktdokumentation erklärt die verfügbaren Funktionen und ihre Grenzen.':'Chat, Knowledge, Agents and Travel connect conversations with your knowledge and guided tasks. The product documentation explains the available features and their boundaries.'}</p></div><PlatformVisual locale={locale}/></section>}
-    </article>)}
-  </section><ApplicationDirections locale={locale}/></>;
+      {product.id==='ai'&&<section className={styles.workspace} aria-labelledby="ai-workspace-title"><div><p className="eyebrow">{locale==='de'?'IM PRODUKT':'INSIDE THE PRODUCT'}</p><h3 id="ai-workspace-title">{locale==='de'?'Ein Arbeitsbereich für Wissen und nächste Schritte.':'A workspace for knowledge and next steps.'}</h3><p>{locale==='de'?'Chat, Knowledge, Agents und Travel verbinden Gespräche mit eigenem Wissen und geführten Aufgaben. Die Produktdokumentation erklärt die verfügbaren Funktionen und ihre Grenzen.':'Chat, Knowledge, Agents and Travel connect conversations with your knowledge and guided tasks. The product documentation explains the available features and their boundaries.'}</p></div><ProductProof product="ai" locale={locale}/></section>}
+      {product.id==='robot'&&<section className={styles.workspace} aria-label={locale==='de'?'Die Simulator-Oberfläche':'Inside the simulator'}><div><p className="eyebrow">{locale==='de'?'SOFTWARE-SIMULATION':'SOFTWARE SIMULATION'}</p><h3>{locale==='de'?'Vorschlagen. Prüfen. Den Zustand verstehen.':'Propose. Review. Understand the state.'}</h3><p>{locale==='de'?'Die geschützte Oberfläche trennt Vorschlag, Bestätigung, simulierten Zustand und Stop. Eine Administratorberechtigung ist keine verbundene oder qualifizierte Hardware.':'The protected interface separates proposals, confirmation, simulated state and Stop. Administrator permission is distinct from connected or qualified hardware.'}</p></div><ProductProof product="robot" locale={locale}/></section>}
+    </article>{product.id==='ai'&&<><ApplicationDirections locale={locale}/><IndustrialAI locale={locale}/></>}</Fragment>)}
+  </section></>;
 }
