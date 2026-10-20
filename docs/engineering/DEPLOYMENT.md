@@ -49,6 +49,24 @@ feature flags, fixed OIDC client and qualified activation sequence. Follow
 [Engineering Docs identity](ENGINEERING_DOCS_IDENTITY.md); do not enable it from
 a business-website release or weaken Access/owner authentication.
 
+## Current About leadership release
+
+Accepted 2026-10-20: frontend `a5c742cfa305f039be9e1ec4b76ed57c025ed8ed`, Vercel `dpl_BNXcsQvXM7S5NbmNrr3VB9pwkmhC`, serves the canonical Company
+and Portal hosts. This supersedes only the previous frontend identity; Home, sign-in,
+administration and backend behavior are retained. About uses the owner-supplied photo,
+updated engineering employers and Sasol Solar Challenge participation in EN/DE.
+
+Full first-attempt dev/PR/staging/main checks passed.16 exact-source staged and16
+canonical public views pass light/dark, mobile/landscape/desktop, enlarged text and
+automated accessibility. Original local Axe-observer setup error was corrected before
+the passing local16-view result; it was not a hosted qualification or bypass.
+
+API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker `3fad26e460e6903d51e5e1428b6bb14658609813`
+and scanner are retained. Direct API container/image/configuration/health proof is
+bound to this frontend publication. Anonymous administration remains denied. No
+backend deployment, database/account mutation, migration or protection change occurred.
+Protected Engineering Docs and G14 retain their separately recorded status.
+
 ## Current Company and sign-in release — 2026-10-19
 
 Frontend `56eb17c80cfff656608005c60c3ca8d2c9da09a2`, Vercel `dpl_BcvxvfeoSCa3zLapdrWx1F5wAXZh`, is accepted at the canonical Company
