@@ -302,8 +302,11 @@ for(const locale of ['en','de'] as const)test(`${locale}: the company introduces
  await tracks.getByRole('link',{name:'Industrial AI',exact:false}).click();
  await expect(page).toHaveURL(new RegExp(`/${locale}/products#industrial-ai$`));
  const industrial=page.locator('#industrial-ai');await expect(industrial).toBeInViewport();
- await expect(industrial.getByRole('figure')).toContainText(locale==='en'?'Cause unknown':'Ursache unbekannt');
- await expect(industrial.getByRole('figure')).toContainText(locale==='en'?'No AI-generated result':'Keine KI-Ausgabe');
+ const assembly=industrial.getByRole('img',{name:locale==='en'?'Illustration of industrial robotic arms assembling a silver car body on an automotive production line.':'Illustration von Industrieroboterarmen bei der Montage einer silbernen Karosserie an einer Automobilproduktionslinie.'});
+ await assembly.scrollIntoViewIfNeeded();await expect(assembly).toBeVisible();
+ await expect.poll(()=>assembly.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0)).toBe(true);
+ await expect(industrial).not.toContainText(/DEMO-01|SYNTHETIC EXAMPLE|SYNTHETISCHES BEISPIEL|· PLANNED|· GEPLANT/);
+ await expect(industrial).toContainText(locale==='en'?'Our next development track':'Unser nächster Entwicklungsbereich');
  await expect(industrial.getByRole('link')).toHaveAttribute('href',`/${locale}/contact?topic=industrial`);
  await expect(page.locator('#platform-applications')).toContainText(locale==='en'?'planned applications':'geplante Anwendungen');
  await expect(page.locator('#product-ai').locator('xpath=..')).not.toContainText(/AGI|autonomous ground|autonome Boden/);
