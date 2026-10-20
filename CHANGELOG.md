@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Replace the Industrial AI synthetic stop timeline with responsive automotive
+  assembly imagery. Remove the planned eyebrow suffix and redundant image caveats;
+  preserve the accurate development-track description and approved Home hero.
+
 - Measure public navigation readiness with one atomic browser observation of the
   same URL, visible product headings and exact documentation links. Start its
   clock at the trusted browser click and report driver delay separately. Preserve

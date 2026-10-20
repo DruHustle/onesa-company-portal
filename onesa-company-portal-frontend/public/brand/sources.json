@@ -541,6 +541,39 @@
         }
       ],
       "use": "Homepage hero artwork; does not represent available physical hardware"
+    },
+    {
+      "role": "Industrial AI automotive assembly illustration",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-20",
+        "source": "Original generated illustration; not an Onesa deployment or customer facility",
+        "prompt": "Create a premium photorealistic editorial illustration for the Industrial AI section of a technology company website. Landscape 3:2 composition. A precisely engineered industrial robotic arm in the foreground working beside an unfinished silver car body on a modern automotive assembly line, additional assembly robots receding into the background. Clean organized factory, believable joints and tooling, refined cool steel and blue lighting with restrained warm safety accents, realistic materials, cinematic architectural photography, crisp focal subject, visual depth. No people, logos, branding, text, labels, charts, UI overlays or watermarks. This is illustrative automotive manufacturing imagery, not a named company\u2019s real factory.",
+        "sha256": "efd1a028036be2c81720033a2f61010281f5cd6231b5e25065fed1ef251b7d4a"
+      },
+      "processing": {
+        "tool": "sharp",
+        "quality": 76,
+        "effort": 6,
+        "operation": "Proportional resizing and WebP encoding; no crop"
+      },
+      "images": [
+        {
+          "path": "/images/industry-automotive-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 43674,
+          "sha256": "ce2e2b7a284776f1d7c7cea57b116c9613bd87bd74610107037eb7bea84ff22d"
+        },
+        {
+          "path": "/images/industry-automotive-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 119612,
+          "sha256": "897cc2808444d152804716dcb20969959fd1fd1cd0996c0ba253c9784f415574"
+        }
+      ],
+      "use": "Home Industrial AI preview and Products Industrial AI section; responsive, lazy-loaded illustration with descriptive English/German alt text."
     }
   ],
   "product_interface_examples": {
