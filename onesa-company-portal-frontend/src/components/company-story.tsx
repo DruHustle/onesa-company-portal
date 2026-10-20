@@ -1,4 +1,5 @@
 import type { Locale } from "@/config/copy";
+import Image from "next/image";
 import { company } from "@/config/company";
 import { ResponsiveLink as Link } from "./responsive-link";
 import styles from "./company-story.module.css";
@@ -51,6 +52,14 @@ export function CompanyStory({ locale }: { locale: Locale }) {
       </section>
       <section className={styles.leadership}>
         <div>
+          <Image
+            className={styles.portrait}
+            src="/images/andrew-gotora-800.webp"
+            alt={de ? "Porträt von Andrew Gotora" : "Portrait of Andrew Gotora"}
+            width={800}
+            height={800}
+            sizes="(max-width: 760px) min(100vw - 48px, 400px), 400px"
+          />
           <p className="eyebrow">
             {de ? "LEITUNG & UNTERNEHMEN" : "LEADERSHIP & COMPANY"}
           </p>
@@ -65,24 +74,21 @@ export function CompanyStory({ locale }: { locale: Locale }) {
           <h3>{de ? "Technischer Hintergrund" : "Engineering background"}</h3>
           <p>
             {de
-              ? "Andrew Gotora verbindet Erfahrung in Full-Stack-Softwareentwicklung, IoT, DevOps und Elektronik. Er hat an Projekten in Bergbau, Landwirtschaft und Fertigung gearbeitet und nahm am AFRIKA KOMMT!-Programm 2021–2023 teil. Bei Onesa bringt er diesen Hintergrund in die Entwicklung der KI-Plattform, ihrer Anwendungen und der Robotik-Software ein."
-              : "Andrew Gotora brings experience in full-stack software engineering, IoT, DevOps and electronics. His work spans projects in mining, agriculture and manufacturing, and he participated in the 2021–2023 AFRIKA KOMMT! programme. At Onesa, he applies this background to the development of the AI platform, its applications and robotics software."}
+              ? "Andrew Gotora verbindet Full-Stack-Softwareentwicklung, IoT, DevOps und Elektronik mit praktischer Industrieerfahrung. Sein technischer Hintergrund umfasst die Arbeit bei Gearral, thyssenkrupp und HENSOLDT sowie Projekte in Bergbau, Landwirtschaft und Fertigung. Bei Onesa bringt er diese Erfahrung in die Entwicklung der KI-Plattform, ihrer Anwendungen und der Robotik-Software ein."
+              : "Andrew Gotora combines full-stack software engineering, IoT, DevOps and electronics with practical industrial experience. His engineering background includes work at Gearral, thyssenkrupp and HENSOLDT, alongside projects in mining, agriculture and manufacturing. At Onesa, he applies this experience to the AI platform, its applications and robotics software."}
+          </p>
+          <p>
+            {de
+              ? "Sein Interesse an erneuerbaren Energien umfasst auch die Teilnahme an der Sasol Solar Challenge in Südafrika, bei der solarbetriebene Fahrzeuge unter realen Bedingungen erprobt werden. Diese Erfahrung ergänzt seinen Blick auf das Zusammenspiel von Software, Elektronik und energieeffizienten Systemen."
+              : "His renewable-energy experience includes participation in the Sasol Solar Challenge in South Africa, where solar-powered vehicles are tested in real-world conditions. That experience complements his work at the intersection of software, electronics and energy-efficient systems."}
           </p>
           <p>
             <a
-              href="https://www.linkedin.com/in/andrew-gotora-72966068"
+              href="https://www.linkedin.com/in/andrewgotora/"
               target="_blank"
               rel="noopener noreferrer"
             >
               {de ? "LinkedIn-Profil" : "LinkedIn profile"}
-            </a>{" "}
-            ·{" "}
-            <a
-              href="https://afrika-kommt.de/person/andrew-m-gotora/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              AFRIKA KOMMT!
             </a>
           </p>
           <Link href={`/${locale}/impressum`}>
