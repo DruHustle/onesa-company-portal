@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Await the completed selected picture request before decoding product examples in browser regressions; preserve light/dark image and no-layout-shift assertions, including Firefox lazy loading.
+
 - Present the preserved Company Home with separate AI Platform (Applications / planned Industrial AI) and Robotics / Physical AI pillars; add a labelled synthetic industrial example and topic-specific links. Fix Products reflow at320px with enlarged German text. Source is prepared; no production acceptance is claimed.
 
 - Measure public navigation readiness with one atomic browser observation of the
