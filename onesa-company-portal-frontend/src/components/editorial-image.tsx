@@ -2,6 +2,7 @@ import type {Locale} from '@/config/copy';
 import styles from './editorial-image.module.css';
 
 const images = {
+  automotive: {prefix:'industry', en:'Illustration of industrial robotic arms assembling a silver car body on an automotive production line.', de:'Illustration von Industrieroboterarmen bei der Montage einer silbernen Karosserie an einer Automobilproduktionslinie.'},
   enterprise: {prefix:'industry', en:'Illustrative contemporary workspace with glass meeting rooms and computer workstations.', de:'Illustrativer moderner Arbeitsbereich mit gläsernen Besprechungsräumen und Computerarbeitsplätzen.'},
   industrial: {prefix:'industry', en:'Illustrative industrial sensor and orderly metal pipework.', de:'Illustrativer Industriesensor an einer geordneten Anlage aus Metallrohren.'},
   manufacturing: {prefix:'industry', en:'Illustrative robotic arm beside a precision metal component in a manufacturing cell.', de:'Illustrativer Roboterarm neben einem Präzisionsbauteil in einer Fertigungszelle.'},
