@@ -2,10 +2,6 @@
 
 ## Unreleased
 
-- Replace the Industrial AI synthetic stop timeline with responsive automotive
-  assembly imagery. Remove the planned eyebrow suffix and redundant image caveats;
-  preserve the accurate development-track description and approved Home hero.
-
 - Measure public navigation readiness with one atomic browser observation of the
   same URL, visible product headings and exact documentation links. Start its
   clock at the trusted browser click and report driver delay separately. Preserve
@@ -54,6 +50,21 @@
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
 
+
+## 2026-10-20 — Industrial AI automotive imagery accepted
+
+- Frontend `c1516ca8445e70cd8c02eeb120a5f98f2141db98`, Vercel
+  `dpl_54Y64HeR1Kww6AEcpXMXeRvkAkss`, is accepted on Company/Portal. Replace the
+  synthetic stop timeline with responsive automotive robot-arm imagery; remove
+  the requested caveats and planned eyebrow suffix in English/German. Keep the
+  development-track description and preserve the approved Home hero byte-for-byte.
+- All required exact-main CI,48 hosted staging and16 canonical responsive/system-
+  appearance/accessibility views pass. Actual production checks verify the new image
+  loads, the old text is absent and enlarged text fits. Local Firefox could not launch
+  its temporary profile; required hosted browser CI passed without a skip or override.
+- Retain API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker `3fad26e` and scanner.
+  Readiness200 and anonymous session401 pass. No backend, identity, data or physical
+  operation change; no measured performance improvement or new integration is claimed.
 
 ## 2026-10-20 — Company product hierarchy and interface examples accepted
 
