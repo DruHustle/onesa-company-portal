@@ -51,7 +51,36 @@ protected Docs publication remain separate verification. Follow [Engineering Doc
 identity](ENGINEERING_DOCS_IDENTITY.md); a public website release changes none of
 those controls or Access/owner authentication.
 
+## Current Industrial AI imagery release — 2026-10-20
+
+Frontend `c1516ca8445e70cd8c02eeb120a5f98f2141db98`, Vercel
+`dpl_54Y64HeR1Kww6AEcpXMXeRvkAkss`, is accepted at Company/Portal. The owner-requested
+automotive assembly image replaces the synthetic timeline on Home/Products; the
+requested image caveats and planned eyebrow suffix are removed in English/German.
+Industrial AI remains accurately described as a development track. The approved
+Home hero, private workflows and all backend code remain unchanged.
+
+The normal dev/staging/main PR process passed all required first-attempt checks.
+The verified staging Preview source `f59200b94cd1e340165d968e91004331bb62e0f7`,
+Vercel `dpl_3BSfdCj1V7RFGyjtsz7zHzK6zEWf`, passed48 affected views. Production
+passed16 EN/DE light/dark mobile/desktop accessibility/reflow views, decoded all
+images before capture, and asserted the exact requested text removals. Readiness
+returned200 and anonymous session access401. Native Safari/physical-device or
+current authenticated production acceptance is not inferred from these checks.
+
+The API remains `4e47e3102a3a90054725cc06ad46b95339e0e544`, with worker `3fad26e`
+and scanner independently retained. No backend activation, migration or business-
+record test write accompanied this release. The generated image provenance/prompt
+and responsive asset hashes are in the existing brand source manifest. Earlier
+loading observations predate this image release; no before/after speed claim is made.
+Restricted receipts and before/after captures remain in the existing release-audit
+location. The prior accepted frontend `cb0221ed90c1088827f414f4fab00cf3930b160c` /
+`dpl_DR5BQ8TeAYwGuYS5XnrU6FMxF6U4` is the retained rollback reference; verify current
+provider state and use the same owner-controlled process before any rollback.
+
 ## Current Company product hierarchy release — 2026-10-20
+
+Historical acceptance record; the current imagery release is recorded above.
 
 Frontend `cb0221ed90c1088827f414f4fab00cf3930b160c`, Vercel `dpl_DR5BQ8TeAYwGuYS5XnrU6FMxF6U4`, is accepted on the canonical Company
 and Portal hosts. Home introduces Onesa, then presents AI Platform Applications /
