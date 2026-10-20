@@ -5,13 +5,17 @@ Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md#verified-production-hosting-cutover--2026-10-16)
 for source identities, protected ingress, acceptance and rollback.
 
-The current public product hierarchy frontend `cb0221ed90c1088827f414f4fab00cf3930b160c` is accepted at Vercel
-`dpl_DR5BQ8TeAYwGuYS5XnrU6FMxF6U4` on Company/Portal. It preserves the approved Home hero and About
-portrait, separates Applications / planned Industrial AI from Robotics / Physical AI,
-and adds explicitly synthetic interface examples.48 staged and16 canonical views
-pass. API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker and scanner are retained;
-no backend activation or production record mutation accompanied this release.
-See the [current public component release](docs/engineering/DEPLOYMENT.md#current-company-product-hierarchy-release--2026-10-20).
+The current public frontend `c1516ca8445e70cd8c02eeb120a5f98f2141db98` is accepted
+at Vercel `dpl_54Y64HeR1Kww6AEcpXMXeRvkAkss` on Company/Portal. The Industrial AI
+section now uses responsive automotive assembly imagery in place of the synthetic
+stop timeline; the requested image caveats and planned eyebrow suffix are removed.
+Accurate development-track copy, the approved Home hero, About portrait and protected
+workflows remain. All required main CI,48 staged views and16 canonical views pass.
+API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker and scanner are retained;
+no backend activation or production business-record mutation accompanied the release.
+See the [current imagery release](docs/engineering/DEPLOYMENT.md#current-industrial-ai-imagery-release--2026-10-20).
+The earlier product-hierarchy source `cb0221ed90c1088827f414f4fab00cf3930b160c` /
+`dpl_DR5BQ8TeAYwGuYS5XnrU6FMxF6U4` remains a historical accepted record.
 
 The previously accepted About leadership update is frontend `a5c742cfa305f039be9e1ec4b76ed57c025ed8ed` at Vercel `dpl_BNXcsQvXM7S5NbmNrr3VB9pwkmhC`.
 The owner-supplied portrait and engineering/renewable-energy biography passed source
