@@ -297,6 +297,17 @@ real codec, video asset or performance claim. A no-JavaScript visitor retains th
 poster and actual HTML content. macOS Firefox uses its own application-data directory;
 synthetic browser scratch may need owner cleanup because of macOS protected folders.
 
+## Engineering sign-in request feedback
+
+After a frontend build, run
+`npm --prefix onesa-company-portal-frontend run test:engineering-sign-in`. The isolated
+renderer covers delayed-send disabled visuals in system light/dark appearance,
+duplicate submission prevention, failed-send email preservation, error clearance
+on retry, resend cooldown, expired interaction restart and stalled-request recovery.
+The fixture sends no real mail and grants no hosted membership. Browser feedback
+checks complement the backend registration/link tests; they do not prove delivery
+to a real mailbox or production Engineering Docs access.
+
 ## Node TLS trust regression
 
 Use Node 24.12 or later in the 24 series. Run
