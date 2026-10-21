@@ -21,22 +21,22 @@ async function proxy(
     surface(origin) === "company" ||
     process.env.ENGINEERING_SIGNIN_ENABLED !== "true"
   )
-    return Response.json({ error: "Sign-in unavailable" }, { status: 404 });
+    return Response.json({ error: { code: "ENGINEERING_SIGN_IN_UNAVAILABLE" } }, { status: 404 });
   if (
     !/^[A-Za-z0-9_-]{8,128}$/.test(uid) ||
     !["details", "start", "verify", "link", "link-verify", "password"].includes(action) ||
     (request.method === "GET") !== (action === "details")
   )
-    return Response.json({ error: "Invalid sign-in request" }, { status: 400 });
+    return Response.json({ error: { code: "ENGINEERING_PROTOCOL" } }, { status: 400 });
   if (request.method === "POST" && request.headers.get("origin") !== origin)
-    return Response.json({ error: "Untrusted origin" }, { status: 403 });
+    return Response.json({ error: { code: "ORIGIN" } }, { status: 403 });
   const headers = new Headers({ "Content-Type": "application/json" });
   for (const key of ["cookie", "origin", "sec-fetch-site"]) {
     const value = request.headers.get(key);
     if (value) headers.set(key, value);
   }
   if (!process.env.PROXY_SHARED_KEY)
-    return Response.json({ error: "Sign-in unavailable" }, { status: 503 });
+    return Response.json({ error: { code: "ENGINEERING_SIGN_IN_UNAVAILABLE" } }, { status: 503 });
   headers.set("x-portal-proxy-key", process.env.PROXY_SHARED_KEY);
   headers.set(
     "x-portal-client-ip",
@@ -47,7 +47,7 @@ async function proxy(
     if (request.method === "POST") {
       if (Number(request.headers.get("content-length") || 0) > 2048)
         return Response.json(
-          { error: "Invalid sign-in request" },
+          { error: { code: "FILE_SIZE" } },
           { status: 413 },
         );
       const reader = request.body?.getReader(),
@@ -61,7 +61,7 @@ async function proxy(
             count += value.byteLength;
             if (count > 2048)
               return Response.json(
-                { error: "Invalid sign-in request" },
+                { error: { code: "FILE_SIZE" } },
                 { status: 413 },
               );
             chunks.push(value);
@@ -94,7 +94,7 @@ async function proxy(
       },
     );
     if (response.status >= 300 && response.status < 400)
-      return Response.json({ error: "Sign-in unavailable" }, { status: 502 });
+      return Response.json({ error: { code: "ENGINEERING_REDIRECT" } }, { status: 502 });
     const output = new Headers({
       "Content-Type": "application/json",
       "Cache-Control": "private, no-store",
@@ -107,7 +107,7 @@ async function proxy(
     });
   } catch {
     return Response.json(
-      { error: "Sign-in temporarily unavailable" },
+      { error: { code: "BACKEND_UNAVAILABLE" } },
       { status: 503 },
     );
   }

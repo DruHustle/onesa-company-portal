@@ -197,5 +197,6 @@ fieldset.admin-content{border:0;margin:0;padding:0;min-inline-size:0}
 
 /* Method selectors stay neutral; the primary sign-in action owns the accent fill. */
 .engineering-auth-shell .signin-methods button[aria-pressed=true]:not(:disabled){background:var(--onesa-surface);color:var(--ink);border-color:var(--onesa-accent);box-shadow:inset 0 0 0 1px var(--onesa-accent);font-weight:700}
-.engineering-auth-shell .engineering-link-sent .button{background:var(--onesa-canvas);color:var(--ink);border:1px solid var(--onesa-border)}
+.engineering-auth-shell .engineering-sent-notice{margin:12px 0;font-weight:600;color:var(--ink)}
+.engineering-auth-shell .engineering-link-sent .button{background:var(--onesa-accent);color:var(--onesa-on-accent);border:1px solid var(--onesa-accent)}
 .engineering-auth-shell .engineering-link-sent .button:disabled{background:var(--onesa-surface);color:var(--onesa-muted)}
