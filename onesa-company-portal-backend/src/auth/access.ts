@@ -117,7 +117,9 @@ async function link(
         path +
         "#access-link=" +
         raw +
-        "\nThe link expires in 15 minutes and can be used once. Opening the email alone does not sign you in. If you did not request this, ignore it.",
+        (purpose === "engineering"
+          ? "\nYou can open this link in any browser. Confirm the email address shown on Onesa Portal to finish signing in. The link expires in 15 minutes and can be used once. Opening the email alone does not sign you in. If you did not request this, ignore it."
+          : "\nThe link expires in 15 minutes and can be used once. Opening the email alone does not sign you in. If you did not request this, ignore it."),
     ),
   });
 }
@@ -440,6 +442,22 @@ export async function consumeEngineeringLink(
     );
     return String(r.id);
   });
+}
+/** Inspect a bearer link without consuming it or establishing a login. */
+export async function inspectEngineeringLink(
+  raw: string,
+  interaction: string,
+  externalEmails: readonly string[],
+) {
+  const row = (
+    await db.query(
+      "SELECT m.email,l.expires_at FROM access_links l JOIN engineering_memberships m ON m.id=l.membership_id WHERE l.token_hash=$1 AND l.purpose='engineering' AND l.interaction_uid=$2 AND l.consumed_at IS NULL AND l.expires_at>now() AND m.enabled AND l.identity_hash=m.revision::text",
+      [hash(raw), interaction],
+    )
+  ).rows[0];
+  if (!row || !engineeringEmailAllowed(row.email, externalEmails))
+    throw invalidLink();
+  return { email: String(row.email), expiresAt: new Date(row.expires_at).getTime() };
 }
 export async function engineeringPasswordAccount(
   email: string,

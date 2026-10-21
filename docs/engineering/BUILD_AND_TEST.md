@@ -311,6 +311,18 @@ The fixture sends no real mail and grants no hosted membership. Browser feedback
 checks complement the backend registration/link tests; they do not prove delivery
 to a real mailbox or production Engineering Docs access.
 
+The Engineering identity integration suite also checks an emailed link opened in
+a browser with no original interaction cookie, including expiration of the original
+interaction, a fresh PKCE/nonce/state exchange and explicit confirmation. Preparation
+does not consume the link; replay, wrong Origin/CSRF, tampered/expired handoff and
+disabled membership fail. The isolated UI fixture models the canonical redirect to
+a fresh interaction and verifies that no token enters a request URL or browser
+storage. It sends no real email and does not grant production membership.
+
+The maintained `navigation.spec.ts` homepage-topic journeys check distinct focused
+destinations, matching headings, substantive content and reloads in both languages.
+The complete Technology overview and its legacy bookmarked anchors remain supported.
+
 ## Node TLS trust regression
 
 Use Node 24.12 or later in the 24 series. Run

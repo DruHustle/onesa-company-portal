@@ -92,6 +92,22 @@ expected revision and access-policy evidence. An engineering identity has no Por
 role. The exact Cloudflare email policy remains an independent requirement. See
 [Engineering Docs access](../engineering/ENGINEERING_DOCS_IDENTITY.md).
 
+## Cross-browser Engineering email links (prepared)
+
+`POST /engineering-sign-in/{uid}/link-prepare` validates an unconsumed engineering
+link and its original membership revision through the exact Portal proxy/Origin.
+It sets an encrypted, Secure, HttpOnly, host-only handoff cookie for at most five
+minutes and returns only the fixed `/engineering` destination. It neither consumes
+the link nor signs in. The receiving browser obtains its own fresh OIDC state,
+PKCE and interaction cookie through the normal Access flow. Details can then show
+the verified `linkEmail`; `handoff-verify` requires that fresh interaction, Origin,
+CSRF and explicit confirmation before atomic one-use redemption of the original
+link. Expired, used, tampered or offboarded links fail closed. The link's separate
+15-minute lifetime remains enforced even if its original interaction has expired.
+No new Portal role, database migration or privileged Access bypass is introduced.
+Existing administrator email links and MFA are unchanged. Deployment and actual
+Access acceptance must be recorded separately from generated contracts/local tests.
+
 ## Working drafts and published editions
 
 Migration 012 adds a private published snapshot and the `published_content` read

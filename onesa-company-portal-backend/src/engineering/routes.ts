@@ -15,6 +15,7 @@ import { reauthenticate } from "../auth/reauthenticate.js";
 import type { Role } from "../access/roles.js";
 import { error } from "../api/contracts.js";
 import { createEngineeringProvider } from "./provider.js";
+import { engineeringHandoffCookie, engineeringHandoffOptions, prepareEngineeringHandoff, readEngineeringHandoff } from "./link-handoff.js";
 import {
   engineeringIdentityConfiguration,
   engineeringEmailAllowed,
@@ -89,7 +90,7 @@ export async function registerEngineeringIdentity(
       throw new HttpError(
         401,
         "ENGINEERING_INTERACTION",
-        "Sign-in request expired. Return to Engineering Docs.",
+        "Sign-in request is not active in this browser. Open your latest email link or return to Engineering Docs.",
       );
     }
     const requested = (req.params as { uid: string }).uid;
@@ -101,7 +102,7 @@ export async function registerEngineeringIdentity(
       throw new HttpError(
         403,
         "ENGINEERING_INTERACTION",
-        "Sign-in request expired. Return to Engineering Docs.",
+        "Sign-in request is not active in this browser. Open your latest email link or return to Engineering Docs.",
       );
     return details;
   }
@@ -177,7 +178,7 @@ export async function registerEngineeringIdentity(
         ...meta("engineeringSignInDetails"),
         params,
         response: {
-          200: z.object({ csrf: proof, emailSent: z.boolean() }),
+          200: z.object({ csrf: proof, emailSent: z.boolean(), linkEmail: z.email().optional() }),
           ...errors,
         },
       },
@@ -186,12 +187,35 @@ export async function registerEngineeringIdentity(
       await limits.limit("engineering-details:" + limits.address(req), 60, 900);
       await interaction(req, reply);
       const { config } = configured();
+      const cookie = req.cookies[engineeringHandoffCookie];
+      let linkEmail: string | undefined;
+      if (cookie) {
+        try { linkEmail = (await readEngineeringHandoff(cookie, env.PUBLIC_ORIGIN, config.externalEmails)).email; }
+        catch (error) { reply.clearCookie(engineeringHandoffCookie, engineeringHandoffOptions); throw error; }
+      }
       return {
         csrf: interactionProof(config, req.params.uid),
         emailSent: await challengeExists(req.params.uid),
+        ...(linkEmail ? { linkEmail } : {}),
       };
     },
   );
+  api.post("/api/v1/engineering-sign-in/:uid/link-prepare", {
+    logLevel: "silent",
+    schema: { ...meta("prepareEngineeringSignInLink"), params,
+      body: z.object({ token: z.string().regex(/^[a-f0-9]{64}$/) }),
+      response: { 200: z.object({ continuePath: z.literal("/engineering") }), ...errors } },
+  }, async (req, reply) => {
+    const { config } = configured();
+    if (req.headers.origin !== env.PUBLIC_ORIGIN || !env.PROXY_SHARED_KEY || req.headers["x-portal-proxy-key"] !== env.PROXY_SHARED_KEY)
+      throw new HttpError(403, "ORIGIN", "Open the sign-in link on Onesa Portal.");
+    await limits.limit("engineering-link-prepare:" + limits.address(req), 10, 900);
+    const value = await prepareEngineeringHandoff(req.body.token, req.params.uid, env.PUBLIC_ORIGIN, config.externalEmails);
+    reply.setCookie(engineeringHandoffCookie, value.cookie, { ...engineeringHandoffOptions, maxAge: value.maxAge });
+    // Re-enter Access through the fixed canonical destination. This browser gets
+    // its own fresh OIDC state/PKCE and interaction cookie; no old cookie is copied.
+    return { continuePath: "/engineering" as const };
+  });
   const verifiedInteraction = async (
     req: FastifyRequest,
     reply: FastifyReply,
@@ -292,10 +316,12 @@ export async function registerEngineeringIdentity(
       );
     return { continuePath: next.pathname };
   }
-  for (const action of ["link", "link-verify", "password"] as const) {
+  for (const action of ["link", "link-verify", "handoff-verify", "password"] as const) {
     const body =
       action === "link"
         ? z.object({ csrf: proof, email: z.email().max(254) })
+        : action === "handoff-verify"
+          ? z.object({ csrf: proof })
         : action === "password"
           ? z.object({
               csrf: proof,
@@ -317,6 +343,7 @@ export async function registerEngineeringIdentity(
             {
               link: "requestEngineeringSignInLink",
               "link-verify": "verifyEngineeringSignInLink",
+              "handoff-verify": "verifyEngineeringLinkHandoff",
               password: "engineeringPasswordSignIn",
             }[action],
           ),
@@ -375,6 +402,13 @@ export async function registerEngineeringIdentity(
             ),
             "pwd",
           );
+        }
+        if (action === "handoff-verify") {
+          const cookie = req.cookies[engineeringHandoffCookie];
+          reply.clearCookie(engineeringHandoffCookie, engineeringHandoffOptions);
+          if (!cookie) throw new HttpError(401, "ACCESS_LINK", "Open your latest sign-in email link again.");
+          const target = await readEngineeringHandoff(cookie, env.PUBLIC_ORIGIN, config.externalEmails);
+          return finish(req, reply, await consumeEngineeringLink(target.token, target.interaction, config.externalEmails), "email_link");
         }
         return finish(
           req,

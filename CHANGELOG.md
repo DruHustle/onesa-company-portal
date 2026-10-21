@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Prepare cross-browser Engineering Docs email links. A valid link starts a fresh
+  receiving-browser OIDC interaction through an encrypted, origin-bound five-minute
+  handoff; showing the verified email and explicit confirmation precede one-use
+  redemption. Original link expiry, membership revision, Origin/CSRF, PKCE and admin
+  MFA remain enforced. Local protocol/UI checks do not establish hosted acceptance.
+- Give each homepage engineering row a focused Technology topic view, with its own
+  heading and explanation; retain the complete overview and legacy anchor bookmarks.
+  Preserve the approved Home hero. Physical-device acceptance of the changed links
+  remains separate from the owner's preceding VoiceOver report.
+
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.

@@ -42,7 +42,7 @@ const api = http.createServer(async (req, res) => {
     res.end(JSON.stringify(registrationConfirmation)); return;
   }
   const match = req.url.match(
-    /^\/api\/v1\/engineering-sign-in\/([A-Za-z0-9_-]+)\/(details|link|password|link-verify)$/,
+    /^\/api\/v1\/engineering-sign-in\/([A-Za-z0-9_-]+)\/(details|link|password|link-verify|link-prepare|handoff-verify)$/,
   );
   if (!match) {
     res.writeHead(404).end("{}");
@@ -58,10 +58,15 @@ const api = http.createServer(async (req, res) => {
     }
   }
   if (action === "details") {
-    res.end(JSON.stringify({ csrf: proof, emailSent: states.has(uid) }));
+    res.end(JSON.stringify({ csrf: proof, emailSent: states.has(uid), ...(req.headers.cookie?.includes("onesa_ui_handoff=fixture") ? {linkEmail: "synthetic-engineer@onesa.eu"} : {}) }));
     return;
   }
   const input = JSON.parse(body);
+  if (action === "link-prepare") {
+    if (input.token !== proof) { res.writeHead(401).end('{}'); return; }
+    res.setHeader('set-cookie', 'onesa_ui_handoff=fixture; Path=/; HttpOnly; SameSite=Lax');
+    res.end(JSON.stringify({continuePath: '/engineering'})); return;
+  }
   if (input.csrf !== proof) {
     res.writeHead(403).end("{}");
     return;
@@ -75,8 +80,8 @@ const api = http.createServer(async (req, res) => {
     res.writeHead(401).end('{"error":"synthetic-invalid-code"}');
     return;
   }
-  if (action === "link-verify") {
-    if (input.token !== proof) { res.writeHead(401).end("{}"); return; }
+  if (action === "link-verify" || action === "handoff-verify") {
+    if (action === "link-verify" && input.token !== proof) { res.writeHead(401).end("{}"); return; }
     engineeringConfirmations++;
   }
   res.end(
@@ -246,7 +251,7 @@ try {
       await page.route("**/engineering/sign-in/synthetic_expired_01/link", route => route.fulfill({status: 401, json: {error: {code: "ENGINEERING_INTERACTION"}}}));
       await page.getByLabel("Email address").fill("synthetic-engineer@onesa.eu");
       await page.getByRole("button", {name: "Send sign-in link", exact: true}).click();
-      await expect(page.locator("#engineering-sign-in").getByRole("alert")).toContainText("sign-in request has expired");
+      await expect(page.locator("#engineering-sign-in").getByRole("alert")).toContainText("no longer active in this browser");
       await expect(page.locator("form")).toHaveCount(0);
       await expect(page.getByRole("link", {name: "Start a new sign-in", exact: true})).toHaveAttribute("href", "/engineering");
       await page.route("**/engineering/sign-in/synthetic_expired_load_01/details", route => route.fulfill({status: 401, json: {error: {code: "ENGINEERING_INTERACTION"}}}));
@@ -374,10 +379,15 @@ try {
       await page.getByLabel("Email address", {exact: true}).fill("synthetic-engineer@onesa.eu");
       await page.getByRole("button", {name: "Send sign-in link", exact: true}).click();
       await expect(page.getByRole("status")).toHaveText("Sent.");
-      await page.evaluate(() => { window.__onesaLinkDocumentMarker = "same-document"; });
+      const freshUid = linkUid + "_fresh";
+      await page.route(origin + "/engineering", route => route.fulfill({status: 303, headers: {location: origin + "/engineering/sign-in/" + freshUid}}));
+      await page.evaluate(() => { window.__onesaLinkDocumentMarker = "old-request"; });
       await page.goto(origin + "/engineering/sign-in/" + linkUid + "#access-link=" + proof);
       await expect(page.getByRole("button", {name: "Confirm sign-in and open Docs", exact: true})).toBeEnabled();
-      expect(await page.evaluate(() => window.__onesaLinkDocumentMarker)).toBe("same-document");
+      await page.waitForURL(origin + "/engineering/sign-in/" + freshUid);
+      expect(await page.evaluate(() => window.__onesaLinkDocumentMarker)).toBeUndefined();
+      await expect(page.getByText("synthetic-engineer@onesa.eu", {exact: true})).toBeVisible();
+      expect(await page.evaluate(() => [localStorage,sessionStorage].some(store=>Object.values(store).some(value=>value.includes("a".repeat(64)))))).toBe(false);
       expect(new URL(page.url()).hash).toBe("");
       await expect(page.getByRole("heading", { name: "Open Engineering Docs" })).toBeVisible();
       await expect(page.getByRole("group", { name: "Sign-in method" })).toHaveCount(0);
@@ -387,7 +397,7 @@ try {
       if (screenshotDir) await page.screenshot({ path: join(screenshotDir, `confirm-${width}-${mode}.png`), fullPage: true });
       expect(engineeringConfirmations).toBe(beforeConfirmation);
       await page.getByRole("button", {name: "Confirm sign-in and open Docs", exact: true}).click();
-      await page.waitForURL(origin + "/api/v1/engineering-identity/auth/" + linkUid);
+      await page.waitForURL(origin + "/api/v1/engineering-identity/auth/" + freshUid);
       expect(engineeringConfirmations).toBe(beforeConfirmation + 1);
       expect(errors).toEqual([]);
       views.push({
@@ -396,7 +406,7 @@ try {
         systemChangePreservesInput: true,
         failedPasswordRetained: true,
         bothMethodsAvailable: true,
-        sameDocumentEmailLinkConfirmedExplicitly: true,
+        freshBrowserRequestAndExplicitIdentityConfirmation: true,
         axeViolations: 0,
         overflow: false,
       });
