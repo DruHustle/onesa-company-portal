@@ -26,7 +26,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
     window.addEventListener("hashchange", receiveLink);
     fetch("/engineering/sign-in/" + uid + "/details", { cache: "no-store", signal: abort.signal }).then(async response => {
       const value = await response.json();
-      if (!response.ok) { if (value.error?.code === "ENGINEERING_INTERACTION" && active) setExpired(true); throw Error(); } if (!/^[a-f0-9]{64}$/.test(value.csrf)) throw Error();
+      if (!response.ok) { if (value?.error?.code === "ENGINEERING_INTERACTION" && active) setExpired(true); throw Error(); } if (!/^[a-f0-9]{64}$/.test(value.csrf)) throw Error();
       if (active) { setCsrf(value.csrf); setReady(true); }
     }).catch(() => { if (active && !abort.signal.aborted) setNotice("This sign-in request has expired or is unavailable. Return to Engineering Docs to start again in this browser."); });
     return () => { active = false; abort.abort(); window.removeEventListener("hashchange", receiveLink); };
@@ -39,20 +39,21 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
     try {
       const action = method === "password" ? "password" : link ? "link-verify" : "link";
       const response = await fetch("/engineering/sign-in/" + uid + "/" + action, { method: "POST", signal: abort.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ csrf, ...(method === "password" ? { email, password: String(data.get("password")) } : link ? { token: link } : { email }) }) });
-      const value = await response.json();
+      const value = await response.json().catch(() => { throw Error("Sign-in is temporarily unavailable. Please try again."); });
       if (!response.ok) {
-        if (value.error?.code === "ENGINEERING_INTERACTION") { setReady(false); setExpired(true); throw Error("This sign-in request has expired. Start a new sign-in to continue."); }
+        if (value?.error?.code === "ENGINEERING_INTERACTION") { setReady(false); setExpired(true); throw Error("This sign-in request has expired. Start a new sign-in to continue."); }
         throw Error(response.status === 429 ? "Please wait before trying again." : response.status >= 500 ? "Sign-in is temporarily unavailable. Please try again." : "Sign-in could not be completed. Check your details and try again.");
       }
-      if (action === "link") { setSent(true); setResendSeconds(15); setResendUntil(performance.now() + 15000); return; }
-      if (typeof value.continuePath !== "string" || !/^\/api\/v1\/engineering-identity\/auth\/[A-Za-z0-9_-]{8,128}$/.test(value.continuePath)) throw Error("Sign-in could not be completed.");
+      if (action === "link") { if (value?.ok !== true) throw Error("The sign-in request could not be confirmed. Please try again."); setSent(true); setResendSeconds(15); setResendUntil(performance.now() + 15000); return; }
+      if (typeof value?.continuePath !== "string" || !/^\/api\/v1\/engineering-identity\/auth\/[A-Za-z0-9_-]{8,128}$/.test(value.continuePath)) throw Error("Sign-in could not be completed.");
       setLink(null); window.location.assign(value.continuePath);
-    } catch (error) { setNotice(abort.signal.aborted ? "The request took too long. Please try again." : error instanceof Error ? error.message : "Sign-in could not be completed."); }
+    } catch (error) { setNotice(abort.signal.aborted ? "The request took too long. Please try again." : error instanceof TypeError ? "Could not connect. Please try again." : error instanceof Error ? error.message : "Sign-in could not be completed."); }
     finally { window.clearTimeout(timeout); submitting.current = false; setBusy(false); }
   }
   const confirming = method === "link" && Boolean(link);
   const linkSent = sent && method === "link" && !confirming;
-  const controlsDisabled = busy || linkSent;
+  const coolingDown = method === "link" && !confirming && resendSeconds > 0;
+  const controlsDisabled = busy || linkSent || coolingDown;
   return <main className="admin-main admin-auth-shell engineering-auth-shell"><div className="container"><a className="skip-link" href="#engineering-sign-in">Skip to sign-in</a><section className="admin-login" aria-labelledby="engineering-title">
     <div className="admin-product-title"><a href="https://onesa.eu/" aria-label="Onesa company homepage"><img src="/brand/icons/v1/onesa-company.svg" width="48" height="48" alt="Onesa" /></a><small>ONESA PORTAL</small><span className="engineering-access-context">Protected access · {environment}</span></div>
     <h1 id="engineering-title">{confirming ? "Open Engineering Docs" : "Sign in to Engineering Docs"}</h1>
@@ -64,9 +65,9 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
       {ready && <>
         {!confirming && <div className="signin-methods" role="group" aria-label="Sign-in method"><button type="button" disabled={busy} aria-pressed={method === "link"} onClick={() => { setMethod("link"); setNotice(""); }}>Email a sign-in link</button><button type="button" disabled={busy} aria-pressed={method === "password"} onClick={() => { setMethod("password"); setNotice(""); }}>Email and password</button></div>}
         <form ref={formRef} onSubmit={submit} aria-busy={busy}><fieldset disabled={controlsDisabled}><legend className="sr-only">{method === "password" ? "Email and password" : confirming ? "Confirm your sign-in link" : "Your approved email"}</legend>
-          {!confirming && <label>Email address<input name="email" type="email" value={email} onChange={event => setEmail(event.target.value)} disabled={controlsDisabled} autoComplete="username" maxLength={254} required /></label>}
+          {!confirming && <label>Email address<input name="email" type="email" value={email} onChange={event => { setEmail(event.target.value); setSent(false); }} disabled={controlsDisabled} autoComplete="username" maxLength={254} required /></label>}
           {method === "password" && <label>Password<input name="password" type="password" autoComplete="current-password" maxLength={256} required /></label>}
-          <button className="button" type="submit" disabled={controlsDisabled}>{busy ? (method === "link" && !confirming ? "Sending…" : "Signing in…") : method === "password" ? "Sign in to Docs" : confirming ? "Confirm sign-in and open Docs" : linkSent ? "Sent" : "Send sign-in link"}</button>
+          <button className="button" type="submit" disabled={controlsDisabled}>{busy ? (method === "link" && !confirming ? "Sending…" : "Signing in…") : method === "password" ? "Sign in to Docs" : confirming ? "Confirm sign-in and open Docs" : linkSent ? "Sent" : coolingDown ? "Please wait…" : "Send sign-in link"}</button>
         </fieldset></form>
         {sent && !confirming && method === "link" && <div className="engineering-link-sent"><p className="sr-only" role="status">Sent.</p><button className="button" type="button" disabled={busy || resendSeconds > 0} onClick={() => formRef.current?.requestSubmit()}>{busy ? "Sending…" : "Send another link"}</button></div>}
       </>}
