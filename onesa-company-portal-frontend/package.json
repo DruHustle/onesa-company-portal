@@ -16,7 +16,7 @@
     "api:generate": "openapi-typescript ../onesa-company-portal-backend/openapi/openapi.json -o src/lib/api/generated/schema.d.ts",
     "api:check": "python3 ../scripts/check-contracts.py",
     "test:contracts": "python3 ../scripts/test-contract-break.py",
-    "test:domains": "node --test unit/domains.test.ts unit/engineering-identity.test.ts",
+    "test:domains": "node --test unit/domains.test.ts unit/engineering-identity.test.ts unit/engineering-sign-in-errors.test.ts",
     "test:domain-http": "node scripts/test-domain-routing.mjs",
     "test:homepage-loading": "node scripts/test-homepage-loading.mjs",
     "test:public-loading": "node scripts/test-public-loading.mjs",

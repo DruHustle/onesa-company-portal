@@ -13,8 +13,13 @@ Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md)
 for source identities, protected ingress, acceptance and rollback.
 
-The current frontend `9e9fe899df4da272b5a067af577e2b852b7e26b5` is accepted at
-Vercel `dpl_3fXxWik5LnYcSwb3zB2Y43aQXoNk` on Company and Portal (2026-10-21).
+The accepted frontend is `5edd68a53110c0bb3a0db7852876db7701c903de` at Vercel
+`dpl_DXFo75DHBFkzmS5qy4Nebk6s8cYa` on Company and Portal (2026-10-21).
+It adds visible disabled feedback and expired-request recovery to Engineering
+Docs sign-in. The subsequent plain Sent message, five-second resend delay and
+more specific errors remain a separate candidate until qualified and published.
+The previous Node trust frontend was `9e9fe899df4da272b5a067af577e2b852b7e26b5`
+at `dpl_3fXxWik5LnYcSwb3zB2Y43aQXoNk`.
 Oracle API and worker source `8bf6fd60c0b3ca225816f7404afdce1d80d4e1a5` share the
 qualified staging tree; exact-main full CI and production acceptance pass.
 The Node trust correction removes only the affected emSign ECC G3 root before

@@ -366,6 +366,51 @@ test("Engineering registration and password/link authentication grant no Portal 
     /Unable to sign in/,
   );
 });
+test("Engineering password errors distinguish unfinished setup and proven pending approval without changing membership", async () => {
+  const email = "new-password-setup@onesa.eu";
+  await assert.rejects(
+    engineeringPasswordAccount(email, chosenPassword, []),
+    { status: 401, code: "ENGINEERING_REGISTRATION_REQUIRED" },
+  );
+  const before = await db.query("SELECT count(*)::int AS count FROM engineering_memberships WHERE email=$1", [email]);
+  assert.equal(before.rows[0].count, 0);
+  await register(email, "engineering");
+  await assert.rejects(
+    engineeringPasswordAccount(email, chosenPassword, []),
+    { status: 401, code: "ENGINEERING_REGISTRATION_REQUIRED" },
+  );
+  const confirmed = await confirm(await mailToken(email));
+  assert.equal(confirmed.statusCode, 200, confirmed.body);
+  assert.equal(confirmed.json().status, "pending");
+  await assert.rejects(
+    engineeringPasswordAccount(email, "synthetic-incorrect-password", []),
+    { status: 401, code: "CREDENTIALS" },
+  );
+  await assert.rejects(
+    engineeringPasswordAccount(email, chosenPassword, []),
+    { status: 403, code: "ENGINEERING_APPROVAL_PENDING" },
+  );
+  assert.equal((await db.query("SELECT count(*)::int AS count FROM engineering_memberships WHERE email=$1", [email])).rows[0].count, 0);
+  const jobsBefore = (await db.query("SELECT count(*)::int AS count FROM jobs WHERE payload->>'to'=$1", [email])).rows[0].count;
+  await requestEngineeringLink(email, "synthetic_pending_" + randomUUID(), []);
+  assert.equal((await db.query("SELECT count(*)::int AS count FROM jobs WHERE payload->>'to'=$1", [email])).rows[0].count, jobsBefore);
+  await assert.rejects(
+    engineeringPasswordAccount("not-permitted@example.invalid", chosenPassword, []),
+    { status: 401, code: "CREDENTIALS" },
+  );
+});
+test("An approved engineering member can use an email link before configuring a password", async () => {
+  const email = "approved-link-only@onesa.eu", id = randomUUID();
+  await db.query("INSERT INTO engineering_memberships(id,email,enabled,access_policy_evidence,approved_by) VALUES($1,$2,true,'Synthetic existing approval',$3)", [id, email, ownerId]);
+  await assert.rejects(
+    engineeringPasswordAccount(email, chosenPassword, []),
+    { status: 401, code: "ENGINEERING_REGISTRATION_REQUIRED" },
+  );
+  const uid = "synthetic_link_only_" + randomUUID();
+  await requestEngineeringLink(email, uid, []);
+  assert.equal(await consumeEngineeringLink(await mailToken(email, "Your Onesa sign-in link"), uid, []), id);
+  assert.equal((await db.query("SELECT count(*)::int AS count FROM engineering_credentials WHERE membership_id=$1", [id])).rows[0].count, 0);
+});
 test("Administrator magic links require a fresh existing factor, commit failed attempts, expire and redeem once under concurrency", async () => {
   await requestAdminLink("owner@onesa.eu");
   const raw = await mailToken("owner@onesa.eu", "Your Onesa sign-in link");

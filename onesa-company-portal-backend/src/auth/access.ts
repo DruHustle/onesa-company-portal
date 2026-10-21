@@ -455,6 +455,34 @@ export async function engineeringPasswordAccount(
       ).rows[0]
     : undefined;
   const matches = passwordValid(password, r?.password_hash ?? dummy);
+  if (!r && engineeringEmailAllowed(email, externalEmails)) {
+    const setup = (
+      await db.query(
+        "SELECT a.state,a.password_hash,EXISTS(SELECT 1 FROM engineering_credentials c JOIN engineering_memberships m ON m.id=c.membership_id WHERE m.email=$1) AS password_configured FROM (SELECT 1) AS singleton LEFT JOIN access_registrations a ON a.email=$1 AND a.audience='engineering'",
+        [email],
+      )
+    ).rows[0];
+    // Do not mislabel an offboarded/disabled account as unregistered. Approval
+    // details are disclosed only after the pending registration password matches.
+    if (!setup.password_configured) {
+      if (
+        setup.state === "pending" &&
+        setup.password_hash &&
+        passwordValid(password, setup.password_hash)
+      )
+        throw new HttpError(
+          403,
+          "ENGINEERING_APPROVAL_PENDING",
+          "Your Engineering Docs registration is awaiting owner approval.",
+        );
+      if (setup.state === null || setup.state === "unverified")
+        throw new HttpError(
+          401,
+          "ENGINEERING_REGISTRATION_REQUIRED",
+          "Complete Engineering Docs registration to set up password sign-in, or request an emailed sign-in link.",
+        );
+    }
+  }
   if (!r || !matches)
     throw new HttpError(
       401,

@@ -165,7 +165,12 @@ try {
       await expect(page.getByRole("status")).toHaveText("Sent.");
       await expect(page.getByLabel("Email address")).toBeDisabled();
       await expect(page.getByRole("button", { name: "Send another link", exact: true })).toBeDisabled();
-      await page.clock.fastForward(15000);
+      await expect(page.getByRole("status")).toBeVisible();
+      await expect(page.getByRole("status")).toBeFocused();
+      await expect(page.getByRole("button", {name: "Sent", exact: true})).toHaveCount(0);
+      await page.clock.fastForward(4000);
+      await expect(page.getByRole("button", {name: "Send another link", exact: true})).toBeDisabled();
+      await page.clock.fastForward(1000);
       const resend = page.getByRole("button", { name: "Send another link", exact: true });
       await expect(resend).toBeEnabled();
       const resent = page.waitForResponse(r => r.url() === origin + "/engineering/sign-in/synthetic_loading_01/link");
@@ -180,7 +185,7 @@ try {
       await expect(page.getByRole("status")).toHaveCount(0);
       await expect(page.getByRole("button", {name: "Sent", exact: true})).toHaveCount(0);
       await expect(page.getByLabel("Email address")).toBeDisabled();
-      await page.clock.fastForward(15000);
+      await page.clock.fastForward(5000);
       await page.getByRole("button", {name: "Send sign-in link", exact: true}).click();
       await expect(page.getByRole("status")).toHaveText("Sent.");
       expect(states.get("synthetic_loading_01")).toBe("other-synthetic@onesa.eu");
@@ -210,8 +215,8 @@ try {
         await expect(send).toBeDisabled();
         await expect(send).toHaveText("Sending…");
         await expect(page.locator("form")).toHaveAttribute("aria-busy", "true");
-        expect(await email.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(activeInput);
-        expect(await send.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(activeButton);
+        await expect.poll(() => email.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(activeInput);
+        await expect.poll(() => send.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(activeButton);
         await expect(email).toHaveCSS("cursor", "not-allowed");
         await expect(send).toHaveCSS("cursor", "not-allowed");
         await send.hover({force: true});
@@ -255,6 +260,30 @@ try {
       await expect(page.locator("#engineering-sign-in").getByRole("alert")).toContainText("could not be confirmed");
       await expect(page.getByRole("button", {name: "Sent", exact: true})).toHaveCount(0);
       await expect(page.getByLabel("Email address")).toBeEnabled();
+      for (const [code, status, message] of [
+        ["ENGINEERING_REGISTRATION_REQUIRED", 401, "Complete Engineering Docs registration"],
+        ["ENGINEERING_APPROVAL_PENDING", 403, "awaiting owner approval"],
+        ["CREDENTIALS", 401, "Email or password is incorrect"],
+      ]) {
+        const uid = "synthetic_password_" + code;
+        await page.goto(origin + "/engineering/sign-in/" + uid, {waitUntil: "networkidle"});
+        await page.route("**/engineering/sign-in/" + uid + "/password", route => route.fulfill({status, json: {error: {code}}}));
+        await page.getByRole("button", {name: "Email and password", exact: true}).click();
+        await page.getByLabel("Email address").fill("synthetic-engineer@onesa.eu");
+        await page.getByLabel("Password", {exact: true}).fill("synthetic-invalid-password");
+        await page.getByRole("button", {name: "Sign in to Docs", exact: true}).click();
+        await expect(page.locator("#engineering-sign-in").getByRole("alert")).toContainText(message);
+        await expect(page.getByLabel("Password", {exact: true})).toHaveValue("synthetic-invalid-password");
+        await expect(page.getByRole("button", {name: "Sign in to Docs", exact: true})).toBeEnabled();
+        if (code === "ENGINEERING_REGISTRATION_REQUIRED") await expect(page.locator("#engineering-sign-in").getByRole("alert").getByRole("link", {name: "Register for Engineering Docs"})).toHaveAttribute("href", "/access/register?audience=engineering");
+        await page.getByRole("button", {name: "Email a sign-in link", exact: true}).click();
+        await expect(page.locator("#engineering-sign-in").getByRole("alert")).toHaveCount(0);
+      }
+      await page.route("**/engineering/sign-in/synthetic_unavailable_01/details", route => route.fulfill({status: 503, json: {error: {code: "BACKEND_UNAVAILABLE"}}}));
+      await page.goto(origin + "/engineering/sign-in/synthetic_unavailable_01", {waitUntil: "networkidle"});
+      await expect(page.locator("#engineering-sign-in").getByRole("alert")).toContainText("service is temporarily unavailable");
+      await expect(page.locator("#engineering-sign-in").getByRole("alert")).not.toContainText("expired");
+      await expect(page.getByRole("link", {name: "Start a new sign-in", exact: true})).toBeVisible();
       await page.goto(origin + "/engineering/sign-in/synthetic_timeout_01", {waitUntil: "networkidle"});
       await page.clock.install();
       let releaseTimeout;
@@ -312,7 +341,8 @@ try {
       await expect(page.getByRole("status")).toHaveText("Sent.");
       await expect(page.locator("form")).toBeVisible();
       await expect(email).toBeDisabled();
-      await expect(page.getByRole("button", {name: "Sent", exact: true})).toBeDisabled();
+      await expect(page.getByRole("button", {name: "Sent", exact: true})).toHaveCount(0);
+      await expect(page.getByRole("status")).toBeVisible();
       await expect(page.getByRole("link", { name: "Register for Engineering Docs" })).toHaveCount(0);
       await page.getByRole("button", {name:"Email and password",exact:true}).click();
       const password = page.getByLabel("Password", {exact:true});
@@ -471,7 +501,7 @@ try {
         "Isolated production renderer and synthetic mock API; backend protocol tested separately; no hosted/provider acceptance claimed",
       views: views.length,
       accessEnabled,
-      requestStateControls: accessEnabled ? {lightDarkDisabledFeedback: true, duplicateBlocked: true, malformedAcknowledgementDoesNotShowSent: true, recipientChangesClearSentWithoutBypassingCooldown: true, failedSendPreservesEmail: true, successfulRetryClearsError: true, expiredLoadAndSubmitRestart: true, stalledRequestRecovery: true} : null,
+      requestStateControls: accessEnabled ? {lightDarkDisabledFeedback: true, duplicateBlocked: true, malformedAcknowledgementDoesNotShowSent: true, recipientChangesClearSentWithoutBypassingCooldown: true, plainSentMessageWithoutButton: true, resendDisabledUntilFiveSeconds: true, failedSendPreservesEmail: true, successfulRetryClearsError: true, expiredLoadAndSubmitRestart: true, actionablePasswordRegistrationAndApprovalErrors: true, serviceFailureNotMislabeledExpired: true, stalledRequestRecovery: true} : null,
       mailSent: 0,
       databaseRequests: 0,
       providerRequests: 0,
