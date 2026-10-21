@@ -44,7 +44,7 @@ export default async function Home({params}:{params:Promise<{locale:Locale}>}) {
     <div className="section"><IndustrialAI locale={locale} compact/></div>
     <section id="capabilities" className="section">
       <div className="section-head"><p className="eyebrow">{de?'DIE TECHNOLOGIE':'THE TECHNOLOGY'}</p><div><h2>{t.capabilities}</h2><p>{t.capText}</p></div></div>
-      <div className="capability-grid">{technologyTopics(locale).slice(0,4).map((topic,i)=><Link href={`/${locale}/technology#${topic.id}`} className="capability" key={topic.id}><span className="index">0{i+1}</span><h3>{topic.title}</h3><span className="card-arrow" aria-hidden="true">→</span></Link>)}</div>
+      <div className="capability-grid">{technologyTopics(locale).slice(0,4).map((topic,i)=><Link href={`/${locale}/technology?topic=${topic.id}`} className="capability" key={topic.id}><span className="index">0{i+1}</span><h3>{topic.title}</h3><span className="card-arrow" aria-hidden="true">→</span></Link>)}</div>
     </section>
     <section className={`section ${styles.company}`} aria-labelledby="industry-directions"><h2 id="industry-directions">{de?'Anwendungsfelder entdecken.':'Explore application directions.'}</h2>      <div><h3>{de?'Für unterschiedliche Branchen.':'Built for different industries.'}</h3><div className={`industry-list ${styles.visualIndustries}`}>{industries[locale].map((name,index)=>{const topic=['enterprise','industrial','manufacturing','travel','commerce','finance'][index];return <Link href={`/${locale}/industries#industry-${topic}`} key={name}><img src={`/images/industry-${topic}-480.webp`} width="480" height="320" alt="" loading="lazy" decoding="async"/><span>{name}</span><span aria-hidden="true">→</span></Link>;})}</div></div></section>
 

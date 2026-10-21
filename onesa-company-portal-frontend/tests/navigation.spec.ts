@@ -221,8 +221,10 @@ for (const locale of ['en', 'de'] as const) {
         const title = await link.locator('h3').innerText();
         await link.focus();
         await page.keyboard.press('Enter');
-        await expect(page).toHaveURL(new RegExp(`/${locale}/technology#.+$`));
-        const heading = page.getByRole('heading', {name:title, exact:true});
+        await expect(page).toHaveURL(new RegExp(`/${locale}/technology\\?topic=.+$`));
+        const heading = page.getByRole('heading', {name:title, exact:true, level:1});
+        await expect(page.locator('[data-technology-topic]')).toHaveCount(1);
+        await expect(page.locator('.technology-capabilities')).toHaveCount(0);
         await expect(heading).toBeInViewport();
         const article = page.getByRole('article', {name:title, exact:true});
         await expect(article.locator('p')).toHaveCount(2);

@@ -43,7 +43,8 @@ process.env.ENGINEERING_OIDC_CONFIG_B64 = Buffer.from(
 const { db } = await import("../src/services/db.js");
 const { migrate } = await import("../src/services/migrate.js");
 const { buildApp } = await import("../src/app.js");
-const { decrypt, passwordHash, hash } = await import("../src/auth/crypto.js");
+const { decrypt, encrypt, passwordHash, hash } = await import("../src/auth/crypto.js");
+const { prepareEngineeringHandoff, readEngineeringHandoff, engineeringHandoffCookie } = await import("../src/engineering/link-handoff.js");
 const { EngineeringIdentityAdapter } =
   await import("../src/engineering/adapter.js");
 const { beginEngineeringChallenge, consumeEngineeringChallenge } =
@@ -214,7 +215,7 @@ test("Email proofs have bounded attempts, expiry, membership and one-use control
   );
   await assert.rejects(consumeEngineeringChallenge(typed, expired, expiryCode));
 });
-for (const method of ["otp", "email_link", "pwd"]) test("OIDC cookie/PKCE and signed identity with " + method, async () => {
+for (const method of ["otp", "email_link", "pwd", "cross_browser_link"]) test("OIDC cookie/PKCE and signed identity with " + method, async () => {
   const jar = new Map<string, string>();
   async function request(options: InjectOptions) {
     const response = await app.inject({
@@ -228,7 +229,7 @@ for (const method of ["otp", "email_link", "pwd"]) test("OIDC cookie/PKCE and si
     for (const c of response.cookies) jar.set(c.name, c.value);
     return response;
   }
-  const verifier = randomBytes(48).toString("base64url"),
+  let verifier = randomBytes(48).toString("base64url"),
     state = randomBytes(24).toString("hex"),
     nonce = randomBytes(24).toString("hex"),
     query = new URLSearchParams({
@@ -248,12 +249,12 @@ for (const method of ["otp", "email_link", "pwd"]) test("OIDC cookie/PKCE and si
   const location = new URL(String(auth.headers.location));
   assert.equal(location.origin, process.env.PUBLIC_ORIGIN);
   assert.match(location.pathname, /^\/engineering\/sign-in\/[A-Za-z0-9_-]+$/);
-  const uid = location.pathname.split("/").pop()!;
+  let uid = location.pathname.split("/").pop()!;
   const details = await request({
     url: "/api/v1/engineering-sign-in/" + uid + "/details",
   });
   assert.equal(details.statusCode, 200, details.body);
-  const csrf = details.json().csrf;
+  let csrf = details.json().csrf;
   assert.equal(
     (
       await request({
@@ -269,6 +270,33 @@ for (const method of ["otp", "email_link", "pwd"]) test("OIDC cookie/PKCE and si
   if (method === "pwd") {
     await db.query("INSERT INTO engineering_credentials(membership_id,password_hash) VALUES($1,$2) ON CONFLICT(membership_id) DO NOTHING",[memberId,passwordHash("synthetic engineering password")]);
     finished = await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/password",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf,email:"engineer@onesa.eu",password:"synthetic engineering password"}});
+  } else if (method === "cross_browser_link") {
+    const oldUid = uid;
+    const start = await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/link",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf,email:"engineer@onesa.eu"}});
+    assert.equal(start.statusCode,200,start.body);
+    const job=(await db.query("SELECT payload FROM jobs WHERE dedupe_key LIKE 'access-link:%' AND payload->>'to'='engineer@onesa.eu' ORDER BY created_at DESC LIMIT 1")).rows[0];
+    const text=decrypt(job.payload.encryptedText),raw=text.match(/#access-link=([a-f0-9]{64})/)?.[1];assert.ok(raw);assert.match(text,/any browser/);
+    const withoutCookie=await app.inject({url:"/api/v1/engineering-sign-in/"+uid+"/details",headers:proxy});
+    assert.equal(withoutCookie.statusCode,401);assert.equal(withoutCookie.json().error.code,"ENGINEERING_INTERACTION");
+    const path="/api/v1/engineering-sign-in/"+uid+"/link-prepare";
+    const foreign=await app.inject({method:"POST",url:path,headers:{...proxy,origin:"https://attacker.invalid"},payload:{token:raw}});assert.equal(foreign.statusCode,403);
+    const prepared=await app.inject({method:"POST",url:path,headers:{...proxy,origin:process.env.PUBLIC_ORIGIN},payload:{token:raw}});
+    assert.equal(prepared.statusCode,200,prepared.body);assert.deepEqual(prepared.json(),{continuePath:"/engineering"});
+    const cookie=prepared.cookies.find(c=>c.name===engineeringHandoffCookie);assert.ok(cookie);assert.equal(cookie.path,"/");assert.equal(cookie.secure,true);assert.equal(cookie.httpOnly,true);assert.equal(cookie.domain,undefined);assert.ok(Number(cookie.maxAge)<=300);
+    assert.equal((await db.query("SELECT consumed_at FROM access_links WHERE token_hash=$1",[hash(raw)])).rows[0].consumed_at,null);
+    // A new browser has neither the original interaction nor its PKCE/state.
+    jar.clear();for(const c of prepared.cookies)jar.set(c.name,c.value);
+    await db.query("UPDATE engineering_identity_records SET expires_at=now()-interval '1 second' WHERE model='Interaction' AND id=$1",[oldUid]);
+    verifier=randomBytes(48).toString("base64url");state=randomBytes(24).toString("hex");nonce=randomBytes(24).toString("hex");
+    query=new URLSearchParams({client_id:config.clientId,redirect_uri:config.redirectUri,response_type:"code",scope:"openid email profile",state,nonce,code_challenge:createHash("sha256").update(verifier).digest("base64url"),code_challenge_method:"S256"});
+    const fresh=await request({url:"/api/v1/engineering-identity/auth?"+query});assert.equal(fresh.statusCode,303,fresh.body);uid=new URL(String(fresh.headers.location)).pathname.split("/").pop()!;assert.notEqual(uid,oldUid);
+    const current=await request({url:"/api/v1/engineering-sign-in/"+uid+"/details"});assert.equal(current.statusCode,200,current.body);assert.equal(current.json().linkEmail,"engineer@onesa.eu");csrf=current.json().csrf;
+    const before=(await db.query("SELECT count(*)::int AS n FROM engineering_identity_records WHERE model='Grant'")).rows[0].n;
+    const badProof=await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/handoff-verify",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf:"0".repeat(64)}});assert.equal(badProof.statusCode,403);
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM engineering_identity_records WHERE model='Grant'")).rows[0].n,before);
+    finished=await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/handoff-verify",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf}});
+    assert.equal(finished.statusCode,200,finished.body);assert.ok((await db.query("SELECT consumed_at FROM access_links WHERE token_hash=$1",[hash(raw)])).rows[0].consumed_at);
+    const replay=await app.inject({method:"POST",url:path,headers:{...proxy,origin:process.env.PUBLIC_ORIGIN},payload:{token:raw}});assert.equal(replay.statusCode,401);
   } else if (method === "email_link") {
     const start = await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/link",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf,email:"engineer@onesa.eu"}});assert.equal(start.statusCode,200,start.body);
     const job=(await db.query("SELECT payload FROM jobs WHERE dedupe_key LIKE 'access-link:%' AND payload->>'to'='engineer@onesa.eu' ORDER BY created_at DESC LIMIT 1")).rows[0];
@@ -340,6 +368,24 @@ for (const method of ["otp", "email_link", "pwd"]) test("OIDC cookie/PKCE and si
       .statusCode,
     401,
   );
+});
+
+test("Cross-browser handoffs reject tampering, other origins, expiry and disabled membership", async () => {
+  const {requestEngineeringLink}=await import("../src/auth/access.js");
+  const original="synthetic_handoff_"+randomUUID();await requestEngineeringLink("engineer@onesa.eu",original,config.externalEmails);
+  const job=(await db.query("SELECT payload FROM jobs WHERE dedupe_key LIKE 'access-link:%' AND payload->>'to'='engineer@onesa.eu' ORDER BY created_at DESC LIMIT 1")).rows[0];
+  const raw=decrypt(job.payload.encryptedText).match(/#access-link=([a-f0-9]{64})/)?.[1];assert.ok(raw);
+  const value=await prepareEngineeringHandoff(raw,original,process.env.PUBLIC_ORIGIN!,config.externalEmails);
+  assert.equal((await readEngineeringHandoff(value.cookie,process.env.PUBLIC_ORIGIN!,config.externalEmails)).email,"engineer@onesa.eu");
+  assert.equal(value.cookie.includes(raw),false);
+  const bytes=Buffer.from(value.cookie,"base64");bytes[15]^=1;
+  await assert.rejects(readEngineeringHandoff(bytes.toString("base64"),process.env.PUBLIC_ORIGIN!,config.externalEmails));
+  await assert.rejects(readEngineeringHandoff(value.cookie,"https://other.example.invalid",config.externalEmails));
+  const parsed=JSON.parse(decrypt(value.cookie));
+  for(const change of [{purpose:"admin"},{expiresAt:Date.now()-1},{expiresAt:Date.now()+600_000}])await assert.rejects(readEngineeringHandoff(encrypt(JSON.stringify({...parsed,...change})),process.env.PUBLIC_ORIGIN!,config.externalEmails));
+  await db.query("UPDATE engineering_memberships SET enabled=false WHERE id=$1",[memberId]);
+  try{await assert.rejects(readEngineeringHandoff(value.cookie,process.env.PUBLIC_ORIGIN!,config.externalEmails));}finally{await db.query("UPDATE engineering_memberships SET enabled=true WHERE id=$1",[memberId]);}
+  assert.equal((await db.query("SELECT consumed_at FROM access_links WHERE token_hash=$1",[hash(raw)])).rows[0].consumed_at,null);
 });
 
 test("Unknown interactions and unapproved redirects cannot send a code or grant access", async () => {

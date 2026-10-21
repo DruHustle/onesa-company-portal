@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { accessLinkToken } from "@/lib/access-link";
 import { engineeringSignInError } from "@/lib/engineering-sign-in-errors";
 export function EngineeringSignIn({ uid, environment }: { uid: string; environment: string }) {
-  const [csrf, setCsrf] = useState(""), [method, setMethod] = useState<"link" | "password">("link"), [link, setLink] = useState<string | null>(null), [notice, setNotice] = useState(""), [sent, setSent] = useState(false), [busy, setBusy] = useState(false), [ready, setReady] = useState(false);
+  const [csrf, setCsrf] = useState(""), [method, setMethod] = useState<"link" | "password">("link"), [linkEmail, setLinkEmail] = useState<string | null>(null), [notice, setNotice] = useState(""), [sent, setSent] = useState(false), [busy, setBusy] = useState(false), [ready, setReady] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const sentRef = useRef<HTMLParagraphElement>(null);
   const submitting = useRef(false);
@@ -21,35 +21,53 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
     return () => window.clearInterval(timer);
   }, [resendUntil]);
   useEffect(() => {
-    let active = true, timedOut = false; const abort = new AbortController(); setReady(false); setCsrf(""); setRestartRequired(false); setNotice(""); setRegistrationRequired(false);
-    const deadline = window.setTimeout(() => { timedOut = true; abort.abort(); }, 25000);
+    let active = true, timedOut = false, preparingLink = false; const abort = new AbortController(); setReady(false); setCsrf(""); setLinkEmail(null); setRestartRequired(false); setNotice(""); setRegistrationRequired(false);
+    let deadline = window.setTimeout(() => { timedOut = true; abort.abort(); }, 25000);
     const receiveLink = () => {
       const raw = accessLinkToken(window.location.hash);
-      if (raw) { setLink(raw); setMethod("link"); setNotice(""); setRegistrationRequired(false); setSent(false); window.history.replaceState(null, "", window.location.pathname + window.location.search); }
+      if (!raw) return false;
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      if (preparingLink) return true;
+      preparingLink = true;
+      setReady(false); setCsrf(""); setLinkEmail(null); setMethod("link"); setNotice(""); setRegistrationRequired(false); setSent(false);
+      window.clearTimeout(deadline);
+      deadline = window.setTimeout(() => { timedOut = true; abort.abort(); }, 25000);
+      const prepareDeadline = deadline;
+      // Preparation is not redemption. A short-lived HttpOnly handoff lets this
+      // browser start its own Access/OIDC request before explicit confirmation.
+      fetch("/engineering/sign-in/" + uid + "/link-prepare", { method: "POST", cache: "no-store", signal: abort.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: raw }) }).then(async response => {
+        const value = await response.json();
+        if (!response.ok) throw Error(engineeringSignInError(response.status, value?.error?.code, "link-verify").message);
+        if (value?.continuePath !== "/engineering") throw Error("This sign-in link could not be prepared. Request a new link.");
+        if (active) window.location.assign("/engineering");
+      }).catch(error => { if (active && (!abort.signal.aborted || timedOut)) { setRestartRequired(true); setNotice(timedOut ? "Opening the sign-in link took too long. Open the email link again." : error instanceof Error ? error.message : "Open your latest sign-in email link again."); } }).finally(() => window.clearTimeout(prepareDeadline));
+      return true;
     };
-    receiveLink();
+    const detailsDeadline = deadline;
+    const hasLink = receiveLink();
     window.addEventListener("hashchange", receiveLink);
-    fetch("/engineering/sign-in/" + uid + "/details", { cache: "no-store", signal: abort.signal }).then(async response => {
+    if (!hasLink) fetch("/engineering/sign-in/" + uid + "/details", { cache: "no-store", signal: abort.signal }).then(async response => {
       const value = await response.json();
       if (!response.ok) {
         const failure = engineeringSignInError(response.status, value?.error?.code, "details");
-        if (active) { setRestartRequired(true); setNotice(failure.message); }
+        if (active && !preparingLink) { setRestartRequired(true); setNotice(failure.message); }
         return;
       }
       if (!/^[a-f0-9]{64}$/.test(value.csrf)) throw Error();
-      if (active) { setCsrf(value.csrf); setReady(true); }
-    }).catch(() => { if (active && (!abort.signal.aborted || timedOut)) { setRestartRequired(true); setNotice(timedOut ? "The sign-in page took too long to load. Start a new sign-in." : "The sign-in page could not be loaded. Start a new sign-in."); } }).finally(() => window.clearTimeout(deadline));
+      if (value.linkEmail !== undefined && (typeof value.linkEmail !== "string" || value.linkEmail.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(value.linkEmail))) throw Error();
+      if (active && !preparingLink) { setCsrf(value.csrf); setLinkEmail(value.linkEmail ?? null); setReady(true); }
+    }).catch(() => { if (active && !preparingLink && (!abort.signal.aborted || timedOut)) { setRestartRequired(true); setNotice(timedOut ? "The sign-in page took too long to load. Start a new sign-in." : "The sign-in page could not be loaded. Start a new sign-in."); } }).finally(() => window.clearTimeout(detailsDeadline));
     return () => { active = false; window.clearTimeout(deadline); abort.abort(); window.removeEventListener("hashchange", receiveLink); };
   }, [uid]);
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (submitting.current || !ready || (method === "link" && !link && resendSeconds > 0)) return;
+    event.preventDefault(); if (submitting.current || !ready || (method === "link" && !linkEmail && resendSeconds > 0)) return;
     const data = new FormData(event.currentTarget); submitting.current = true; setBusy(true); setNotice(""); setRegistrationRequired(false);
     const abort = new AbortController();
     const timeout = window.setTimeout(() => abort.abort(), 25000);
     try {
-      const action = method === "password" ? "password" : link ? "link-verify" : "link";
+      const action = method === "password" ? "password" : linkEmail ? "handoff-verify" : "link";
       if (action === "link") setSent(false);
-      const response = await fetch("/engineering/sign-in/" + uid + "/" + action, { method: "POST", signal: abort.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ csrf, ...(method === "password" ? { email, password: String(data.get("password")) } : link ? { token: link } : { email }) }) });
+      const response = await fetch("/engineering/sign-in/" + uid + "/" + action, { method: "POST", signal: abort.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ csrf, ...(method === "password" ? { email, password: String(data.get("password")) } : linkEmail ? {} : { email }) }) });
       const value = await response.json().catch(() => { throw Error("Sign-in is temporarily unavailable. Please try again."); });
       if (!response.ok) {
         const failure = engineeringSignInError(response.status, value?.error?.code, action);
@@ -59,18 +77,18 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
       }
       if (action === "link") { if (value?.ok !== true) throw Error("The sign-in request could not be confirmed. Please try again."); setSent(true); setResendSeconds(5); setResendUntil(performance.now() + 5000); return; }
       if (typeof value?.continuePath !== "string" || !/^\/api\/v1\/engineering-identity\/auth\/[A-Za-z0-9_-]{8,128}$/.test(value.continuePath)) throw Error("The sign-in service returned an unexpected response. Start a new sign-in.");
-      setLink(null); window.location.assign(value.continuePath);
+      setLinkEmail(null); window.location.assign(value.continuePath);
     } catch (error) { setNotice(abort.signal.aborted ? "The request took too long. Please try again." : error instanceof TypeError ? "Could not connect. Please try again." : error instanceof Error ? error.message : "Sign-in could not be completed."); }
     finally { window.clearTimeout(timeout); submitting.current = false; setBusy(false); }
   }
-  const confirming = method === "link" && Boolean(link);
+  const confirming = method === "link" && Boolean(linkEmail);
   const linkSent = sent && method === "link" && !confirming;
   const coolingDown = method === "link" && !confirming && resendSeconds > 0;
   const controlsDisabled = busy || linkSent || coolingDown;
   return <main className="admin-main admin-auth-shell engineering-auth-shell"><div className="container"><a className="skip-link" href="#engineering-sign-in">Skip to sign-in</a><section className="admin-login" aria-labelledby="engineering-title">
     <div className="admin-product-title"><a href="https://onesa.eu/" aria-label="Onesa company homepage"><img src="/brand/icons/v1/onesa-company.svg" width="48" height="48" alt="Onesa" /></a><small>ONESA PORTAL</small><span className="engineering-access-context">Protected access · {environment}</span></div>
     <h1 id="engineering-title">{confirming ? "Open Engineering Docs" : "Sign in to Engineering Docs"}</h1>
-    <p className="engineering-signin-intro">{confirming ? "Confirm your email link to continue securely." : "Use your approved email to continue."}</p>
+    <p className="engineering-signin-intro">{confirming ? <>Continue as <strong>{linkEmail}</strong>.</> : "Use your approved email to continue."}</p>
     <div id="engineering-sign-in">
       {notice && <p role="alert">{notice}{registrationRequired && <> <a href="/access/register?audience=engineering">Register for Engineering Docs</a></>}</p>}
       {restartRequired && <a className="button" href="/engineering">Start a new sign-in</a>}

@@ -2,10 +2,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { engineeringSignInError } from "../src/lib/engineering-sign-in-errors.ts";
 
-test("Expired interactions identify expiry regardless of sign-in method", () => {
+test("Missing, mismatched or expired browser interactions do not invent clock expiry", () => {
   for (const action of ["details", "link", "password", "link-verify"] as const) {
     const value = engineeringSignInError(401, "ENGINEERING_INTERACTION", action);
-    assert.match(value.message, /request has expired/);
+    assert.match(value.message, /no longer active in this browser/);
+    assert.match(value.message, /Open your latest email link again/);
+    assert.doesNotMatch(value.message, /has expired/);
     assert.equal(value.restart, true);
     assert.equal(value.registration, false);
   }

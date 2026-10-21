@@ -1,7 +1,7 @@
 # Onesa engineering and agent policies
 
-Authoritative agent, contribution, security and governance policy for this repository.
-Do not create separate setup/status/handoff documents. Read README, release checklist
+Agent, contribution, security and governance policy.
+Do not create setup/status/handoff documents. Read README, release checklist
 and affected architecture/code; finish incomplete work. Update changelog, contracts
 and affected docs with behavior changes; record unverified scope honestly. Current
 user scope takes precedence. Preserve concurrent work, history and data; stage only
@@ -134,7 +134,8 @@ retention deletion, legal notices or real-data workflows from seed statuses.
 Register first with verified email and owner approval; retain exact prior approvals.
 Offer emailed links or email/password; preserve admin MFA and existing credentials.
 Engineering Docs identities grant no Portal roles. Preserve explicit membership,
-cookie/Origin/PKCE/code replay controls and independent Access enforcement. Read
+cookie/Origin/PKCE/code replay controls and independent Access enforcement.
+Cross-browser Docs links require fresh OIDC/PKCE and confirmation. Read
 `docs/engineering/ENGINEERING_DOCS_IDENTITY.md` before identity or onboarding changes.
 Preserve deletion identity locks, SQL holds/cascades and immutable erasure journals.
 Manual erasure binds reviewed hashes and fresh owner proof; local/outbox success
