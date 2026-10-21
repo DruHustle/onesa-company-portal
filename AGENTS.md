@@ -1,21 +1,16 @@
 # Onesa engineering and agent policies
 
-The policy for `onesa-company-portal` includes agent instructions,
-contribution rules, security reporting and repository governance. Keep policies here;
-do not recreate separate setup, implementation-status or session-handoff documents.
-Read README, release checklist and affected architecture/code; finish incomplete work.
-Update the changelog, contracts and affected operational documentation when behavior
-changes. Record unverified functionality honestly in the applicable release checklist
-or roadmap. Current user instructions and authorized scope take precedence.
-Preserve local modifications, history and data; stage only reviewed paths.
-Use free services only; do not provision paid resources or accept paid upgrades
-without explicit budget authorization.
+Authoritative agent, contribution, security and governance policy for this repository.
+Do not create separate setup/status/handoff documents. Read README, release checklist
+and affected architecture/code; finish incomplete work. Update changelog, contracts
+and affected docs with behavior changes; record unverified scope honestly. Current
+user scope takes precedence. Preserve concurrent work, history and data; stage only
+reviewed paths. Free services only; paid resources require explicit budget approval.
 
 ## Contribution rules
 
-This repository is independently maintained within `onesa-ug`. Keep its frontend and
-backend in their existing subdirectories. Do not initialize a workspace-level Git
-repository, add sibling projects as submodules, or couple their release cycles.
+Keep independent frontend/backend directories and release cycles. No workspace-level
+Git repository, sibling submodules or coupled releases.
 
 Keep exactly three permanent branches: `dev`, `staging`, `main`. Normal integration
 follows `dev → staging → main`. Temporary branches are permitted for Dependabot
@@ -48,6 +43,12 @@ production promotion and visibility changes need current authorization. Read
 `docs/engineering/DEPLOYMENT.md`; `docs/development/BRANCH_PROTECTION_REPORT.md`
 records actual enforcement and prerequisites.
 
+
+Detailed deployment/recovery documents in public Git are safe reference pages.
+Read the protected canonical or approved local engineering source bundle before
+operations; preserve its original hashes/revisions. Do not copy full runbooks back
+into public sources or give private bundles to PR jobs. Historical Git exposure
+is not removed by active-source cleanup.
 
 ## Security policy
 

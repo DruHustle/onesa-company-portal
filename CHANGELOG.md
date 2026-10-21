@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Replace detailed public operational runbooks with protected-reference pages after
+  preserving exact original source/hash provenance in restricted custody. Historical
+  Git copies remain public; this is active-source classification, not history removal.
+  Private Docs publication and approved-user acceptance are recorded separately.
+
 - Measure public navigation readiness with one atomic browser observation of the
   same URL, visible product headings and exact documentation links. Start its
   clock at the trusted browser click and report driver delay separately. Preserve
