@@ -189,3 +189,8 @@ fieldset.admin-content{border:0;margin:0;padding:0;min-inline-size:0}
 .engineering-auth-shell .engineering-signin-intro{margin:0 0 24px;color:var(--muted)}
 .engineering-auth-shell .engineering-signin-support{margin-top:24px;border-top:1px solid var(--line);padding-top:4px}
 .engineering-auth-shell .signin-help a{text-decoration:underline;text-underline-offset:3px}
+
+/* Pending Engineering Docs requests have a visible, native disabled state. */
+.engineering-auth-shell input:disabled{background:var(--onesa-surface);color:var(--onesa-muted);border-color:var(--onesa-divider);cursor:not-allowed;opacity:1}
+.engineering-auth-shell button:disabled{background:var(--onesa-surface);color:var(--onesa-muted);border:1px solid var(--onesa-border);cursor:not-allowed;opacity:1;box-shadow:none;transform:none}
+@media(forced-colors:active){.engineering-auth-shell :is(input,button):disabled{color:GrayText;border-color:GrayText}}

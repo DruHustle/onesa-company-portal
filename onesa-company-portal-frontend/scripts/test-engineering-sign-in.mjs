@@ -175,6 +175,84 @@ try {
       await expect(page.getByLabel("Email address")).toBeHidden();
     } finally { releaseDetails(); await context.close(); }
   }
+  if (accessEnabled) {
+    for (const colorScheme of ["light", "dark"]) {
+      const context = await browser.newContext({viewport: {width: 320, height: 568}, colorScheme});
+      const page = await context.newPage();
+      let releaseSend;
+      const sendGate = new Promise(resolve => { releaseSend = resolve; });
+      let requests = 0;
+      await page.route("**/engineering/sign-in/synthetic_pending_01/link", async route => {
+        requests++;
+        if (requests === 1) { await sendGate; await route.fulfill({status: 503, json: {error: {code: "BACKEND_UNAVAILABLE"}}}); }
+        else await route.fulfill({status: 200, json: {ok: true}});
+      });
+      try {
+        await page.goto(origin + "/engineering/sign-in/synthetic_pending_01", {waitUntil: "networkidle"});
+        const email = page.getByLabel("Email address", {exact: true});
+        const send = page.locator('form button[type="submit"]');
+        await email.fill("synthetic-engineer@onesa.eu");
+        const activeInput = await email.evaluate(el => getComputedStyle(el).backgroundColor);
+        const activeButton = await send.evaluate(el => getComputedStyle(el).backgroundColor);
+        await send.click();
+        await expect(email).toBeDisabled();
+        await expect(send).toBeDisabled();
+        await expect(send).toHaveText("Sending…");
+        await expect(page.locator("form")).toHaveAttribute("aria-busy", "true");
+        expect(await email.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(activeInput);
+        expect(await send.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(activeButton);
+        await expect(email).toHaveCSS("cursor", "not-allowed");
+        await expect(send).toHaveCSS("cursor", "not-allowed");
+        await send.hover({force: true});
+        await expect(send).toHaveCSS("transform", "none");
+        await expect(send).toHaveCSS("box-shadow", "none");
+        await page.locator("form").evaluate(form => {
+          form.dispatchEvent(new Event("submit", {bubbles: true, cancelable: true}));
+          form.dispatchEvent(new Event("submit", {bubbles: true, cancelable: true}));
+        });
+        expect(requests).toBe(1);
+        releaseSend();
+        await expect(page.locator("#engineering-sign-in").getByRole("alert")).toContainText("temporarily unavailable");
+        await expect(email).toBeEnabled();
+        await expect(email).toHaveValue("synthetic-engineer@onesa.eu");
+        await expect(send).toBeEnabled();
+        await send.click();
+        await expect(page.getByRole("status")).toHaveText("Link sent.");
+        await expect(page.locator("#engineering-sign-in").getByRole("alert")).toHaveCount(0);
+        await expect(email).toBeHidden();
+        await expect(page.getByRole("button", {name: "Send again in 15s", exact: true})).toBeDisabled();
+        expect(requests).toBe(2);
+      } finally { releaseSend(); await context.close(); }
+    }
+    const context = await browser.newContext({viewport: {width: 390, height: 844}}), page = await context.newPage();
+    try {
+      await page.goto(origin + "/engineering/sign-in/synthetic_expired_01", {waitUntil: "networkidle"});
+      await page.route("**/engineering/sign-in/synthetic_expired_01/link", route => route.fulfill({status: 401, json: {error: {code: "ENGINEERING_INTERACTION"}}}));
+      await page.getByLabel("Email address").fill("synthetic-engineer@onesa.eu");
+      await page.getByRole("button", {name: "Send sign-in link", exact: true}).click();
+      await expect(page.locator("#engineering-sign-in").getByRole("alert")).toContainText("sign-in request has expired");
+      await expect(page.locator("form")).toHaveCount(0);
+      await expect(page.getByRole("link", {name: "Start a new sign-in", exact: true})).toHaveAttribute("href", "/engineering");
+      await page.route("**/engineering/sign-in/synthetic_expired_load_01/details", route => route.fulfill({status: 401, json: {error: {code: "ENGINEERING_INTERACTION"}}}));
+      await page.goto(origin + "/engineering/sign-in/synthetic_expired_load_01", {waitUntil: "networkidle"});
+      await expect(page.getByRole("link", {name: "Start a new sign-in", exact: true})).toBeVisible();
+      await expect(page.locator("form")).toHaveCount(0);
+      await page.goto(origin + "/engineering/sign-in/synthetic_timeout_01", {waitUntil: "networkidle"});
+      await page.clock.install();
+      let releaseTimeout;
+      const timeoutGate = new Promise(resolve => {releaseTimeout = resolve;});
+      await page.route("**/engineering/sign-in/synthetic_timeout_01/link", async route => {await timeoutGate; await route.abort().catch(() => {});});
+      try {
+        await page.getByLabel("Email address").fill("synthetic-engineer@onesa.eu");
+        await page.getByRole("button", {name: "Send sign-in link", exact: true}).click();
+        await expect(page.getByLabel("Email address")).toBeDisabled();
+        await page.clock.fastForward(25000);
+        await expect(page.locator("#engineering-sign-in").getByRole("alert")).toContainText("took too long");
+        await expect(page.getByLabel("Email address")).toBeEnabled();
+        await expect(page.getByLabel("Email address")).toHaveValue("synthetic-engineer@onesa.eu");
+      } finally {releaseTimeout();}
+    } finally {await context.close();}
+  }
   const screenshotDir = process.env.ONESA_SIGNIN_SCREENSHOTS;
   if (screenshotDir) await mkdir(screenshotDir, { recursive: true, mode: 0o700 });
   const views = [];
@@ -370,6 +448,7 @@ try {
         "Isolated production renderer and synthetic mock API; backend protocol tested separately; no hosted/provider acceptance claimed",
       views: views.length,
       accessEnabled,
+      requestStateControls: accessEnabled ? {lightDarkDisabledFeedback: true, duplicateBlocked: true, failedSendPreservesEmail: true, successfulRetryClearsError: true, expiredLoadAndSubmitRestart: true, stalledRequestRecovery: true} : null,
       mailSent: 0,
       databaseRequests: 0,
       providerRequests: 0,

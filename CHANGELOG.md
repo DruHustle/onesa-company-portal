@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Make Engineering Docs email requests visibly disabled while sending, retain the
+  explicit resend cooldown, and prevent duplicate submissions. Expired sign-in
+  interactions now offer a clear restart instead of a misleading credential error;
+  stalled requests return to an editable form with their entered email preserved.
+
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.
