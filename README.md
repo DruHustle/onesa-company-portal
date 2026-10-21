@@ -5,8 +5,10 @@ Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md)
 for source identities, protected ingress, acceptance and rollback.
 
-The current public frontend `c1516ca8445e70cd8c02eeb120a5f98f2141db98` is accepted
-at Vercel `dpl_54Y64HeR1Kww6AEcpXMXeRvkAkss` on Company/Portal. The Industrial AI
+The current public frontend `271b6eef2152854889883c7b9c2a66a61822f4b8` is accepted
+at Vercel `dpl_C152YiSWkeThHUCAuCouzxryNbde` on Company/Portal. Static-first
+optional hero media preserves the approved poster, composition and first-paint priority.
+No video asset is configured or activated;48 staged and16 canonical views pass. The Industrial AI
 section now uses responsive automotive assembly imagery in place of the synthetic
 stop timeline; the requested image caveats and planned eyebrow suffix are removed.
 Accurate development-track copy, the approved Home hero, About portrait and protected
