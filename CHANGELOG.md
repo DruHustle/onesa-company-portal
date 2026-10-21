@@ -2,11 +2,6 @@
 
 ## Unreleased
 
-- Exclude the affected emSign ECC G3 root from Node application TLS defaults
-  before outbound clients start. Preserve all other authorities and certificate
-  verification; isolated native-fetch/HTTPS regressions cover trust and denial.
-  Deployment and effective runtime-store verification are recorded separately.
-
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.
@@ -59,6 +54,22 @@
 - Reject malformed snapshots, unknown products, changed Robot schemas, wrong recovery
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
+
+
+## 2026-10-21 — Company frontend, API and worker trust correction accepted
+
+- Frontend `9e9fe899df4da272b5a067af577e2b852b7e26b5` /
+  `dpl_3fXxWik5LnYcSwb3zB2Y43aQXoNk` serves Company and Portal. Oracle API and
+  worker source `8bf6fd60c0b3ca225816f7404afdce1d80d4e1a5` is accepted under that
+  exact qualified main tree after full required CI and affected staging acceptance.
+- Exclude only the affected emSign ECC G3 root from Node TLS defaults before clients
+  start. Actual API/worker startup confirms the policy; authenticated database TLS
+  verification, worker heartbeat, application-role and scanner checks pass.
+- Ten canonical public/private HTTP checks pass. Hero, content, imagery, CSS and
+  authentication/business workflow bytes are unchanged; retain the prior 48 staged
+  and 16 canonical visual views as separate source-equivalent evidence.
+- Preserve credentials, schema, scanner and the other seven service identities.
+  No migration, production test record, email or governance approval is introduced.
 
 
 ## 2026-10-21 — Static-first hero media support accepted

@@ -13,17 +13,19 @@ Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md)
 for source identities, protected ingress, acceptance and rollback.
 
-The current public frontend `271b6eef2152854889883c7b9c2a66a61822f4b8` is accepted
-at Vercel `dpl_C152YiSWkeThHUCAuCouzxryNbde` on Company/Portal. Static-first
-optional hero media preserves the approved poster, composition and first-paint priority.
-No video asset is configured or activated;48 staged and16 canonical views pass. The Industrial AI
-section now uses responsive automotive assembly imagery in place of the synthetic
-stop timeline; the requested image caveats and planned eyebrow suffix are removed.
-Accurate development-track copy, the approved Home hero, About portrait and protected
-workflows remain. All required main CI,48 staged views and16 canonical views pass.
-API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker and scanner are retained;
-no backend activation or production business-record mutation accompanied the release.
-See the [current imagery release](docs/engineering/DEPLOYMENT.md).
+The current frontend `9e9fe899df4da272b5a067af577e2b852b7e26b5` is accepted at
+Vercel `dpl_3fXxWik5LnYcSwb3zB2Y43aQXoNk` on Company and Portal (2026-10-21).
+Oracle API and worker source `8bf6fd60c0b3ca225816f7404afdce1d80d4e1a5` share the
+qualified staging tree; exact-main full CI and production acceptance pass.
+The Node trust correction removes only the affected emSign ECC G3 root before
+clients start. Actual API/worker startup, verified database TLS, worker heartbeat
+and scanner checks pass, with ten canonical public/private HTTP checks.
+The approved hero, static-first optional media, automotive imagery, About portrait,
+CSS and authentication/business workflow bytes are unchanged. Prior 48 staged and
+16 canonical public views remain separately source-bound evidence. No video is
+configured or activated. Credentials, schema, scanner and the other seven service
+processes are preserved; no production business-record test write accompanied this
+release. See [CHANGELOG.md](CHANGELOG.md) for independent component identities.
 The earlier product-hierarchy source `cb0221ed90c1088827f414f4fab00cf3930b160c` /
 `dpl_DR5BQ8TeAYwGuYS5XnrU6FMxF6U4` remains a historical accepted record.
 
