@@ -1,6 +1,6 @@
 import {capabilities, type Locale} from './copy';
 
-// Stable fragment identifiers are shared by homepage links and Technology headings.
+// Stable topic identifiers support focused homepage destinations and legacy bookmarks.
 const topics = [
   {id:'ai-engineering', en:[
     'Connect models, knowledge and application workflows to turn information into useful decisions and actions.',
