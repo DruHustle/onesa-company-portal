@@ -2,16 +2,6 @@
 
 ## Unreleased
 
-- Show one plain “Sent.” status after an Engineering Docs link request; remove
-  the redundant Sent button. Keep the email visibly disabled and enable the
-  explicit resend action after five seconds. Preserve duplicate-submit prevention,
-  recipient binding and email recovery after a failed request.
-- Give expired sign-in requests, service failures, incorrect passwords, unfinished
-  password setup and verified pending approval distinct actions. Password-state
-  classification is source-tested; its backend deployment is recorded separately
-  from the frontend. Preserve generic email-link acknowledgements and all existing
-  access, approval and administrator MFA controls.
-
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.
@@ -66,6 +56,30 @@
   the new product paths perform no automatic backup deletion.
 
 
+## 2026-10-21 — Plain sign-in confirmation and API error feedback accepted
+
+- Company/Portal frontend `835e63876d74960f8e32369f1a5eb6c780fdb6de` /
+  `dpl_9VgNnzCQPTahjV3j6qCKsyr9hSPE` is accepted. Show one plain Sent status,
+  keep the email visibly disabled and enable explicit resend after five seconds.
+  Failed requests preserve input; recipient binding and duplicate prevention remain.
+- Thirty staging views across Chromium, Firefox and WebKit and six canonical UI
+  views pass with intercepted synthetic authentication. Native exact-main checks
+  completed before publication. No actual owner login or mail receipt is inferred.
+- Independently accepted API `8982eedef45298ec8cf153ee7c19492780abef37` has the
+  identical full tree to that qualified main. Password-setup and proven pending-
+  approval errors now have specific actions. Generic email-link acknowledgments,
+  existing passwords, approvals and administrator MFA remain intact.
+- The immutable ARM64 image passes High/Critical vulnerability and secret scans.
+  Twenty-three affected isolated integration tests and full native CI pass; actual
+  staged/production affected-method, TLS and five HTTP boundary checks pass. The
+  observer's obsolete Governance URL returned404; the maintained route returned401.
+  The initial observer failure is preserved, not relabeled as a product correction.
+- Worker `8bf6fd60c0b3ca225816f7404afdce1d80d4e1a5`, scanner and other applications
+  remain independently retained. No migration, credential change, business-record
+  test write, real email or physical operation accompanies this API release.
+- Protected Docs content publication and current owner/device acceptance remain
+  separate; this entry does not claim the complete remediation package is closed.
+
 ## 2026-10-21 — Engineering sign-in disabled feedback accepted
 
 - Frontend `5edd68a53110c0bb3a0db7852876db7701c903de` /
@@ -73,7 +87,7 @@
   Pending requests visibly disable controls, expired requests offer a restart,
   and failed requests preserve the entered email. This historical release used
   a disabled Sent button and a15-second resend delay; the plain-message/five-second
-  amendment above is not claimed deployed by this entry.
+  amendment is accepted in the separately dated entry above.
 -30 hosted staging and6 canonical UI views pass using intercepted synthetic
   authentication transport. Exact-main full required checks pass; native push
   checks completed after publication, following the passing owner-dispatched checks.
