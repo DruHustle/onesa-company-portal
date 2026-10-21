@@ -13,27 +13,32 @@ Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md)
 for source identities, protected ingress, acceptance and rollback.
 
-The accepted Company/Portal frontend is `835e63876d74960f8e32369f1a5eb6c780fdb6de`
-at Vercel `dpl_9VgNnzCQPTahjV3j6qCKsyr9hSPE` (2026-10-21). Engineering Docs
-link requests show one plain Sent status, keep the email disabled and enable
-explicit resend after five seconds. Thirty staged and six canonical synthetic UI
-views pass; native exact-main CI completed before publication. These tests do not
-establish external mailbox receipt or an approved user's protected Docs session.
+The accepted Company/Portal frontend is `32f3b24c4937632d2da500b44002602bdedd8449`
+at Vercel `dpl_DmbQPpnzK7SgJvzXaS3JXWAfKanY` (2026-10-21). Each homepage capability row
+opens its own focused English/German Technology topic; the complete overview and
+existing anchor bookmarks remain. The approved Home hero is unchanged.
 
-The independently accepted Oracle API is
-`8982eedef45298ec8cf153ee7c19492780abef37`, whose complete tree equals qualified
-main `835e63876d74960f8e32369f1a5eb6c780fdb6de`. It provides specific password-setup
-and proven pending-approval error codes while retaining generic link acknowledgments,
-authorization and administrator MFA. The scanned ARM64 image passed staged and
-production affected-method, verified database TLS and public/private-boundary checks.
-The worker remains `8bf6fd60c0b3ca225816f7404afdce1d80d4e1a5`; it was not restarted.
-No migration, credential change, business-record test write or real email was part
-of this API release. Scanner, AI and Robot services were retained independently.
+Engineering Docs email links can open in another browser through an encrypted,
+origin-bound handoff of at most five minutes and fresh receiving-browser OIDC
+state/PKCE. Explicit confirmation of the shown email precedes one-use redemption.
+The original 15-minute link expiry, current membership, Origin/CSRF and admin MFA
+remain enforced. Sent is one plain message; email stays visibly disabled and
+explicit resend enables after five seconds.
 
-The approved hero, imagery and public-page code are unchanged. Protected Engineering
-Docs publication, current approved-user walkthroughs and physical-device/manual
-accessibility acceptance remain separately tracked. See [CHANGELOG.md](CHANGELOG.md)
-for accepted component history and the protected deployment guide for operations.
+The independently accepted Oracle API is `cfe0d43e7032dabc83be8e49dba340660e1975e0`,
+whose complete tree equals qualified main `32f3b24c4937632d2da500b44002602bdedd8449`.
+Twenty-five isolated real identity integration checks, full exact-main CI,
+30 staged/six canonical synthetic UI views and 144 topic journeys pass. Actual
+staged/production API checks verify affected methods, database TLS and five HTTP
+boundaries. Synthetic transport does not establish real owner inbox receipt or
+approved production Docs access.
+
+Worker `8bf6fd60c0b3ca225816f7404afdce1d80d4e1a5`, scanner, AI and Robot remain
+independently retained. No migration, credential change, business-record test write
+or real email accompanied this release. Protected Engineering Docs publication and
+owner walkthroughs remain separately tracked. The owner reports iPhone17ProMax,
+iOS27.0.1 and working VoiceOver; changed topic links have no new physical-device
+acceptance claim. See [CHANGELOG.md](CHANGELOG.md) for component history.
 
 The previously accepted About leadership update is frontend `a5c742cfa305f039be9e1ec4b76ed57c025ed8ed` at Vercel `dpl_BNXcsQvXM7S5NbmNrr3VB9pwkmhC`.
 The owner-supplied portrait and engineering/renewable-energy biography passed source

@@ -2,16 +2,6 @@
 
 ## Unreleased
 
-- Prepare cross-browser Engineering Docs email links. A valid link starts a fresh
-  receiving-browser OIDC interaction through an encrypted, origin-bound five-minute
-  handoff; showing the verified email and explicit confirmation precede one-use
-  redemption. Original link expiry, membership revision, Origin/CSRF, PKCE and admin
-  MFA remain enforced. Local protocol/UI checks do not establish hosted acceptance.
-- Give each homepage engineering row a focused Technology topic view, with its own
-  heading and explanation; retain the complete overview and legacy anchor bookmarks.
-  Preserve the approved Home hero. Physical-device acceptance of the changed links
-  remains separate from the owner's preceding VoiceOver report.
-
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.
@@ -65,6 +55,27 @@
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
 
+
+## 2026-10-21 — Cross-browser Docs links and focused topics accepted
+
+- Frontend `32f3b24c4937632d2da500b44002602bdedd8449` / `dpl_DmbQPpnzK7SgJvzXaS3JXWAfKanY`
+  is accepted on Company and Portal. Four homepage engineering rows open matching
+  focused topics in English/German; the approved hero, full overview and old anchors
+  remain. API `cfe0d43e7032dabc83be8e49dba340660e1975e0` is independently accepted
+  with the identical qualified tree; the worker remains `8bf6fd60c0b3ca225816f7404afdce1d80d4e1a5`.
+- Valid Engineering email links work across browsers using a short-lived encrypted
+  handoff, fresh OIDC state/PKCE and explicit verified-email confirmation before
+  atomic one-use redemption. Preserve original link expiry, membership revision,
+  Origin/CSRF and administrator MFA. No browser-storage token or Access bypass.
+- Twenty-five isolated real protocol integration checks and full native exact-main
+  CI pass. Thirty staged/six canonical synthetic UI views and 144 topic journeys
+  pass; actual API affected-method, TLS and private-denial checks pass. Reuse the
+  20 passed Chromium/Firefox views; only the remaining10 WebKit views continued
+  after correcting an unsupported mocked303 response. The original observer stop
+  and pre-activation local evidence-permission stop remain preserved.
+- No migration, worker/scanner/other-product restart, credential change, production
+  test business record or real email. Actual owner Access acceptance, protected Docs
+  publication and changed-link physical-device acceptance remain separate.
 
 ## 2026-10-21 — Plain sign-in confirmation and API error feedback accepted
 
