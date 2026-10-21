@@ -1,5 +1,21 @@
 # Production release checklist
 
+## Current component status — 2026-10-21
+
+The current accepted frontend, API and retained worker are recorded in
+[CHANGELOG.md](CHANGELOG.md) and the protected deployment guide. Frontend
+`835e63876d74960f8e32369f1a5eb6c780fdb6de` and API
+`8982eedef45298ec8cf153ee7c19492780abef37` are accepted independently; merging
+later documentation does not relabel those serving components. Updated protected
+Docs publication, actual approved-account walkthroughs and current iPhone/VoiceOver
+acceptance remain separate evidence requirements. G14 remains owner-deferred.
+
+The dated preparation records below preserve what was known at their original
+source and time. Their “prepared” or “not deployed” wording is historical; it does
+not supersede the later accepted component entries. Do not convert historical
+local checks into hosted acceptance or repeat an already valid qualified suite.
+
+
 ## Homepage composition — prepared 2026-10-19
 
 Onesa AI Platform leads with one headline, a short explanation, one primary action

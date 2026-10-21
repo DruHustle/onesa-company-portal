@@ -13,26 +13,27 @@ Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md)
 for source identities, protected ingress, acceptance and rollback.
 
-The accepted frontend is `5edd68a53110c0bb3a0db7852876db7701c903de` at Vercel
-`dpl_DXFo75DHBFkzmS5qy4Nebk6s8cYa` on Company and Portal (2026-10-21).
-It adds visible disabled feedback and expired-request recovery to Engineering
-Docs sign-in. The subsequent plain Sent message, five-second resend delay and
-more specific errors remain a separate candidate until qualified and published.
-The previous Node trust frontend was `9e9fe899df4da272b5a067af577e2b852b7e26b5`
-at `dpl_3fXxWik5LnYcSwb3zB2Y43aQXoNk`.
-Oracle API and worker source `8bf6fd60c0b3ca225816f7404afdce1d80d4e1a5` share the
-qualified staging tree; exact-main full CI and production acceptance pass.
-The Node trust correction removes only the affected emSign ECC G3 root before
-clients start. Actual API/worker startup, verified database TLS, worker heartbeat
-and scanner checks pass, with ten canonical public/private HTTP checks.
-The approved hero, static-first optional media, automotive imagery, About portrait,
-CSS and authentication/business workflow bytes are unchanged. Prior 48 staged and
-16 canonical public views remain separately source-bound evidence. No video is
-configured or activated. Credentials, schema, scanner and the other seven service
-processes are preserved; no production business-record test write accompanied this
-release. See [CHANGELOG.md](CHANGELOG.md) for independent component identities.
-The earlier product-hierarchy source `cb0221ed90c1088827f414f4fab00cf3930b160c` /
-`dpl_DR5BQ8TeAYwGuYS5XnrU6FMxF6U4` remains a historical accepted record.
+The accepted Company/Portal frontend is `835e63876d74960f8e32369f1a5eb6c780fdb6de`
+at Vercel `dpl_9VgNnzCQPTahjV3j6qCKsyr9hSPE` (2026-10-21). Engineering Docs
+link requests show one plain Sent status, keep the email disabled and enable
+explicit resend after five seconds. Thirty staged and six canonical synthetic UI
+views pass; native exact-main CI completed before publication. These tests do not
+establish external mailbox receipt or an approved user's protected Docs session.
+
+The independently accepted Oracle API is
+`8982eedef45298ec8cf153ee7c19492780abef37`, whose complete tree equals qualified
+main `835e63876d74960f8e32369f1a5eb6c780fdb6de`. It provides specific password-setup
+and proven pending-approval error codes while retaining generic link acknowledgments,
+authorization and administrator MFA. The scanned ARM64 image passed staged and
+production affected-method, verified database TLS and public/private-boundary checks.
+The worker remains `8bf6fd60c0b3ca225816f7404afdce1d80d4e1a5`; it was not restarted.
+No migration, credential change, business-record test write or real email was part
+of this API release. Scanner, AI and Robot services were retained independently.
+
+The approved hero, imagery and public-page code are unchanged. Protected Engineering
+Docs publication, current approved-user walkthroughs and physical-device/manual
+accessibility acceptance remain separately tracked. See [CHANGELOG.md](CHANGELOG.md)
+for accepted component history and the protected deployment guide for operations.
 
 The previously accepted About leadership update is frontend `a5c742cfa305f039be9e1ec4b76ed57c025ed8ed` at Vercel `dpl_BNXcsQvXM7S5NbmNrr3VB9pwkmhC`.
 The owner-supplied portrait and engineering/renewable-energy biography passed source
