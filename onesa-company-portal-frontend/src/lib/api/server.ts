@@ -1,3 +1,4 @@
+import '../server/tls-trust';
 import 'server-only';
 import {makeClient} from './client';
 import {publicFetch} from './public-fetch';

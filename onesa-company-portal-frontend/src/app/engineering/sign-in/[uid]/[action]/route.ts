@@ -1,3 +1,4 @@
+import '@/lib/server/tls-trust';
 import { NextRequest } from "next/server";
 import { applicationOrigin, surface, stagingOrigin } from "@/lib/domains";
 export const dynamic = "force-dynamic";

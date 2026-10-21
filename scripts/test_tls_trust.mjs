@@ -8,7 +8,7 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('..',import.meta.url));
-const config={"modules":["onesa-company-portal-backend/src/security/tls-trust.ts","onesa-company-portal-frontend/src/lib/server/tls-trust.ts"],"hooks":[["onesa-company-portal-backend/src/server.ts","import {tlsTrustPolicy} from './security/tls-trust.js';"],["onesa-company-portal-backend/src/jobs/worker.ts","import {tlsTrustPolicy} from '../security/tls-trust.js';"],["onesa-company-portal-backend/src/services/db.ts","import '../security/tls-trust.js';"]],"instrumentation":["onesa-company-portal-frontend/src/instrumentation.ts"]};
+const config={"modules":["onesa-company-portal-backend/src/security/tls-trust.ts","onesa-company-portal-frontend/src/lib/server/tls-trust.ts"],"hooks":[["onesa-company-portal-backend/src/server.ts","import {tlsTrustPolicy} from './security/tls-trust.js';"],["onesa-company-portal-backend/src/jobs/worker.ts","import {tlsTrustPolicy} from '../security/tls-trust.js';"],["onesa-company-portal-backend/src/services/db.ts","import '../security/tls-trust.js';"],["onesa-company-portal-frontend/src/lib/api/server.ts","import '../server/tls-trust';"],["onesa-company-portal-frontend/src/app/api/v1/[...path]/route.ts","import '@/lib/server/tls-trust';"],["onesa-company-portal-frontend/src/app/engineering/sign-in/[uid]/[action]/route.ts","import '@/lib/server/tls-trust';"]],"instrumentation":["onesa-company-portal-frontend/src/instrumentation.ts"]};
 const fingerprint='86a1ecba089c4a8d3bbe2734c612ba341d813e043cf9e8a862cd5c57a36bbe6b';
 const fixture=resolve(root,'scripts/fixtures/emsign-ecc-g3-public-cert.txt');
 const child=`

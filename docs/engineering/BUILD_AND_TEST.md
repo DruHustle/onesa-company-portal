@@ -315,3 +315,9 @@ Container Node entry points also preload the policy.
 See the [advisory](https://github.com/advisories/GHSA-6q48-6c7w-9gw2) and
 [Node TLS API](https://nodejs.org/api/tls.html#tlssetdefaultcacertificatescerts).
 Source tests are separate from source-bound staging and production acceptance.
+After the frontend build, run `node scripts/check_tls_bundle.mjs
+onesa-company-portal-frontend` from the repository root. The guard checks actual
+gateway and sign-in server traces and rejects trust-code inclusion in browser
+bundles. Check owner-built Vercel artifacts too by supplying their `.vercel/output`
+directory as the third argument. Instrumentation source alone is insufficient
+evidence that a serverless adapter included the policy.
