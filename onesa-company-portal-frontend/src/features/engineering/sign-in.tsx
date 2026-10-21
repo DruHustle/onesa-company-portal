@@ -6,6 +6,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
   const formRef = useRef<HTMLFormElement>(null);
   const submitting = useRef(false);
   const [expired, setExpired] = useState(false);
+  const [email, setEmail] = useState("");
   const [resendSeconds, setResendSeconds] = useState(0);
   const [resendUntil, setResendUntil] = useState(0);
   useEffect(() => {
@@ -37,7 +38,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
     const timeout = window.setTimeout(() => abort.abort(), 25000);
     try {
       const action = method === "password" ? "password" : link ? "link-verify" : "link";
-      const response = await fetch("/engineering/sign-in/" + uid + "/" + action, { method: "POST", signal: abort.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ csrf, ...(method === "password" ? { email: String(data.get("email")), password: String(data.get("password")) } : link ? { token: link } : { email: String(data.get("email")) }) }) });
+      const response = await fetch("/engineering/sign-in/" + uid + "/" + action, { method: "POST", signal: abort.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ csrf, ...(method === "password" ? { email, password: String(data.get("password")) } : link ? { token: link } : { email }) }) });
       const value = await response.json();
       if (!response.ok) {
         if (value.error?.code === "ENGINEERING_INTERACTION") { setReady(false); setExpired(true); throw Error("This sign-in request has expired. Start a new sign-in to continue."); }
@@ -50,7 +51,8 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
     finally { window.clearTimeout(timeout); submitting.current = false; setBusy(false); }
   }
   const confirming = method === "link" && Boolean(link);
-  const coolingDown = method === "link" && !confirming && resendSeconds > 0;
+  const linkSent = sent && method === "link" && !confirming;
+  const controlsDisabled = busy || linkSent;
   return <main className="admin-main admin-auth-shell engineering-auth-shell"><div className="container"><a className="skip-link" href="#engineering-sign-in">Skip to sign-in</a><section className="admin-login" aria-labelledby="engineering-title">
     <div className="admin-product-title"><a href="https://onesa.eu/" aria-label="Onesa company homepage"><img src="/brand/icons/v1/onesa-company.svg" width="48" height="48" alt="Onesa" /></a><small>ONESA PORTAL</small><span className="engineering-access-context">Protected access · {environment}</span></div>
     <h1 id="engineering-title">{confirming ? "Open Engineering Docs" : "Sign in to Engineering Docs"}</h1>
@@ -61,12 +63,12 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
       {!ready && !notice && <p role="status">Preparing secure sign-in…</p>}
       {ready && <>
         {!confirming && <div className="signin-methods" role="group" aria-label="Sign-in method"><button type="button" disabled={busy} aria-pressed={method === "link"} onClick={() => { setMethod("link"); setNotice(""); }}>Email a sign-in link</button><button type="button" disabled={busy} aria-pressed={method === "password"} onClick={() => { setMethod("password"); setNotice(""); }}>Email and password</button></div>}
-        <form ref={formRef} onSubmit={submit} aria-busy={busy} hidden={sent && method === "link" && !confirming}><fieldset disabled={busy || coolingDown}><legend className="sr-only">{method === "password" ? "Email and password" : confirming ? "Confirm your sign-in link" : "Your approved email"}</legend>
-          {!confirming && <label>Email address<input name="email" type="email" disabled={busy || coolingDown} autoComplete="username" maxLength={254} required /></label>}
+        <form ref={formRef} onSubmit={submit} aria-busy={busy}><fieldset disabled={controlsDisabled}><legend className="sr-only">{method === "password" ? "Email and password" : confirming ? "Confirm your sign-in link" : "Your approved email"}</legend>
+          {!confirming && <label>Email address<input name="email" type="email" value={email} onChange={event => setEmail(event.target.value)} disabled={controlsDisabled} autoComplete="username" maxLength={254} required /></label>}
           {method === "password" && <label>Password<input name="password" type="password" autoComplete="current-password" maxLength={256} required /></label>}
-          <button className="button" type="submit" disabled={busy || coolingDown}>{busy ? (method === "link" && !confirming ? "Sending…" : "Signing in…") : method === "password" ? "Sign in to Docs" : confirming ? "Confirm sign-in and open Docs" : "Send sign-in link"}</button>
+          <button className="button" type="submit" disabled={controlsDisabled}>{busy ? (method === "link" && !confirming ? "Sending…" : "Signing in…") : method === "password" ? "Sign in to Docs" : confirming ? "Confirm sign-in and open Docs" : linkSent ? "Sent" : "Send sign-in link"}</button>
         </fieldset></form>
-        {sent && !confirming && method === "link" && <div className="engineering-link-sent"><p role="status">Link sent.</p><button className="button" type="button" disabled={busy || resendSeconds > 0} onClick={() => formRef.current?.requestSubmit()}>{busy ? "Sending…" : resendSeconds > 0 ? `Send again in ${resendSeconds}s` : "Send another link"}</button></div>}
+        {sent && !confirming && method === "link" && <div className="engineering-link-sent"><p className="sr-only" role="status">Sent.</p><button className="button" type="button" disabled={busy || resendSeconds > 0} onClick={() => formRef.current?.requestSubmit()}>{busy ? "Sending…" : "Send another link"}</button></div>}
       </>}
       <div className="engineering-signin-support">
         {!confirming && !sent && <p className="signin-registration">First time here? <a href="/access/register?audience=engineering">Register for Engineering Docs</a></p>}

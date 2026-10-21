@@ -162,17 +162,17 @@ try {
       await page.clock.install();
       await page.getByLabel("Email address").fill("synthetic-engineer@onesa.eu");
       await page.getByRole("button", { name: "Send sign-in link", exact: true }).click();
-      await expect(page.getByRole("status")).toHaveText("Link sent.");
-      await expect(page.getByLabel("Email address")).toBeHidden();
-      await expect(page.getByRole("button", { name: "Send again in 15s", exact: true })).toBeDisabled();
+      await expect(page.getByRole("status")).toHaveText("Sent.");
+      await expect(page.getByLabel("Email address")).toBeDisabled();
+      await expect(page.getByRole("button", { name: "Send another link", exact: true })).toBeDisabled();
       await page.clock.fastForward(15000);
       const resend = page.getByRole("button", { name: "Send another link", exact: true });
       await expect(resend).toBeEnabled();
       const resent = page.waitForResponse(r => r.url() === origin + "/engineering/sign-in/synthetic_loading_01/link");
       await resend.click();
       expect((await resent).status()).toBe(200);
-      await expect(page.getByRole("button", { name: "Send again in 15s", exact: true })).toBeDisabled();
-      await expect(page.getByLabel("Email address")).toBeHidden();
+      await expect(page.getByRole("button", { name: "Send another link", exact: true })).toBeDisabled();
+      await expect(page.getByLabel("Email address")).toBeDisabled();
     } finally { releaseDetails(); await context.close(); }
   }
   if (accessEnabled) {
@@ -217,10 +217,10 @@ try {
         await expect(email).toHaveValue("synthetic-engineer@onesa.eu");
         await expect(send).toBeEnabled();
         await send.click();
-        await expect(page.getByRole("status")).toHaveText("Link sent.");
+        await expect(page.getByRole("status")).toHaveText("Sent.");
         await expect(page.locator("#engineering-sign-in").getByRole("alert")).toHaveCount(0);
-        await expect(email).toBeHidden();
-        await expect(page.getByRole("button", {name: "Send again in 15s", exact: true})).toBeDisabled();
+        await expect(email).toBeDisabled();
+        await expect(page.getByRole("button", {name: "Send another link", exact: true})).toBeDisabled();
         expect(requests).toBe(2);
       } finally { releaseSend(); await context.close(); }
     }
@@ -276,6 +276,9 @@ try {
       if (screenshotDir) await page.screenshot({ path: join(screenshotDir, `signin-${width}-${mode}.png`), fullPage: true });
       const email = page.getByLabel("Email address");
       await expect(email).toBeEnabled();
+      const selectorBackground = await page.getByRole("button", {name: "Email a sign-in link", exact: true}).evaluate(el => getComputedStyle(el).backgroundColor);
+      const primaryBackground = await page.getByRole("button", {name: "Send sign-in link", exact: true}).evaluate(el => getComputedStyle(el).backgroundColor);
+      expect(selectorBackground).not.toBe(primaryBackground);
       await email.fill("synthetic-engineer@onesa.eu");
       await page.emulateMedia({
         colorScheme: mode === "light" ? "dark" : "light",
@@ -288,8 +291,10 @@ try {
         .getByRole("button", { name: "Send sign-in link" })
         .click();
       expect((await started).status()).toBe(200);
-      await expect(page.getByRole("status")).toHaveText("Link sent.");
-      await expect(page.locator("form")).toBeHidden();
+      await expect(page.getByRole("status")).toHaveText("Sent.");
+      await expect(page.locator("form")).toBeVisible();
+      await expect(email).toBeDisabled();
+      await expect(page.getByRole("button", {name: "Sent", exact: true})).toBeDisabled();
       await expect(page.getByRole("link", { name: "Register for Engineering Docs" })).toHaveCount(0);
       await page.getByRole("button", {name:"Email and password",exact:true}).click();
       const password = page.getByLabel("Password", {exact:true});
@@ -320,7 +325,7 @@ try {
       await page.goto(origin + "/engineering/sign-in/" + linkUid, {waitUntil: "networkidle"});
       await page.getByLabel("Email address", {exact: true}).fill("synthetic-engineer@onesa.eu");
       await page.getByRole("button", {name: "Send sign-in link", exact: true}).click();
-      await expect(page.getByRole("status")).toHaveText("Link sent.");
+      await expect(page.getByRole("status")).toHaveText("Sent.");
       await page.evaluate(() => { window.__onesaLinkDocumentMarker = "same-document"; });
       await page.goto(origin + "/engineering/sign-in/" + linkUid + "#access-link=" + proof);
       await expect(page.getByRole("button", {name: "Confirm sign-in and open Docs", exact: true})).toBeEnabled();
