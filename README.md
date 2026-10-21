@@ -13,10 +13,15 @@ Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md)
 for source identities, protected ingress, acceptance and rollback.
 
-The accepted Company/Portal frontend is `32f3b24c4937632d2da500b44002602bdedd8449`
-at Vercel `dpl_DmbQPpnzK7SgJvzXaS3JXWAfKanY` (2026-10-21). Each homepage capability row
-opens its own focused English/German Technology topic; the complete overview and
-existing anchor bookmarks remain. The approved Home hero is unchanged.
+The accepted Company/Portal frontend is `3fcbde97f9a6d9b3e6eec8ae1e3870709bc4e691`
+(2026-10-22). Products includes Industrial AI troubleshooting and the wider application
+areas in English/German. Full native checks,36 staged text/accessibility views,
+12 image-loading views and eight canonical production views pass. The Home hero
+and compact product preview are unchanged; no backend activation accompanies it.
+
+This includes the previous focused-topic and cross-browser edition
+`32f3b24c4937632d2da500b44002602bdedd8449`: each homepage capability row opens its
+own English/German Technology topic, preserving the complete overview and bookmarks.
 
 Engineering Docs email links can open in another browser through an encrypted,
 origin-bound handoff of at most five minutes and fresh receiving-browser OIDC
