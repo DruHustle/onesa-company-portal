@@ -2,13 +2,16 @@
 
 ## Current component status — 2026-10-21
 
-The current accepted frontend, API and retained worker are recorded in
-[CHANGELOG.md](CHANGELOG.md) and the protected deployment guide. Frontend
-`835e63876d74960f8e32369f1a5eb6c780fdb6de` and API
-`8982eedef45298ec8cf153ee7c19492780abef37` are accepted independently; merging
-later documentation does not relabel those serving components. Updated protected
-Docs publication, actual approved-account walkthroughs and current iPhone/VoiceOver
-acceptance remain separate evidence requirements. G14 remains owner-deferred.
+Frontend `32f3b24c4937632d2da500b44002602bdedd8449` and Oracle API
+`cfe0d43e7032dabc83be8e49dba340660e1975e0` are independently accepted after full
+required CI, source-bound staging and canonical affected-surface acceptance. The
+frontend serves Company and Portal; worker `8bf6fd60c0b3ca225816f7404afdce1d80d4e1a5`
+is retained. Merging these records does not relabel runtime components.
+
+Any-browser Docs email-link confirmation and focused Technology topics are live.
+Protected Docs content publication and actual approved-account walkthroughs remain
+separate gates. Owner-reported iPhone17ProMax/iOS27.0.1/VoiceOver works is recorded;
+the changed topic links have no new physical-device result. G14 is owner-deferred.
 
 The dated preparation records below preserve what was known at their original
 source and time. Their “prepared” or “not deployed” wording is historical; it does

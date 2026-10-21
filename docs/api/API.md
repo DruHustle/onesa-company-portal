@@ -92,7 +92,11 @@ expected revision and access-policy evidence. An engineering identity has no Por
 role. The exact Cloudflare email policy remains an independent requirement. See
 [Engineering Docs access](../engineering/ENGINEERING_DOCS_IDENTITY.md).
 
-## Cross-browser Engineering email links (prepared)
+## Cross-browser Engineering email links (accepted 2026-10-21)
+
+Independently accepted API `cfe0d43e7032dabc83be8e49dba340660e1975e0` has the identical reviewed tree to
+qualified main `32f3b24c4937632d2da500b44002602bdedd8449`. Actual approved-owner Access
+acceptance remains separate from protocol/UI qualification.
 
 `POST /engineering-sign-in/{uid}/link-prepare` validates an unconsumed engineering
 link and its original membership revision through the exact Portal proxy/Origin.
