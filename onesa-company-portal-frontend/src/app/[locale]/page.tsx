@@ -1,3 +1,4 @@
+import {HeroMedia} from '@/components/hero-media';
 import {technologyTopics} from '@/config/technology';
 import {HomePlatform,HomeRobot} from '@/components/home-products';
 import {IndustrialAI} from '@/components/industrial-ai';
@@ -21,7 +22,7 @@ export default async function Home({params}:{params:Promise<{locale:Locale}>}) {
   const origin=companyOrigin();
   return <main id="main" className={`home-page ${styles.home}`}>
     <section className={`hero ${styles.hero}`} aria-labelledby="home-title">
-      <picture className={styles.heroImage} aria-hidden="true"><img src="/images/onesa-home-hero-1536.webp" srcSet="/images/onesa-home-hero-640.webp 640w, /images/onesa-home-hero-1024.webp 1024w, /images/onesa-home-hero-1536.webp 1536w" sizes="100vw" width="1536" height="1024" fetchPriority="high" alt=""/></picture>
+      <HeroMedia className={styles.heroImage}/>
       <div className={styles.opening}>
         <div className={styles.heroHeading}>
           <p className={`eyebrow ${styles.heroEyebrow}`}>ONESA UG</p>

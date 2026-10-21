@@ -2,7 +2,7 @@
 
 Production API hosting moved to the existing Oracle Free VM on 2026-10-16; the
 Vercel frontend and existing data services remain. See the
-[verified hosting cutover](docs/engineering/DEPLOYMENT.md#verified-production-hosting-cutover--2026-10-16)
+[verified hosting cutover](docs/engineering/DEPLOYMENT.md)
 for source identities, protected ingress, acceptance and rollback.
 
 The current public frontend `c1516ca8445e70cd8c02eeb120a5f98f2141db98` is accepted
@@ -13,7 +13,7 @@ Accurate development-track copy, the approved Home hero, About portrait and prot
 workflows remain. All required main CI,48 staged views and16 canonical views pass.
 API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker and scanner are retained;
 no backend activation or production business-record mutation accompanied the release.
-See the [current imagery release](docs/engineering/DEPLOYMENT.md#current-industrial-ai-imagery-release--2026-10-20).
+See the [current imagery release](docs/engineering/DEPLOYMENT.md).
 The earlier product-hierarchy source `cb0221ed90c1088827f414f4fab00cf3930b160c` /
 `dpl_DR5BQ8TeAYwGuYS5XnrU6FMxF6U4` remains a historical accepted record.
 
@@ -21,16 +21,16 @@ The previously accepted About leadership update is frontend `a5c742cfa305f039be9
 The owner-supplied portrait and engineering/renewable-energy biography passed source
 CI and staged/canonical responsive accessibility checks. Backend, worker, scanner and
 identity services are retained. See the
-[About release](docs/engineering/DEPLOYMENT.md#current-about-leadership-release).
+[About release](docs/engineering/DEPLOYMENT.md).
 
 The previously accepted company-first Home and concise Engineering Docs sign-in frontend
 `56eb17c80cfff656608005c60c3ca8d2c9da09a2` is accepted at Vercel `dpl_BcvxvfeoSCa3zLapdrWx1F5wAXZh` on the existing Company/Portal
 hosts. API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker `3fad26e` and scanner remain independently retained.
 No backend activation or migration accompanied this frontend release. See the
-[earlier Company/sign-in release](docs/engineering/DEPLOYMENT.md#current-company-and-sign-in-release--2026-10-19).
+[earlier Company/sign-in release](docs/engineering/DEPLOYMENT.md).
 
 The 2026-10-18 editorial/task release is accepted; see the
-[earlier editorial/API identities and acceptance](docs/engineering/DEPLOYMENT.md#current-portal-editorial-release--2026-10-18).
+[earlier editorial/API identities and acceptance](docs/engineering/DEPLOYMENT.md).
 
 Onesa UG is the company. Its product hierarchy is Onesa AI Platform—Applications
 and the planned Industrial AI track—and Onesa Robotics / Physical AI. Product
