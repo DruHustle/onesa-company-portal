@@ -277,3 +277,22 @@ failed saves, pending-mutation navigation, duplicate submission and all five pub
 summary states. Keep server rate limits intact; clear only the fixture's local login
 limiter between independent synthetic cases. Browser transport fixtures are not hosted
 authorization evidence. The full hosted CI and release qualification remain required.
+
+## Static-first optional hero media
+
+The approved poster, framing and HTML heading remain the default. No approved video
+exists; `src/config/hero-motion.ts` intentionally exports null. Enabling
+`ONESA_HERO_MOTION_ENABLED=true` alone cannot create a video request. Future activation
+requires rights-cleared local desktop/mobile variants, exact SHA-256/size provenance,
+3–5 second single playback and measured poster/video LCP, CLS, CPU and transfer
+acceptance. The owner-held asset brief describes the unchanged hand/Onesa-button scene.
+No third-party embed, audio, looping, new product UI or fabricated asset is permitted.
+Disable the frontend flag to retain the poster without changing any backend.
+
+`npm --prefix onesa-company-portal-frontend run test:hero-motion` runs policy and
+three-engine synthetic DOM controls. It verifies no source assignment for reduced
+motion, data saving, slow connections or invalid assets; rejected/stalled playback,
+mobile selection and changed constraints restore the poster. It does not qualify a
+real codec, video asset or performance claim. A no-JavaScript visitor retains the
+poster and actual HTML content. macOS Firefox uses its own application-data directory;
+synthetic browser scratch may need owner cleanup because of macOS protected folders.

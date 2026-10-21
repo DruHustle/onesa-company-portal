@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Prepare static-first optional hero media without activating motion. Preserve the
+  approved poster/crop and HTML heading; enforce reduced-motion/data-saving fallbacks,
+  local approved assets, bounded single playback and failure recovery. No approved
+  video or actual codec/performance acceptance is claimed.
+
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.
