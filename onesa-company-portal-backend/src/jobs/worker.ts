@@ -1,3 +1,4 @@
+import {tlsTrustPolicy} from '../security/tls-trust.js';
 import {db,transaction,audit} from '../services/db.js';
 import {env,emailConfig} from '../config/env.js';
 import {createMailer} from '../services/mail.js';
@@ -36,4 +37,4 @@ export async function tick(){
  await db.query("INSERT INTO operational_state(key) VALUES('worker_success') ON CONFLICT(key) DO UPDATE SET updated_at=now()");
  if(env.NODE_ENV==='production')await writeFile('/tmp/onesa-worker-success',String(Date.now()),{mode:0o600});
 }
-if(process.argv[1]?.endsWith('worker.ts')||process.argv[1]?.endsWith('worker.js')){if(env.NODE_ENV==='production'){let safe=!!env.S3_BUCKET;try{safe=safe&&await applicationRoleSafe(db);}catch{}if(!safe){console.error(JSON.stringify({event:'worker_configuration_rejected'}));await db.end();process.exit(1);}}while(!stopping){try{await tick();}catch{console.error(JSON.stringify({event:'worker_failed'}));}await new Promise(r=>setTimeout(r,5000));}await db.end();}
+if(process.argv[1]?.endsWith('worker.ts')||process.argv[1]?.endsWith('worker.js')){console.info(JSON.stringify({event:'tls_trust_policy_active',...tlsTrustPolicy}));if(env.NODE_ENV==='production'){let safe=!!env.S3_BUCKET;try{safe=safe&&await applicationRoleSafe(db);}catch{}if(!safe){console.error(JSON.stringify({event:'worker_configuration_rejected'}));await db.end();process.exit(1);}}while(!stopping){try{await tick();}catch{console.error(JSON.stringify({event:'worker_failed'}));}await new Promise(r=>setTimeout(r,5000));}await db.end();}

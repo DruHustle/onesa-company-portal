@@ -1,3 +1,4 @@
+import '../security/tls-trust.js';
 import pg from 'pg';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import { env } from '../config/env.js';

@@ -74,6 +74,8 @@ jobs:
         cache-dependency-path: 'onesa-company-portal-backend/package-lock.json
 
           onesa-company-portal-frontend/package-lock.json'
+    - name: Verify application TLS trust and isolated certificate rejection
+      run: node --test scripts/test_tls_trust.mjs
     - name: Verify system appearance, pinned foundation and measured contrast
       run: node scripts/test_system_appearance.mjs
     - name: 'Release requirement: qualification failure-path tests'
