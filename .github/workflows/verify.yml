@@ -103,6 +103,8 @@ jobs:
     - run: python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src && python3 ../scripts/ci/analyze.py
         tsc -- node_modules/.bin/tsc --noEmit --pretty false && npm run test:domains && npm run test:workspace-drafts && npm run test:public-fetch && npm run build && npm run test:homepage-loading && npm audit --audit-level=high
       working-directory: onesa-company-portal-frontend
+    - name: Verify TLS policy in traced server routes
+      run: node scripts/check_tls_bundle.mjs onesa-company-portal-frontend
     - run: npm run documents
       working-directory: onesa-company-portal-backend
     - run: npm run seed
