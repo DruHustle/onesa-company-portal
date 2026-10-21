@@ -2,11 +2,6 @@
 
 ## Unreleased
 
-- Prepare static-first optional hero media without activating motion. Preserve the
-  approved poster/crop and HTML heading; enforce reduced-motion/data-saving fallbacks,
-  local approved assets, bounded single playback and failure recovery. No approved
-  video or actual codec/performance acceptance is claimed.
-
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.
@@ -60,6 +55,20 @@
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
 
+
+## 2026-10-21 — Static-first hero media support accepted
+
+- Frontend `271b6eef2152854889883c7b9c2a66a61822f4b8`, Vercel
+  `dpl_C152YiSWkeThHUCAuCouzxryNbde`, is accepted on Company/Portal. Preserve the
+  approved static hero and first-paint poster; optional locally hosted motion has
+  reduced-motion/data-saving fallbacks and bounded single playback. No video is
+  configured or activated, and no codec or enabled-motion performance is claimed.
+- Full exact-main CI,48 hosted staging and16 canonical public views pass, with zero
+  video requests and no enlarged-text overflow or blocking automated accessibility
+  finding. Synthetic media controls cover all three browser engines.
+- API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker and scanner are retained.
+  Readiness200 and anonymous session401 pass; no backend, account, data or hardware
+  activation accompanies this frontend release.
 
 ## 2026-10-20 — Industrial AI automotive imagery accepted
 
