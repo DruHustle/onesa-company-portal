@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add English/German Industrial AI application pillars on Products: troubleshooting
+  and fault investigation, predictive maintenance, vision quality control,
+  process/energy optimization and digital twins.
+  Keep their integration scope explicit and preserve the Home hero/compact preview.
+
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.

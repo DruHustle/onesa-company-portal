@@ -2,5 +2,9 @@
 .copy{min-width:0}.copy h2{font-size:clamp(2rem,4vw,3.6rem);line-height:1.08;max-width:16ch;text-wrap:balance}.copy>p:not(:first-child){color:var(--muted);max-width:52ch}.link{display:inline-flex;align-items:center;gap:24px;min-height:48px;font-weight:600}
 .assembly{margin:0;min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:20px;background:var(--paper)}
 .assembly picture{display:block}.assembly img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:cover}
+.pillars{grid-column:1/-1;min-width:0}.pillars header{max-width:76ch;margin-bottom:28px}.pillars h3{font-size:clamp(1.6rem,3vw,2.4rem);line-height:1.15;margin-bottom:16px}.pillars p{color:var(--muted);line-height:1.7}
+.pillarRows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 40px}.pillarRows article{display:flex;align-items:flex-start;gap:20px;min-width:0;padding:28px 0;border-top:1px solid var(--line)}.pillarRows article>div{min-width:0}.pillarRows h4{font-size:1.2rem;line-height:1.35;margin:0 0 12px}.pillarRows p{margin:0}.number{flex:none;font-size:.8rem;line-height:1.6;color:var(--muted);font-variant-numeric:tabular-nums}
+.pillarRows article:first-child{grid-column:1/-1}.pillarRows article:first-child p{max-width:78ch}
+@media(max-width:760px){.pillarRows{grid-template-columns:minmax(0,1fr)}.pillarRows article{gap:16px;padding:24px 0}}
 @media(max-width:760px){.section{grid-template-columns:minmax(0,1fr);gap:28px;margin-block:24px 40px}}
 @media(forced-colors:active){.assembly{border-color:CanvasText}}
