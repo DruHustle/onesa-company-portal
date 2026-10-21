@@ -2,13 +2,15 @@
 
 ## Unreleased
 
-- Make Engineering Docs email requests visibly disabled while sending, retain the
-  explicit resend cooldown, and prevent duplicate submissions. Accepted requests show
-  “Sent” and keep the email and primary button visibly disabled; neutral method
-  selectors remain distinct from the primary action. Changing the recipient clears
-  the old acknowledgement; malformed responses cannot show a false sent state. Expired sign-in
-  interactions now offer a clear restart instead of a misleading credential error;
-  stalled requests return to an editable form with their entered email preserved.
+- Show one plain “Sent.” status after an Engineering Docs link request; remove
+  the redundant Sent button. Keep the email visibly disabled and enable the
+  explicit resend action after five seconds. Preserve duplicate-submit prevention,
+  recipient binding and email recovery after a failed request.
+- Give expired sign-in requests, service failures, incorrect passwords, unfinished
+  password setup and verified pending approval distinct actions. Password-state
+  classification is source-tested; its backend deployment is recorded separately
+  from the frontend. Preserve generic email-link acknowledgements and all existing
+  access, approval and administrator MFA controls.
 
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
@@ -63,6 +65,21 @@
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
 
+
+## 2026-10-21 — Engineering sign-in disabled feedback accepted
+
+- Frontend `5edd68a53110c0bb3a0db7852876db7701c903de` /
+  `dpl_DXFo75DHBFkzmS5qy4Nebk6s8cYa` is accepted on Company and Portal.
+  Pending requests visibly disable controls, expired requests offer a restart,
+  and failed requests preserve the entered email. This historical release used
+  a disabled Sent button and a15-second resend delay; the plain-message/five-second
+  amendment above is not claimed deployed by this entry.
+-30 hosted staging and6 canonical UI views pass using intercepted synthetic
+  authentication transport. Exact-main full required checks pass; native push
+  checks completed after publication, following the passing owner-dispatched checks.
+  These UI checks do not establish real email receipt or approved Docs membership.
+- Oracle API and worker remain `8bf6fd60c0b3ca225816f7404afdce1d80d4e1a5`;
+  no account, credential, schema, data or backend process changed.
 
 ## 2026-10-21 — Company frontend, API and worker trust correction accepted
 

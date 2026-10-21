@@ -303,7 +303,10 @@ After a frontend build, run
 `npm --prefix onesa-company-portal-frontend run test:engineering-sign-in`. The isolated
 renderer covers delayed-send disabled visuals in system light/dark appearance,
 duplicate submission prevention, failed-send email preservation, error clearance
-on retry, resend cooldown, expired interaction restart and stalled-request recovery.
+on retry, a single visible Sent status without a Sent button, the five-second
+resend boundary, expired interaction restart and stalled-request recovery. It also
+checks actionable password-setup/approval errors and distinguishes unavailable
+services from expired requests.
 The fixture sends no real mail and grants no hosted membership. Browser feedback
 checks complement the backend registration/link tests; they do not prove delivery
 to a real mailbox or production Engineering Docs access.
