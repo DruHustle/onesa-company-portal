@@ -296,3 +296,28 @@ mobile selection and changed constraints restore the poster. It does not qualify
 real codec, video asset or performance claim. A no-JavaScript visitor retains the
 poster and actual HTML content. macOS Firefox uses its own application-data directory;
 synthetic browser scratch may need owner cleanup because of macOS protected folders.
+
+## Node TLS trust regression
+
+Use Node 24.12 or later in the 24 series. Run
+`node --test scripts/test_tls_trust.mjs` from the repository root. The test uses
+a known public CA certificate and newly generated synthetic localhost certificates
+in isolated child processes. It proves native fetch/HTTPS trust, rejection of
+untrusted certificates and hostname mismatches, idempotence and fail-closed startup.
+Temporary test keys are removed; it sends no application/provider requests.
+
+The startup policy excludes only the SHA-256 fingerprint of the affected
+emSign ECC Root CA - G3 from the effective application default store. It retains
+other default/extra authorities and never disables certificate verification.
+Node changes are thread-local. The API and worker preload the policy before
+client construction; the Next frontend uses its Node-only instrumentation hook.
+Container Node entry points also preload the policy.
+See the [advisory](https://github.com/advisories/GHSA-6q48-6c7w-9gw2) and
+[Node TLS API](https://nodejs.org/api/tls.html#tlssetdefaultcacertificatescerts).
+Source tests are separate from source-bound staging and production acceptance.
+After the frontend build, run `node scripts/check_tls_bundle.mjs
+onesa-company-portal-frontend` from the repository root. The guard checks actual
+gateway and sign-in server traces and rejects trust-code inclusion in browser
+bundles. Check owner-built Vercel artifacts too by supplying their `.vercel/output`
+directory as the third argument. Instrumentation source alone is insufficient
+evidence that a serverless adapter included the policy.

@@ -1,5 +1,13 @@
 # Onesa UG Company Portal
 
+Server gateway imports and traced-bundle checks keep the Node trust policy in
+serverless artifacts as well as conventional Node startup.
+
+Node application startup has a narrowly scoped CA trust policy, with isolated
+regressions in `node --test scripts/test_tls_trust.mjs`. Use Node 24.12+ in the 24
+series. Source implementation is separate from the accepted component releases
+recorded below; no production update follows merely from merging source.
+
 Production API hosting moved to the existing Oracle Free VM on 2026-10-16; the
 Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md)

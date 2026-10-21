@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Exclude the affected emSign ECC G3 root from Node application TLS defaults
+  before outbound clients start. Preserve all other authorities and certificate
+  verification; isolated native-fetch/HTTPS regressions cover trust and denial.
+  Deployment and effective runtime-store verification are recorded separately.
+
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.
