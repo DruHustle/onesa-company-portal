@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Apply the existing tested Ubuntu browser-download safeguards to disposable
+  Company CI runners after the unbounded installer consumed over 30 minutes.
+  Retain signed canonical/security sources and all Chromium, Firefox and WebKit
+  checks; bound APT reads and the install step to ten minutes without changing
+  test deadlines, introducing local runners or using production credentials.
+
 - Present application security as an AI Platform application direction in the
   English and German Products pages: code review, threat modelling, vulnerability
   triage and human-reviewed remediation. Add a contextual contact path and a
