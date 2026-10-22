@@ -2,11 +2,6 @@
 
 ## Unreleased
 
-- Add English/German Industrial AI application pillars on Products: troubleshooting
-  and fault investigation, predictive maintenance, vision quality control,
-  process/energy optimization and digital twins.
-  Keep their integration scope explicit and preserve the Home hero/compact preview.
-
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.
@@ -60,6 +55,22 @@
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
 
+
+## 2026-10-22 — Industrial AI application areas published
+
+- Company/Portal frontend `3fcbde97f9a6d9b3e6eec8ae1e3870709bc4e691` is accepted
+  on the canonical sites. Products presents troubleshooting/fault investigation,
+  predictive maintenance, vision quality control, process/energy optimization and
+  digital twins in English/German. The Home hero and compact preview are retained.
+- Full native exact-source checks passed before publication.36 staged text and
+  accessibility views,12 targeted image-loading views and eight canonical
+  production views pass. Representative mobile/desktop screenshots were inspected.
+  The initial reserved-image screenshot was taken before lazy decode; its loading
+  tail confirms the actual image without changing application source.
+- API, worker and scanner remain independently retained; no backend restart,
+  migration, credential change, business-record test write, email or inference.
+  Wider industrial applications are distinct from the separate synthetic prototype;
+  this frontend release establishes no live factory integration or diagnosis.
 
 ## 2026-10-21 — Cross-browser Docs links and focused topics accepted
 
