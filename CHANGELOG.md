@@ -2,12 +2,6 @@
 
 ## Unreleased
 
-- Keep Engineering Docs confirmation in an explicit opening state while its
-  authenticated callback is loading, without briefly restoring the sign-in form.
-  Isolated regressions hold both password and email-link callback responses and
-  inspect the outgoing page's rendered state. Authentication and membership
-  checks remain unchanged.
-
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.
@@ -61,6 +55,24 @@
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
 
+
+## 2026-10-22 — Engineering Docs opening transition accepted
+
+- Frontend `5cfd9d40af20f5a040a79c5868a15c7d5fd72862` / `dpl_DU2RKSAuXnVypzvTnPbjL7QHWqZG`
+  is accepted on Company and Portal. Retain an explicit opening state through
+  password and email-link callbacks without restoring the sign-in form or method
+  selectors. Authentication, membership and the Home hero remain unchanged.
+- Full exact-source native CI,36 staged UI cases across Chromium/Firefox/WebKit
+  and12 canonical cases pass. Identity responses were synthetic and intercepted;
+  these cases do not establish a new real owner sign-in. Four completed staged
+  cases were reused;32 continued after an isolated control confirmed a screenshot
+  session detach deadlock. The original observer stops remain preserved. Exact-URL
+  readback guards correct a substring match between `/en` and `/engineering`;
+  both actual production deployment identities and the expected redirect pass.
+- API `cfe0d43e7032dabc83be8e49dba340660e1975e0` and worker `8bf6fd60c0b3ca225816f7404afdce1d80d4e1a5`
+  are retained. No backend activation, migration, membership change, real email,
+  business-record test write or model request. Current owner Docs access was
+  observed separately; newer protected documentation publication is still pending.
 
 ## 2026-10-22 — Industrial AI application areas published
 
