@@ -13,7 +13,16 @@ Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md)
 for source identities, protected ingress, acceptance and rollback.
 
-The accepted Company/Portal frontend is `3fcbde97f9a6d9b3e6eec8ae1e3870709bc4e691`
+The accepted Company/Portal frontend is `5cfd9d40af20f5a040a79c5868a15c7d5fd72862`
+(2026-10-22), deployment `dpl_DU2RKSAuXnVypzvTnPbjL7QHWqZG`. Engineering Docs
+retains its opening state during both sign-in callbacks;36 staged and12 canonical
+synthetic UI cases pass after full exact-source CI. Both canonical deployment
+identities and the Engineering Docs redirect are verified. The Home hero, API,
+worker and memberships are unchanged. Current owner access to the retained Docs
+release was observed separately; publication of the newer protected build remains
+pending release-verifier access. These UI cases sent no real email or model request.
+
+This retains the preceding frontend `3fcbde97f9a6d9b3e6eec8ae1e3870709bc4e691`
 (2026-10-22). Products includes Industrial AI troubleshooting and the wider application
 areas in English/German. Full native checks,36 staged text/accessibility views,
 12 image-loading views and eight canonical production views pass. The Home hero
