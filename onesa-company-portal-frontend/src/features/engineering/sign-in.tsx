@@ -10,6 +10,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
   const [restartRequired, setRestartRequired] = useState(false);
   const [registrationRequired, setRegistrationRequired] = useState(false);
   const [email, setEmail] = useState("");
+  const [openingDocs, setOpeningDocs] = useState(false);
   const [resendSeconds, setResendSeconds] = useState(0);
   const [resendUntil, setResendUntil] = useState(0);
   useEffect(() => { if (sent) sentRef.current?.focus({ preventScroll: true }); }, [sent]);
@@ -21,7 +22,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
     return () => window.clearInterval(timer);
   }, [resendUntil]);
   useEffect(() => {
-    let active = true, timedOut = false, preparingLink = false; const abort = new AbortController(); setReady(false); setCsrf(""); setLinkEmail(null); setRestartRequired(false); setNotice(""); setRegistrationRequired(false);
+    let active = true, timedOut = false, preparingLink = false; const abort = new AbortController(); setReady(false); setOpeningDocs(false); setCsrf(""); setLinkEmail(null); setRestartRequired(false); setNotice(""); setRegistrationRequired(false);
     let deadline = window.setTimeout(() => { timedOut = true; abort.abort(); }, 25000);
     const receiveLink = () => {
       const raw = accessLinkToken(window.location.hash);
@@ -60,10 +61,11 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
     return () => { active = false; window.clearTimeout(deadline); abort.abort(); window.removeEventListener("hashchange", receiveLink); };
   }, [uid]);
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (submitting.current || !ready || (method === "link" && !linkEmail && resendSeconds > 0)) return;
+    event.preventDefault(); if (submitting.current || openingDocs || !ready || (method === "link" && !linkEmail && resendSeconds > 0)) return;
     const data = new FormData(event.currentTarget); submitting.current = true; setBusy(true); setNotice(""); setRegistrationRequired(false);
     const abort = new AbortController();
     const timeout = window.setTimeout(() => abort.abort(), 25000);
+    let navigating = false;
     try {
       const action = method === "password" ? "password" : linkEmail ? "handoff-verify" : "link";
       if (action === "link") setSent(false);
@@ -77,9 +79,9 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
       }
       if (action === "link") { if (value?.ok !== true) throw Error("The sign-in request could not be confirmed. Please try again."); setSent(true); setResendSeconds(5); setResendUntil(performance.now() + 5000); return; }
       if (typeof value?.continuePath !== "string" || !/^\/api\/v1\/engineering-identity\/auth\/[A-Za-z0-9_-]{8,128}$/.test(value.continuePath)) throw Error("The sign-in service returned an unexpected response. Start a new sign-in.");
-      setLinkEmail(null); window.location.assign(value.continuePath);
-    } catch (error) { setNotice(abort.signal.aborted ? "The request took too long. Please try again." : error instanceof TypeError ? "Could not connect. Please try again." : error instanceof Error ? error.message : "Sign-in could not be completed."); }
-    finally { window.clearTimeout(timeout); submitting.current = false; setBusy(false); }
+      navigating = true; setOpeningDocs(true); window.location.assign(value.continuePath);
+    } catch (error) { navigating = false; setOpeningDocs(false); setNotice(abort.signal.aborted ? "The request took too long. Please try again." : error instanceof TypeError ? "Could not connect. Please try again." : error instanceof Error ? error.message : "Sign-in could not be completed."); }
+    finally { window.clearTimeout(timeout); if (!navigating) { submitting.current = false; setBusy(false); } }
   }
   const confirming = method === "link" && Boolean(linkEmail);
   const linkSent = sent && method === "link" && !confirming;
@@ -87,9 +89,10 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
   const controlsDisabled = busy || linkSent || coolingDown;
   return <main className="admin-main admin-auth-shell engineering-auth-shell"><div className="container"><a className="skip-link" href="#engineering-sign-in">Skip to sign-in</a><section className="admin-login" aria-labelledby="engineering-title">
     <div className="admin-product-title"><a href="https://onesa.eu/" aria-label="Onesa company homepage"><img src="/brand/icons/v1/onesa-company.svg" width="48" height="48" alt="Onesa" /></a><small>ONESA PORTAL</small><span className="engineering-access-context">Protected access · {environment}</span></div>
-    <h1 id="engineering-title">{confirming ? "Open Engineering Docs" : "Sign in to Engineering Docs"}</h1>
-    <p className="engineering-signin-intro">{confirming ? <>Continue as <strong>{linkEmail}</strong>.</> : "Use your approved email to continue."}</p>
+    <h1 id="engineering-title">{openingDocs ? "Opening Engineering Docs" : confirming ? "Open Engineering Docs" : "Sign in to Engineering Docs"}</h1>
+    {!openingDocs && <p className="engineering-signin-intro">{confirming ? <>Continue as <strong>{linkEmail}</strong>.</> : "Use your approved email to continue."}</p>}
     <div id="engineering-sign-in">
+      {openingDocs ? <p role="status">Please wait…</p> : <>
       {notice && <p role="alert">{notice}{registrationRequired && <> <a href="/access/register?audience=engineering">Register for Engineering Docs</a></>}</p>}
       {restartRequired && <a className="button" href="/engineering">Start a new sign-in</a>}
       {!ready && !notice && <p role="status">Preparing secure sign-in…</p>}
@@ -106,6 +109,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
         {!confirming && !sent && !registrationRequired && <p className="signin-registration">First time here? <a href="/access/register?audience=engineering">Register for Engineering Docs</a></p>}
         <details className="signin-help"><summary>Help with access</summary><p>New access requires owner approval. Existing approvals are retained.</p>{sent && <p><a href="/access/register?audience=engineering">Register for Engineering Docs</a></p>}<p><a href="/engineering">Start a new sign-in</a> · <a href="https://onesa.eu/en/contact">Contact Onesa</a></p></details>
       </div>
+      </>}
     </div>
   </section></div></main>;
 }

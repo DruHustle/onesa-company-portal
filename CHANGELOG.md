@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Keep Engineering Docs confirmation in an explicit opening state while its
+  authenticated callback is loading, without briefly restoring the sign-in form.
+  Isolated regressions hold both password and email-link callback responses and
+  inspect the outgoing page's rendered state. Authentication and membership
+  checks remain unchanged.
+
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.
