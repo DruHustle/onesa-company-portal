@@ -5,6 +5,11 @@ export const enquiryTopics = {
     de: "Onesa AI Platform",
     category: "enterprise",
   },
+  "application-security": {
+    en: "Application security — platform development",
+    de: "Anwendungssicherheit — Plattformentwicklung",
+    category: "enterprise",
+  },
   robot: {
     en: "Onesa AI Robot — software development",
     de: "Onesa AI Robot — Softwareentwicklung",
