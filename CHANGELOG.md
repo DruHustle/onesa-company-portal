@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Present application security as an AI Platform application direction in the
+  English and German Products pages: code review, threat modelling, vulnerability
+  triage and human-reviewed remediation. Add a contextual contact path and a
+  responsive illustrated section; preserve the Home hero and distinguish this
+  direction from available scanning or autonomous security functionality.
+
 - Pin Next.js 16.4.2 for GHSA-2464-fhr4-w9xw and GHSA-p3m5-59mp-jv5r,
   retaining React and the existing image configuration. The serving source already
   locks Sharp 0.35.5, the published image-processing workaround; source lockfiles

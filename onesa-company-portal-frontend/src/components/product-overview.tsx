@@ -12,17 +12,25 @@ import {IndustrialAI} from './industrial-ai';
 const applicationDirections = {
   en: {
     title: 'Apps powered by the Onesa AI Platform',
-    introduction: 'The same intelligence engine can support different industries. Business and investment decision support and smart farming are planned applications.',
+    introduction: 'The same intelligence engine can support different industries. Business and investment decision support, smart farming and application security are planned applications.',
     recommendations: 'Recommendations and decision support',
     recommendationsDescription: 'Travel planning, business feasibility and investment research. Help users compare options, explore scenarios and assess risks using relevant information, clearly stated assumptions and supporting sources.',
+    security: 'Application security',
+    securityDescription: 'AI-assisted code review, threat modelling and vulnerability triage can help teams identify risks, prioritize fixes and review remediation throughout the software lifecycle.',
+    securityScope: 'A development direction for platform applications, with human review and authorization.',
+    securityContact: 'Discuss application security',
     farming: 'Smart farming',
     farmingDescription: 'Help farmers choose suitable crops and plan cultivation step by step, from planting to harvest. Combine soil conditions, seasonal weather forecasts, water availability, production costs and market demand to support practical decisions.',
   },
   de: {
     title: 'Apps auf Basis der Onesa AI Platform',
-    introduction: 'Dieselbe Intelligenz-Engine kann unterschiedliche Branchen unterstützen. Entscheidungshilfen für Unternehmen und Investitionen sowie intelligente Landwirtschaft sind geplante Anwendungen.',
+    introduction: 'Dieselbe Intelligenz-Engine kann unterschiedliche Branchen unterstützen. Entscheidungshilfen für Unternehmen und Investitionen, intelligente Landwirtschaft und Anwendungssicherheit sind geplante Anwendungen.',
     recommendations: 'Empfehlungen und Entscheidungshilfen',
     recommendationsDescription: 'Reiseplanung, Machbarkeitsanalysen für Geschäftsideen und Investitionsrecherche. Optionen vergleichen, Szenarien untersuchen und Risiken anhand relevanter Informationen, klar benannter Annahmen und nachvollziehbarer Quellen einschätzen.',
+    security: 'Anwendungssicherheit',
+    securityDescription: 'KI-gestützte Code-Reviews, Bedrohungsmodellierung und die Bewertung von Schwachstellen können Teams helfen, Risiken zu erkennen, Korrekturen zu priorisieren und die Behebung im gesamten Softwarelebenszyklus zu prüfen.',
+    securityScope: 'Ein Entwicklungsbereich für Plattformanwendungen mit menschlicher Prüfung und Autorisierung.',
+    securityContact: 'Anwendungssicherheit besprechen',
     farming: 'Intelligente Landwirtschaft',
     farmingDescription: 'Landwirte bei der Auswahl geeigneter Kulturen und der schrittweisen Anbauplanung von der Aussaat bis zur Ernte unterstützen. Bodenbedingungen, saisonale Wettervorhersagen, Wasserverfügbarkeit, Produktionskosten und Marktnachfrage verbinden, um praktische Entscheidungen zu erleichtern.',
   },
@@ -47,6 +55,15 @@ function ApplicationDirections({locale}:{locale:Locale}) {
         <div className={styles.useCaseCopy}>
         <h3>{content.farming}</h3>
         <p>{content.farmingDescription}</p>
+        </div>
+      </div>
+      <div id="application-security" className={styles.securityDirection}>
+        <EditorialImage subject="enterprise" locale={locale}/>
+        <div className={styles.useCaseCopy}>
+          <h3>{content.security}</h3>
+          <p>{content.securityDescription}</p>
+          <p className={styles.directionScope}>{content.securityScope}</p>
+          <Link href={`/${locale}/contact?topic=application-security`}>{content.securityContact}</Link>
         </div>
       </div>
     </div>
