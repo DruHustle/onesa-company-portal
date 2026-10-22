@@ -125,6 +125,43 @@ let startup = "";
 child.stdout.on("data", (x) => (startup = (startup + x).slice(-2000)));
 child.stderr.on("data", (x) => (startup = (startup + x).slice(-2000)));
 let browser;
+async function verifyOpeningHandoff(page, uid, submitButton) {
+  const destination = origin + "/api/v1/engineering-identity/auth/" + uid;
+  const frames = [], binding = "__onesaOpening_" + uid;
+  await page.exposeFunction(binding, frame => frames.push(frame));
+  await page.evaluate(name => {
+    new MutationObserver(() => {
+      window[name]({
+        heading: document.querySelector("#engineering-title")?.textContent,
+        status: document.querySelector('#engineering-sign-in [role="status"]')?.textContent,
+        forms: document.querySelectorAll("#engineering-sign-in form").length,
+        selectors: document.querySelectorAll('.signin-methods').length,
+      });
+    }).observe(document.querySelector(".engineering-auth-shell"), {childList: true, subtree: true, characterData: true});
+  }, binding);
+  let release, reached;
+  const gate = new Promise(resolve => { release = resolve; });
+  const requested = new Promise(resolve => { reached = resolve; });
+  const handler = async route => {
+    reached();
+    await gate;
+    await route.fulfill({status: 200, contentType: "text/html", body: "<!doctype html><title>Synthetic callback</title><main>Isolated callback</main>"});
+  };
+  await page.route(destination, handler);
+  try {
+    await submitButton.click({noWaitAfter: true});
+    await requested;
+    // Locator actions wait for pending navigation. Observe the old document's
+    // actual DOM transitions while the destination response is deliberately held.
+    await expect.poll(() => frames.some(frame => frame.heading === "Opening Engineering Docs")).toBe(true);
+    expect(frames.at(-1)).toEqual({heading: "Opening Engineering Docs", status: "Please wait…", forms: 0, selectors: 0});
+    release();
+    await page.waitForURL(destination);
+  } finally {
+    release();
+    await page.unroute(destination, handler);
+  }
+}
 try {
   let ready = false;
   for (let i = 0; i < 60; i++) {
@@ -370,10 +407,7 @@ try {
       ).toEqual([]);
       expect(errors).toEqual([]);
       await password.fill("synthetic-valid-password");
-      await page.getByRole("button", { name: "Sign in to Docs" }).click();
-      await page.waitForURL(
-        origin + "/api/v1/engineering-identity/auth/" + uid,
-      );
+      await verifyOpeningHandoff(page, uid, page.getByRole("button", { name: "Sign in to Docs" }));
       const linkUid = uid + "_same_page", beforeConfirmation = engineeringConfirmations;
       await page.goto(origin + "/engineering/sign-in/" + linkUid, {waitUntil: "networkidle"});
       await page.getByLabel("Email address", {exact: true}).fill("synthetic-engineer@onesa.eu");
@@ -396,8 +430,7 @@ try {
       await expect(page.getByRole("status")).toHaveCount(0);
       if (screenshotDir) await page.screenshot({ path: join(screenshotDir, `confirm-${width}-${mode}.png`), fullPage: true });
       expect(engineeringConfirmations).toBe(beforeConfirmation);
-      await page.getByRole("button", {name: "Confirm sign-in and open Docs", exact: true}).click();
-      await page.waitForURL(origin + "/api/v1/engineering-identity/auth/" + freshUid);
+      await verifyOpeningHandoff(page, freshUid, page.getByRole("button", {name: "Confirm sign-in and open Docs", exact: true}));
       expect(engineeringConfirmations).toBe(beforeConfirmation + 1);
       expect(errors).toEqual([]);
       views.push({
@@ -407,6 +440,7 @@ try {
         failedPasswordRetained: true,
         bothMethodsAvailable: true,
         freshBrowserRequestAndExplicitIdentityConfirmation: true,
+        delayedCallbackShowsOpeningStateWithoutSignInFlash: true,
         axeViolations: 0,
         overflow: false,
       });
