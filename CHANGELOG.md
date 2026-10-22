@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Apply the existing tested Ubuntu browser-download safeguards to disposable
+  Company CI runners after the unbounded installer consumed over 30 minutes.
+  Retain signed canonical/security sources and all Chromium, Firefox and WebKit
+  checks; bound APT reads and the install step to ten minutes without changing
+  test deadlines, introducing local runners or using production credentials.
+
+- Present application security as an AI Platform application direction in the
+  English and German Products pages: code review, threat modelling, vulnerability
+  triage and human-reviewed remediation. Add a contextual contact path and a
+  responsive illustrated section; preserve the Home hero and distinguish this
+  direction from available scanning or autonomous security functionality.
+
 - Pin Next.js 16.4.2 for GHSA-2464-fhr4-w9xw and GHSA-p3m5-59mp-jv5r,
   retaining React and the existing image configuration. The serving source already
   locks Sharp 0.35.5, the published image-processing workaround; source lockfiles

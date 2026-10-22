@@ -18,3 +18,7 @@
 .workspace{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:6vw;padding-top:32px;border-top:1px solid var(--line)}
 .workspace h3{font-size:clamp(1.5rem,2.5vw,2.25rem);line-height:1.2;max-width:22ch}.workspace figure{min-width:0}
 @media(max-width:760px){.workspace{grid-template-columns:minmax(0,1fr);gap:28px}}
+
+.securityDirection{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:center;scroll-margin-top:32px}
+.useCaseCopy .directionScope{margin-block:16px;font-size:.9rem}
+@media(max-width:760px){.securityDirection{grid-template-columns:minmax(0,1fr)}}
