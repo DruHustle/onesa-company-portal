@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Pin Next.js 16.4.2 for GHSA-2464-fhr4-w9xw and GHSA-p3m5-59mp-jv5r,
+  retaining React and the existing image configuration. The serving source already
+  locks Sharp 0.35.5, the published image-processing workaround; source lockfiles
+  alone do not establish deployed runtime conditions or a patched release.
+  Preserve all security gates and qualify the frontend independently of the API,
+  worker and protected documentation.
+
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.

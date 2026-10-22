@@ -18,9 +18,12 @@ The accepted Company/Portal frontend is `5cfd9d40af20f5a040a79c5868a15c7d5fd7286
 retains its opening state during both sign-in callbacks;36 staged and12 canonical
 synthetic UI cases pass after full exact-source CI. Both canonical deployment
 identities and the Engineering Docs redirect are verified. The Home hero, API,
-worker and memberships are unchanged. Current owner access to the retained Docs
-release was observed separately; publication of the newer protected build remains
-pending release-verifier access. These UI cases sent no real email or model request.
+worker and memberships are unchanged. Approved owner access to Engineering Docs
+was verified separately. Protected edition `34e9ab83c412fc87183a1428537ae0547a22ed04`
+is accepted at `docs.engineering.onesa.eu`, Pages
+`48d6eebd-3692-4241-87c1-df6e1d37ef4d`: each environment passed 751 protected
+file checks and anonymous denials, 18 responsive/accessibility views, 22 manuals
+and 87 diagrams. These Portal UI cases sent no real email or model request.
 
 This retains the preceding frontend `3fcbde97f9a6d9b3e6eec8ae1e3870709bc4e691`
 (2026-10-22). Products includes Industrial AI troubleshooting and the wider application
