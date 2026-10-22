@@ -2,25 +2,6 @@
 
 ## Unreleased
 
-- Apply the existing tested Ubuntu browser-download safeguards to disposable
-  Company CI runners after the unbounded installer consumed over 30 minutes.
-  Retain signed canonical/security sources and all Chromium, Firefox and WebKit
-  checks; bound APT reads and the install step to ten minutes without changing
-  test deadlines, introducing local runners or using production credentials.
-
-- Present application security as an AI Platform application direction in the
-  English and German Products pages: code review, threat modelling, vulnerability
-  triage and human-reviewed remediation. Add a contextual contact path and a
-  responsive illustrated section; preserve the Home hero and distinguish this
-  direction from available scanning or autonomous security functionality.
-
-- Pin Next.js 16.4.2 for GHSA-2464-fhr4-w9xw and GHSA-p3m5-59mp-jv5r,
-  retaining React and the existing image configuration. The serving source already
-  locks Sharp 0.35.5, the published image-processing workaround; source lockfiles
-  alone do not establish deployed runtime conditions or a patched release.
-  Preserve all security gates and qualify the frontend independently of the API,
-  worker and protected documentation.
-
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.
@@ -74,6 +55,31 @@
   keys and tampered ciphertext. Preserve existing Portal backups and their retention;
   the new product paths perform no automatic backup deletion.
 
+
+## 2026-10-22 — Application Security direction and frontend security accepted
+
+- Company/Portal frontend `63d8c8682735ae24076890f751a1a06936bb6d11`, Vercel
+  `dpl_BrSELH5kadPHJgNjMckzzNtTgBVs`, is accepted on both canonical hosts.
+  Products presents illustrated Application Security in English/German and
+  contextual contact navigation. It remains an application direction, not an
+  available scanner, certification or autonomous security operation.
+- Next.js 16.4.2 is verified in the sealed traced artifact for the reviewed
+  GHSA-2464-fhr4-w9xw and GHSA-p3m5-59mp-jv5r fixes. Sharp 0.35.5 remains
+  locked; a lockfile alone is not installed-runtime attestation.
+- Full exact-source native checks, 48 staged general views plus 12 feature/contact
+  journeys, and 16 canonical general views plus 12 feature/contact journeys pass.
+  Canonical asset hashes, actual provider aliases, Portal readiness and protected
+  access denials pass. The earlier observer used a private API path on the public
+  Company host; source-guided endpoint checks corrected only its unfinished tail.
+  The original stop and passed browser evidence remain preserved.
+- Disposable hosted CI uses the reviewed bounded browser dependency installer;
+  all three browser engines, signed repositories and test assertions remain.
+  The earlier installer timeout is retained as a failure, not a passing run.
+- Home, authentication, API, worker, scanner, credentials and business data are
+  unchanged. No model request, real email or backend deployment accompanied this
+  release. Protected Docs source `373889b` / Pages `2d937ff1-391f-4156-8df6-75d2d14aaa5e`
+  is separately accepted, including actual approved-owner access and logout/refusal;
+  it does not erase historical public Git exposure or resolve deferred governance.
 
 ## 2026-10-22 — Engineering Docs opening transition accepted
 
