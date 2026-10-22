@@ -13,7 +13,28 @@ Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md)
 for source identities, protected ingress, acceptance and rollback.
 
-The accepted Company/Portal frontend is `5cfd9d40af20f5a040a79c5868a15c7d5fd72862`
+The current accepted Company/Portal frontend is
+`63d8c8682735ae24076890f751a1a06936bb6d11` (2026-10-22), Vercel
+`dpl_BrSELH5kadPHJgNjMckzzNtTgBVs`. Products now presents Application Security
+in English/German as an AI Platform application direction, with code review,
+threat modelling, vulnerability triage, human-reviewed remediation and contextual
+contact navigation. This does not claim an available security scanner or certification.
+Next.js 16.4.2 is verified in the sealed frontend artifact. Full native checks,
+48 staged general views and 12 feature/contact journeys, then 16 canonical views
+and 12 canonical feature/contact journeys passed. The Home hero, authentication,
+API, worker and memberships remain unchanged. The public Company host intentionally
+denies private API routes; authenticated APIs and readiness use the Portal host.
+
+Protected Engineering Docs source `373889be9bda3357ff50b74692e9b75637e2bb59`
+is separately accepted at `docs.engineering.onesa.eu`, Pages
+`2d937ff1-391f-4156-8df6-75d2d14aaa5e`, with DOMPurify 3.4.17 and factual
+synthetic-demo documentation. All 751 protected assets and anonymous denials,
+18 production responsive/accessibility views, 22 manuals and 87 diagrams pass.
+Actual approved-owner access and supported Access logout/refusal were observed;
+this did not change membership, passwords or provider policies. Repository metadata
+commits remain distinct from each serving component's source.
+
+The preceding accepted Company/Portal frontend is `5cfd9d40af20f5a040a79c5868a15c7d5fd72862`
 (2026-10-22), deployment `dpl_DU2RKSAuXnVypzvTnPbjL7QHWqZG`. Engineering Docs
 retains its opening state during both sign-in callbacks;36 staged and12 canonical
 synthetic UI cases pass after full exact-source CI. Both canonical deployment
