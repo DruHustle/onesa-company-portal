@@ -50,7 +50,8 @@
 ## Unreleased
 
 - Prepare incident-based operations notifications: alert new or changed failures immediately,
-  remind only every six hours while unchanged, and confirm recovery after two healthy
+  remind on unchanged backend-only incidents every six hours, retain thirty-minute
+  reminders for other critical rules, and confirm recovery after two healthy
   samples. Preserve a pending notification identity before delivery so an ambiguous
   provider outcome reuses its idempotency key. Robot probes use its existing readiness
   proof rather than a liveness-only200. Detection, private boundaries and all other rules

@@ -370,7 +370,8 @@ authentication time to Docs. No schema, application credential or MFA key change
 ## Operations notification regression
 
 Run `PYTHONPATH=scripts python3 -m unittest scripts/test_oracle_operations.py` for
-synthetic incident transitions, six-hour reminders, two-sample recovery, stable
+synthetic incident transitions, six-hour backend-only reminders (other critical
+rules retain thirty-minute reminders), two-sample recovery, stable
 notification identities after ambiguous delivery, and bounded credential-free Robot
 readiness probes. These controls send no mail or application command and do not restart
 services. Installation is a separately qualified operations-component change; never

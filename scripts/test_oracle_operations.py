@@ -771,3 +771,22 @@ class NotificationLifecycle(unittest.TestCase):
                 json.loads((state / "last-failure.json").read_text())["alerts"],
                 ["backend-api-unavailable"],
             )
+
+    def test_other_critical_rule_reminders_keep_existing_thirty_minute_budget(self):
+        for alerts in [
+            ["backup-failed"],
+            ["resource-exhaustion"],
+            ["backend-api-unavailable", "backup-failed"],
+        ]:
+            last = {**self.last, "rules": alerts}
+            self.assertEqual(
+                monitor.notification_decision(
+                    alerts, self.failed, {"healthy_samples": 0}, last, self.now + 1800
+                )[0],
+                "reminder",
+            )
+            self.assertIsNone(
+                monitor.notification_decision(
+                    alerts, self.failed, {"healthy_samples": 0}, last, self.now + 1799
+                )[0]
+            )

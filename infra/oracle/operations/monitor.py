@@ -14,6 +14,7 @@ from pathlib import Path
 
 STATE = Path("/var/lib/onesa/operations")
 REMINDER_SECONDS = 6 * 60 * 60
+OTHER_REMINDER_SECONDS = 30 * 60
 # Provider keys last 24 hours; leave an hour before manual reconciliation is needed.
 PENDING_RETRY_SECONDS = 23 * 60 * 60
 RULES = (
@@ -407,11 +408,16 @@ def notification_decision(alerts, metrics, previous, last, now):
     )
     if signature != old_signature:
         return "update", 0
+    interval = (
+        REMINDER_SECONDS
+        if set(alerts) == {"backend-api-unavailable"}
+        else OTHER_REMINDER_SECONDS
+    )
     try:
         age = now - datetime.datetime.fromisoformat(last["checked_at"]).timestamp()
     except (KeyError, TypeError, ValueError, OverflowError):
-        age = REMINDER_SECONDS
-    return ("reminder" if age < 0 or age >= REMINDER_SECONDS else None), 0
+        age = interval
+    return ("reminder" if age < 0 or age >= interval else None), 0
 
 
 def notify(
