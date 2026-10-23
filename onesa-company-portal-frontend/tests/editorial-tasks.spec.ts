@@ -61,7 +61,7 @@ async function signIn(page: Page, role: string) {
   await page.goto("/admin");
   await page.getByLabel("Email", { exact: true }).first().fill(account.email);
   await page.getByLabel("Password", { exact: true }).first().fill(password);
-  await page.getByLabel("Authenticator or recovery code").fill(code);
+  await expect(page.getByLabel('Authenticator or recovery code')).toHaveCount(0);await page.getByRole('button',{name:'Continue',exact:true}).click();await page.getByLabel("Authenticator or recovery code").fill(code);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Company workspace" }),
