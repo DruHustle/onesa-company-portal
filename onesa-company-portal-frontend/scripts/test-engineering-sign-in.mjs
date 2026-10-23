@@ -14,6 +14,8 @@ const states = new Map(),
 let engineeringConfirmations = 0, adminConfirmations = 0, tokenInRequestUrl = false;
 const registrationRequests = [];
 let registrationConfirmation = {status: "pending", audience: "engineering"};
+let enrollmentGate = null, enrollmentCalls = 0, verificationCalls = 0;
+const syntheticRecoveryCodes = Array.from({length: 8}, (_, i) => String(i).repeat(24));
 const api = http.createServer(async (req, res) => {
   tokenInRequestUrl ||= /access-link|a{64}/.test(req.url);
   if (req.url === "/api/v1/access/link/verify") adminConfirmations++;
@@ -24,6 +26,19 @@ const api = http.createServer(async (req, res) => {
   }
   if (req.url === "/api/v1/auth/me") {
     res.writeHead(401).end('{"error":{"message":"Sign in required"}}'); return;
+  }
+  if (req.url === "/api/v1/auth/mfa/enroll") {
+    let body = ""; for await (const chunk of req) body += chunk;
+    const input = JSON.parse(body); enrollmentCalls++;
+    if (input.password !== "synthetic-registration-password") { res.writeHead(403).end('{"error":{"message":"Enrollment not available"}}'); return; }
+    if (enrollmentGate) await enrollmentGate;
+    res.end(JSON.stringify({challenge: proof, secret: "JBSWY3DPEHPK3PXP", uri: "otpauth://totp/Onesa:synthetic?secret=JBSWY3DPEHPK3PXP&issuer=Onesa"})); return;
+  }
+  if (req.url === "/api/v1/auth/mfa/verify") {
+    let body = ""; for await (const chunk of req) body += chunk;
+    const input = JSON.parse(body); verificationCalls++;
+    if (input.challenge !== proof || input.code !== "123456") { res.writeHead(401).end('{"error":{"message":"Invalid MFA code"}}'); return; }
+    res.end(JSON.stringify({recoveryCodes: syntheticRecoveryCodes})); return;
   }
   if (["/api/v1/access/link", "/api/v1/access/register"].includes(req.url)) {
     let body = ""; for await (const c of req) body += c;
@@ -516,7 +531,44 @@ try {
       if (audience === "engineering") {
         await expect(page.getByRole("status")).toContainText("You can now sign in to Engineering Docs");
         await expect(page.getByRole("status")).not.toContainText("authenticator");
-      } else await expect(page.getByRole("status")).toContainText("New administrators must enroll their authenticator");
+        await expect(page.getByRole("link", {name: "Set up your authenticator", exact: true})).toHaveCount(0);
+      } else {
+        await expect(page.getByRole("status")).toContainText("New administrators must enroll their authenticator");
+        await page.getByRole("link", {name: "Set up your authenticator", exact: true}).click();
+        await expect(page.getByRole("heading", {name: "Set up your authenticator"})).toBeVisible();
+        await page.getByLabel("Email address", {exact: true}).fill("synthetic@onesa.eu");
+        await page.getByLabel("Registered password").fill("incorrect-synthetic-password");
+        await page.getByRole("button", {name: "Start authenticator setup"}).click();
+        await expect(page.getByRole("main").getByRole("alert")).toContainText("after administrator registration and approval");
+        await expect(page.getByLabel("Setup key")).toHaveCount(0);
+        await page.getByLabel("Registered password").fill("synthetic-registration-password");
+        let releaseEnrollment;enrollmentGate=new Promise(resolve=>{releaseEnrollment=resolve;});
+        const callsBefore=enrollmentCalls;
+        try {
+          await page.getByRole("button", {name: "Start authenticator setup"}).click();
+          await expect(page.getByLabel("Registered password")).toBeDisabled();
+          await expect(page.getByRole("button", {name: "Please wait…",exact: true})).toBeDisabled();
+          await expect.poll(()=>enrollmentCalls).toBe(callsBefore+1);
+        } finally { releaseEnrollment();enrollmentGate=null; }
+        await expect(page.getByLabel("Setup key")).toHaveText("JBSWY3DPEHPK3PXP");
+        await expect(page.locator('input[type="password"]')).toHaveCount(0);
+        await page.getByLabel("Six-digit authenticator code").fill("000000");
+        await page.getByRole("button", {name: "Verify authenticator",exact: true}).click();
+        await expect(page.getByRole("main").getByRole("alert")).toContainText("current six-digit code");
+        await expect(page.getByLabel("Setup key")).toBeVisible();
+        await page.getByLabel("Six-digit authenticator code").fill("123456");
+        await page.getByRole("button", {name: "Verify authenticator",exact: true}).click();
+        await expect(page.getByRole("heading", {name: "Save your recovery codes"})).toBeVisible();
+        await expect(page.getByRole("list", {name: "One-use recovery codes"}).locator('li')).toHaveCount(8);
+        await expect(page.getByRole("button", {name: "Continue to administrator sign-in"})).toBeDisabled();
+        await expect(page.getByLabel("Setup key")).toHaveCount(0);
+        expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa","wcag22aa"]).analyze()).violations).toEqual([]);
+        await page.getByLabel("I have saved my recovery codes securely.", {exact:true}).check();
+        await page.getByRole("button", {name: "Continue to administrator sign-in"}).click();
+        await expect(page.getByRole("heading", {name: "Sign in",exact:true})).toBeVisible();
+        await expect(page.getByRole("list", {name: "One-use recovery codes"})).toHaveCount(0);
+        views.push({type:"first-admin-authenticator-setup",mode,width:390,passwordRequired:true,duplicateBlocked:true,invalidCodeRetainsSetup:true,recoveryAcknowledged:true,sessionNotCreated:true});
+      }
       views.push({type: "approved-registration", audience, mode, width: 390, correctAudienceInstructions: true});
     }
     await context.close();
@@ -546,6 +598,7 @@ try {
       views: views.length,
       accessEnabled,
       requestStateControls: accessEnabled ? {lightDarkDisabledFeedback: true, duplicateBlocked: true, malformedAcknowledgementDoesNotShowSent: true, recipientChangesClearSentWithoutBypassingCooldown: true, plainSentMessageWithoutButton: true, resendDisabledUntilFiveSeconds: true, failedSendPreservesEmail: true, successfulRetryClearsError: true, expiredLoadAndSubmitRestart: true, actionablePasswordRegistrationAndApprovalErrors: true, serviceFailureNotMislabeledExpired: true, stalledRequestRecovery: true} : null,
+      firstAdministratorSetup: accessEnabled ? {enrollmentCalls, verificationCalls, syntheticOnly: true, failedCodeKeepsSetup: true, recoveryAcknowledgementRequired: true, noSessionCreated: true} : null,
       mailSent: 0,
       databaseRequests: 0,
       providerRequests: 0,

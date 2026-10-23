@@ -159,11 +159,7 @@ export function AdminPortal({
     [document, setDocument] = useState<Document | null>(null),
     [template, setTemplate] = useState<Template | null>(null),
     [editUser, setEditUser] = useState<User | null>(null);
-  const [enrollment, setEnrollment] = useState<
-      | operations["startMfaEnrollment"]["responses"][200]["content"]["application/json"]
-      | null
-    >(null),
-    [recovery, setRecovery] = useState<string[]>([]);
+  const [recovery, setRecovery] = useState<string[]>([]);
   async function perform(fn: () => Promise<void>, success = "Saved") {
     if (mutation.current) return;
     mutation.current = true;
@@ -472,65 +468,7 @@ export function AdminPortal({
               setSessionError('');setUser(r.user);
             }}
           />
-          <details>
-            <summary>Enroll a new administrator’s authenticator</summary>
-            <p>
-              Complete registration and receive approval first. Existing MFA
-              cannot be replaced here.
-            </p>
-            <ol className="signin-enrollment-steps">
-              <li>Enter your registered email and password to start enrollment.</li>
-              <li>Add the displayed secret as a time-based account in your authenticator app.</li>
-              <li>Enter its current six-digit code, then save the recovery codes shown here.</li>
-            </ol>
-            <form
-              data-workspace-draft
-              onSubmit={submitted(async (d) => {
-                const r = await api.POST("/api/v1/auth/mfa/enroll", {
-                  body: {
-                    email: value(d, "email"),
-                    password: value(d, "password"),
-                  },
-                });
-                setEnrollment(r.data!);
-              })}
-            >
-              <Field label="Email" name="email" type="email" required />
-              <Field
-                label="Password"
-                name="password"
-                type="password"
-                required
-              />
-              <button disabled={busy || unsaved.pending}>Start enrollment</button>
-            </form>
-            {enrollment && (
-              <>
-                <p>Enter this secret in your authenticator. Do not share it.</p>
-                <pre
-                  style={{ overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}
-                >
-                  {enrollment.secret}
-                </pre>
-                <form
-                  data-workspace-draft
-                  onSubmit={submitted(async (d) => {
-                    const r = await api.POST("/api/v1/auth/mfa/verify", {
-                      body: {
-                        challenge: enrollment.challenge,
-                        code: value(d, "code"),
-                      },
-                    });
-                    setRecovery(r.data!.recoveryCodes);
-                    setEnrollment(null);
-                  })}
-                >
-                  <Field label="Authenticator code" name="code" required />
-                  <button disabled={busy || unsaved.pending}>Verify enrollment</button>
-                </form>
-              </>
-            )}
-          </details>
+          <p className="signin-registration">Approved and signing in for the first time? <a href="/access/setup-authenticator">Set up your authenticator</a>.</p>
           <details>
             <summary>Recover your password</summary>
             <form
@@ -1632,7 +1570,6 @@ export function AdminPortal({
                     setUser(null);
                     setCsrf(undefined);
                     setRecovery([]);
-                    setEnrollment(null);
                   })}
                 >
                   <h2>Change your password</h2>

@@ -14,3 +14,5 @@
 .support summary{min-height:44px;padding-block:10px;cursor:pointer}
 .support p{margin:4px 0 12px;color:var(--onesa-muted)}
 .srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.setupKey{display:block;padding:14px;background:var(--onesa-surface);border:1px solid var(--onesa-border);border-radius:8px;font-family:var(--onesa-font-code);font-size:1rem;overflow-wrap:anywhere;user-select:all}
+.recoveryCodes{list-style:none;margin:0 0 24px;padding:16px;background:var(--onesa-surface);border-radius:8px;line-height:1.8;font-size:.875rem;overflow-wrap:anywhere}

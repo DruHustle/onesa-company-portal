@@ -313,11 +313,9 @@ export async function registerAccess(
           subject: "Your Onesa access request",
           encryptedText: encrypt(
             req.body.decision === "approve"
-              ? "Your " +
-                  r.audience +
-                  " access has been approved. Sign in through the Onesa Portal. New administrators must enroll their authenticator before signing in.\n" +
-                  env.PUBLIC_ORIGIN +
-                  (r.audience === "admin" ? "/admin" : "/engineering")
+              ? (r.audience === "admin"
+                  ? "Your administrator access has been approved. Set up your authenticator, then sign in:\n" + env.PUBLIC_ORIGIN + "/access/setup-authenticator"
+                  : "Your Engineering Docs access has been approved. Sign in through Onesa Portal:\n" + env.PUBLIC_ORIGIN + "/engineering")
               : "Your access request has not been approved. Contact Onesa if you need clarification.",
           ),
         });

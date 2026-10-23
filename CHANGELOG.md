@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Guide approved new administrators directly from registration to a dedicated
+  authenticator setup screen, code verification and one-use recovery-code handoff.
+  Approval emails link to that screen; existing MFA cannot be overwritten and
+  Engineering Docs approval does not add an administrator MFA requirement.
+
 - Separate unrelated recruitment readiness from public-content delivery in launch
   mode. Applicant intake retains its full gate; exact editorial review, applicable
   company/privacy/provider readiness, file approval and clean scans remain required.
