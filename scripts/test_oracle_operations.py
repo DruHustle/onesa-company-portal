@@ -1,11 +1,13 @@
 """Failure and isolation tests; never hosted qualification evidence."""
 
+import datetime
 import importlib.util
 import io
 import json
 import subprocess
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -166,27 +168,54 @@ class OperationsGuards(unittest.TestCase):
         self.assertFalse(result["delivery_verified"])
 
     def test_failure_details_are_scoped_and_reference_is_retained(self):
-        metrics = {"backends": {
-            "robot-production": {"container_healthy": False, "http_healthy": False,
-                                 "http_status": 503, "secret": "never-serialize"},
-            "portal-staging": {"container_healthy": True, "http_healthy": True,
-                               "http_status": 200},
-            "unapproved-host": {"container_healthy": False, "http_status": 500},
-        }}
-        values = {"MAIL_PROVIDER": "resend", "NOTIFY_EMAIL": "andrew@onesa.eu",
-                  "MAIL_FROM": "synthetic@example.invalid", "RESEND_API_KEY": "synthetic"}
+        metrics = {
+            "backends": {
+                "robot-production": {
+                    "container_healthy": False,
+                    "http_healthy": False,
+                    "http_status": 503,
+                    "secret": "never-serialize",
+                },
+                "portal-staging": {
+                    "container_healthy": True,
+                    "http_healthy": True,
+                    "http_status": 200,
+                },
+                "unapproved-host": {"container_healthy": False, "http_status": 500},
+            }
+        }
+        values = {
+            "MAIL_PROVIDER": "resend",
+            "NOTIFY_EMAIL": "andrew@onesa.eu",
+            "MAIL_FROM": "synthetic@example.invalid",
+            "RESEND_API_KEY": "synthetic",
+        }
         requests = []
+
         def opened(request, timeout):
             requests.append(json.loads(request.data))
             return io.BytesIO(b'{"id":"synthetic-receipt"}')
+
         with (
-            patch.dict("sys.modules", {"backup": SimpleNamespace(checked_env=lambda: (values, None))}),
-            patch.object(monitor.urllib.request, "build_opener",
-                         return_value=SimpleNamespace(open=opened)),
+            patch.dict(
+                "sys.modules",
+                {"backup": SimpleNamespace(checked_env=lambda: (values, None))},
+            ),
+            patch.object(
+                monitor.urllib.request,
+                "build_opener",
+                return_value=SimpleNamespace(open=opened),
+            ),
         ):
-            result = monitor.notify(["backend-api-unavailable"], metrics=metrics,
-                                    checked_at="2026-10-17T14:00:00+00:00")
-        self.assertIn("robot-production; container=unhealthy; public HTTPS=503", requests[0]["text"])
+            result = monitor.notify(
+                ["backend-api-unavailable"],
+                metrics=metrics,
+                checked_at="2026-10-17T14:00:00+00:00",
+            )
+        self.assertIn(
+            "robot-production; container=unhealthy; public HTTPS=503",
+            requests[0]["text"],
+        )
         self.assertIn("Reference: " + result["reference"], requests[0]["text"])
         self.assertIn("Observed at (UTC):", requests[0]["text"])
         self.assertNotIn("never-serialize", str(result) + str(requests))
@@ -199,17 +228,38 @@ class OperationsGuards(unittest.TestCase):
             config = state / "config.json"
             config.write_text("{}")
             actual_read = Path.read_text
+
             def read(path, *args, **kwargs):
-                return config.read_text() if str(path) == "/etc/onesa/operations.json" else actual_read(path, *args, **kwargs)
-            failed = {**self.metrics, "backend_api_healthy": False, "backends": {
-                "robot-production": {"container_healthy": False, "http_healthy": False, "http_status": 503}}}
+                return (
+                    config.read_text()
+                    if str(path) == "/etc/onesa/operations.json"
+                    else actual_read(path, *args, **kwargs)
+                )
+
+            failed = {
+                **self.metrics,
+                "backend_api_healthy": False,
+                "backends": {
+                    "robot-production": {
+                        "container_healthy": False,
+                        "http_healthy": False,
+                        "http_status": 503,
+                    }
+                },
+            }
             with (
                 patch.object(monitor, "STATE", state),
                 patch.object(monitor.os, "geteuid", return_value=0),
-                patch.object(monitor.argparse.ArgumentParser, "parse_args", return_value=SimpleNamespace(simulate=False)),
+                patch.object(
+                    monitor.argparse.ArgumentParser,
+                    "parse_args",
+                    return_value=SimpleNamespace(simulate=False),
+                ),
                 patch.object(monitor.Path, "read_text", read),
                 patch.object(monitor, "sample", side_effect=[failed, self.metrics]),
-                patch.object(monitor, "notify", return_value={"reference": "synthetic-reference"}) as notify,
+                patch.object(
+                    monitor, "notify", return_value={"reference": "synthetic-reference"}
+                ) as notify,
                 patch("builtins.print"),
             ):
                 monitor.main()
@@ -219,10 +269,16 @@ class OperationsGuards(unittest.TestCase):
             self.assertEqual((state / "last-failure.json").read_bytes(), preserved)
             recovery = json.loads((state / "last-recovery.json").read_text())
             self.assertEqual(recovery["cleared_alerts"], ["backend-api-unavailable"])
-            self.assertEqual(list(recovery["previous_failed_backends"]), ["robot-production"])
+            self.assertEqual(
+                list(recovery["previous_failed_backends"]), ["robot-production"]
+            )
             incident = json.loads((state / "last-notified-incident.json").read_text())
-            self.assertEqual(incident["notification"]["reference"], "synthetic-reference")
-            self.assertEqual((state / "last-notified-incident.json").stat().st_mode & 0o777, 0o600)
+            self.assertEqual(
+                incident["notification"]["reference"], "synthetic-reference"
+            )
+            self.assertEqual(
+                (state / "last-notified-incident.json").stat().st_mode & 0o777, 0o600
+            )
 
     def test_monitor_never_stops_restarts_or_deletes_services(self):
         source = Path(monitor.__file__).read_text()
@@ -372,7 +428,16 @@ class BackendMonitoring(unittest.TestCase):
         self,
     ):
         for name, value in monitor.BACKENDS.items():
-            payload = json.dumps({"status": value["status"]}).encode() + b"\n200"
+            payload = (
+                json.dumps(
+                    {
+                        "status": value["status"],
+                        "mode": "simulation",
+                        "physical_actuation": False,
+                    }
+                ).encode()
+                + b"\n200"
+            )
             with patch.object(
                 monitor.subprocess,
                 "run",
@@ -384,7 +449,7 @@ class BackendMonitoring(unittest.TestCase):
                 args[:4], ["/usr/bin/curl", "--disable", "--proto", "=https"]
             )
             self.assertEqual(args[-1], value["url"])
-            self.assertNotIn("/ready", args[-1])
+            self.assertEqual("/ready" in args[-1], value["product"] == "robot")
             self.assertNotIn("--location", args)
             self.assertFalse(
                 any("authorization" in v.lower() or "cookie" in v.lower() for v in args)
@@ -430,3 +495,298 @@ class BackendMonitoring(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NotificationLifecycle(unittest.TestCase):
+    def setUp(self):
+        OperationsGuards.setUp(self)
+        self.now = 1792770000
+        self.failed = {
+            **self.metrics,
+            "backend_api_healthy": False,
+            "backends": {
+                "robot-production": {
+                    "container_healthy": False,
+                    "http_healthy": False,
+                    "http_status": 503,
+                }
+            },
+        }
+        self.last = {
+            "rules": ["backend-api-unavailable"],
+            "kind": "alert",
+            "affected_backends": {"robot-production": {}},
+            "checked_at": "2026-10-23T15:40:00+00:00",
+        }
+        self.now = (
+            __import__("datetime")
+            .datetime.fromisoformat(self.last["checked_at"])
+            .timestamp()
+        )
+
+    def decision(self, metrics=None, previous=None, last=None, elapsed=0):
+        return monitor.notification_decision(
+            ["backend-api-unavailable"],
+            metrics or self.failed,
+            previous or {"alerts": ["backend-api-unavailable"], "healthy_samples": 0},
+            self.last if last is None else last,
+            self.now + elapsed,
+        )
+
+    def test_sustained_incident_is_not_emailed_every_thirty_minutes(self):
+        for elapsed in [60, 1800, 3600, 21599]:
+            self.assertEqual(self.decision(elapsed=elapsed), (None, 0))
+        self.assertEqual(self.decision(elapsed=21600), ("reminder", 0))
+
+    def test_new_affected_service_and_new_rule_are_not_hidden_by_cooldown(self):
+        metrics = {
+            **self.failed,
+            "backends": {
+                **self.failed["backends"],
+                "portal-production": {"container_healthy": False, "http_status": 503},
+            },
+        }
+        self.assertEqual(self.decision(metrics=metrics)[0], "update")
+        self.assertEqual(
+            monitor.notification_decision(
+                ["backend-api-unavailable", "backup-failed"],
+                self.failed,
+                {"healthy_samples": 0},
+                self.last,
+                self.now,
+            )[0],
+            "update",
+        )
+
+    def test_status_noise_does_not_create_a_new_incident(self):
+        changed = {
+            **self.failed,
+            "backends": {
+                "robot-production": {
+                    "container_healthy": False,
+                    "http_healthy": False,
+                    "http_status": 502,
+                }
+            },
+        }
+        self.assertIsNone(self.decision(metrics=changed)[0])
+
+    def test_two_clean_samples_confirm_recovery_and_one_does_not_reset_fault(self):
+        self.assertEqual(
+            monitor.notification_decision(
+                [],
+                self.metrics,
+                {"alerts": ["backend-api-unavailable"], "healthy_samples": 0},
+                self.last,
+                self.now,
+            ),
+            (None, 1),
+        )
+        self.assertEqual(
+            monitor.notification_decision(
+                [],
+                self.metrics,
+                {"alerts": [], "healthy_samples": 1},
+                self.last,
+                self.now,
+            ),
+            ("recovery", 2),
+        )
+        self.assertIsNone(
+            self.decision(previous={"alerts": [], "healthy_samples": 1})[0]
+        )
+        self.assertEqual(
+            self.decision(previous={"alerts": [], "healthy_samples": 2})[0], "alert"
+        )
+
+    def test_initial_migration_does_not_email_a_historical_recovery(self):
+        self.assertEqual(
+            monitor.notification_decision(
+                [], self.metrics, {"alerts": []}, self.last, self.now
+            ),
+            (None, 2),
+        )
+
+    def test_robot_liveness_200_cannot_substitute_for_readiness(self):
+        for body in [
+            {"status": "live", "mode": "simulation", "physical_actuation": False},
+            {"status": "ready", "mode": "simulation", "physical_actuation": True},
+            [],
+            {"status": "ready"},
+        ]:
+            with patch.object(
+                monitor.subprocess,
+                "run",
+                return_value=SimpleNamespace(
+                    stdout=json.dumps(body).encode() + b"\n200", returncode=0
+                ),
+            ):
+                self.assertFalse(
+                    monitor.probe_backend("robot-production")["http_healthy"]
+                )
+
+    def run_monitor(self, state, samples, sender):
+        actual_read = Path.read_text
+
+        def read(path, *args, **kwargs):
+            return (
+                "{}"
+                if str(path) == "/etc/onesa/operations.json"
+                else actual_read(path, *args, **kwargs)
+            )
+
+        with (
+            patch.object(monitor, "STATE", state),
+            patch.object(monitor.os, "geteuid", return_value=0),
+            patch.object(
+                monitor.argparse.ArgumentParser,
+                "parse_args",
+                return_value=SimpleNamespace(simulate=False),
+            ),
+            patch.object(monitor.Path, "read_text", read),
+            patch.object(monitor, "sample", side_effect=samples),
+            patch.object(monitor, "notify", side_effect=sender),
+            patch("builtins.print"),
+        ):
+            for _ in samples:
+                monitor.main()
+
+    def test_ambiguous_delivery_keeps_identical_reference_and_body_across_timer_runs(
+        self,
+    ):
+        calls = []
+
+        def send(alerts, simulation, **kwargs):
+            calls.append((alerts, kwargs))
+            if len(calls) == 1:
+                raise TimeoutError("synthetic ambiguous provider result")
+            return {
+                "reference": kwargs["reference"],
+                "rules": alerts,
+                "affected_backends": monitor.failed_backends(kwargs["metrics"]),
+            }
+
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            with self.assertRaises(TimeoutError):
+                self.run_monitor(state, [self.failed], send)
+            pending = json.loads((state / "metrics.json").read_text())[
+                "notification_pending"
+            ]
+            self.assertEqual(pending["reference"], calls[0][1]["reference"])
+            self.run_monitor(state, [self.failed], send)
+            self.assertEqual(calls[0], calls[1])
+            self.assertNotIn(
+                "notification_pending", json.loads((state / "metrics.json").read_text())
+            )
+            self.assertEqual(
+                json.loads((state / "notification.json").read_text())["reference"],
+                pending["reference"],
+            )
+
+    def test_recovery_is_sent_once_and_existing_failures_remain_preserved(self):
+        calls = []
+
+        def send(alerts, simulation, **kwargs):
+            calls.append(kwargs["kind"])
+            return {
+                "reference": kwargs["reference"],
+                "rules": alerts,
+                "affected_backends": monitor.failed_backends(kwargs["metrics"]),
+            }
+
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            self.run_monitor(
+                state, [self.failed, self.metrics, self.metrics, self.metrics], send
+            )
+            self.assertEqual(calls, ["alert", "recovery"])
+            failure = json.loads((state / "last-failure.json").read_text())
+            self.assertEqual(failure["alerts"], ["backend-api-unavailable"])
+            self.assertEqual(
+                json.loads((state / "notification.json").read_text())["kind"],
+                "recovery",
+            )
+
+    def test_delayed_delivery_keeps_failure_evidence_and_then_reports_recovery(self):
+        calls = []
+
+        def send(alerts, simulation, **kwargs):
+            calls.append((alerts, kwargs))
+            if len(calls) == 1:
+                raise TimeoutError("synthetic")
+            return {
+                "reference": kwargs["reference"],
+                "rules": alerts,
+                "affected_backends": monitor.failed_backends(kwargs["metrics"]),
+            }
+
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            with self.assertRaises(TimeoutError):
+                self.run_monitor(state, [self.failed], send)
+            self.run_monitor(state, [self.metrics], send)
+            record = json.loads((state / "last-notified-incident.json").read_text())
+            self.assertEqual(record["alerts"], ["backend-api-unavailable"])
+            self.assertFalse(record["metrics"]["backend_api_healthy"])
+            self.run_monitor(state, [self.metrics, self.metrics], send)
+            self.assertEqual(
+                [v[1]["kind"] for v in calls], ["alert", "alert", "recovery"]
+            )
+            self.assertEqual(calls[0], calls[1])
+
+    def test_pending_delivery_stops_before_provider_idempotency_expiry(self):
+
+        expired = (
+            datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=24)
+        ).isoformat()
+        pending = {
+            "reference": str(uuid.uuid4()),
+            "kind": "alert",
+            "alerts": ["backend-api-unavailable"],
+            "metrics": self.failed,
+            "checked_at": expired,
+            "recovered_backends": [],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            (state / "metrics.json").write_text(
+                json.dumps(
+                    {
+                        "alerts": ["backend-api-unavailable"],
+                        "healthy_samples": 0,
+                        "notification_pending": pending,
+                    }
+                )
+            )
+
+            def forbidden(*args, **kwargs):
+                raise AssertionError("Expired idempotency key was retried")
+
+            self.run_monitor(state, [self.failed], forbidden)
+            saved = json.loads((state / "metrics.json").read_text())
+            self.assertTrue(saved["notification_reconciliation_required"])
+            self.assertEqual(saved["notification_pending"], pending)
+            self.assertEqual(
+                json.loads((state / "last-failure.json").read_text())["alerts"],
+                ["backend-api-unavailable"],
+            )
+
+    def test_other_critical_rule_reminders_keep_existing_thirty_minute_budget(self):
+        for alerts in [
+            ["backup-failed"],
+            ["resource-exhaustion"],
+            ["backend-api-unavailable", "backup-failed"],
+        ]:
+            last = {**self.last, "rules": alerts}
+            self.assertEqual(
+                monitor.notification_decision(
+                    alerts, self.failed, {"healthy_samples": 0}, last, self.now + 1800
+                )[0],
+                "reminder",
+            )
+            self.assertIsNone(
+                monitor.notification_decision(
+                    alerts, self.failed, {"healthy_samples": 0}, last, self.now + 1799
+                )[0]
+            )
