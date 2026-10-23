@@ -347,3 +347,16 @@ gateway and sign-in server traces and rejects trust-code inclusion in browser
 bundles. Check owner-built Vercel artifacts too by supplying their `.vercel/output`
 directory as the third argument. Instrumentation source alone is insufficient
 evidence that a serverless adapter included the policy.
+
+## Remember-browser and shared Portal session controls
+
+The existing Engineering sign-in renderer covers unchecked-by-default remember
+controls, retained selection between methods, actual request payloads, failed
+submission, keyboard/appearance and an explicit approved Portal-session choice.
+These synthetic controls send no real email and establish no production membership.
+The backend integration and access-registration suites check session versus
+persistent cookies for password and email-link MFA, unchanged server expiry,
+rotation, logout/revocation and one-use factors. The actual OIDC integration checks
+transient versus remembered provider cookies, signed identity, PKCE, missing or
+disabled membership, expired/non-MFA Portal sessions, forced login and max_age.
+Remembering a browser grants no product role and never counts as fresh MFA.

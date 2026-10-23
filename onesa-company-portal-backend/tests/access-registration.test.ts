@@ -82,10 +82,11 @@ after(async () => {
   await app.close();
   await db.end();
 });
-async function register(email: string, audience = "admin") {
+async function register(email: string, audience = "admin", remoteAddress = "127.0.0.1") {
   const r = await app.inject({
     method: "POST",
     url: "/api/v1/access/register",
+    remoteAddress,
     headers: origin,
     payload: { email, audience, name: "Synthetic applicant" },
   });
@@ -299,6 +300,20 @@ test("Owner approval is versioned, scoped, step-up protected and cannot create a
     [pendingId],
   );
   assert.equal(audit.rowCount, 1);
+  const decision = (await db.query("SELECT payload FROM jobs WHERE dedupe_key=$1", ["access-decision:" + pendingId])).rows[0].payload;
+  assert.match(decrypt(decision.encryptedText), /\/access\/setup-authenticator$/);
+});
+test("Engineering approval mail links to Docs without administrator MFA setup", async () => {
+  const email = "new-engineering-approval@onesa.eu";
+  await register(email, "engineering", "2001:db8:5e7::1");
+  assert.equal((await confirm(await mailToken(email))).json().status, "pending");
+  const request = (await db.query("SELECT id,revision FROM access_registrations WHERE email=$1 AND audience='engineering'", [email])).rows[0];
+  const result = await app.inject({method: "POST", url: "/api/v1/admin/access/requests/" + request.id + "/review", headers: ownerHeaders, payload: {decision: "approve", expectedRevision: request.revision, evidence: "Synthetic scoped engineering approval only", role: "viewer", ...await proof()}});
+  assert.equal(result.statusCode, 200, result.body);
+  const decision = (await db.query("SELECT payload FROM jobs WHERE dedupe_key=$1", ["access-decision:" + request.id])).rows[0].payload;
+  assert.match(decrypt(decision.encryptedText), /\/engineering$/);
+  assert.doesNotMatch(decrypt(decision.encryptedText), /authenticator|administrator/);
+  assert.equal((await db.query("SELECT id FROM users WHERE email=$1", [email])).rowCount, 0);
 });
 test("Engineering registration and password/link authentication grant no Portal account and enforce one-use/interaction boundaries", async () => {
   const email = "retained@example.invalid";
@@ -509,4 +524,18 @@ test("Unknown account link requests have generic responses and cannot send mail;
     ).statusCode,
     403,
   );
+});
+
+test("Email-link MFA sign-in applies the same explicit browser persistence choice", async () => {
+  for (const rememberBrowser of [false, true]) {
+    await requestAdminLink("owner@onesa.eu");
+    const token = await mailToken("owner@onesa.eu", "Your Onesa sign-in link");
+    const response = await app.inject({method:"POST", url:"/api/v1/access/link/verify", remoteAddress:"2001:db8:9::1", headers:origin, payload:{token, code:(await proof()).code, rememberBrowser}});
+    assert.equal(response.statusCode,200,response.body);
+    const cookie = response.cookies.find(c=>c.name==="onesa_session")!;
+    assert.equal(cookie.maxAge, rememberBrowser ? 28800 : undefined);
+    assert.equal(cookie.httpOnly,true); assert.equal(cookie.domain,undefined);
+    const replay = await app.inject({method:"POST",url:"/api/v1/access/link/verify",remoteAddress:"2001:db8:9::1",headers:origin,payload:{token,code:(await proof()).code,rememberBrowser}});
+    assert.equal(replay.statusCode,401); assert.equal(replay.cookies.length,0);
+  }
 });

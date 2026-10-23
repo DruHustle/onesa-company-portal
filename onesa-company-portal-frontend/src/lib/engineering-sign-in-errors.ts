@@ -1,7 +1,10 @@
-export type EngineeringSignInAction = "details" | "link" | "password" | "link-verify" | "handoff-verify";
+export type EngineeringSignInAction = "session" | "details" | "link" | "password" | "link-verify" | "handoff-verify";
 
 /** Describe only the state reported by the server; a failed login does not prove registration status. */
 export function engineeringSignInError(status: number, code: unknown, action: EngineeringSignInAction) {
+  if (code === "ONESA_SESSION_REQUIRED") return {
+    message: "Your Onesa session or Engineering Docs access is no longer active. Choose another sign-in method or start a new sign-in.", restart: true, registration: false,
+  };
   if (code === "ENGINEERING_INTERACTION") return {
     message: "This sign-in request is no longer active in this browser. Open your latest email link again, or start a new sign-in.", restart: true, registration: false,
   };

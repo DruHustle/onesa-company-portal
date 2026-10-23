@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- Add an opt-in Remember this browser control to administrator and Engineering
+  Docs sign-in. Persist only protected host-only session cookies for the existing
+  eight-hour session lifetime; retain MFA, fresh proof, revocation and sign-out.
+  Session renewal preserves the original authentication time.
+- Let an existing MFA-authenticated Portal session explicitly continue to Docs
+  only when that same email already has enabled Engineering membership. Forced
+  reauthentication and maximum authentication age remain enforced. This does not
+  yet unify AI Platform or Robot sign-in or grant any new product role.
+
+- Guide approved new administrators directly from registration to a dedicated
+  authenticator setup screen, code verification and one-use recovery-code handoff.
+  Approval emails link to that screen; existing MFA cannot be overwritten and
+  Engineering Docs approval does not add an administrator MFA requirement.
+
+- Separate unrelated recruitment readiness from public-content delivery in launch
+  mode. Applicant intake retains its full gate; exact editorial review, applicable
+  company/privacy/provider readiness, file approval and clean scans remain required.
+  Explicit pre-launch policy and approval records are unchanged.
+
+- Refine access registration with compact headings, consistent field spacing and
+  secondary access guidance. Explain authenticator enrollment and saved recovery
+  codes on administrator sign-in; existing MFA and owner approvals remain enforced.
+
 - Correct stale Industrial AI scope copy in English/German: the isolated protected
   synthetic investigation demonstration is implemented; live factory integrations
   and wider application areas remain development directions. Preserve the Home
