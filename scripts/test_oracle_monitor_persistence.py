@@ -84,13 +84,15 @@ class MonitorPersistenceTests(unittest.TestCase):
         self.stack.enter_context(patch.object(Path, "read_text", read))
         self.stack.enter_context(
             patch.object(
-                monitor.subprocess, "run",
+                monitor.subprocess,
+                "run",
                 side_effect=AssertionError("No subprocess allowed"),
             )
         )
         self.stack.enter_context(
             patch.object(
-                monitor.urllib.request, "build_opener",
+                monitor.urllib.request,
+                "build_opener",
                 side_effect=AssertionError("No network allowed"),
             )
         )
@@ -107,7 +109,8 @@ class MonitorPersistenceTests(unittest.TestCase):
 
         def write(path, text, *args, **kwargs):
             matches = path.parent == self.state and path.name in {
-                target, target + ".tmp"
+                target,
+                target + ".tmp",
             }
             completed = not after_notification or "notification" in json.loads(text)
             if matches and completed:
