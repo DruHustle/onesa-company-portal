@@ -360,3 +360,9 @@ rotation, logout/revocation and one-use factors. The actual OIDC integration che
 transient versus remembered provider cookies, signed identity, PKCE, missing or
 disabled membership, expired/non-MFA Portal sessions, forced login and max_age.
 Remembering a browser grants no product role and never counts as fresh MFA.
+
+MFA reuse additionally requires purpose-signed, session-bound authentication-time
+proof. `session-proof.test.ts` checks tampering, another signing purpose, token
+substitution, future/expired/malformed evidence and renewal without extending MFA
+freshness. Legacy sessions keep normal Portal access but cannot provide a made-up
+authentication time to Docs. No schema, application credential or MFA key changes.

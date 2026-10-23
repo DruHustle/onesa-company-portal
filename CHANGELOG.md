@@ -5,7 +5,10 @@
 - Add an opt-in Remember this browser control to administrator and Engineering
   Docs sign-in. Persist only protected host-only session cookies for the existing
   eight-hour session lifetime; retain MFA, fresh proof, revocation and sign-out.
-  Session renewal preserves the original authentication time.
+  Session renewal preserves the original authentication time. Purpose-separated,
+  signed evidence binds that time to the specific session: legacy sessions remain
+  valid in Portal but require fresh MFA before being reused for Docs. Remembering
+  a browser never turns an old renewal into fresh authentication.
 - Let an existing MFA-authenticated Portal session explicitly continue to Docs
   only when that same email already has enabled Engineering membership. Forced
   reauthentication and maximum authentication age remain enforced. This does not

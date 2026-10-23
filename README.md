@@ -114,6 +114,8 @@ a private device and sign out when finished. Browsers may restore session cookie
 when restoring tabs even without this option; closing a window is not revocation.
 An already authenticated Portal account can continue to Docs only with its
 existing enabled Engineering membership; other product permissions stay separate.
+Legacy sessions can continue using Portal. Reusing them for Docs requires a fresh
+MFA sign-in so an older session renewal cannot be mistaken for authentication.
 See the [protected access procedure](docs/engineering/ENGINEERING_DOCS_IDENTITY.md)
 for source behavior, deployment records and onboarding boundaries.
 The protected privacy workspace includes policy review and explicit Portal lifecycle

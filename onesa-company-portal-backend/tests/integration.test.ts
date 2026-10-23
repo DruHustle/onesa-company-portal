@@ -125,7 +125,7 @@ test('Remember browser is opt-in, survives renewal, and cannot bypass MFA, expir
   assert.equal(fresh.statusCode,200,fresh.body);
   const out=await app.inject({method:'POST',url:rememberBrowser?'/api/v1/auth/revoke':'/api/v1/auth/logout',headers:{...h,cookie:fresh.cookies.filter(c=>c.value).map(c=>c.name+'='+c.value).join('; '),'x-csrf-token':fresh.json().csrf},payload:{}});
   assert.equal(out.statusCode,200,out.body);
-  for(const name of ['onesa_session','onesa_remember_browser'])assert.equal(out.cookies.find(c=>c.name===name)?.value,'');
+  for(const name of ['onesa_session','onesa_remember_browser','onesa_mfa_session'])assert.equal(out.cookies.find(c=>c.name===name)?.value,'');
   assert.equal((await app.inject({url:'/api/v1/auth/me',headers:{cookie:'onesa_session='+fresh.cookies.find(c=>c.name==='onesa_session')!.value}})).statusCode,401);
  }
 });
