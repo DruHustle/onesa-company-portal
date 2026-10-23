@@ -1963,7 +1963,8 @@ export interface operations {
                     /** Format: email */
                     email: string;
                     password: string;
-                    code: string;
+                    /** @default  */
+                    code?: "" | string;
                     /** @default false */
                     rememberBrowser?: boolean;
                 };
@@ -11817,6 +11818,7 @@ export interface operations {
                     "application/json": {
                         csrf: string;
                         emailSent: boolean;
+                        linkResendSeconds: number;
                         /** Format: email */
                         linkEmail?: string;
                         onesaAccount?: {
@@ -13962,7 +13964,8 @@ export interface operations {
             content: {
                 "application/json": {
                     token: string;
-                    code: string;
+                    /** @default  */
+                    code?: "" | string;
                     /** @default false */
                     rememberBrowser?: boolean;
                 };

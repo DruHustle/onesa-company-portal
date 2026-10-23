@@ -11,3 +11,10 @@ Sign in through Onesa Portal with an individually approved engineering identity.
 Public repository history may contain earlier editions; moving this active copy
 does not erase historical exposure. Credentials, records and release evidence
 belong in their existing restricted stores, never in this reference page.
+
+Administrator sign-in checks enrollment after password or email-link proof. An
+approved account without MFA is guided to authenticator setup; an enrolled account
+uses its existing app or recovery code. Enrollment is never disclosed by an
+email-only lookup. Accepted email-link requests show Sent and a 30-second resend
+countdown. Existing approval, MFA, membership and one-use-link controls remain.
+Source changes require separate qualified component releases.

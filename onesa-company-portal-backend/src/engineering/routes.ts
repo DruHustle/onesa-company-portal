@@ -2,6 +2,7 @@ import {
   requestEngineeringLink,
   consumeEngineeringLink,
   engineeringPasswordAccount,
+  engineeringLinkResendSeconds,
 } from "../auth/access.js";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
@@ -179,7 +180,7 @@ export async function registerEngineeringIdentity(
         ...meta("engineeringSignInDetails"),
         params,
         response: {
-          200: z.object({ csrf: proof, emailSent: z.boolean(), linkEmail: z.email().optional(), onesaAccount: z.object({email:z.email()}).optional() }),
+          200: z.object({ csrf: proof, emailSent: z.boolean(), linkResendSeconds: z.number().int().min(0).max(30), linkEmail: z.email().optional(), onesaAccount: z.object({email:z.email()}).optional() }),
           ...errors,
         },
       },
@@ -198,6 +199,7 @@ export async function registerEngineeringIdentity(
       return {
         csrf: interactionProof(config, req.params.uid),
         emailSent: await challengeExists(req.params.uid),
+        linkResendSeconds: await engineeringLinkResendSeconds(req.params.uid),
         ...(linkEmail ? { linkEmail } : {}),
         ...(session ? { onesaAccount: {email:session.email} } : {}),
       };

@@ -74,7 +74,7 @@ const api = http.createServer(async (req, res) => {
     }
   }
   if (action === "details") {
-    res.end(JSON.stringify({ csrf: proof, emailSent: states.has(uid), ...(uid.startsWith("synthetic_session_") ? {onesaAccount:{email:"synthetic-engineer@onesa.eu"}} : {}), ...(req.headers.cookie?.includes("onesa_ui_handoff=fixture") ? {linkEmail: "synthetic-engineer@onesa.eu"} : {}) }));
+    res.end(JSON.stringify({ csrf: proof, emailSent: states.has(uid), linkResendSeconds: states.has(uid) ? 30 : 0, ...(uid.startsWith("synthetic_session_") ? {onesaAccount:{email:"synthetic-engineer@onesa.eu"}} : {}), ...(req.headers.cookie?.includes("onesa_ui_handoff=fixture") ? {linkEmail: "synthetic-engineer@onesa.eu"} : {}) }));
     return;
   }
   const input = JSON.parse(body);
@@ -167,7 +167,7 @@ async function verifyOpeningHandoff(page, uid, submitButton) {
   await page.route(destination, handler);
   try {
     await submitButton.click({noWaitAfter: true});
-    await requested;
+    await Promise.race([requested, delay(5000).then(() => { throw Error("Opening callback was not requested within the existing sign-in UI bound"); })]);
     // Locator actions wait for pending navigation. Observe the old document's
     // actual DOM transitions while the destination response is deliberately held.
     await expect.poll(() => frames.some(frame => frame.heading === "Opening Engineering Docs")).toBe(true);
@@ -223,19 +223,19 @@ try {
       await page.getByRole("button", { name: "Send sign-in link", exact: true }).click();
       await expect(page.getByRole("status")).toHaveText("Sent.");
       await expect(page.getByLabel("Email address")).toBeDisabled();
-      await expect(page.getByRole("button", { name: "Send another link", exact: true })).toBeDisabled();
+      await expect(page.getByRole("button", { name: /^Send another link/ })).toBeDisabled();
       await expect(page.getByRole("status")).toBeVisible();
       await expect(page.getByRole("status")).toBeFocused();
       await expect(page.getByRole("button", {name: "Sent", exact: true})).toHaveCount(0);
-      await page.clock.fastForward(4000);
-      await expect(page.getByRole("button", {name: "Send another link", exact: true})).toBeDisabled();
+      await page.clock.fastForward(29000);
+      await expect(page.getByRole("button", {name: /^Send another link/})).toBeDisabled();
       await page.clock.fastForward(1000);
-      const resend = page.getByRole("button", { name: "Send another link", exact: true });
+      const resend = page.getByRole("button", { name: /^Send another link/ });
       await expect(resend).toBeEnabled();
       const resent = page.waitForResponse(r => r.url() === origin + "/engineering/sign-in/synthetic_loading_01/link");
       await resend.click();
       expect((await resent).status()).toBe(200);
-      await expect(page.getByRole("button", { name: "Send another link", exact: true })).toBeDisabled();
+      await expect(page.getByRole("button", { name: /^Send another link/ })).toBeDisabled();
       await expect(page.getByLabel("Email address")).toBeDisabled();
       expect(states.get("synthetic_loading_01")).toBe("synthetic-engineer@onesa.eu");
       await page.getByRole("button", {name: "Email and password", exact: true}).click();
@@ -244,10 +244,17 @@ try {
       await expect(page.getByRole("status")).toHaveCount(0);
       await expect(page.getByRole("button", {name: "Sent", exact: true})).toHaveCount(0);
       await expect(page.getByLabel("Email address")).toBeDisabled();
-      await page.clock.fastForward(5000);
+      await page.clock.fastForward(30000);
       await page.getByRole("button", {name: "Send sign-in link", exact: true}).click();
       await expect(page.getByRole("status")).toHaveText("Sent.");
       expect(states.get("synthetic_loading_01")).toBe("other-synthetic@onesa.eu");
+      await page.reload({waitUntil:"networkidle"});
+      await expect(page.getByRole("status")).toHaveText("Sent.");
+      await expect(page.getByRole("button",{name:/^Send another link/})).toBeDisabled();
+      await page.clock.fastForward(30000);
+      await page.getByRole("button",{name:"Send another link",exact:true}).click();
+      await expect(page.getByLabel("Email address")).toBeEnabled();
+      await expect(page.getByLabel("Email address")).toHaveValue("");
     } finally { releaseDetails(); await context.close(); }
   }
   if (accessEnabled) {
@@ -295,7 +302,7 @@ try {
         await expect(page.getByRole("status")).toHaveText("Sent.");
         await expect(page.locator("#engineering-sign-in").getByRole("alert")).toHaveCount(0);
         await expect(email).toBeDisabled();
-        await expect(page.getByRole("button", {name: "Send another link", exact: true})).toBeDisabled();
+        await expect(page.getByRole("button", {name: /^Send another link/})).toBeDisabled();
         expect(requests).toBe(2);
       } finally { releaseSend(); await context.close(); }
     }
@@ -365,16 +372,21 @@ try {
   if(accessEnabled)for(const colorScheme of ["light","dark"]){
     const context=await browser.newContext({viewport:{width:390,height:844},colorScheme}),page=await context.newPage();
     const uid="synthetic_session_"+colorScheme;
+    states.set(uid,"synthetic-engineer@onesa.eu");
     await page.goto(origin+"/engineering/sign-in/"+uid,{waitUntil:"networkidle"});
     const remember=page.getByRole("checkbox",{name:"Remember this browser",exact:true});
     await expect(remember).not.toBeChecked();
     await expect(page.getByRole("button",{name:"Continue with Onesa",exact:true})).toBeEnabled();
+    await expect(page.getByRole("button",{name:/^Send another link/})).toHaveCount(0);
+    await expect(page.getByRole("status")).toHaveCount(0);
     await expect(page.getByRole("group",{name:"Sign-in method"})).toHaveCount(0);
     await expect(page.getByLabel("Email address",{exact:true})).toHaveCount(0);
     await remember.check();
     expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa","wcag22aa"]).analyze()).violations).toEqual([]);
     await page.getByRole("button",{name:"Use another account",exact:true}).click();
     await expect(page.getByLabel("Email address",{exact:true})).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText("Sent.");
+    await page.getByRole("button",{name:"Email and password",exact:true}).click();
     await expect(remember).toBeChecked();
     await page.reload({waitUntil:"networkidle"});
     await remember.check();
@@ -382,6 +394,46 @@ try {
     expect(signInChoices.get(uid+"/session")).toBe(true);
     views.push({type:"existing-approved-Onesa-session",colorScheme,width:390,explicitConfirmation:true,rememberOptIn:true,canUseAnotherAccount:true,axeViolations:0});
     await context.close();
+  }
+  for (const colorScheme of ["light", "dark"]) {
+    const context = await browser.newContext({viewport:{width:320,height:568},colorScheme}), page=await context.newPage();
+    try {
+      let requests=0, release;
+      const gate=new Promise(resolve=>{release=resolve;});
+      await page.route("**/api/v1/auth/login", async route=>{
+        requests++;const body=route.request().postDataJSON();
+        if(body.email==="new-admin@onesa.eu"){
+          await route.fulfill({status:403,json:{error:{code:"MFA_ENROLLMENT_REQUIRED",message:"Set up your authenticator"}}}); return;
+        }
+        if(body.password!=="synthetic-valid-password"){
+          await route.fulfill({status:401,json:{error:{code:"CREDENTIALS",message:"Invalid credentials"}}});return;
+        }
+        await gate;
+        await route.fulfill({status:401,json:{error:{code:body.code?"MFA":"MFA_REQUIRED",message:body.code?"Invalid MFA code":"Enter your authenticator code"}}});
+      });
+      await page.goto(origin+"/admin",{waitUntil:"networkidle"});
+      const admin=page.locator('section[aria-label="Administrator sign-in"]');
+      await expect(admin.getByLabel("Authenticator or recovery code",{exact:true})).toHaveCount(0);
+      await admin.getByLabel("Email",{exact:true}).fill("enrolled@onesa.eu");
+      await admin.getByLabel("Password",{exact:true}).fill("synthetic-valid-password");
+      await admin.locator("form").evaluate(form=>{form.requestSubmit();form.requestSubmit();});
+      await expect.poll(()=>requests).toBe(1);
+      await expect(admin.getByRole("button",{name:"Please wait…",exact:true})).toBeDisabled();
+      release();
+      await expect(admin.getByLabel("Authenticator or recovery code",{exact:true})).toBeVisible();
+      await expect(admin.getByLabel("Authenticator or recovery code",{exact:true})).toBeFocused();
+      await admin.getByLabel("Authenticator or recovery code",{exact:true}).fill("000000");
+      await admin.getByRole("button",{name:"Sign in",exact:true}).click();
+      await expect(admin.getByRole("alert")).toHaveText("Invalid MFA code");
+      await admin.getByLabel("Email",{exact:true}).fill("new-admin@onesa.eu");
+      await expect(admin.getByLabel("Authenticator or recovery code",{exact:true})).toHaveCount(0);
+      await admin.getByRole("button",{name:"Continue",exact:true}).click();
+      await expect(admin.getByRole("link",{name:"Set up your authenticator",exact:true})).toHaveAttribute("href","/access/setup-authenticator");
+      await expect(admin.getByLabel("Authenticator or recovery code",{exact:true})).toHaveCount(0);
+      await expect(admin.getByRole("status")).toContainText("needs authenticator setup");
+      expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa","wcag22aa"]).analyze()).violations).toEqual([]);
+      views.push({type:"credential-verified-admin-mfa",colorScheme,width:320,noEmailOnlyLookup:true,unenrolledGetsSetup:true,enrolledGetsFactor:true,duplicateBlocked:true});
+    } finally {await context.close();}
   }
   for (const width of (accessEnabled ? [320, 390, 768, 1440] : []))
     for (const mode of (accessEnabled ? ["light", "dark"] : [])) {
@@ -501,14 +553,43 @@ try {
     await remember.check();
     await expect(page.getByRole("link", { name: "Register for administrator access" })).toBeVisible();
     await page.getByRole("button", { name: "Email a sign-in link", exact: true }).click();
+    await page.clock.install();
+    let sends=0, releaseSend;
+    const sendGate=new Promise(resolve=>{releaseSend=resolve;});
+    await page.route("**/api/v1/access/link",async route=>{sends++;await sendGate;await route.fulfill({status:202,json:{ok:true}});});
     await page.getByLabel("Email", { exact: true }).first().fill("synthetic@onesa.eu");
-    await page.getByRole("button", { name: "Send sign-in link", exact: true }).click();
-    await expect(page.locator('section[aria-label="Administrator sign-in"]').getByRole("status")).toContainText("a sign-in link is on its way");
+    await page.locator('section[aria-label="Administrator sign-in"] form').evaluate(form=>{form.requestSubmit();form.requestSubmit();});
+    await expect.poll(()=>sends).toBe(1);
+    releaseSend();
+    await expect(page.locator('section[aria-label="Administrator sign-in"]').getByRole("status")).toHaveText("Sent.");
+    await expect(page.getByLabel("Email", {exact:true}).first()).toBeDisabled();
+    await expect(page.getByRole("button", {name:/^Send another link/})).toBeDisabled();
+    const sentEmail=page.getByLabel("Email",{exact:true}).first();
+    expect(await sentEmail.evaluate(el=>getComputedStyle(el).cursor)).toBe("not-allowed");
+    await page.clock.fastForward(29000);
+    await expect(page.getByRole("button",{name:/^Send another link/})).toBeDisabled();
+    expect(sends).toBe(1);
+    await page.clock.fastForward(1000);
+    await page.getByRole("button",{name:"Send another link",exact:true}).click();
+    await expect.poll(()=>sends).toBe(2);
+    await expect(page.getByRole("button",{name:/^Send another link/})).toBeDisabled();
+    await page.clock.fastForward(30000);
+    await page.route("**/api/v1/access/link",async route=>route.fulfill({status:503,json:{error:{message:"Synthetic temporary send failure"}}}));
+    await page.getByRole("button",{name:"Send another link",exact:true}).click();
+    await expect(page.locator('section[aria-label="Administrator sign-in"]').getByRole("alert")).toContainText("Synthetic temporary send failure");
+    await expect(page.locator('section[aria-label="Administrator sign-in"]').getByRole("status")).toHaveCount(0);
+    await expect(page.getByLabel("Email",{exact:true}).first()).toBeEnabled();
+    await expect(page.getByLabel("Email",{exact:true}).first()).toHaveValue("synthetic@onesa.eu");
+    await page.unroute("**/api/v1/access/link");
     const adminProofsBefore = adminConfirmations;
     await page.evaluate(() => { window.__onesaLinkDocumentMarker = "same-document"; });
     await page.goto(origin + "/admin#access-link=" + proof);
     const adminSignIn = page.locator('section[aria-label="Administrator sign-in"]');
+    await expect(adminSignIn.getByLabel("Authenticator or recovery code", {exact: true})).toHaveCount(0);
+    await page.route("**/api/v1/access/link/verify", async route => { await route.fulfill({status:401,json:{error:{code:"MFA_REQUIRED",message:"Enter your authenticator code"}}}); });
+    await adminSignIn.getByRole("button", {name:"Confirm sign-in link",exact:true}).click();
     await expect(adminSignIn.getByLabel("Authenticator or recovery code", {exact: true})).toBeVisible();
+    await page.unroute("**/api/v1/access/link/verify");
     await expect(adminSignIn.getByLabel("Authenticator or recovery code", {exact: true})).toHaveAttribute("required", "");
     await expect(adminSignIn.getByRole("button", {name: "Sign in", exact: true})).toBeEnabled();
     await expect(remember).toBeChecked();
@@ -620,7 +701,7 @@ try {
       await page.goto(origin+"/admin",{waitUntil:"networkidle"});
       await expect(page.getByLabel("Email",{exact:true}).first()).toBeVisible();
       await expect(page.getByLabel("Password",{exact:true}).first()).toBeVisible();
-      await expect(page.getByLabel("Authenticator or recovery code",{exact:true})).toBeVisible();
+      await expect(page.getByLabel("Authenticator or recovery code",{exact:true})).toHaveCount(0);
       await expect(page.getByRole("button",{name:"Email a sign-in link",exact:true})).toHaveCount(0);
       await expect(page.getByRole("link",{name:"Register for administrator access"})).toHaveCount(0);
       for(const path of ["/access/register","/access/confirm","/engineering/sign-in/synthetic_disabled_01"]){
@@ -638,7 +719,7 @@ try {
         "Isolated production renderer and synthetic mock API; backend protocol tested separately; no hosted/provider acceptance claimed",
       views: views.length,
       accessEnabled,
-      requestStateControls: accessEnabled ? {lightDarkDisabledFeedback: true, duplicateBlocked: true, malformedAcknowledgementDoesNotShowSent: true, recipientChangesClearSentWithoutBypassingCooldown: true, plainSentMessageWithoutButton: true, resendDisabledUntilFiveSeconds: true, failedSendPreservesEmail: true, successfulRetryClearsError: true, expiredLoadAndSubmitRestart: true, actionablePasswordRegistrationAndApprovalErrors: true, serviceFailureNotMislabeledExpired: true, stalledRequestRecovery: true} : null,
+      requestStateControls: accessEnabled ? {lightDarkDisabledFeedback: true, duplicateBlocked: true, malformedAcknowledgementDoesNotShowSent: true, recipientChangesClearSentWithoutBypassingCooldown: true, plainSentMessageWithoutButton: true, resendDisabledUntilThirtySeconds: true, failedSendPreservesEmail: true, successfulRetryClearsError: true, expiredLoadAndSubmitRestart: true, actionablePasswordRegistrationAndApprovalErrors: true, serviceFailureNotMislabeledExpired: true, stalledRequestRecovery: true} : null,
       firstAdministratorSetup: accessEnabled ? {enrollmentCalls, verificationCalls, syntheticOnly: true, failedCodeKeepsSetup: true, recoveryAcknowledgementRequired: true, noSessionCreated: true} : null,
       mailSent: 0,
       databaseRequests: 0,

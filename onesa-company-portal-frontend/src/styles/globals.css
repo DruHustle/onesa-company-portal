@@ -206,3 +206,7 @@ fieldset.admin-content{border:0;margin:0;padding:0;min-inline-size:0}
 
 .admin-auth-shell label.signin-remember{display:flex;flex-direction:row;align-items:center;gap:10px;font-size:.9375rem;font-weight:400;min-height:44px;margin-bottom:4px}
 .admin-auth-shell label.signin-remember input[type="checkbox"]{width:20px;height:20px;min-height:20px;margin:0;flex:none;accent-color:var(--onesa-accent)}
+
+/* Shared sign-in feedback keeps disabled controls visually distinct. */
+.admin-auth-shell input:disabled{background:var(--onesa-surface);color:var(--onesa-muted);border-color:var(--onesa-divider);cursor:not-allowed;opacity:1}
+.admin-auth-shell button:disabled{background:var(--onesa-surface);color:var(--onesa-muted);border:1px solid var(--onesa-border);cursor:not-allowed;opacity:1;box-shadow:none;transform:none}

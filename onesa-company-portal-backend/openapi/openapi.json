@@ -758,9 +758,20 @@
                     "maxLength": 256
                   },
                   "code": {
-                    "type": "string",
-                    "minLength": 6,
-                    "maxLength": 64
+                    "default": "",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          ""
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "minLength": 6,
+                        "maxLength": 64
+                      }
+                    ]
                   },
                   "rememberBrowser": {
                     "default": false,
@@ -769,8 +780,7 @@
                 },
                 "required": [
                   "email",
-                  "password",
-                  "code"
+                  "password"
                 ]
               }
             }
@@ -26262,6 +26272,11 @@
                     "emailSent": {
                       "type": "boolean"
                     },
+                    "linkResendSeconds": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 30
+                    },
                     "linkEmail": {
                       "type": "string",
                       "format": "email",
@@ -26284,7 +26299,8 @@
                   },
                   "required": [
                     "csrf",
-                    "emailSent"
+                    "emailSent",
+                    "linkResendSeconds"
                   ],
                   "additionalProperties": false
                 }
@@ -31352,9 +31368,20 @@
                     "pattern": "^[a-f0-9]{64}$"
                   },
                   "code": {
-                    "type": "string",
-                    "minLength": 6,
-                    "maxLength": 64
+                    "default": "",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          ""
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "minLength": 6,
+                        "maxLength": 64
+                      }
+                    ]
                   },
                   "rememberBrowser": {
                     "default": false,
@@ -31362,8 +31389,7 @@
                   }
                 },
                 "required": [
-                  "token",
-                  "code"
+                  "token"
                 ]
               }
             }

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-23 — Operations notifications accepted independently
+
+- Operations monitor source `7b22dd5979effbea6fd1c5f8d5cb827eee62fd5f` was
+  installed and accepted separately from application releases. Required
+  dev/staging/main CI, six-API shadow checks and two normal scheduled samples
+  passed. The subsequent installed-hash and singleton-schedule readback agrees.
+- Alert new or changed failures immediately, remind on unchanged backend-only
+  incidents every six hours, retain thirty-minute reminders for other critical
+  rules, and confirm recovery after two healthy samples. Persist pending delivery
+  identity and use Robot readiness. Application containers, data, credentials,
+  timers and safety controls were preserved. No test email or new model call was made.
+- This accepted version precedes the separate interruption correction below.
+  Component installation evidence does not identify an entire repository as deployed.
+
 ## 2026-10-23 — Portal onboarding and remembered sessions accepted
 
 - Company/Portal frontend `2009ee656cc685657956d63abef93860a850905b`, Vercel
@@ -49,13 +63,34 @@
 
 ## Unreleased
 
-- Prepare incident-based operations notifications: alert new or changed failures immediately,
-  remind on unchanged backend-only incidents every six hours, retain thirty-minute
-  reminders for other critical rules, and confirm recovery after two healthy
-  samples. Preserve a pending notification identity before delivery so an ambiguous
-  provider outcome reuses its idempotency key. Robot probes use its existing readiness
-  proof rather than a liveness-only200. Detection, private boundaries and all other rules
-  remain enforced; this entry alone is not production installation evidence.
+- Check administrator MFA enrollment only after verifying a password or bearer
+  email link. Enrolled accounts receive the authenticator/recovery-code step;
+  approved accounts without MFA receive the setup action. Neither step creates
+  a session, consumes a recovery code or changes existing enrollment. No public
+  email-only enrollment lookup is introduced.
+  New empty-database bootstrap owners now enroll and verify MFA in the UI;
+  bootstrap does not pre-activate or print an unverified factor. Existing
+  accounts and MFA enrollments are not rewritten by this source correction.
+- Show one plain Sent message after accepted admin/Engineering Docs link requests,
+  visibly disable controls and expose an explicit 30-second resend countdown.
+  Coalesce concurrent/repeated requests transactionally on the server, including
+  unknown recipients, without changing generic acknowledgement or rate limits.
+  Engineering interaction refresh restores its remaining cooldown; no token or
+  sensitive draft is saved to browser storage. Backend support precedes the new
+  frontend. Existing-session continuation is independent of email cooldown; failed
+  resends clear stale Sent feedback. Source validation is separate from
+  staging/production acceptance.
+
+- Preserve the reviewer's monitor interruption correction `82a74bbc`: assemble the
+  final restart-counter baseline before one atomic state-file replacement. Eight
+  offline tests preserve readable prior state and pending delivery identity after
+  interrupted writes, without real mail or service restarts. Source CI and actual
+  monitor installation remain separate; no power-loss or concurrent-writer durability
+  is claimed.
+- Pin supported backend security fixes Fastify 5.12.6 and Zod 4.6.6 after native
+  dependency audit identified GHSA-389g-gv7q-r4x8 and GHSA-mrhx-c7xc-m3w5. Keep
+  the existing audit/security gates. Updating a lockfile alone does not establish
+  that an independently deployed API or worker has been patched.
 
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical

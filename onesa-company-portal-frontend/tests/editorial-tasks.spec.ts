@@ -40,7 +40,11 @@ test.beforeAll(async () => {
     );
 });
 test.beforeEach(async () => {
-  await db.query("DELETE FROM rate_limits WHERE key=$1", ["login:127.0.0.1"]);
+  // Password proof and factor verification are two requests. Isolate this
+  // scenario's owned account counters without changing production limits.
+  await db.query("DELETE FROM rate_limits WHERE key=ANY($1::text[])", [
+    ["login:127.0.0.1", ...[...accounts.values()].map(account => "account:" + hash(account.email.toLowerCase()))],
+  ]);
 });
 test.afterAll(async () => {
   await db.query("DELETE FROM applications WHERE id=$1", [applicationId]);
@@ -61,7 +65,7 @@ async function signIn(page: Page, role: string) {
   await page.goto("/admin");
   await page.getByLabel("Email", { exact: true }).first().fill(account.email);
   await page.getByLabel("Password", { exact: true }).first().fill(password);
-  await page.getByLabel("Authenticator or recovery code").fill(code);
+  await expect(page.getByLabel('Authenticator or recovery code')).toHaveCount(0);await page.getByRole('button',{name:'Continue',exact:true}).click();await page.getByLabel("Authenticator or recovery code").fill(code);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Company workspace" }),
