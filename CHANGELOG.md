@@ -1,6 +1,19 @@
 # Changelog
 
-## Unreleased
+## 2026-10-23 — Portal onboarding and remembered sessions accepted
+
+- Company/Portal frontend `2009ee656cc685657956d63abef93860a850905b`, Vercel
+  `dpl_GppJgy5SWD1vAwo2hda6TmuwQKmB`, is accepted on both canonical hosts.
+  Independently accepted Oracle API `391b23ddb28b28b1467cf307c696544a9e9476a3`
+  has the identical qualified source tree. Full dev/staging/main CI and image
+  security checks passed. The Home hero, existing credentials, memberships,
+  governance records, worker and other services remain unchanged.
+- Validation includes 154 isolated backend tests, two actual synthetic staging
+  MFA sessions with renewal/replay/logout checks, 20 retained Preview UI contexts
+  bound by identical frontend bytes, six canonical responsive/accessibility
+  contexts and production cookie/TLS/private-boundary checks. Canonical UI
+  submissions were intercepted; no production-owner authentication or real email
+  is inferred. Human product ratings remain separate.
 
 - Add an opt-in Remember this browser control to administrator and Engineering
   Docs sign-in. Persist only protected host-only session cookies for the existing
@@ -33,6 +46,8 @@
   and wider application areas remain development directions. Preserve the Home
   hero, design foundation, Application Security direction and Robot simulation scope.
   This source correction does not activate Industrial on ordinary AI production.
+
+## Unreleased
 
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical

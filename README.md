@@ -14,6 +14,25 @@ Vercel frontend and existing data services remain. See the
 for source identities, protected ingress, acceptance and rollback.
 
 The current accepted Company/Portal frontend is
+`2009ee656cc685657956d63abef93860a850905b` (2026-10-23), Vercel
+`dpl_GppJgy5SWD1vAwo2hda6TmuwQKmB`. The independently accepted Oracle API is
+`391b23ddb28b28b1467cf307c696544a9e9476a3`, with the identical qualified source
+tree. Administrator and Engineering Docs sign-in offer an unchecked-by-default
+**Remember this browser** option for the existing eight-hour session limit.
+Purpose-signed session evidence preserves actual MFA freshness across renewal;
+existing Portal access and separate Engineering membership remain enforced.
+Approved new administrators have a dedicated authenticator/recovery-code setup UI.
+This scope does not unify AI Platform or Robot accounts.
+
+Full native dev/staging/main checks, 154 isolated backend tests, two actual
+synthetic staging MFA sessions, 20 source-equivalent Preview UI contexts and six
+canonical responsive/accessibility contexts passed. Running-image cookie/TLS and
+private-boundary checks passed in production. Canonical UI submissions were
+intercepted, so they do not establish production-owner authentication or delivered
+email. The Home hero, credentials, memberships, governance records and worker are
+retained. Later repository metadata commits are distinct from serving components.
+
+The earlier accepted Company/Portal frontend is
 `63d8c8682735ae24076890f751a1a06936bb6d11` (2026-10-22), Vercel
 `dpl_BrSELH5kadPHJgNjMckzzNtTgBVs`. Products now presents Application Security
 in English/German as an AI Platform application direction, with code review,
@@ -63,7 +82,7 @@ The original 15-minute link expiry, current membership, Origin/CSRF and admin MF
 remain enforced. Sent is one plain message; email stays visibly disabled and
 explicit resend enables after five seconds.
 
-The independently accepted Oracle API is `cfe0d43e7032dabc83be8e49dba340660e1975e0`,
+The earlier independently accepted Oracle API is `cfe0d43e7032dabc83be8e49dba340660e1975e0`,
 whose complete tree equals qualified main `32f3b24c4937632d2da500b44002602bdedd8449`.
 Twenty-five isolated real identity integration checks, full exact-main CI,
 30 staged/six canonical synthetic UI views and 144 topic journeys pass. Actual
