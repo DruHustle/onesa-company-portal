@@ -49,6 +49,13 @@
 
 ## Unreleased
 
+- Prepare incident-based operations notifications: alert new or changed failures immediately,
+  remind only every six hours while unchanged, and confirm recovery after two healthy
+  samples. Preserve a pending notification identity before delivery so an ambiguous
+  provider outcome reuses its idempotency key. Robot probes use its existing readiness
+  proof rather than a liveness-only200. Detection, private boundaries and all other rules
+  remain enforced; this entry alone is not production installation evidence.
+
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.

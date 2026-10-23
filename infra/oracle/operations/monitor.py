@@ -13,6 +13,9 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 STATE = Path("/var/lib/onesa/operations")
+REMINDER_SECONDS = 6 * 60 * 60
+# Provider keys last 24 hours; leave an hour before manual reconciliation is needed.
+PENDING_RETRY_SECONDS = 23 * 60 * 60
 RULES = (
     "worker-stopped",
     "job-retry-exhausted",
@@ -37,8 +40,15 @@ BACKENDS = {
         + "-api"
         + ("-staging" if environment == "staging" else "")
         + ".onesa.eu"
-        + ("/health" if product == "ai" else "/api/v1/health"),
-        "status": "live" if product == "robot" else "ok",
+        + (
+            "/health"
+            if product == "ai"
+            else "/api/v1/ready"
+            if product == "robot"
+            else "/api/v1/health"
+        ),
+        "status": "ready" if product == "robot" else "ok",
+        "probe": "readiness" if product == "robot" else "liveness",
     }
     for product, hostname in [
         ("portal", "portal"),
@@ -153,6 +163,11 @@ def probe_backend(name):
             result["http_healthy"] = (
                 isinstance(value, dict) and value.get("status") == target["status"]
             )
+            if target["product"] == "robot":
+                result["http_healthy"] = result["http_healthy"] and (
+                    value.get("mode") == "simulation"
+                    and value.get("physical_actuation") is False
+                )
     except (OSError, ValueError, TypeError, subprocess.SubprocessError):
         pass
     return result
@@ -160,7 +175,8 @@ def probe_backend(name):
 
 def sample_backends(previous):
     # One bounded Docker read plus parallel, unauthenticated liveness requests.
-    # No /ready, model calls, application records, service restarts or new credentials.
+    # Robot readiness reads the existing background lease proof, not the database.
+    # No model calls, application records, service restarts or new credentials.
     try:
         response = subprocess.run(
             ["docker", "inspect", *[value["container"] for value in BACKENDS.values()]],
@@ -337,6 +353,7 @@ def failed_backends(metrics):
             "container_healthy": value.get("container_healthy") is True,
             "http_healthy": value.get("http_healthy") is True,
             "http_status": status if type(status) is int and 0 <= status <= 599 else 0,
+            "probe": BACKENDS[name]["probe"],
         }
     return result
 
@@ -348,7 +365,65 @@ def write_record(path, value):
     temporary.replace(path)
 
 
-def notify(alerts, simulation=False, *, metrics=None, checked_at=None):
+def notification_decision(alerts, metrics, previous, last, now):
+    """Notify transitions immediately; bound unchanged reminders, confirm clearance."""
+    healthy_samples = (
+        0
+        if alerts
+        else min(
+            2,
+            previous.get(
+                "healthy_samples", 2 if previous and not previous.get("alerts") else 0
+            )
+            + 1,
+        )
+    )
+    if not alerts:
+        # Do not retroactively email historical recoveries on first installation.
+        recovered = (
+            healthy_samples == 2
+            and (
+                previous.get("healthy_samples") == 1
+                or previous.get("notification", {}).get("kind")
+                in {"alert", "update", "reminder"}
+            )
+            and last.get("rules")
+            and last.get("kind", "alert") != "recovery"
+        )
+        return ("recovery" if recovered else None), healthy_samples
+    if (
+        not last
+        or last.get("kind") == "recovery"
+        or previous.get(
+            "healthy_samples", 2 if previous and not previous.get("alerts") else 0
+        )
+        >= 2
+    ):
+        return "alert", 0
+    signature = (sorted(alerts), sorted(failed_backends(metrics)))
+    old_signature = (
+        sorted(last.get("rules", [])),
+        sorted(last.get("affected_backends", {})),
+    )
+    if signature != old_signature:
+        return "update", 0
+    try:
+        age = now - datetime.datetime.fromisoformat(last["checked_at"]).timestamp()
+    except (KeyError, TypeError, ValueError, OverflowError):
+        age = REMINDER_SECONDS
+    return ("reminder" if age < 0 or age >= REMINDER_SECONDS else None), 0
+
+
+def notify(
+    alerts,
+    simulation=False,
+    *,
+    metrics=None,
+    checked_at=None,
+    reference=None,
+    kind="alert",
+    recovered_backends=(),
+):
     from backup import checked_env
 
     values, _ = checked_env()
@@ -357,10 +432,20 @@ def notify(alerts, simulation=False, *, metrics=None, checked_at=None):
         "andrew@onesa.eu",
     ]:
         raise ValueError("Existing approved notification destination required")
-    reference = str(uuid.uuid4())
+    reference = reference or str(uuid.uuid4())
+    if str(uuid.UUID(reference)) != reference or kind not in {
+        "alert",
+        "update",
+        "reminder",
+        "recovery",
+        "simulation",
+    }:
+        raise ValueError("Invalid notification event")
     subject = (
         "ONESA operations qualification — synthetic alert"
         if simulation
+        else "ONESA service operations recovery"
+        if kind == "recovery"
         else "ONESA service operations alert"
     )
     data = {
@@ -373,14 +458,30 @@ def notify(alerts, simulation=False, *, metrics=None, checked_at=None):
             if simulation
             else ""
         )
+        + (
+            "Recovered: two consecutive healthy samples.\n"
+            if kind == "recovery"
+            else "State: " + kind + "\n"
+        )
         + "\n".join(alerts)
         + ("\nObserved at (UTC): " + checked_at if checked_at else "")
         + "".join(
-            "\nAffected API: " + name
-            + "; container=" + ("healthy" if value["container_healthy"] else "unhealthy")
-            + "; public HTTPS=" + str(value["http_status"])
+            "\nAffected API: "
+            + name
+            + "; container="
+            + ("healthy" if value["container_healthy"] else "unhealthy")
+            + "; public HTTPS="
+            + str(value["http_status"])
+            + " ("
+            + value["probe"]
+            + ")"
             + (" (failed health validation)" if not value["http_healthy"] else "")
             for name, value in failed_backends(metrics or {}).items()
+        )
+        + "".join(
+            "\nRecovered API: " + name
+            for name in BACKENDS
+            if name in recovered_backends
         )
         + "\nReference: "
         + reference,
@@ -407,6 +508,7 @@ def notify(alerts, simulation=False, *, metrics=None, checked_at=None):
         raise TypeError("Notification receipt absent")
     return {
         "reference": reference,
+        "kind": kind,
         "checked_at": checked_at,
         "affected_backends": failed_backends(metrics or {}),
         "provider_receipt_id": receipt["id"],
@@ -446,9 +548,6 @@ def main():
     if args.simulate and set(alerts) != set(RULES):
         raise ValueError("Fault simulation incomplete")
     last = STATE / "notification.json"
-    should_send = args.simulate or (
-        alerts and (not last.exists() or time.time() - last.stat().st_mtime >= 1800)
-    )
     record = {
         "checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "metrics": metrics,
@@ -458,25 +557,83 @@ def main():
     }
     path = STATE / ("simulation.json" if args.simulate else "metrics.json")
     previous = json.loads(path.read_text()) if path.exists() else {}
+    last_notification = json.loads(last.read_text()) if last.exists() else {}
+    kind, record["healthy_samples"] = notification_decision(
+        alerts, metrics, previous, last_notification, time.time()
+    )
+    pending = None if args.simulate else previous.get("notification_pending")
+    reconciliation_required = False
+    if pending:
+        # A prior ambiguous provider result must reuse the same idempotency key.
+        if str(uuid.UUID(pending["reference"])) != pending["reference"]:
+            raise ValueError("Invalid pending notification identity")
+        pending_age = (
+            time.time()
+            - datetime.datetime.fromisoformat(pending["checked_at"]).timestamp()
+        )
+        reconciliation_required = not 0 <= pending_age < PENDING_RETRY_SECONDS
+    elif args.simulate or kind:
+        pending = {
+            "reference": str(uuid.uuid4()),
+            "kind": "simulation" if args.simulate else kind,
+            "alerts": alerts,
+            "metrics": metrics,
+            "checked_at": record["checked_at"],
+            "recovered_backends": list(last_notification.get("affected_backends", {}))
+            if kind == "recovery"
+            else [],
+        }
+    should_send = pending is not None and not reconciliation_required
+    if pending and not args.simulate:
+        record["notification_pending"] = pending
+    record["notification_reconciliation_required"] = reconciliation_required
     # Preserve the latest observed failure even if notification delivery fails.
     # A cleared sample is recorded separately; it never converts a failed sample to PASS.
     if not args.simulate:
         if alerts:
             write_record(STATE / "last-failure.json", record)
         elif previous.get("alerts"):
-            write_record(STATE / "last-recovery.json", {
-                "checked_at": record["checked_at"],
-                "previous_failure_checked_at": previous.get("checked_at"),
-                "cleared_alerts": previous["alerts"],
-                "previous_failed_backends": failed_backends(previous.get("metrics", {})),
-                "backends": metrics.get("backends", {}),
-            })
+            write_record(
+                STATE / "last-recovery.json",
+                {
+                    "checked_at": record["checked_at"],
+                    "previous_failure_checked_at": previous.get("checked_at"),
+                    "cleared_alerts": previous["alerts"],
+                    "previous_failed_backends": failed_backends(
+                        previous.get("metrics", {})
+                    ),
+                    "backends": metrics.get("backends", {}),
+                },
+            )
     if should_send:
-        record["notification"] = notify(
-            alerts, args.simulate, metrics=metrics, checked_at=record["checked_at"]
-        )
         if not args.simulate:
-            write_record(STATE / "last-notified-incident.json", record)
+            # Persist identity before sending: timeouts/crashes must not create new mail.
+            record["notification_pending"] = pending
+            write_record(path, record)
+        record["notification"] = notify(
+            pending["alerts"],
+            args.simulate,
+            metrics=pending["metrics"],
+            checked_at=pending["checked_at"],
+            reference=pending["reference"],
+            kind=pending["kind"],
+            recovered_backends=pending["recovered_backends"],
+        )
+        record.pop("notification_pending", None)
+        # Retain the observation time/type even with a minimal provider receipt.
+        record["notification"].setdefault("checked_at", pending["checked_at"])
+        record["notification"].setdefault("kind", pending["kind"])
+        if not args.simulate:
+            write_record(last, record["notification"])
+            write_record(
+                STATE / "last-notified-incident.json",
+                {
+                    **record,
+                    "checked_at": pending["checked_at"],
+                    "alerts": pending["alerts"],
+                    "metrics": pending["metrics"],
+                },
+            )
     path.write_text(json.dumps(record, indent=2) + "\n")
     path.chmod(0o600)
     # Baseline keeps only counter fields at the top level; never overwrite baseline with injected values.
@@ -485,9 +642,6 @@ def main():
         if "backend_restart_counts" in metrics:
             record["backend_restart_counts"] = metrics["backend_restart_counts"]
         path.write_text(json.dumps(record, indent=2) + "\n")
-    if should_send:
-        last.write_text(json.dumps(record["notification"]) + "\n")
-        last.chmod(0o600)
     print(
         json.dumps(
             {
@@ -495,6 +649,7 @@ def main():
                 "alerts": alerts,
                 "simulation": args.simulate,
                 "notification_accepted": bool(should_send),
+                "notification_reconciliation_required": reconciliation_required,
                 "failed_backends": failed_backends(metrics),
                 "reference": record.get("notification", {}).get("reference"),
             }
