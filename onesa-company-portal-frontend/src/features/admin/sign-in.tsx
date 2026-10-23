@@ -44,7 +44,7 @@ export function AdminSignIn({ onSignedIn, accessEnabled }: { accessEnabled: bool
         <legend className="sr-only">{method === "password" ? "Administrator credentials" : link ? "Confirm your sign-in link" : "Receive a sign-in link"}</legend>
         {!(method === "link" && link) && <label>Email<input name="email" type="email" autoComplete="username" required maxLength={254} /></label>}
         {method === "password" && <label>Password<input name="password" type="password" autoComplete="current-password" required maxLength={256} /></label>}
-        {(method === "password" || link) && <label>Authenticator or recovery code<input name="code" autoComplete="one-time-code" required minLength={6} maxLength={64} /></label>}
+        {(method === "password" || link) && <><label>Authenticator or recovery code<input name="code" autoComplete="one-time-code" required minLength={6} maxLength={64} aria-describedby="admin-mfa-help" /></label><p id="admin-mfa-help" className="signin-factor-help">Use the current code from your authenticator app or one of your saved recovery codes. First-time setup is below under “Enroll a new administrator’s authenticator.”</p></>}
         <button className="button" disabled={busy}>{busy ? "Please wait…" : method === "link" && !link ? "Send sign-in link" : "Sign in"}</button>
       </fieldset>
     </form>

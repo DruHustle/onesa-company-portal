@@ -11,6 +11,60 @@ async function account(role:string){const id=randomUUID(),email=role+'-'+id+'@ex
 async function login(u:{id:string;email:string}){const code=randomUUID();await db.query('INSERT INTO mfa_recovery VALUES($1,$2)',[u.id,hash(code)]);const r=await app.inject({method:'POST',url:'/api/v1/auth/login',remoteAddress:`2001:db8:${u.id.slice(0,4)}:${u.id.slice(4,8)}::1`,payload:{email:u.email,password,code}});assert.equal(r.statusCode,200,r.body);return {cookie:r.cookies[0].name+'='+r.cookies[0].value,'x-csrf-token':r.json().csrf,origin:process.env.PUBLIC_ORIGIN||'http://localhost:3300'};}
 const owner=await account('owner'),editor=await account('editor'),hr=await account('hr'),business=await account('business'),viewer=await account('viewer');const ownerH=await login(owner),editorH=await login(editor),hrH=await login(hr),businessH=await login(business),viewerH=await login(viewer);
 const article={kind:'article',slug:'verified-test-story',locale:'en',title:'Workflow test story',summary:'Integration fixture',body:'This is a test fixture, not a company announcement.',state:'draft',metadata:{category:'Testing',author:'Test editor'}};
+
+test('Launch content delivery excludes unrelated recruitment readiness while applicant intake stays gated',async()=>{
+ const {env}=await import('../src/config/env.js');
+ const {releaseReady}=await import('../src/services/workflows.js');
+ const before={node:env.NODE_ENV,stage:env.PUBLICATION_STAGE,publish:env.PUBLISH_ENABLED};
+ const legalBefore=(await db.query("SELECT value FROM settings WHERE key='legal'")).rows[0].value;
+ const keys=['legal_name','register_number','register_court','director','address','contact_email'];
+ const factsBefore=(await db.query('SELECT * FROM facts WHERE key=ANY($1)',[keys])).rows;
+ const pages:string[]=[];
+ try{
+  const document=await app.inject({method:'POST',url:'/api/v1/admin/templates/company-profile/generate',headers:ownerH,payload:{classification:'internal'}});
+  assert.equal(document.statusCode,201,document.body);const documentId=document.json().id;
+  assert.equal((await app.inject({method:'PATCH',url:'/api/v1/admin/files/'+documentId,headers:ownerH,payload:{title:'Synthetic public release document',classification:'public',approval:'approved',reviewAt:null,archived:false}})).statusCode,200);
+  const draft={...article,slug:'recruitment-independent-story'};
+  const created=await app.inject({method:'POST',url:'/api/v1/admin/content',headers:ownerH,payload:draft});assert.equal(created.statusCode,201,created.body);
+  const contentId=created.json().id;
+  assert.equal((await app.inject({method:'POST',url:'/api/v1/admin/content/'+contentId+'/review',headers:ownerH,payload:{expectedRevision:1,verdict:'approved',note:'Synthetic exact-revision approval.'}})).statusCode,200);
+  assert.equal((await app.inject({method:'PATCH',url:'/api/v1/admin/content/'+contentId,headers:ownerH,payload:{...draft,revision:2,state:'published'}})).statusCode,200);
+  for(const locale of ['en','de'])for(const slug of ['impressum','privacy']){
+   const id=randomUUID();pages.push(id);
+   await db.query("INSERT INTO content(id,kind,slug,locale,title,body,state) VALUES($1,'page',$2,$3,'Synthetic notice',$4,'published')",[id,slug,locale,'Isolated synthetic notice. '.repeat(12)]);
+  }
+  for(const key of keys)await db.query("INSERT INTO facts(key,value,status,source) VALUES($1,'Synthetic verified value','verified','Isolated regression fixture') ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,status=EXCLUDED.status,source=EXCLUDED.source",[key]);
+  const legal={impressumApproved:true,privacyApproved:true,providersReviewed:true,recruitmentApproved:false};
+  await db.query("UPDATE settings SET value=$1 WHERE key='legal'",[JSON.stringify(legal)]);
+  env.NODE_ENV='production';env.PUBLICATION_STAGE='launch';env.PUBLISH_ENABLED='true';
+  assert.equal(await releaseReady(),false,'Whole-company launch readiness still includes recruitment');
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM facts WHERE key=ANY($1) AND status='verified' AND value IS NOT NULL",[keys])).rows[0].n,6,'All synthetic company facts are ready');
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM published_content WHERE kind='page' AND slug IN ('impressum','privacy') AND state='published' AND length(body)>200")).rows[0].n,4,'Four synthetic notices are live');
+  const publicUrl='/api/v1/public/content/article/en/'+draft.slug;
+  assert.equal((await app.inject({url:publicUrl})).statusCode,200,'Reviewed public content must not depend on recruitment approval');
+  const download=await app.inject({url:'/api/v1/public/files/'+documentId+'/download'});
+  assert.equal(download.statusCode,200);assert.equal(download.rawPayload.subarray(0,5).toString(),'%PDF-');
+  assert.equal((await app.inject({url:'/api/v1/public/files'})).statusCode,200);
+  const working=await app.inject({method:'POST',url:'/api/v1/admin/content',headers:ownerH,payload:{...article,slug:'recruitment-independent-draft'}});assert.equal(working.statusCode,201);
+  const unreviewed=await app.inject({method:'PATCH',url:'/api/v1/admin/content/'+working.json().id,headers:ownerH,payload:{...article,slug:'recruitment-independent-draft',revision:1,state:'published'}});
+  assert.equal(unreviewed.statusCode,409);assert.equal(unreviewed.json().error.code,'EDITORIAL_REVIEW');
+  assert.equal((await app.inject({url:'/api/v1/public/content/article/en/recruitment-independent-draft'})).statusCode,404);
+  const fileCount=(await db.query('SELECT count(*)::int AS n FROM files')).rows[0].n;
+  const intake=await app.inject({method:'POST',url:'/api/v1/public/applications',remoteAddress:'2001:db8:fafa::1',payload:{jobId:randomUUID(),name:'Synthetic applicant',email:'synthetic@example.invalid',filename:'synthetic.pdf',base64:(await generatePDF('Synthetic','Isolated only')).toString('base64'),consent:true}});
+  assert.equal(intake.statusCode,409);assert.equal(intake.json().error.code,'LEGAL_GATE');
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM files')).rows[0].n,fileCount,'Refused intake writes no file');
+  legal.privacyApproved=false;await db.query("UPDATE settings SET value=$1 WHERE key='legal'",[JSON.stringify(legal)]);
+  assert.equal((await app.inject({url:publicUrl})).statusCode,409,'Applicable privacy readiness still gates delivery');
+  legal.privacyApproved=true;await db.query("UPDATE settings SET value=$1 WHERE key='legal'",[JSON.stringify(legal)]);
+  env.PUBLISH_ENABLED='false';assert.equal((await app.inject({url:publicUrl})).statusCode,409);
+ }finally{
+  env.NODE_ENV=before.node;env.PUBLICATION_STAGE=before.stage;env.PUBLISH_ENABLED=before.publish;
+  await db.query("UPDATE settings SET value=$1 WHERE key='legal'",[JSON.stringify(legalBefore)]);
+  await db.query('DELETE FROM facts WHERE key=ANY($1)',[keys]);
+  for(const fact of factsBefore)await db.query('INSERT INTO facts(key,value,status,source,verified_by,verified_at) VALUES($1,$2,$3,$4,$5,$6)',[fact.key,fact.value,fact.status,fact.source,fact.verified_by,fact.verified_at]);
+  await db.query('DELETE FROM content WHERE id=ANY($1::uuid[])',[pages]);
+ }
+});
 let articleId='',jobId='',applicationId='',fileId='',generatedId='';
 test('Expired final worker leases fail without a sixth email or storage attempt',async()=>{
  const {tick}=await import('../src/jobs/worker.js');

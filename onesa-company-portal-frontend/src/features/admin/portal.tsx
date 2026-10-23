@@ -478,6 +478,11 @@ export function AdminPortal({
               Complete registration and receive approval first. Existing MFA
               cannot be replaced here.
             </p>
+            <ol className="signin-enrollment-steps">
+              <li>Enter your registered email and password to start enrollment.</li>
+              <li>Add the displayed secret as a time-based account in your authenticator app.</li>
+              <li>Enter its current six-digit code, then save the recovery codes shown here.</li>
+            </ol>
             <form
               data-workspace-draft
               onSubmit={submitted(async (d) => {

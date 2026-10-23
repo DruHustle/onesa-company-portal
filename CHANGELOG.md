@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Separate unrelated recruitment readiness from public-content delivery in launch
+  mode. Applicant intake retains its full gate; exact editorial review, applicable
+  company/privacy/provider readiness, file approval and clean scans remain required.
+  Explicit pre-launch policy and approval records are unchanged.
+
+- Refine access registration with compact headings, consistent field spacing and
+  secondary access guidance. Explain authenticator enrollment and saved recovery
+  codes on administrator sign-in; existing MFA and owner approvals remain enforced.
+
 - Correct stale Industrial AI scope copy in English/German: the isolated protected
   synthetic investigation demonstration is implemented; live factory integrations
   and wider application areas remain development directions. Preserve the Home

@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api } from "@/lib/api/client";
 import { accessLinkToken } from "@/lib/access-link";
+import styles from "./registration.module.css";
 export function AccessRegistration({ confirmation = false }: { confirmation?: boolean }) {
   const [token, setToken] = useState<string | null>(null), [busy, setBusy] = useState(false), [notice, setNotice] = useState(""), [done, setDone] = useState(false), [audience, setAudience] = useState<"admin" | "engineering">("admin");
   useEffect(() => {
@@ -37,15 +38,18 @@ export function AccessRegistration({ confirmation = false }: { confirmation?: bo
     } catch (error) { setNotice(error instanceof Error ? error.message : "Registration could not be completed. Please try again."); }
     finally { setBusy(false); }
   }
-  return <main className="admin-main"><div className="container"><section className="admin-login" aria-labelledby="registration-title">
-    <a className="wordmark" href="https://onesa.eu/">onesa<span>UG</span></a><p>ONESA PORTAL · PROTECTED ACCESS</p>
+  return <main className={styles.shell}><section className={styles.card} aria-labelledby="registration-title">
+    <a className="wordmark" href="https://onesa.eu/" aria-label="Onesa home">onesa<span>UG</span></a><p className={styles.context}>ONESA PORTAL · PROTECTED ACCESS</p>
     <h1 id="registration-title">{confirmation ? "Complete your registration" : "Request access"}</h1>
-    <p>{confirmation ? "Verify your email by confirming this link and choose a password. Opening the link does not grant access." : "Register before your first sign-in. Administrator and Engineering Docs access are approved separately. Previously approved addresses do not need another approval."}</p>
-    {!done && <form onSubmit={submit} aria-busy={busy}><fieldset disabled={busy || (confirmation && !token)}><legend>{confirmation ? "Choose your password" : "Your access request"}</legend>
+    <p className={styles.intro}>{confirmation ? "Choose a password to complete email verification." : "Create your account using your email. New access requires owner approval."}</p>
+    {!done && <form onSubmit={submit} aria-busy={busy}><fieldset disabled={busy || (confirmation && !token)}><legend className={styles.srOnly}>{confirmation ? "Choose your password" : "Your access request"}</legend>
       {confirmation ? <><label>Password (at least 14 characters)<input name="password" type="password" autoComplete="new-password" required minLength={14} maxLength={256} /></label><label>Confirm password<input name="confirmPassword" type="password" autoComplete="new-password" required minLength={14} maxLength={256} /></label></> : <><label>Email address<input name="email" type="email" autoComplete="email" required maxLength={254} /></label><label>Access requested<select value={audience} onChange={e => setAudience(e.target.value as "admin" | "engineering")}><option value="admin">Company administration</option><option value="engineering">Engineering Docs</option></select></label></>}
       <button className="button">{busy ? "Please wait…" : confirmation ? "Verify email and complete registration" : "Email my registration link"}</button>
     </fieldset></form>}
-    {notice && <p role={done ? "status" : "alert"}>{notice}</p>}
-    <p><a href={audience === "admin" ? "/admin" : "/engineering"}>Return to sign-in</a> · <a href="https://onesa.eu/en/contact">Contact Onesa</a></p>
-  </section></div></main>;
+    {notice && <p className={styles.notice} role={done ? "status" : "alert"}>{notice}</p>}
+    <div className={styles.support}>
+      <a href={audience === "admin" ? "/admin" : "/engineering"}>Return to sign-in</a>
+      <details><summary>About access</summary><p>Administrator and Engineering Docs access are approved separately. Existing approvals are retained. Opening a registration link does not grant access.</p><a href="https://onesa.eu/en/contact">Contact Onesa</a></details>
+    </div>
+  </section></main>;
 }
