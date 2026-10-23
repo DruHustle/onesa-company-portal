@@ -160,7 +160,7 @@ export async function registerAccess(
         ...meta("verifyAdminSignInLink"),
         body: z.object({
           token: z.string().regex(/^[a-f0-9]{64}$/),
-          code: z.string().min(6).max(64),
+          code: z.union([z.literal(""), z.string().min(6).max(64)]).default(""),
           rememberBrowser: z.boolean().default(false),
         }),
         response: {

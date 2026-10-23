@@ -398,3 +398,19 @@ the actual singleton systemd oneshot unit/timer and check for duplicate schedule
 do not start a second monitor to test concurrency. Preserve real pending delivery
 and reconciliation records. Qualify interruption cases only with disposable state
 and mocked delivery, then verify the installed file hash and normal scheduled samples.
+
+## Credential-verified administrator onboarding and resend feedback
+
+The maintained `test:engineering-sign-in` renderer suite checks that no MFA field
+appears before credential proof, enrolled accounts receive the factor step and
+unenrolled accounts receive setup. Both methods retain MFA and remembered-session
+boundaries. It also checks plain Sent status, immediate duplicate-submit exclusion,
+disabled styling, a 30-second explicit resend, failure recovery and server-reported
+Engineering cooldown after refresh. All delivery is mocked on loopback.
+
+The isolated backend suite covers correct/incorrect/disabled accounts, no session
+before factor verification, bearer-link state discovery without consuming attempts,
+concurrent delivery coalescing and explicit resend after the server window. Unknown
+recipients retain the same acknowledgement/cooldown. These tests do not enroll a
+real owner, send real mail or prove production access. Deploy compatible API support
+before the frontend; old clients supplying a factor remain supported.

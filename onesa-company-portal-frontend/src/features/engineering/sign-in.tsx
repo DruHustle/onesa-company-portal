@@ -60,7 +60,10 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
       if (!/^[a-f0-9]{64}$/.test(value.csrf)) throw Error();
       if (value.linkEmail !== undefined && (typeof value.linkEmail !== "string" || value.linkEmail.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(value.linkEmail))) throw Error();
       if (value.onesaAccount !== undefined && (typeof value.onesaAccount?.email !== "string" || value.onesaAccount.email.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(value.onesaAccount.email))) throw Error();
-      if (active && !preparingLink) { setOnesaAccount(value.onesaAccount?.email ?? null); setCsrf(value.csrf); setLinkEmail(value.linkEmail ?? null); setReady(true); }
+      if (active && !preparingLink) {
+        const remaining = Number.isInteger(value.linkResendSeconds) && value.linkResendSeconds > 0 && value.linkResendSeconds <= 30 ? value.linkResendSeconds : 0;
+        setSent(remaining > 0); setResendSeconds(remaining); setResendUntil(remaining > 0 ? performance.now() + remaining * 1000 : 0);
+        setOnesaAccount(value.onesaAccount?.email ?? null); setCsrf(value.csrf); setLinkEmail(value.linkEmail ?? null); setReady(true); }
     }).catch(() => { if (active && !preparingLink && (!abort.signal.aborted || timedOut)) { setRestartRequired(true); setNotice(timedOut ? "The sign-in page took too long to load. Start a new sign-in." : "The sign-in page could not be loaded. Start a new sign-in."); } }).finally(() => window.clearTimeout(detailsDeadline));
     return () => { active = false; window.clearTimeout(deadline); abort.abort(); window.removeEventListener("hashchange", receiveLink); };
   }, [uid]);
@@ -81,7 +84,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
         setRegistrationRequired(failure.registration);
         throw Error(failure.message);
       }
-      if (action === "link") { if (value?.ok !== true) throw Error("The sign-in request could not be confirmed. Please try again."); setSent(true); setResendSeconds(5); setResendUntil(performance.now() + 5000); return; }
+      if (action === "link") { if (value?.ok !== true) throw Error("The sign-in request could not be confirmed. Please try again."); setSent(true); setResendSeconds(30); setResendUntil(performance.now() + 30000); return; }
       if (typeof value?.continuePath !== "string" || !/^\/api\/v1\/engineering-identity\/auth\/[A-Za-z0-9_-]{8,128}$/.test(value.continuePath)) throw Error("The sign-in service returned an unexpected response. Start a new sign-in.");
       navigating = true; setOpeningDocs(true); window.location.assign(value.continuePath);
     } catch (error) { navigating = false; setOpeningDocs(false); setNotice(abort.signal.aborted ? "The request took too long. Please try again." : error instanceof TypeError ? "Could not connect. Please try again." : error instanceof Error ? error.message : "Sign-in could not be completed."); }
@@ -110,7 +113,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
           {!linkSent && <button className="button" type="submit" disabled={controlsDisabled}>{busy ? (method === "link" && !confirming && !continuingSession ? "Sending…" : "Signing in…") : continuingSession ? "Continue with Onesa" : method === "password" ? "Sign in to Docs" : confirming ? "Confirm sign-in and open Docs" : coolingDown ? "Please wait…" : "Send sign-in link"}</button>}
         </fieldset></form>
         {continuingSession && <button type="button" disabled={busy} onClick={() => {setUseExistingSession(false); setNotice("");}}>Use another account</button>}
-        {sent && !confirming && method === "link" && <div className="engineering-link-sent"><p className="engineering-sent-notice" ref={sentRef} tabIndex={-1} role="status">Sent.</p><button className="button" type="button" disabled={busy || resendSeconds > 0} onClick={() => formRef.current?.requestSubmit()}>Send another link</button></div>}
+        {sent && !confirming && method === "link" && <div className="engineering-link-sent"><p className="engineering-sent-notice" ref={sentRef} tabIndex={-1} role="status">Sent.</p><button className="button" type="button" disabled={busy || resendSeconds > 0} onClick={() => { if (!email) { setSent(false); return; } formRef.current?.requestSubmit(); }}>Send another link{resendSeconds > 0 ? ` (${resendSeconds}s)` : ""}</button></div>}
       </>}
       <div className="engineering-signin-support">
         {!confirming && !sent && !registrationRequired && <p className="signin-registration">First time here? <a href="/access/register?audience=engineering">Register for Engineering Docs</a></p>}

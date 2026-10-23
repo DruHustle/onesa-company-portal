@@ -63,6 +63,19 @@
 
 ## Unreleased
 
+- Check administrator MFA enrollment only after verifying a password or bearer
+  email link. Enrolled accounts receive the authenticator/recovery-code step;
+  approved accounts without MFA receive the setup action. Neither step creates
+  a session, consumes a recovery code or changes existing enrollment. No public
+  email-only enrollment lookup is introduced.
+- Show one plain Sent message after accepted admin/Engineering Docs link requests,
+  visibly disable controls and expose an explicit 30-second resend countdown.
+  Coalesce concurrent/repeated requests transactionally on the server, including
+  unknown recipients, without changing generic acknowledgement or rate limits.
+  Engineering interaction refresh restores its remaining cooldown; no token or
+  sensitive draft is saved to browser storage. Backend support precedes the new
+  frontend. Source validation is separate from staging/production acceptance.
+
 - Preserve the reviewer's monitor interruption correction `82a74bbc`: assemble the
   final restart-counter baseline before one atomic state-file replacement. Eight
   offline tests preserve readable prior state and pending delivery identity after
