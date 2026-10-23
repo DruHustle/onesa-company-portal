@@ -640,14 +640,13 @@ def main():
                     "metrics": pending["metrics"],
                 },
             )
-    path.write_text(json.dumps(record, indent=2) + "\n")
-    path.chmod(0o600)
     # Baseline keeps only counter fields at the top level; never overwrite baseline with injected values.
     if not args.simulate:
         record["worker_restart_count"] = metrics["worker_restart_count"]
         if "backend_restart_counts" in metrics:
             record["backend_restart_counts"] = metrics["backend_restart_counts"]
-        path.write_text(json.dumps(record, indent=2) + "\n")
+    # Keep the prior complete sample (or pending notification) if a write fails.
+    write_record(path, record)
     print(
         json.dumps(
             {
