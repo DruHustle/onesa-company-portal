@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Correct stale Industrial AI scope copy in English/German: the isolated protected
+  synthetic investigation demonstration is implemented; live factory integrations
+  and wider application areas remain development directions. Preserve the Home
+  hero, design foundation, Application Security direction and Robot simulation scope.
+  This source correction does not activate Industrial on ordinary AI production.
+
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.
