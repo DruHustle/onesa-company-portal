@@ -308,7 +308,8 @@ for(const locale of ['en','de'] as const)test(`${locale}: the company introduces
  await assembly.scrollIntoViewIfNeeded();await expect(assembly).toBeVisible();
  await expect.poll(()=>assembly.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0)).toBe(true);
  await expect(industrial).not.toContainText(/DEMO-01|SYNTHETIC EXAMPLE|SYNTHETISCHES BEISPIEL|· PLANNED|· GEPLANT/);
- await expect(industrial).toContainText(locale==='en'?'Our next development track':'Unser nächster Entwicklungsbereich');
+ await expect(industrial).toContainText(locale==='en'?'isolated, protected demo':'isolierten, geschützten Demo');
+ await expect(industrial).toContainText(locale==='en'?'no live factory connection or machine control':'keine Live-Fabrikanbindung oder Maschinensteuerung');
  await expect(industrial.getByRole('link')).toHaveAttribute('href',`/${locale}/contact?topic=industrial`);
  await expect(page.locator('#platform-applications')).toContainText(locale==='en'?'planned applications':'geplante Anwendungen');
  await expect(page.locator('#product-ai').locator('xpath=..')).not.toContainText(/AGI|autonomous ground|autonome Boden/);
