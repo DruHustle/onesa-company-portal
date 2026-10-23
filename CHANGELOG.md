@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Add an opt-in Remember this browser control to administrator and Engineering
+  Docs sign-in. Persist only protected host-only session cookies for the existing
+  eight-hour session lifetime; retain MFA, fresh proof, revocation and sign-out.
+  Session renewal preserves the original authentication time.
+- Let an existing MFA-authenticated Portal session explicitly continue to Docs
+  only when that same email already has enabled Engineering membership. Forced
+  reauthentication and maximum authentication age remain enforced. This does not
+  yet unify AI Platform or Robot sign-in or grant any new product role.
+
 - Guide approved new administrators directly from registration to a dedicated
   authenticator setup screen, code verification and one-use recovery-code handoff.
   Approval emails link to that screen; existing MFA cannot be overwritten and

@@ -862,6 +862,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/engineering-sign-in/{uid}/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description INTERNAL documentation identity. No Portal administrator role is granted. Cookie-bound interaction and same-origin proof required. */
+        post: operations["engineeringPortalSessionSignIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/engineering-sign-in/{uid}/start": {
         parameters: {
             query?: never;
@@ -1947,6 +1964,8 @@ export interface operations {
                     email: string;
                     password: string;
                     code: string;
+                    /** @default false */
+                    rememberBrowser?: boolean;
                 };
             };
         };
@@ -11800,6 +11819,10 @@ export interface operations {
                         emailSent: boolean;
                         /** Format: email */
                         linkEmail?: string;
+                        onesaAccount?: {
+                            /** Format: email */
+                            email: string;
+                        };
                     };
                 };
             };
@@ -11951,6 +11974,158 @@ export interface operations {
                     "application/json": {
                         /** @enum {string} */
                         continuePath: "/engineering";
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    engineeringPortalSessionSignIn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    csrf: string;
+                    /** @default false */
+                    rememberBrowser?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        continuePath: string;
                     };
                 };
             };
@@ -12243,6 +12418,8 @@ export interface operations {
                 "application/json": {
                     csrf: string;
                     code: string;
+                    /** @default false */
+                    rememberBrowser?: boolean;
                 };
             };
         };
@@ -12395,6 +12572,8 @@ export interface operations {
                     csrf: string;
                     /** Format: email */
                     email: string;
+                    /** @default false */
+                    rememberBrowser?: boolean;
                 };
             };
         };
@@ -12549,6 +12728,8 @@ export interface operations {
                 "application/json": {
                     csrf: string;
                     token: string;
+                    /** @default false */
+                    rememberBrowser?: boolean;
                 };
             };
         };
@@ -12702,6 +12883,8 @@ export interface operations {
             content: {
                 "application/json": {
                     csrf: string;
+                    /** @default false */
+                    rememberBrowser?: boolean;
                 };
             };
         };
@@ -12858,6 +13041,8 @@ export interface operations {
                     /** Format: email */
                     email: string;
                     password: string;
+                    /** @default false */
+                    rememberBrowser?: boolean;
                 };
             };
         };
@@ -13778,6 +13963,8 @@ export interface operations {
                 "application/json": {
                     token: string;
                     code: string;
+                    /** @default false */
+                    rememberBrowser?: boolean;
                 };
             };
         };

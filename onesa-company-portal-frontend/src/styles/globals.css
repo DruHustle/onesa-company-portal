@@ -203,3 +203,6 @@ fieldset.admin-content{border:0;margin:0;padding:0;min-inline-size:0}
 .engineering-auth-shell .engineering-sent-notice{margin:12px 0;font-weight:600;color:var(--ink)}
 .engineering-auth-shell .engineering-link-sent .button{background:var(--onesa-accent);color:var(--onesa-on-accent);border:1px solid var(--onesa-accent)}
 .engineering-auth-shell .engineering-link-sent .button:disabled{background:var(--onesa-surface);color:var(--onesa-muted)}
+
+.admin-auth-shell label.signin-remember{display:flex;flex-direction:row;align-items:center;gap:10px;font-size:.9375rem;font-weight:400;min-height:44px;margin-bottom:4px}
+.admin-auth-shell label.signin-remember input[type="checkbox"]{width:20px;height:20px;min-height:20px;margin:0;flex:none;accent-color:var(--onesa-accent)}

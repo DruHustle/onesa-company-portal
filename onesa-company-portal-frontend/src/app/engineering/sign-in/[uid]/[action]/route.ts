@@ -24,7 +24,7 @@ async function proxy(
     return Response.json({ error: { code: "ENGINEERING_SIGN_IN_UNAVAILABLE" } }, { status: 404 });
   if (
     !/^[A-Za-z0-9_-]{8,128}$/.test(uid) ||
-    !["details", "start", "verify", "link", "link-prepare", "link-verify", "handoff-verify", "password"].includes(action) ||
+    !["session", "details", "start", "verify", "link", "link-prepare", "link-verify", "handoff-verify", "password"].includes(action) ||
     (request.method === "GET") !== (action === "details")
   )
     return Response.json({ error: { code: "ENGINEERING_PROTOCOL" } }, { status: 400 });

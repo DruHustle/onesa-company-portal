@@ -12,6 +12,7 @@ import { env } from "../config/env.js";
 import { db, transaction } from "../services/db.js";
 import { HttpError } from "../services/workflows.js";
 import { reauthenticate } from "../auth/reauthenticate.js";
+import { onesaSession } from "../auth/onesa-session.js";
 import type { Role } from "../access/roles.js";
 import { error } from "../api/contracts.js";
 import { createEngineeringProvider } from "./provider.js";
@@ -178,15 +179,16 @@ export async function registerEngineeringIdentity(
         ...meta("engineeringSignInDetails"),
         params,
         response: {
-          200: z.object({ csrf: proof, emailSent: z.boolean(), linkEmail: z.email().optional() }),
+          200: z.object({ csrf: proof, emailSent: z.boolean(), linkEmail: z.email().optional(), onesaAccount: z.object({email:z.email()}).optional() }),
           ...errors,
         },
       },
     },
     async (req, reply) => {
       await limits.limit("engineering-details:" + limits.address(req), 60, 900);
-      await interaction(req, reply);
+      const details = await interaction(req, reply);
       const { config } = configured();
+      const session = await approvedOnesaSession(req, details);
       const cookie = req.cookies[engineeringHandoffCookie];
       let linkEmail: string | undefined;
       if (cookie) {
@@ -197,6 +199,7 @@ export async function registerEngineeringIdentity(
         csrf: interactionProof(config, req.params.uid),
         emailSent: await challengeExists(req.params.uid),
         ...(linkEmail ? { linkEmail } : {}),
+        ...(session ? { onesaAccount: {email:session.email} } : {}),
       };
     },
   );
@@ -223,7 +226,7 @@ export async function registerEngineeringIdentity(
   ) => {
     if (req.headers.origin !== env.PUBLIC_ORIGIN)
       throw new HttpError(403, "ORIGIN", "Use the Onesa Portal sign-in.");
-    await interaction(req, reply);
+    const details = await interaction(req, reply);
     const { config } = configured();
     if (!proofValid(config, (req.params as { uid: string }).uid, csrf))
       throw new HttpError(
@@ -231,8 +234,32 @@ export async function registerEngineeringIdentity(
         "ENGINEERING_PROOF",
         "Refresh the sign-in page.",
       );
-    return configured();
+    return {...configured(), details};
   };
+  async function approvedOnesaSession(req: FastifyRequest, details: Awaited<ReturnType<NonNullable<typeof provider>["interactionDetails"]>>) {
+    const session = await onesaSession(req);
+    if (!session || !config || !engineeringEmailAllowed(session.email, config.externalEmails)) return null;
+    // A forced reauthentication cannot be satisfied by a previously established session.
+    if (String(details.params.prompt ?? "").split(" ").includes("login")) return null;
+    const authenticatedAt = new Date(session.authenticated_at).getTime();
+    if (!Number.isFinite(authenticatedAt) || authenticatedAt > Date.now()) return null;
+    if (details.params.max_age !== undefined) {
+      const maxAge = Number(details.params.max_age);
+      if (!Number.isFinite(maxAge) || maxAge < 0 || (Date.now() - authenticatedAt) / 1000 >= maxAge) return null;
+    }
+    const membership = (await db.query<{id:string}>("SELECT id FROM engineering_memberships WHERE email=$1 AND enabled", [session.email])).rows[0];
+    return membership ? {...session, membershipId:membership.id} : null;
+  }
+  api.post("/api/v1/engineering-sign-in/:uid/session", {
+    logLevel: "silent",
+    schema: {...meta("engineeringPortalSessionSignIn"), params, body:z.object({csrf:proof,rememberBrowser:z.boolean().default(false)}), response:{200:z.object({continuePath:z.string()}),...errors}},
+  }, async (req, reply) => {
+    const {details} = await verifiedInteraction(req,reply,req.body.csrf);
+    await limits.limit("engineering-session:"+limits.address(req),10,900);
+    const session=await approvedOnesaSession(req,details);
+    if(!session)throw new HttpError(401,"ONESA_SESSION_REQUIRED","Sign in to your approved Onesa account to continue. Engineering membership is required.");
+    return finish(req,reply,session.membershipId,"mfa",Math.floor(new Date(session.authenticated_at).getTime()/1000),req.body.rememberBrowser);
+  });
   api.post(
     "/api/v1/engineering-sign-in/:uid/start",
     {
@@ -268,7 +295,7 @@ export async function registerEngineeringIdentity(
       schema: {
         ...meta("engineeringSignInVerify"),
         params,
-        body: z.object({ csrf: proof, code: z.string().regex(/^\d{6}$/) }),
+        body: z.object({ csrf: proof, code: z.string().regex(/^\d{6}$/), rememberBrowser: z.boolean().default(false) }),
         response: { 200: z.object({ continuePath: z.string() }), ...errors },
       },
     },
@@ -280,7 +307,7 @@ export async function registerEngineeringIdentity(
         req.params.uid,
         req.body.code,
       );
-      return finish(req, reply, accountId);
+      return finish(req, reply, accountId, "otp", undefined, req.body.rememberBrowser);
     },
   );
   async function finish(
@@ -288,6 +315,8 @@ export async function registerEngineeringIdentity(
     reply: FastifyReply,
     accountId: string,
     method = "otp",
+    authenticatedAt?: number,
+    rememberBrowser = false,
   ) {
     const { config, provider } = configured();
     const grant = new provider.Grant({ accountId, clientId: config.clientId });
@@ -297,7 +326,7 @@ export async function registerEngineeringIdentity(
       await provider.interactionResult(
         req.raw,
         reply.raw,
-        { login: { accountId, amr: [method] }, consent: { grantId } },
+        { login: { accountId, remember: rememberBrowser, amr: [method], ...(authenticatedAt ? {ts:authenticatedAt} : {}) }, consent: { grantId } },
         { mergeWithLastSubmission: false },
       ),
     );
@@ -348,7 +377,7 @@ export async function registerEngineeringIdentity(
             }[action],
           ),
           params,
-          body,
+          body: body.extend({rememberBrowser:z.boolean().default(false)}),
           response: {
             200: z.union([
               z.object({ ok: z.literal(true) }),
@@ -364,6 +393,7 @@ export async function registerEngineeringIdentity(
           email?: string;
           password?: string;
           token?: string;
+          rememberBrowser: boolean;
         };
         const { config } = await verifiedInteraction(req, reply, input.csrf);
         await limits.limit(
@@ -401,6 +431,7 @@ export async function registerEngineeringIdentity(
               config.externalEmails,
             ),
             "pwd",
+            undefined, input.rememberBrowser,
           );
         }
         if (action === "handoff-verify") {
@@ -408,7 +439,7 @@ export async function registerEngineeringIdentity(
           reply.clearCookie(engineeringHandoffCookie, engineeringHandoffOptions);
           if (!cookie) throw new HttpError(401, "ACCESS_LINK", "Open your latest sign-in email link again.");
           const target = await readEngineeringHandoff(cookie, env.PUBLIC_ORIGIN, config.externalEmails);
-          return finish(req, reply, await consumeEngineeringLink(target.token, target.interaction, config.externalEmails), "email_link");
+          return finish(req, reply, await consumeEngineeringLink(target.token, target.interaction, config.externalEmails), "email_link", undefined, input.rememberBrowser);
         }
         return finish(
           req,
@@ -419,6 +450,7 @@ export async function registerEngineeringIdentity(
             config.externalEmails,
           ),
           "email_link",
+          undefined, input.rememberBrowser,
         );
       },
     );

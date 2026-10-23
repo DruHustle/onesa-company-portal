@@ -215,7 +215,7 @@ test("Email proofs have bounded attempts, expiry, membership and one-use control
   );
   await assert.rejects(consumeEngineeringChallenge(typed, expired, expiryCode));
 });
-for (const method of ["otp", "email_link", "pwd", "cross_browser_link"]) test("OIDC cookie/PKCE and signed identity with " + method, async () => {
+for (const method of ["otp", "email_link", "pwd", "cross_browser_link", "pwd_remember", "portal_mfa", "portal_mfa_remember"]) test("OIDC cookie/PKCE and signed identity with " + method, async () => {
   const jar = new Map<string, string>();
   async function request(options: InjectOptions) {
     const response = await app.inject({
@@ -267,9 +267,39 @@ for (const method of ["otp", "email_link", "pwd", "cross_browser_link"]) test("O
     403,
   );
   let finished;
-  if (method === "pwd") {
+  if (method.startsWith("portal_mfa")) {
+    const id=randomUUID(), email="engineer@onesa.eu", password="Synthetic portal MFA password";
+    const existing=(await db.query("SELECT id FROM users WHERE email=$1",[email])).rows[0];
+    const userId=existing?.id??id;
+    if(!existing)await db.query("INSERT INTO users(id,email,password_hash,role,mfa_secret) VALUES($1,$2,$3,'viewer',$4)",[id,email,passwordHash(password),encrypt("JBSWY3DPEHPK3PXP")]);
+    const code=randomUUID();await db.query("INSERT INTO mfa_recovery(user_id,code_hash) VALUES($1,$2)",[userId,hash(code)]);
+    const signed=await request({method:"POST",url:"/api/v1/auth/login",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{email,password,code,rememberBrowser:method.endsWith("remember")}});
+    assert.equal(signed.statusCode,200,signed.body);
+    const available=await request({url:"/api/v1/engineering-sign-in/"+uid+"/details"});
+    assert.deepEqual(available.json().onesaAccount,{email});
+    const before=(await db.query("SELECT count(*)::int AS n FROM engineering_identity_records WHERE model='Grant'")).rows[0].n;
+    await db.query("DELETE FROM rate_limits WHERE key LIKE 'engineering-session:%'");
+    for (const changes of [
+      {headers:{origin:"https://attacker.invalid"},payload:{csrf}},
+      {headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf:"0".repeat(64)}}
+    ]) assert.equal((await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/session",...changes})).statusCode,403);
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM engineering_identity_records WHERE model='Grant'")).rows[0].n,before);
+    await db.query("UPDATE engineering_memberships SET enabled=false WHERE id=$1",[memberId]);
+    assert.equal((await request({url:"/api/v1/engineering-sign-in/"+uid+"/details"})).json().onesaAccount,undefined);
+    assert.equal((await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/session",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf}})).statusCode,401);
+    await db.query("UPDATE engineering_memberships SET enabled=true WHERE id=$1",[memberId]);
+    const sessionHash=hash(jar.get("onesa_session")!);
+    await db.query("UPDATE sessions SET expires_at=now()-interval '1 second' WHERE token_hash=$1",[sessionHash]);
+    assert.equal((await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/session",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf}})).statusCode,401);
+    await db.query("UPDATE sessions SET expires_at=now()+interval '1 hour' WHERE token_hash=$1",[sessionHash]);
+    await db.query("UPDATE users SET mfa_secret=NULL WHERE id=$1",[userId]);
+    assert.equal((await request({url:"/api/v1/engineering-sign-in/"+uid+"/details"})).json().onesaAccount,undefined);
+    assert.equal((await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/session",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf}})).statusCode,401);
+    await db.query("UPDATE users SET mfa_secret=$2 WHERE id=$1",[userId,encrypt("JBSWY3DPEHPK3PXP")]);
+    finished=await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/session",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf,rememberBrowser:method.endsWith("remember")}});
+  } else if (method === "pwd" || method === "pwd_remember") {
     await db.query("INSERT INTO engineering_credentials(membership_id,password_hash) VALUES($1,$2) ON CONFLICT(membership_id) DO NOTHING",[memberId,passwordHash("synthetic engineering password")]);
-    finished = await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/password",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf,email:"engineer@onesa.eu",password:"synthetic engineering password"}});
+    finished = await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/password",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf,email:"engineer@onesa.eu",password:"synthetic engineering password",rememberBrowser:method.endsWith("remember")}});
   } else if (method === "cross_browser_link") {
     const oldUid = uid;
     const start = await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/link",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{csrf,email:"engineer@onesa.eu"}});
@@ -309,6 +339,11 @@ for (const method of ["otp", "email_link", "pwd", "cross_browser_link"]) test("O
   assert.equal(finished.statusCode, 200, finished.body);
   const resume = await request({ url: finished.json().continuePath });
   assert.equal(resume.statusCode, 303, resume.body);
+  const sessionCookie=resume.cookies.find(c=>c.name==="onesa_engineering_session");
+  assert.ok(sessionCookie, "actual provider session cookie");
+  assert.equal(Boolean(sessionCookie.expires),method.endsWith("remember"));
+  if(sessionCookie.expires)assert.ok(new Date(sessionCookie.expires).getTime()-Date.now()<=28800_000);
+  assert.equal(sessionCookie.httpOnly,true);assert.equal(sessionCookie.secure,true);assert.equal(sessionCookie.domain,undefined);
   const callback = new URL(String(resume.headers.location));
   assert.equal(callback.origin, new URL(config.redirectUri).origin);
   assert.equal(callback.searchParams.get("state"), state);
@@ -318,6 +353,8 @@ for (const method of ["otp", "email_link", "pwd", "cross_browser_link"]) test("O
     method: "POST" as const,
     url: "/api/v1/engineering-identity/token",
     headers: {
+      // Token exchange is a server backchannel, never the browser cookie jar.
+      cookie: "",
       authorization:
         "Basic " +
         Buffer.from(config.clientId + ":" + config.clientSecret).toString(
@@ -671,4 +708,19 @@ test("Isolated restore lockdown invalidates Docs grants, codes and memberships w
     ),
     0,
   );
+});
+
+test("Existing Portal MFA sessions cannot satisfy forced reauthentication or exceeded max_age",async()=>{
+  const userId=randomUUID(),email="freshness@onesa.eu",session=randomBytes(32).toString("hex");
+  await db.query("INSERT INTO users(id,email,password_hash,role,mfa_secret) VALUES($1,$2,$3,'viewer',$4)",[userId,email,passwordHash("Synthetic freshness test password"),encrypt("JBSWY3DPEHPK3PXP")]);
+  await db.query("INSERT INTO engineering_memberships(id,email,enabled,access_policy_evidence,approved_by) VALUES($1,$2,true,'Synthetic freshness test approval',$3)",[randomUUID(),email,ownerId]);
+  await db.query("INSERT INTO sessions(token_hash,user_id,csrf,expires_at,created_at) VALUES($1,$2,$3,now()+interval '1 hour',now()-interval '5 minutes')",[hash(session),userId,randomBytes(32).toString("hex")]);
+  for(const extra of [{prompt:"login"},{max_age:"0"},{max_age:"60"}] as Record<string,string>[]){
+    const query=new URLSearchParams({client_id:config.clientId,redirect_uri:config.redirectUri,response_type:"code",scope:"openid email profile",state:randomBytes(24).toString("hex"),nonce:randomBytes(24).toString("hex"),code_challenge:createHash("sha256").update(randomBytes(48)).digest("base64url"),code_challenge_method:"S256",...extra});
+    const auth=await app.inject({url:"/api/v1/engineering-identity/auth?"+query,headers:proxy});assert.equal(auth.statusCode,303,auth.body);
+    const uid=new URL(String(auth.headers.location)).pathname.split("/").pop();
+    const cookie=[...auth.cookies.map(c=>c.name+"="+c.value),"onesa_session="+session].join("; ");
+    const details=await app.inject({url:"/api/v1/engineering-sign-in/"+uid+"/details",headers:{...proxy,cookie}});assert.equal(details.statusCode,200,details.body);assert.equal(details.json().onesaAccount,undefined);
+    const denied=await app.inject({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/session",remoteAddress:"2001:db8:10::1",headers:{...proxy,cookie,origin:process.env.PUBLIC_ORIGIN},payload:{csrf:details.json().csrf}});assert.equal(denied.statusCode,401,denied.body);
+  }
 });

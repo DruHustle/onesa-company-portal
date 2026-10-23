@@ -525,3 +525,17 @@ test("Unknown account link requests have generic responses and cannot send mail;
     403,
   );
 });
+
+test("Email-link MFA sign-in applies the same explicit browser persistence choice", async () => {
+  for (const rememberBrowser of [false, true]) {
+    await requestAdminLink("owner@onesa.eu");
+    const token = await mailToken("owner@onesa.eu", "Your Onesa sign-in link");
+    const response = await app.inject({method:"POST", url:"/api/v1/access/link/verify", remoteAddress:"2001:db8:9::1", headers:origin, payload:{token, code:(await proof()).code, rememberBrowser}});
+    assert.equal(response.statusCode,200,response.body);
+    const cookie = response.cookies.find(c=>c.name==="onesa_session")!;
+    assert.equal(cookie.maxAge, rememberBrowser ? 28800 : undefined);
+    assert.equal(cookie.httpOnly,true); assert.equal(cookie.domain,undefined);
+    const replay = await app.inject({method:"POST",url:"/api/v1/access/link/verify",remoteAddress:"2001:db8:9::1",headers:origin,payload:{token,code:(await proof()).code,rememberBrowser}});
+    assert.equal(replay.statusCode,401); assert.equal(replay.cookies.length,0);
+  }
+});
