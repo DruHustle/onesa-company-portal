@@ -171,7 +171,7 @@ export async function registerAccess(
     },
     async (req, reply) => {
       const result = await consumeAdminLink(req.body.token, req.body.code);
-      setSessionCookie(reply, result.session, req.body.rememberBrowser);
+      setSessionCookie(reply, result.session, req.body.rememberBrowser, Date.now());
       return {
         user: normalize<z.infer<typeof C.user>>(result.user),
         csrf: result.csrf,

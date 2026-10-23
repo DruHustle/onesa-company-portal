@@ -40,6 +40,7 @@ process.env.ENGINEERING_IDENTITY_ENABLED = "true";
 process.env.ENGINEERING_OIDC_CONFIG_B64 = Buffer.from(
   JSON.stringify(config),
 ).toString("base64");
+const { signSessionAuthentication, mfaSessionCookie } = await import("../src/auth/session-proof.js");
 const { db } = await import("../src/services/db.js");
 const { migrate } = await import("../src/services/migrate.js");
 const { buildApp } = await import("../src/app.js");
@@ -275,6 +276,12 @@ for (const method of ["otp", "email_link", "pwd", "cross_browser_link", "pwd_rem
     const code=randomUUID();await db.query("INSERT INTO mfa_recovery(user_id,code_hash) VALUES($1,$2)",[userId,hash(code)]);
     const signed=await request({method:"POST",url:"/api/v1/auth/login",headers:{origin:process.env.PUBLIC_ORIGIN},payload:{email,password,code,rememberBrowser:method.endsWith("remember")}});
     assert.equal(signed.statusCode,200,signed.body);
+    const originalProof=jar.get(mfaSessionCookie)!;jar.delete(mfaSessionCookie);
+    const legacyHeaders={cookie:[...jar].map(([k,v])=>k+"="+v).join("; ")};
+    assert.equal((await request({url:"/api/v1/auth/me"})).statusCode,200,"legacy Portal sessions keep working");
+    assert.equal((await request({url:"/api/v1/engineering-sign-in/"+uid+"/details"})).json().onesaAccount,undefined,"recent legacy session timestamps are not MFA evidence");
+    assert.equal((await request({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/session",remoteAddress:"2001:db8:99::1",headers:{...legacyHeaders,origin:process.env.PUBLIC_ORIGIN},payload:{csrf}})).statusCode,401);
+    jar.set(mfaSessionCookie,originalProof);
     const available=await request({url:"/api/v1/engineering-sign-in/"+uid+"/details"});
     assert.deepEqual(available.json().onesaAccount,{email});
     const before=(await db.query("SELECT count(*)::int AS n FROM engineering_identity_records WHERE model='Grant'")).rows[0].n;
@@ -719,7 +726,7 @@ test("Existing Portal MFA sessions cannot satisfy forced reauthentication or exc
     const query=new URLSearchParams({client_id:config.clientId,redirect_uri:config.redirectUri,response_type:"code",scope:"openid email profile",state:randomBytes(24).toString("hex"),nonce:randomBytes(24).toString("hex"),code_challenge:createHash("sha256").update(randomBytes(48)).digest("base64url"),code_challenge_method:"S256",...extra});
     const auth=await app.inject({url:"/api/v1/engineering-identity/auth?"+query,headers:proxy});assert.equal(auth.statusCode,303,auth.body);
     const uid=new URL(String(auth.headers.location)).pathname.split("/").pop();
-    const cookie=[...auth.cookies.map(c=>c.name+"="+c.value),"onesa_session="+session].join("; ");
+    const cookie=[...auth.cookies.map(c=>c.name+"="+c.value),"onesa_session="+session,mfaSessionCookie+"="+signSessionAuthentication(session,Date.now()-300_000)].join("; ");
     const details=await app.inject({url:"/api/v1/engineering-sign-in/"+uid+"/details",headers:{...proxy,cookie}});assert.equal(details.statusCode,200,details.body);assert.equal(details.json().onesaAccount,undefined);
     const denied=await app.inject({method:"POST",url:"/api/v1/engineering-sign-in/"+uid+"/session",remoteAddress:"2001:db8:10::1",headers:{...proxy,cookie,origin:process.env.PUBLIC_ORIGIN},payload:{csrf:details.json().csrf}});assert.equal(denied.statusCode,401,denied.body);
   }
