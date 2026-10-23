@@ -105,6 +105,17 @@ Engineering Docs can use separately qualified Portal email-link/password sign-in
 owner-managed individual memberships; this grants no Portal administrator role.
 First-time users register and verify their email before owner review. Existing
 explicit approvals are retained; new administrator access keeps MFA.
+Approved new administrators can enroll an authenticator and save recovery codes
+through the registration UI. An existing MFA enrollment cannot be overwritten.
+Administrator and Engineering Docs sign-in offer **Remember this browser**,
+unchecked by default, for protected cookie persistence within the existing
+8-hour session lifetime. It does not save passwords or skip MFA. Use it only on
+a private device and sign out when finished. Browsers may restore session cookies
+when restoring tabs even without this option; closing a window is not revocation.
+An already authenticated Portal account can continue to Docs only with its
+existing enabled Engineering membership; other product permissions stay separate.
+Legacy sessions can continue using Portal. Reusing them for Docs requires a fresh
+MFA sign-in so an older session renewal cannot be mistaken for authentication.
 See the [protected access procedure](docs/engineering/ENGINEERING_DOCS_IDENTITY.md)
 for source behavior, deployment records and onboarding boundaries.
 The protected privacy workspace includes policy review and explicit Portal lifecycle

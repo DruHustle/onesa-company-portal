@@ -2,14 +2,16 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api } from "@/lib/api/client";
 import { accessLinkToken } from "@/lib/access-link";
+import styles from "./registration.module.css";
 export function AccessRegistration({ confirmation = false }: { confirmation?: boolean }) {
+  const [approved, setApproved] = useState(false);
   const [token, setToken] = useState<string | null>(null), [busy, setBusy] = useState(false), [notice, setNotice] = useState(""), [done, setDone] = useState(false), [audience, setAudience] = useState<"admin" | "engineering">("admin");
   useEffect(() => {
     if (confirmation) {
       const receiveLink = () => {
         const raw = accessLinkToken(window.location.hash);
         setToken(raw); window.history.replaceState(null, "", window.location.pathname + window.location.search);
-        if (raw) { setDone(false); setNotice(""); }
+        if (raw) { setDone(false); setApproved(false); setNotice(""); }
         else setNotice("This registration link is missing or invalid. Request a new one.");
       };
       receiveLink();
@@ -25,7 +27,7 @@ export function AccessRegistration({ confirmation = false }: { confirmation?: bo
         if (!token) throw Error("Request a new registration link.");
         if (data.get("password") !== data.get("confirmPassword")) throw Error("The passwords must match.");
         const r = await api.POST("/api/v1/access/confirm", { body: { token, password: String(data.get("password")) } });
-        setAudience(r.data!.audience); setToken(null); setDone(true);
+        setAudience(r.data!.audience); setApproved(r.data!.status === "approved"); setToken(null); setDone(true);
         setNotice(r.data!.status === "approved" ? "Your existing approval is recognized. Registration is complete." + (r.data!.audience === "admin" ? " New administrators must enroll their authenticator before signing in." : " You can now sign in to Engineering Docs.") : "Your email is verified. Your request has been sent to the owner for approval. We’ll email you when it has been reviewed.");
       } else {
         const email = String(data.get("email")).trim().toLowerCase();
@@ -37,15 +39,19 @@ export function AccessRegistration({ confirmation = false }: { confirmation?: bo
     } catch (error) { setNotice(error instanceof Error ? error.message : "Registration could not be completed. Please try again."); }
     finally { setBusy(false); }
   }
-  return <main className="admin-main"><div className="container"><section className="admin-login" aria-labelledby="registration-title">
-    <a className="wordmark" href="https://onesa.eu/">onesa<span>UG</span></a><p>ONESA PORTAL · PROTECTED ACCESS</p>
+  return <main className={styles.shell}><section className={styles.card} aria-labelledby="registration-title">
+    <a className="wordmark" href="https://onesa.eu/" aria-label="Onesa home">onesa<span>UG</span></a><p className={styles.context}>ONESA PORTAL · PROTECTED ACCESS</p>
     <h1 id="registration-title">{confirmation ? "Complete your registration" : "Request access"}</h1>
-    <p>{confirmation ? "Verify your email by confirming this link and choose a password. Opening the link does not grant access." : "Register before your first sign-in. Administrator and Engineering Docs access are approved separately. Previously approved addresses do not need another approval."}</p>
-    {!done && <form onSubmit={submit} aria-busy={busy}><fieldset disabled={busy || (confirmation && !token)}><legend>{confirmation ? "Choose your password" : "Your access request"}</legend>
+    <p className={styles.intro}>{confirmation ? "Choose a password to complete email verification." : "Create your account using your email. New access requires owner approval."}</p>
+    {!done && <form onSubmit={submit} aria-busy={busy}><fieldset disabled={busy || (confirmation && !token)}><legend className={styles.srOnly}>{confirmation ? "Choose your password" : "Your access request"}</legend>
       {confirmation ? <><label>Password (at least 14 characters)<input name="password" type="password" autoComplete="new-password" required minLength={14} maxLength={256} /></label><label>Confirm password<input name="confirmPassword" type="password" autoComplete="new-password" required minLength={14} maxLength={256} /></label></> : <><label>Email address<input name="email" type="email" autoComplete="email" required maxLength={254} /></label><label>Access requested<select value={audience} onChange={e => setAudience(e.target.value as "admin" | "engineering")}><option value="admin">Company administration</option><option value="engineering">Engineering Docs</option></select></label></>}
       <button className="button">{busy ? "Please wait…" : confirmation ? "Verify email and complete registration" : "Email my registration link"}</button>
     </fieldset></form>}
-    {notice && <p role={done ? "status" : "alert"}>{notice}</p>}
-    <p><a href={audience === "admin" ? "/admin" : "/engineering"}>Return to sign-in</a> · <a href="https://onesa.eu/en/contact">Contact Onesa</a></p>
-  </section></div></main>;
+    {notice && <p className={styles.notice} role={done ? "status" : "alert"}>{notice}</p>}
+    {done && approved && audience === "admin" && <p><a className="button" href="/access/setup-authenticator">Set up your authenticator</a></p>}
+    <div className={styles.support}>
+      <a href={audience === "admin" ? "/admin" : "/engineering"}>Return to sign-in</a>
+      <details><summary>About access</summary><p>Administrator and Engineering Docs access are approved separately. Existing approvals are retained. Opening a registration link does not grant access.</p><a href="https://onesa.eu/en/contact">Contact Onesa</a></details>
+    </div>
+  </section></main>;
 }

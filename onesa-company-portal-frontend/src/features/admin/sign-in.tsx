@@ -5,6 +5,7 @@ import { accessLinkToken } from "@/lib/access-link";
 import type { operations } from "@/lib/api/generated/schema";
 type SignedIn = operations["login"]["responses"][200]["content"]["application/json"];
 export function AdminSignIn({ onSignedIn, accessEnabled }: { accessEnabled: boolean; onSignedIn: (value: SignedIn) => void }) {
+  const [rememberBrowser, setRememberBrowser] = useState(false);
   const [method, setMethod] = useState<"password" | "link">("password"), [link, setLink] = useState<string | null>(null), [busy, setBusy] = useState(false), [notice, setNotice] = useState(""), [error, setError] = useState(false);
   useEffect(() => {
     if (!accessEnabled) return;
@@ -21,10 +22,10 @@ export function AdminSignIn({ onSignedIn, accessEnabled }: { accessEnabled: bool
     const form = e.currentTarget, data = new FormData(form); setBusy(true); setNotice(""); setError(false);
     try {
       if (method === "password") {
-        const result = await api.POST("/api/v1/auth/login", { body: { email: String(data.get("email")), password: String(data.get("password")), code: String(data.get("code")) } });
+        const result = await api.POST("/api/v1/auth/login", { body: { email: String(data.get("email")), password: String(data.get("password")), code: String(data.get("code")), rememberBrowser } });
         onSignedIn(result.data!);
       } else if (link) {
-        const result = await api.POST("/api/v1/access/link/verify", { body: { token: link, code: String(data.get("code")) } });
+        const result = await api.POST("/api/v1/access/link/verify", { body: { token: link, code: String(data.get("code")), rememberBrowser } });
         setLink(null); onSignedIn(result.data!);
       } else {
         await api.POST("/api/v1/access/link", { body: { email: String(data.get("email")) } });
@@ -44,7 +45,9 @@ export function AdminSignIn({ onSignedIn, accessEnabled }: { accessEnabled: bool
         <legend className="sr-only">{method === "password" ? "Administrator credentials" : link ? "Confirm your sign-in link" : "Receive a sign-in link"}</legend>
         {!(method === "link" && link) && <label>Email<input name="email" type="email" autoComplete="username" required maxLength={254} /></label>}
         {method === "password" && <label>Password<input name="password" type="password" autoComplete="current-password" required maxLength={256} /></label>}
-        {(method === "password" || link) && <label>Authenticator or recovery code<input name="code" autoComplete="one-time-code" required minLength={6} maxLength={64} /></label>}
+        {(method === "password" || link) && <><label>Authenticator or recovery code<input name="code" autoComplete="one-time-code" required minLength={6} maxLength={64} aria-describedby="admin-mfa-help" /></label><p id="admin-mfa-help" className="signin-factor-help">Use the current code from your authenticator app or one of your saved recovery codes. First time? <a href="/access/setup-authenticator">Set up your authenticator</a>.</p></>}
+        <label className="signin-remember"><input name="rememberBrowser" type="checkbox" checked={rememberBrowser} onChange={event => setRememberBrowser(event.target.checked)} aria-describedby="admin-remember-help" />Remember this browser</label>
+        <p id="admin-remember-help" className="signin-factor-help">Stay signed in for up to 8 hours. Use only on a private device.</p>
         <button className="button" disabled={busy}>{busy ? "Please wait…" : method === "link" && !link ? "Send sign-in link" : "Sign in"}</button>
       </fieldset>
     </form>

@@ -5,6 +5,7 @@ import { db, transaction } from "../services/db.js";
 import { HttpError, normalize, enqueue } from "../services/workflows.js";
 import { env } from "../config/env.js";
 import { encrypt, hash } from "./crypto.js";
+import { setSessionCookie } from "./session-cookie.js";
 import { reauthenticate } from "./reauthenticate.js";
 import type { Role } from "../access/roles.js";
 import * as C from "../api/contracts.js";
@@ -160,6 +161,7 @@ export async function registerAccess(
         body: z.object({
           token: z.string().regex(/^[a-f0-9]{64}$/),
           code: z.string().min(6).max(64),
+          rememberBrowser: z.boolean().default(false),
         }),
         response: {
           200: z.object({ user: C.user, csrf: z.string() }),
@@ -169,13 +171,7 @@ export async function registerAccess(
     },
     async (req, reply) => {
       const result = await consumeAdminLink(req.body.token, req.body.code);
-      reply.setCookie("onesa_session", result.session, {
-        httpOnly: true,
-        secure: env.NODE_ENV === "production",
-        sameSite: "strict",
-        path: "/",
-        maxAge: 28800,
-      });
+      setSessionCookie(reply, result.session, req.body.rememberBrowser, Date.now());
       return {
         user: normalize<z.infer<typeof C.user>>(result.user),
         csrf: result.csrf,
@@ -313,11 +309,9 @@ export async function registerAccess(
           subject: "Your Onesa access request",
           encryptedText: encrypt(
             req.body.decision === "approve"
-              ? "Your " +
-                  r.audience +
-                  " access has been approved. Sign in through the Onesa Portal. New administrators must enroll their authenticator before signing in.\n" +
-                  env.PUBLIC_ORIGIN +
-                  (r.audience === "admin" ? "/admin" : "/engineering")
+              ? (r.audience === "admin"
+                  ? "Your administrator access has been approved. Set up your authenticator, then sign in:\n" + env.PUBLIC_ORIGIN + "/access/setup-authenticator"
+                  : "Your Engineering Docs access has been approved. Sign in through Onesa Portal:\n" + env.PUBLIC_ORIGIN + "/engineering")
               : "Your access request has not been approved. Contact Onesa if you need clarification.",
           ),
         });
