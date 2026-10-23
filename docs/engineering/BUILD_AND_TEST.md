@@ -366,3 +366,19 @@ proof. `session-proof.test.ts` checks tampering, another signing purpose, token
 substitution, future/expired/malformed evidence and renewal without extending MFA
 freshness. Legacy sessions keep normal Portal access but cannot provide a made-up
 authentication time to Docs. No schema, application credential or MFA key changes.
+
+## Operations notification regression
+
+Run `PYTHONPATH=scripts python3 -m unittest scripts/test_oracle_operations.py` for
+synthetic incident transitions, six-hour backend-only reminders (other critical
+rules retain thirty-minute reminders), two-sample recovery, stable
+notification identities after ambiguous delivery, and bounded credential-free Robot
+readiness probes. These controls send no mail or application command and do not restart
+services. Installation is a separately qualified operations-component change; never
+rerun the initial operations bootstrap against existing production.
+
+Pending delivery retries stop after23 hours and require provider reconciliation before
+the24-hour [Resend idempotency window](https://resend.com/changelog/idempotency-keys)
+expires. Metric sampling and failure records continue; no new key is created to
+re-send an ambiguously accepted event. Healthy legacy installations do not receive
+a retrospective recovery email when this policy is first installed.
