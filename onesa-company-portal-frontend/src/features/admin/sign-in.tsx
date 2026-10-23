@@ -34,6 +34,7 @@ export function AdminSignIn({ onSignedIn, accessEnabled }: { accessEnabled: bool
     const sendingLink = method === "link" && !link;
     if (pending.current || (sendingLink && performance.now() < resendUntil)) return;
     const data = new FormData(e.currentTarget); pending.current = true; setBusy(true); setNotice(""); setError(false);
+    if (sendingLink) setSent(false);
     try {
       if (method === "password") {
         const result = await api.POST("/api/v1/auth/login", { body: { email, password: String(data.get("password")), ...(factor === "required" ? {code: String(data.get("code"))} : {}), rememberBrowser } });

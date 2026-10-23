@@ -68,7 +68,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
     return () => { active = false; window.clearTimeout(deadline); abort.abort(); window.removeEventListener("hashchange", receiveLink); };
   }, [uid]);
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (submitting.current || openingDocs || !ready || (method === "link" && !linkEmail && resendSeconds > 0)) return;
+    event.preventDefault(); if (submitting.current || openingDocs || !ready || (method === "link" && !linkEmail && !(onesaAccount && useExistingSession) && resendSeconds > 0)) return;
     const data = new FormData(event.currentTarget); submitting.current = true; setBusy(true); setNotice(""); setRegistrationRequired(false);
     const abort = new AbortController();
     const timeout = window.setTimeout(() => abort.abort(), 25000);
@@ -113,7 +113,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
           {!linkSent && <button className="button" type="submit" disabled={controlsDisabled}>{busy ? (method === "link" && !confirming && !continuingSession ? "Sending…" : "Signing in…") : continuingSession ? "Continue with Onesa" : method === "password" ? "Sign in to Docs" : confirming ? "Confirm sign-in and open Docs" : coolingDown ? "Please wait…" : "Send sign-in link"}</button>}
         </fieldset></form>
         {continuingSession && <button type="button" disabled={busy} onClick={() => {setUseExistingSession(false); setNotice("");}}>Use another account</button>}
-        {sent && !confirming && method === "link" && <div className="engineering-link-sent"><p className="engineering-sent-notice" ref={sentRef} tabIndex={-1} role="status">Sent.</p><button className="button" type="button" disabled={busy || resendSeconds > 0} onClick={() => { if (!email) { setSent(false); return; } formRef.current?.requestSubmit(); }}>Send another link{resendSeconds > 0 ? ` (${resendSeconds}s)` : ""}</button></div>}
+        {linkSent && <div className="engineering-link-sent"><p className="engineering-sent-notice" ref={sentRef} tabIndex={-1} role="status">Sent.</p><button className="button" type="button" disabled={busy || resendSeconds > 0} onClick={() => { if (!email) { setSent(false); return; } formRef.current?.requestSubmit(); }}>Send another link{resendSeconds > 0 ? ` (${resendSeconds}s)` : ""}</button></div>}
       </>}
       <div className="engineering-signin-support">
         {!confirming && !sent && !registrationRequired && <p className="signin-registration">First time here? <a href="/access/register?audience=engineering">Register for Engineering Docs</a></p>}

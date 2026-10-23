@@ -40,7 +40,11 @@ test.beforeAll(async () => {
     );
 });
 test.beforeEach(async () => {
-  await db.query("DELETE FROM rate_limits WHERE key=$1", ["login:127.0.0.1"]);
+  // Password proof and factor verification are two requests. Isolate this
+  // scenario's owned account counters without changing production limits.
+  await db.query("DELETE FROM rate_limits WHERE key=ANY($1::text[])", [
+    ["login:127.0.0.1", ...[...accounts.values()].map(account => "account:" + hash(account.email.toLowerCase()))],
+  ]);
 });
 test.afterAll(async () => {
   await db.query("DELETE FROM applications WHERE id=$1", [applicationId]);

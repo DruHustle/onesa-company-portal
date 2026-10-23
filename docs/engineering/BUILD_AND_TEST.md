@@ -414,3 +414,9 @@ concurrent delivery coalescing and explicit resend after the server window. Unkn
 recipients retain the same acknowledgement/cooldown. These tests do not enroll a
 real owner, send real mail or prove production access. Deploy compatible API support
 before the frontend; old clients supplying a factor remain supported.
+
+The bootstrap onboarding regression runs the actual bootstrap process only on the
+isolated local test database, verifies no active/printed factor, completes the UI
+API enrollment protocol and confirms an occupied database cannot be overwritten.
+Existing production enrollments require explicit scoped recovery; a missing audit
+event alone does not establish that an existing factor can safely be removed.

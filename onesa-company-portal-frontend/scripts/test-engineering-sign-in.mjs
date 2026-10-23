@@ -167,7 +167,7 @@ async function verifyOpeningHandoff(page, uid, submitButton) {
   await page.route(destination, handler);
   try {
     await submitButton.click({noWaitAfter: true});
-    await requested;
+    await Promise.race([requested, delay(5000).then(() => { throw Error("Opening callback was not requested within the existing sign-in UI bound"); })]);
     // Locator actions wait for pending navigation. Observe the old document's
     // actual DOM transitions while the destination response is deliberately held.
     await expect.poll(() => frames.some(frame => frame.heading === "Opening Engineering Docs")).toBe(true);
@@ -372,16 +372,21 @@ try {
   if(accessEnabled)for(const colorScheme of ["light","dark"]){
     const context=await browser.newContext({viewport:{width:390,height:844},colorScheme}),page=await context.newPage();
     const uid="synthetic_session_"+colorScheme;
+    states.set(uid,"synthetic-engineer@onesa.eu");
     await page.goto(origin+"/engineering/sign-in/"+uid,{waitUntil:"networkidle"});
     const remember=page.getByRole("checkbox",{name:"Remember this browser",exact:true});
     await expect(remember).not.toBeChecked();
     await expect(page.getByRole("button",{name:"Continue with Onesa",exact:true})).toBeEnabled();
+    await expect(page.getByRole("button",{name:/^Send another link/})).toHaveCount(0);
+    await expect(page.getByRole("status")).toHaveCount(0);
     await expect(page.getByRole("group",{name:"Sign-in method"})).toHaveCount(0);
     await expect(page.getByLabel("Email address",{exact:true})).toHaveCount(0);
     await remember.check();
     expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa","wcag22aa"]).analyze()).violations).toEqual([]);
     await page.getByRole("button",{name:"Use another account",exact:true}).click();
     await expect(page.getByLabel("Email address",{exact:true})).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText("Sent.");
+    await page.getByRole("button",{name:"Email and password",exact:true}).click();
     await expect(remember).toBeChecked();
     await page.reload({waitUntil:"networkidle"});
     await remember.check();
@@ -568,6 +573,13 @@ try {
     await page.getByRole("button",{name:"Send another link",exact:true}).click();
     await expect.poll(()=>sends).toBe(2);
     await expect(page.getByRole("button",{name:/^Send another link/})).toBeDisabled();
+    await page.clock.fastForward(30000);
+    await page.route("**/api/v1/access/link",async route=>route.fulfill({status:503,json:{error:{message:"Synthetic temporary send failure"}}}));
+    await page.getByRole("button",{name:"Send another link",exact:true}).click();
+    await expect(page.locator('section[aria-label="Administrator sign-in"]').getByRole("alert")).toContainText("Synthetic temporary send failure");
+    await expect(page.locator('section[aria-label="Administrator sign-in"]').getByRole("status")).toHaveCount(0);
+    await expect(page.getByLabel("Email",{exact:true}).first()).toBeEnabled();
+    await expect(page.getByLabel("Email",{exact:true}).first()).toHaveValue("synthetic@onesa.eu");
     await page.unroute("**/api/v1/access/link");
     const adminProofsBefore = adminConfirmations;
     await page.evaluate(() => { window.__onesaLinkDocumentMarker = "same-document"; });
