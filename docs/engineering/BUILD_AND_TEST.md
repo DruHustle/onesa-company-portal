@@ -303,7 +303,7 @@ After a frontend build, run
 `npm --prefix onesa-company-portal-frontend run test:engineering-sign-in`. The isolated
 renderer covers delayed-send disabled visuals in system light/dark appearance,
 duplicate submission prevention, failed-send email preservation, error clearance
-on retry, a single visible Sent status without a Sent button, the five-second
+on retry, a single visible Sent status without a Sent button, the 30-second server
 resend boundary, expired interaction restart and stalled-request recovery. It also
 checks actionable password-setup/approval errors and distinguishes unavailable
 services from expired requests.
