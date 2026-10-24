@@ -420,3 +420,12 @@ isolated local test database, verifies no active/printed factor, completes the U
 API enrollment protocol and confirms an occupied database cannot be overwritten.
 Existing production enrollments require explicit scoped recovery; a missing audit
 event alone does not establish that an existing factor can safely be removed.
+
+## Advisory patch candidate — 24 October 2026
+
+The current source lock includes Fast URI 3.1.9/4.2.3 and Nodemailer 10.1.4.
+The focused records were reviewed from security PRs #198 and #199; unrelated peer,
+optional and native lock entries were retained. Nodemailer retains MIT-0 licensing;
+Fast URI retains its existing license. Full dependency checks and the actual runtime
+image must pass before release. A source lock update does not update the serving API
+or worker. Private `records/` owner inputs are excluded from the Docker build context.
