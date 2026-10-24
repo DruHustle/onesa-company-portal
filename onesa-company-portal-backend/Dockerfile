@@ -6,7 +6,8 @@ FROM dependencies AS build
 COPY . .
 RUN npm run build
 FROM node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS runtime
-RUN apk upgrade --no-cache zlib
+RUN apk upgrade --no-cache zlib musl musl-utils
+RUN apk add --no-cache 'musl>=1.2.6-r3' 'musl-utils>=1.2.6-r3'
 ENV NODE_ENV=production PORT=8300 STORAGE_DIR=/app/storage
 WORKDIR /app
 COPY package*.json ./
