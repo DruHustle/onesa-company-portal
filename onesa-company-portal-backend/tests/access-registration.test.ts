@@ -1,5 +1,5 @@
 import "./local-environment.js";
-import { test, before, after } from "node:test";
+import { test, before, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID, randomBytes, generateKeyPairSync } from "node:crypto";
 if (!process.env.TEST_DATABASE_URL)
@@ -78,6 +78,9 @@ before(async () => {
   };
   await app.ready();
 });
+// Each test starts outside the 30-second delivery window. Within a test,
+// repeated/concurrent requests retain the real cooldown and are asserted below.
+beforeEach(async () => { await db.query("DELETE FROM rate_limits WHERE key LIKE 'access-link-cooldown:%'"); });
 after(async () => {
   await app.close();
   await db.end();
@@ -448,6 +451,7 @@ test("Administrator magic links require a fresh existing factor, commit failed a
   ]);
   assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
   assert.equal(results.filter((r) => r.status === "rejected").length, 1);
+  await db.query("UPDATE rate_limits SET expires_at=now()-interval '1 second' WHERE key LIKE 'access-link-cooldown:%'");
   await requestAdminLink("owner@onesa.eu");
   const expired = await mailToken("owner@onesa.eu", "Your Onesa sign-in link");
   await db.query(
@@ -528,6 +532,7 @@ test("Unknown account link requests have generic responses and cannot send mail;
 
 test("Email-link MFA sign-in applies the same explicit browser persistence choice", async () => {
   for (const rememberBrowser of [false, true]) {
+    await db.query("UPDATE rate_limits SET expires_at=now()-interval '1 second' WHERE key LIKE 'access-link-cooldown:%'");
     await requestAdminLink("owner@onesa.eu");
     const token = await mailToken("owner@onesa.eu", "Your Onesa sign-in link");
     const response = await app.inject({method:"POST", url:"/api/v1/access/link/verify", remoteAddress:"2001:db8:9::1", headers:origin, payload:{token, code:(await proof()).code, rememberBrowser}});
@@ -537,5 +542,44 @@ test("Email-link MFA sign-in applies the same explicit browser persistence choic
     assert.equal(cookie.httpOnly,true); assert.equal(cookie.domain,undefined);
     const replay = await app.inject({method:"POST",url:"/api/v1/access/link/verify",remoteAddress:"2001:db8:9::1",headers:origin,payload:{token,code:(await proof()).code,rememberBrowser}});
     assert.equal(replay.statusCode,401); assert.equal(replay.cookies.length,0);
+  }
+});
+
+test("Valid admin links identify enrollment or factor requirements without login or consuming attempts", async () => {
+  const email = "no-mfa-" + randomUUID() + "@onesa.eu", id = randomUUID();
+  await db.query("INSERT INTO users(id,email,password_hash,role) VALUES($1,$2,$3,'viewer')", [id, email, passwordHash(chosenPassword)]);
+  await requestAdminLink(email);
+  const raw = await mailToken(email, "Your Onesa sign-in link");
+  for (const code of [undefined, "123456"]) {
+    const r = await app.inject({method:"POST",url:"/api/v1/access/link/verify",headers:origin,payload:{token:raw,...(code ? {code} : {})}});
+    assert.equal(r.statusCode,403,r.body); assert.equal(r.json().error.code,"MFA_ENROLLMENT_REQUIRED"); assert.equal(r.cookies.length,0);
+  }
+  await requestAdminLink("owner@onesa.eu");
+  const enrolledLink = await mailToken("owner@onesa.eu", "Your Onesa sign-in link");
+  const required = await app.inject({method:"POST",url:"/api/v1/access/link/verify",headers:origin,payload:{token:enrolledLink}});
+  assert.equal(required.statusCode,401,required.body); assert.equal(required.json().error.code,"MFA_REQUIRED"); assert.equal(required.cookies.length,0);
+  for (const value of [raw,enrolledLink]) {
+    const row=(await db.query("SELECT attempts,consumed_at FROM access_links WHERE token_hash=$1",[hash(value)])).rows[0];
+    assert.equal(row.attempts,0); assert.equal(row.consumed_at,null);
+  }
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM sessions WHERE user_id=$1",[id])).rows[0].n,0);
+  await assert.rejects(consumeAdminLink(randomBytes(32).toString("hex"), ""), {code:"ACCESS_LINK"});
+});
+test("Concurrent sign-in link requests enqueue once, allow explicit resend after cooldown, and retain generic unknown-recipient behavior", async () => {
+  const email="cooldown-"+randomUUID()+"@onesa.eu", id=randomUUID();
+  await db.query("INSERT INTO users(id,email,password_hash,role,mfa_secret) VALUES($1,$2,$3,'viewer',$4)",[id,email,passwordHash(chosenPassword),encrypt("JBSWY3DPEHPK3PXP")]);
+  const count=async()=>Number((await db.query("SELECT count(*)::int AS n FROM jobs WHERE payload->>'to'=$1 AND payload->>'subject'='Your Onesa sign-in link'",[email])).rows[0].n);
+  await Promise.all([requestAdminLink(email),requestAdminLink(email),requestAdminLink(email)]);
+  assert.equal(await count(),1);
+  await db.query("UPDATE rate_limits SET expires_at=now()-interval '1 second' WHERE key LIKE 'access-link-cooldown:%'");
+  await requestAdminLink(email); assert.equal(await count(),2);
+  const {engineeringLinkResendSeconds}=await import("../src/auth/access.js");
+  for (const recipient of ["approved-link-only@onesa.eu","unknown-"+randomUUID()+"@onesa.eu"]) {
+    const uid="synthetic_cooldown_"+randomUUID();
+    const before=(await db.query("SELECT count(*)::int AS n FROM jobs WHERE payload->>'to'=$1",[recipient])).rows[0].n;
+    await Promise.all([requestEngineeringLink(recipient,uid,[]),requestEngineeringLink(recipient,uid,[])]);
+    const remaining=await engineeringLinkResendSeconds(uid); assert.ok(remaining>0 && remaining<=30);
+    const after=(await db.query("SELECT count(*)::int AS n FROM jobs WHERE payload->>'to'=$1",[recipient])).rows[0].n;
+    assert.equal(after-before,recipient.startsWith("unknown-")?0:1);
   }
 });

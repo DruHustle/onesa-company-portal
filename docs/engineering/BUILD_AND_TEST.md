@@ -369,7 +369,14 @@ authentication time to Docs. No schema, application credential or MFA key change
 
 ## Operations notification regression
 
-Run `PYTHONPATH=scripts python3 -m unittest scripts/test_oracle_operations.py` for
+Run `python3 -m unittest discover -s scripts -p 'test_oracle*.py'` for the
+complete Oracle-operation regression set, including
+`scripts/test_oracle_monitor_persistence.py`. Its eight disposable-state tests
+cover interrupted final writes, failed replacement, the next normal sample,
+pending delivery identity, restart counters, private file modes and simulation
+separation. Delivery is mocked; no production state or mail is used.
+
+The notification controls additionally cover
 synthetic incident transitions, six-hour backend-only reminders (other critical
 rules retain thirty-minute reminders), two-sample recovery, stable
 notification identities after ambiguous delivery, and bounded credential-free Robot
@@ -382,3 +389,34 @@ the24-hour [Resend idempotency window](https://resend.com/changelog/idempotency-
 expires. Metric sampling and failure records continue; no new key is created to
 re-send an ambiguously accepted event. Healthy legacy installations do not receive
 a retrospective recovery email when this policy is first installed.
+
+The final snapshot adds restart baselines before one call to the existing atomic
+record writer. A failed temporary write or replacement retains the previous complete
+record, including a pending notification identity. This does not establish fsync,
+power-loss durability or concurrent-writer safety. Before installation, read back
+the actual singleton systemd oneshot unit/timer and check for duplicate schedulers;
+do not start a second monitor to test concurrency. Preserve real pending delivery
+and reconciliation records. Qualify interruption cases only with disposable state
+and mocked delivery, then verify the installed file hash and normal scheduled samples.
+
+## Credential-verified administrator onboarding and resend feedback
+
+The maintained `test:engineering-sign-in` renderer suite checks that no MFA field
+appears before credential proof, enrolled accounts receive the factor step and
+unenrolled accounts receive setup. Both methods retain MFA and remembered-session
+boundaries. It also checks plain Sent status, immediate duplicate-submit exclusion,
+disabled styling, a 30-second explicit resend, failure recovery and server-reported
+Engineering cooldown after refresh. All delivery is mocked on loopback.
+
+The isolated backend suite covers correct/incorrect/disabled accounts, no session
+before factor verification, bearer-link state discovery without consuming attempts,
+concurrent delivery coalescing and explicit resend after the server window. Unknown
+recipients retain the same acknowledgement/cooldown. These tests do not enroll a
+real owner, send real mail or prove production access. Deploy compatible API support
+before the frontend; old clients supplying a factor remain supported.
+
+The bootstrap onboarding regression runs the actual bootstrap process only on the
+isolated local test database, verifies no active/printed factor, completes the UI
+API enrollment protocol and confirms an occupied database cannot be overwritten.
+Existing production enrollments require explicit scoped recovery; a missing audit
+event alone does not establish that an existing factor can safely be removed.

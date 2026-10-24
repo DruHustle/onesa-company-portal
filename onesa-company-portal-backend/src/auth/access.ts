@@ -284,8 +284,29 @@ export async function confirmRegistration(
     };
   });
 }
+export const signInLinkCooldownSeconds = 30;
+function linkCooldownKey(purpose: "admin" | "engineering", target: string) {
+  return "access-link-cooldown:" + purpose + ":" + hash(target);
+}
+async function claimLinkSend(client: PoolClient, purpose: "admin" | "engineering", target: string) {
+  const key = linkCooldownKey(purpose, target);
+  await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [key]);
+  const row = (await client.query(
+    "INSERT INTO rate_limits(key,hits,expires_at) VALUES($1,1,now()+$2*interval '1 second') ON CONFLICT(key) DO UPDATE SET hits=1,expires_at=EXCLUDED.expires_at WHERE rate_limits.expires_at<=now() RETURNING key",
+    [key, signInLinkCooldownSeconds],
+  )).rowCount;
+  return Boolean(row);
+}
+export async function engineeringLinkResendSeconds(interaction: string) {
+  const row = (await db.query(
+    "SELECT LEAST($2, GREATEST(0, ceil(extract(epoch FROM expires_at-now()))))::int AS seconds FROM rate_limits WHERE key=$1",
+    [linkCooldownKey("engineering", interaction), signInLinkCooldownSeconds],
+  )).rows[0];
+  return Number(row?.seconds ?? 0);
+}
 export async function requestAdminLink(email: string) {
   await transaction(async (c) => {
+    if (!await claimLinkSend(c, "admin", email)) return;
     const u = (
       await c.query(
         "SELECT id,password_hash,mfa_secret FROM users WHERE email=$1 AND NOT disabled",
@@ -328,16 +349,19 @@ export async function consumeAdminLink(raw: string, code: string) {
       )
     ).rows[0];
     if (!proof) return null;
-    await c.query(
-      "UPDATE access_links SET attempts=attempts+1 WHERE token_hash=$1",
-      [hash(raw)],
-    );
     if (
       !u ||
       proof.identity_hash !== hash(u.password_hash + ":" + String(u.mfa_secret))
     )
       return null;
     if (!u.mfa_secret) return { enrollment: true as const };
+    // An explicit link confirmation can discover the required next step without
+    // consuming a factor attempt or creating a session. A bearer link is required.
+    if (!code) return { factorRequired: true as const };
+    await c.query(
+      "UPDATE access_links SET attempts=attempts+1 WHERE token_hash=$1",
+      [hash(raw)],
+    );
     const step = validStep(
       decrypt(u.mfa_secret),
       code,
@@ -381,6 +405,8 @@ export async function consumeAdminLink(raw: string, code: string) {
       "MFA_ENROLLMENT_REQUIRED",
       "Enroll your administrator authenticator with your registered password before signing in.",
     );
+  if ("factorRequired" in result)
+    throw new HttpError(401, "MFA_REQUIRED", "Enter the code from your authenticator app or a saved recovery code.");
   return result;
 }
 export async function requestEngineeringLink(
@@ -389,6 +415,7 @@ export async function requestEngineeringLink(
   externalEmails: readonly string[],
 ) {
   await transaction(async (c) => {
+    if (!await claimLinkSend(c, "engineering", interaction)) return;
     const member = engineeringEmailAllowed(email, externalEmails)
       ? (
           await c.query(

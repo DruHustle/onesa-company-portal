@@ -19,7 +19,7 @@ test.afterAll(async()=>{await db.query('TRUNCATE governance_events,governance_ve
 async function recovery(){const code=randomUUID();await db.query('INSERT INTO mfa_recovery(user_id,code_hash) VALUES($1,$2)',[ownerId,hash(code)]);return code;}
 async function login(page:import('@playwright/test').Page){
  await page.goto('/admin#privacy/overview');
- await page.getByLabel('Email',{exact:true}).first().fill(email);await page.getByLabel('Password',{exact:true}).first().fill(password);await page.getByLabel('Authenticator or recovery code').fill(await recovery());await page.getByRole('button',{name:'Sign in',exact:true}).click();
+ await page.getByLabel('Email',{exact:true}).first().fill(email);await page.getByLabel('Password',{exact:true}).first().fill(password);await expect(page.getByLabel('Authenticator or recovery code')).toHaveCount(0);await page.getByRole('button',{name:'Continue',exact:true}).click();await page.getByLabel('Authenticator or recovery code').fill(await recovery());await page.getByRole('button',{name:'Sign in',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Privacy Overview',exact:true})).toBeVisible();
 }
 test('Protected governance documents, search, evidence, PDF, amendments and scoped approval work in the actual UI',async({page})=>{
