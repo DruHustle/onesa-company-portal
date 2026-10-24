@@ -1,6 +1,22 @@
 # Production release checklist
 
-## Current component status — 2026-10-21
+## Current release records
+
+Use [CHANGELOG.md](CHANGELOG.md) for the latest independently accepted component
+identities and validation. Use the restricted component-serving manifest and its
+linked receipts for actual installed/runtime evidence. A branch merge, a CI result
+and a component deployment are separate facts.
+
+The accepted credential-first MFA/Sent correction and monitor interruption fix
+have their own component records. A new owner sign-in, human product ratings and
+publication of the prepared archived-response packet must not be inferred from
+those technical results. Keep the existing protected Docs acceptance until a new
+edition completes its own qualified publication and approved-identity checks.
+
+The dated snapshots below retain their original source/time and do not identify
+current serving components. The current public Home hero is preserved.
+
+## Historical component snapshot — 2026-10-21
 
 Frontend `32f3b24c4937632d2da500b44002602bdedd8449` and Oracle API
 `cfe0d43e7032dabc83be8e49dba340660e1975e0` are independently accepted after full

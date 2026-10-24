@@ -13,108 +13,34 @@ Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md)
 for source identities, protected ingress, acceptance and rollback.
 
-The current accepted Company/Portal frontend is
-`2009ee656cc685657956d63abef93860a850905b` (2026-10-23), Vercel
-`dpl_GppJgy5SWD1vAwo2hda6TmuwQKmB`. The independently accepted Oracle API is
-`391b23ddb28b28b1467cf307c696544a9e9476a3`, with the identical qualified source
-tree. Administrator and Engineering Docs sign-in offer an unchecked-by-default
-**Remember this browser** option for the existing eight-hour session limit.
-Purpose-signed session evidence preserves actual MFA freshness across renewal;
-existing Portal access and separate Engineering membership remain enforced.
-Approved new administrators have a dedicated authenticator/recovery-code setup UI.
-This scope does not unify AI Platform or Robot accounts.
-
-Full native dev/staging/main checks, 154 isolated backend tests, two actual
-synthetic staging MFA sessions, 20 source-equivalent Preview UI contexts and six
-canonical responsive/accessibility contexts passed. Running-image cookie/TLS and
-private-boundary checks passed in production. Canonical UI submissions were
-intercepted, so they do not establish production-owner authentication or delivered
-email. The Home hero, credentials, memberships, governance records and worker are
-retained. Later repository metadata commits are distinct from serving components.
-
-The earlier accepted Company/Portal frontend is
-`63d8c8682735ae24076890f751a1a06936bb6d11` (2026-10-22), Vercel
-`dpl_BrSELH5kadPHJgNjMckzzNtTgBVs`. Products now presents Application Security
-in English/German as an AI Platform application direction, with code review,
-threat modelling, vulnerability triage, human-reviewed remediation and contextual
-contact navigation. This does not claim an available security scanner or certification.
-Next.js 16.4.2 is verified in the sealed frontend artifact. Full native checks,
-48 staged general views and 12 feature/contact journeys, then 16 canonical views
-and 12 canonical feature/contact journeys passed. The Home hero, authentication,
-API, worker and memberships remain unchanged. The public Company host intentionally
-denies private API routes; authenticated APIs and readiness use the Portal host.
-
-Protected Engineering Docs source `373889be9bda3357ff50b74692e9b75637e2bb59`
-is separately accepted at `docs.engineering.onesa.eu`, Pages
-`2d937ff1-391f-4156-8df6-75d2d14aaa5e`, with DOMPurify 3.4.17 and factual
-synthetic-demo documentation. All 751 protected assets and anonymous denials,
-18 production responsive/accessibility views, 22 manuals and 87 diagrams pass.
-Actual approved-owner access and supported Access logout/refusal were observed;
-this did not change membership, passwords or provider policies. Repository metadata
-commits remain distinct from each serving component's source.
-
-The preceding accepted Company/Portal frontend is `5cfd9d40af20f5a040a79c5868a15c7d5fd72862`
-(2026-10-22), deployment `dpl_DU2RKSAuXnVypzvTnPbjL7QHWqZG`. Engineering Docs
-retains its opening state during both sign-in callbacks;36 staged and12 canonical
-synthetic UI cases pass after full exact-source CI. Both canonical deployment
-identities and the Engineering Docs redirect are verified. The Home hero, API,
-worker and memberships are unchanged. Approved owner access to Engineering Docs
-was verified separately. Protected edition `34e9ab83c412fc87183a1428537ae0547a22ed04`
-is accepted at `docs.engineering.onesa.eu`, Pages
-`48d6eebd-3692-4241-87c1-df6e1d37ef4d`: each environment passed 751 protected
-file checks and anonymous denials, 18 responsive/accessibility views, 22 manuals
-and 87 diagrams. These Portal UI cases sent no real email or model request.
-
-This retains the preceding frontend `3fcbde97f9a6d9b3e6eec8ae1e3870709bc4e691`
-(2026-10-22). Products includes Industrial AI troubleshooting and the wider application
-areas in English/German. Full native checks,36 staged text/accessibility views,
-12 image-loading views and eight canonical production views pass. The Home hero
-and compact product preview are unchanged; no backend activation accompanies it.
-
-This includes the previous focused-topic and cross-browser edition
-`32f3b24c4937632d2da500b44002602bdedd8449`: each homepage capability row opens its
-own English/German Technology topic, preserving the complete overview and bookmarks.
+Independently accepted frontend, API, worker and operations-monitor revisions are
+recorded in [CHANGELOG.md](CHANGELOG.md). Treat those dated component releases
+separately from repository branches and CI results. Detailed deployment receipts,
+installed hashes and current serving records remain in protected engineering custody.
+The accepted protected Docs edition and its verified access scope are also recorded
+there; a prepared archive or a successful link request does not establish a new
+protected publication or approved-account sign-in.
 
 Engineering Docs email links can open in another browser through an encrypted,
-origin-bound handoff of at most five minutes and fresh receiving-browser OIDC
-state/PKCE. Explicit confirmation of the shown email precedes one-use redemption.
-The original 15-minute link expiry, current membership, Origin/CSRF and admin MFA
-remain enforced. Sent is one plain message; email stays visibly disabled and
-explicit resend enables after five seconds.
+origin-bound handoff of at most five minutes and a fresh receiving-browser OIDC
+state/PKCE exchange. Explicit confirmation precedes one-use redemption. The original
+15-minute link expiry, current membership, Origin/CSRF and administrator MFA remain
+enforced. After an accepted request, Sent is plain text; the email input and send
+control are visibly disabled. Explicit resend enables after the 30-second server
+window, with concurrent and repeated requests coalesced. Delivery and actual owner
+access require their own evidence.
 
-The earlier independently accepted Oracle API is `cfe0d43e7032dabc83be8e49dba340660e1975e0`,
-whose complete tree equals qualified main `32f3b24c4937632d2da500b44002602bdedd8449`.
-Twenty-five isolated real identity integration checks, full exact-main CI,
-30 staged/six canonical synthetic UI views and 144 topic journeys pass. Actual
-staged/production API checks verify affected methods, database TLS and five HTTP
-boundaries. Synthetic transport does not establish real owner inbox receipt or
-approved production Docs access.
+Administrator MFA state is disclosed only after valid password or bearer-link proof.
+Enrolled accounts receive the factor step; approved accounts without a factor receive
+authenticator setup. Discovery creates no session and does not replace an existing
+factor. On a new empty database, the bootstrap owner enrolls and verifies MFA in the
+UI; bootstrap does not activate or print an unverified secret.
 
-Worker `8bf6fd60c0b3ca225816f7404afdce1d80d4e1a5`, scanner, AI and Robot remain
-independently retained. No migration, credential change, business-record test write
-or real email accompanied this release. Protected Engineering Docs publication and
-owner walkthroughs remain separately tracked. The owner reports iPhone17ProMax,
-iOS27.0.1 and working VoiceOver; changed topic links have no new physical-device
-acceptance claim. See [CHANGELOG.md](CHANGELOG.md) for component history.
-
-The previously accepted About leadership update is frontend `a5c742cfa305f039be9e1ec4b76ed57c025ed8ed` at Vercel `dpl_BNXcsQvXM7S5NbmNrr3VB9pwkmhC`.
-The owner-supplied portrait and engineering/renewable-energy biography passed source
-CI and staged/canonical responsive accessibility checks. Backend, worker, scanner and
-identity services are retained. See the
-[About release](docs/engineering/DEPLOYMENT.md).
-
-The previously accepted company-first Home and concise Engineering Docs sign-in frontend
-`56eb17c80cfff656608005c60c3ca8d2c9da09a2` is accepted at Vercel `dpl_BcvxvfeoSCa3zLapdrWx1F5wAXZh` on the existing Company/Portal
-hosts. API `4e47e3102a3a90054725cc06ad46b95339e0e544`, worker `3fad26e` and scanner remain independently retained.
-No backend activation or migration accompanied this frontend release. See the
-[earlier Company/sign-in release](docs/engineering/DEPLOYMENT.md).
-
-The 2026-10-18 editorial/task release is accepted; see the
-[earlier editorial/API identities and acceptance](docs/engineering/DEPLOYMENT.md).
-
-Onesa UG is the company. Its product hierarchy is Onesa AI Platform—Applications
-and the planned Industrial AI track—and Onesa Robotics / Physical AI. Product
-status and each demonstrated capability remain distinct from integration directions.
+Onesa UG is the company. Its products are Onesa AI Platform—Applications and
+Industrial AI—and Onesa Robotics / Physical AI. The isolated Industrial Investigation
+software demonstration uses synthetic data; ordinary AI production keeps Industrial
+disabled. Wider factory integrations and physical robotics remain development
+directions, distinct from demonstrated functionality.
 
 The Company Portal is Onesa UG’s corporate website and protected business workspace.
 It combines an English/German public site with a custom CMS, enquiries, recruitment,

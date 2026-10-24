@@ -2,6 +2,12 @@
 
 ## 2026-10-24 — Credential-first sign-in and monitor interruption fix accepted
 
+- Centralize accepted component identities in this changelog. README describes
+  current onboarding without duplicating a stale deployment timeline; the release
+  checklist explicitly labels its older component snapshots as historical. The
+  test guide uses the implemented 30-second resend boundary. These documentation
+  corrections deploy no application and grant no new access or human acceptance.
+
 - Company/Portal frontend `a6d859a5820bd8bbc8cc11c2a841896c364150dc`, Vercel
   `dpl_8EXRZ8zF3T4Sk3PcJiLefMoRkVsL`, is accepted on both canonical hosts.
   Independently accepted Portal API `887e3595efe3739b5900857ca214f788e070ef09`
