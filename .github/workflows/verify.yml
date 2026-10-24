@@ -69,7 +69,7 @@ jobs:
       run: python3 scripts/ci/install_tools.py --only reviewdog
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
       with:
-        node-version: '24'
+        node-version: '24.22.1'
         cache: npm
         cache-dependency-path: 'onesa-company-portal-backend/package-lock.json
 
