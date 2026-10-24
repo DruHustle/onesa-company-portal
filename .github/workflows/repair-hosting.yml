@@ -48,7 +48,7 @@ jobs:
         persist-credentials: false
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
       with:
-        node-version: '24'
+        node-version: '24.22.1'
     - name: Require successful checks before database changes
       if: inputs.portal_action == 'repair-role' || inputs.portal_action == 'initialize-confirmed-target'
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
@@ -142,7 +142,7 @@ jobs:
         persist-credentials: false
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
       with:
-        node-version: '24'
+        node-version: '24.22.1'
     - name: Require successful exact-source checks before staging credentials
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
       with:

@@ -67,7 +67,7 @@ jobs:
       run: python3 scripts/release/hosted.py preflight
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
       with:
-        node-version: '24'
+        node-version: '24.22.1'
     - name: Reuse the exact-source protected native Git Preview
       env:
         RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
