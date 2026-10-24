@@ -6,3 +6,6 @@ storage
 test-results
 playwright-report
 *.tsbuildinfo
+
+# Private owner inputs are not application build source.
+records
