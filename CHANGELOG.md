@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-10-24 — Credential-first sign-in and monitor interruption fix accepted
+
+- Company/Portal frontend `a6d859a5820bd8bbc8cc11c2a841896c364150dc`, Vercel
+  `dpl_8EXRZ8zF3T4Sk3PcJiLefMoRkVsL`, is accepted on both canonical hosts.
+  Independently accepted Portal API `887e3595efe3739b5900857ca214f788e070ef09`
+  uses the identical qualified source tree. The worker, scanner, AI, Robot and
+  Docs keep their independent deployments; the Home hero remains unchanged.
+- Full required native dev/staging/main CI passed. Evidence includes 158 isolated
+  backend tests, 258 full development browser cases, two actual synthetic staging
+  MFA identities, 20 staged UI views and eight canonical UI views. UI identity/mail
+  responses were intercepted; these views establish neither a new owner production
+  sign-in nor new inbox delivery. Existing-account MFA recovery, where separately
+  authorized, remains distinct from the source correction and owner enrollment.
+- Monitor source `a6d859a5820bd8bbc8cc11c2a841896c364150dc` is installed, with
+  the reviewer's `82a74bbc9bd0af5e76d69b1c706de57abf9e528a` preserved once.
+  Installed hash and singleton scheduling agree; two normal scheduled samples
+  passed after installation. All 75 offline Oracle controls passed. Existing
+  notification/reconciliation state and other running containers were preserved.
+  No test notification or model call was made. Future uptime and underlying
+  intermittent database latency are not established by this correction.
+
+- Check administrator MFA enrollment only after verifying a password or bearer
+  email link. Enrolled accounts receive the authenticator/recovery-code step;
+  approved accounts without MFA receive the setup action. Neither step creates
+  a session, consumes a recovery code or changes existing enrollment. No public
+  email-only enrollment lookup is introduced.
+  New empty-database bootstrap owners now enroll and verify MFA in the UI;
+  bootstrap does not pre-activate or print an unverified factor. Existing
+  accounts and MFA enrollments are not rewritten by this source correction.
+- Show one plain Sent message after accepted admin/Engineering Docs link requests,
+  visibly disable controls and expose an explicit 30-second resend countdown.
+  Coalesce concurrent/repeated requests transactionally on the server, including
+  unknown recipients, without changing generic acknowledgement or rate limits.
+  Engineering interaction refresh restores its remaining cooldown; no token or
+  sensitive draft is saved to browser storage. Backend support precedes the new
+  frontend. Existing-session continuation is independent of email cooldown; failed
+  resends clear stale Sent feedback. Source validation is separate from
+  staging/production acceptance.
+
+- Preserve the reviewer's monitor interruption correction `82a74bbc`: assemble the
+  final restart-counter baseline before one atomic state-file replacement. Eight
+  offline tests preserve readable prior state and pending delivery identity after
+  interrupted writes, without real mail or service restarts. Source CI and actual
+  monitor installation remain separate; no power-loss or concurrent-writer durability
+  is claimed.
+- Pin supported backend security fixes Fastify 5.12.6 and Zod 4.6.6 after native
+  dependency audit identified GHSA-389g-gv7q-r4x8 and GHSA-mrhx-c7xc-m3w5. Keep
+  the existing audit/security gates. Updating a lockfile alone does not establish
+  that an independently deployed API or worker has been patched.
+
 ## 2026-10-23 — Operations notifications accepted independently
 
 - Operations monitor source `7b22dd5979effbea6fd1c5f8d5cb827eee62fd5f` was
@@ -62,35 +112,6 @@
   This source correction does not activate Industrial on ordinary AI production.
 
 ## Unreleased
-
-- Check administrator MFA enrollment only after verifying a password or bearer
-  email link. Enrolled accounts receive the authenticator/recovery-code step;
-  approved accounts without MFA receive the setup action. Neither step creates
-  a session, consumes a recovery code or changes existing enrollment. No public
-  email-only enrollment lookup is introduced.
-  New empty-database bootstrap owners now enroll and verify MFA in the UI;
-  bootstrap does not pre-activate or print an unverified factor. Existing
-  accounts and MFA enrollments are not rewritten by this source correction.
-- Show one plain Sent message after accepted admin/Engineering Docs link requests,
-  visibly disable controls and expose an explicit 30-second resend countdown.
-  Coalesce concurrent/repeated requests transactionally on the server, including
-  unknown recipients, without changing generic acknowledgement or rate limits.
-  Engineering interaction refresh restores its remaining cooldown; no token or
-  sensitive draft is saved to browser storage. Backend support precedes the new
-  frontend. Existing-session continuation is independent of email cooldown; failed
-  resends clear stale Sent feedback. Source validation is separate from
-  staging/production acceptance.
-
-- Preserve the reviewer's monitor interruption correction `82a74bbc`: assemble the
-  final restart-counter baseline before one atomic state-file replacement. Eight
-  offline tests preserve readable prior state and pending delivery identity after
-  interrupted writes, without real mail or service restarts. Source CI and actual
-  monitor installation remain separate; no power-loss or concurrent-writer durability
-  is claimed.
-- Pin supported backend security fixes Fastify 5.12.6 and Zod 4.6.6 after native
-  dependency audit identified GHSA-389g-gv7q-r4x8 and GHSA-mrhx-c7xc-m3w5. Keep
-  the existing audit/security gates. Updating a lockfile alone does not establish
-  that an independently deployed API or worker has been patched.
 
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
