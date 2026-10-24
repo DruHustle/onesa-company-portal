@@ -1,5 +1,9 @@
 # Separate application builds and tests
 
+CI and hosted artifact-build workflows pin Node 24.22.1 explicitly; a cached
+`24` major selector can otherwise select an older vulnerable patch. Runtime images
+and provider-managed runtimes require their own source-bound verification.
+
 > Current pipeline: [automated review, staging qualification and owner activation](../development/CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.
 
 Run from the repository root with Node 24, Python 3 and Docker when building images.
@@ -325,7 +329,7 @@ The complete Technology overview and its legacy bookmarked anchors remain suppor
 
 ## Node TLS trust regression
 
-Use Node 24.12 or later in the 24 series. Run
+Use Node 24.22.1 or a later reviewed security patch in the 24 series. Run
 `node --test scripts/test_tls_trust.mjs` from the repository root. The test uses
 a known public CA certificate and newly generated synthetic localhost certificates
 in isolated child processes. It proves native fetch/HTTPS trust, rejection of
