@@ -429,3 +429,5 @@ optional and native lock entries were retained. Nodemailer retains MIT-0 licensi
 Fast URI retains its existing license. Full dependency checks and the actual runtime
 image must pass before release. A source lock update does not update the serving API
 or worker. Private `records/` owner inputs are excluded from the Docker build context.
+
+The current source candidate pins official Node 24.22.1 runtime images (21 October security patch), plus explicit musl and scanner Brotli package minima so cached older layers cannot satisfy the new runtime requirement. The scanner engine remains the reviewed ClamAV 1.4.6. Qualify the API, mail worker and scanner independently; a source lock patch does not update their serving containers. [Node maintainer advisory](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases) and [Brotli release](https://github.com/google/brotli/releases/tag/v1.2.1) provide provenance.
