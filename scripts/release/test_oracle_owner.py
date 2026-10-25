@@ -16,7 +16,7 @@ from uuid import uuid4
 
 import oracle_owner as o
 
-SCHEMA = """CREATE TABLE records(sequence INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,kind TEXT NOT NULL,scope TEXT NOT NULL,envelope TEXT NOT NULL,parent TEXT REFERENCES records(id),created TEXT NOT NULL,revoked INTEGER NOT NULL DEFAULT 0); CREATE TABLE contexts(id TEXT PRIMARY KEY REFERENCES records(id),state TEXT NOT NULL); CREATE TABLE deployments(id TEXT PRIMARY KEY REFERENCES records(id),authorization TEXT NOT NULL UNIQUE REFERENCES records(id),state TEXT NOT NULL);"""
+SCHEMA = """CREATE TABLE records(sequence INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,kind TEXT NOT NULL,scope TEXT NOT NULL,envelope TEXT NOT NULL,parent TEXT REFERENCES records(id),created TEXT NOT NULL,revoked INTEGER NOT NULL DEFAULT 0); CREATE TABLE contexts(id TEXT PRIMARY KEY REFERENCES records(id),state TEXT NOT NULL); CREATE TABLE deployments(id TEXT PRIMARY KEY REFERENCES records(id),authorization TEXT NOT NULL UNIQUE REFERENCES records(id),qualification TEXT NOT NULL UNIQUE REFERENCES records(id),state TEXT NOT NULL);"""
 
 
 class CI:
@@ -357,6 +357,26 @@ print(json.dumps(v))
         with ThreadPoolExecutor(max_workers=2) as pool:
             results = list(pool.map(lambda _: deploy(), range(2)))
         self.assertEqual(len(results), 2)
+        self.assertEqual((self.root / "provider-count").read_text(), "1")
+
+    def test_reauthorization_does_not_reuse_a_consumed_qualification(self):
+        qualification = self.qualified()
+        first = self.store.authorize(qualification)["record"]["id"]
+        self.store.deploy(first)
+        second = self.store.authorize(qualification)["record"]["id"]
+        result = self.store.deploy(second)
+        self.assertEqual(result["action"], "INSPECT_ONLY_NO_DUPLICATE_REQUEST")
+        self.assertEqual((self.root / "provider-count").read_text(), "1")
+
+    def test_new_qualification_cannot_duplicate_an_uncertain_component_request(self):
+        first = self.authorization()
+        self.settings({"interrupt": True})
+        with self.assertRaises(o.Rejected):
+            self.store.deploy(first)
+        self.settings({})
+        second = self.authorization()
+        with self.assertRaises(o.Rejected):
+            self.store.deploy(second)
         self.assertEqual((self.root / "provider-count").read_text(), "1")
 
     def test_changed_runner_policy_or_key_pin_refused(self):

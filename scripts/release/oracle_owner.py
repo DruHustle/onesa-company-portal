@@ -33,6 +33,7 @@ POLICIES = {
             "ci-summary",
             "image-security (onesa-company-portal-backend)",
             "image-security (onesa-company-portal-frontend)",
+            "image-security (clamav)",
         ],
     ),
     "onesa-ai-platform": (
@@ -57,6 +58,7 @@ POLICIES = {
             "frontend",
             "containers (frontend)",
             "containers (backend)",
+            "ros-contracts",
             "pipeline-security / workflow-security",
             "ci-summary",
         ],
@@ -756,7 +758,8 @@ class Store:
         r = self.get(authorization, "authorization")["record"]
         binding = r["binding"]
         existing = self.db.execute(
-            "SELECT id,state FROM deployments WHERE authorization=?", (authorization,)
+            "SELECT id,state FROM deployments WHERE authorization=? OR qualification=?",
+            (authorization, r["parent"]),
         ).fetchone()
         if existing:
             return {
@@ -773,6 +776,14 @@ class Store:
         scope = binding["repository"] + ":" + binding["component"]
         with self.transaction():
             self.get(authorization, "authorization", binding)
+            uncertain = self.db.execute(
+                "SELECT d.id FROM deployments d JOIN records r ON r.id=d.id WHERE r.scope=? AND d.state!='accepted' LIMIT 1",
+                (scope,),
+            ).fetchone()
+            require(
+                not uncertain,
+                "Earlier component request is unresolved; inspect it before another deployment",
+            )
             latest = self.db.execute(
                 "SELECT id FROM records WHERE scope=? AND kind='authorization-attempt' ORDER BY sequence DESC LIMIT 1",
                 (scope,),
@@ -794,8 +805,8 @@ class Store:
             id_ = operation["record"]["id"]
             try:
                 self.db.execute(
-                    "INSERT INTO deployments(id,authorization,state) VALUES(?,?,'request-recorded')",
-                    (id_, authorization),
+                    "INSERT INTO deployments(id,authorization,qualification,state) VALUES(?,?,?,'request-recorded')",
+                    (id_, authorization, r["parent"]),
                 )
             except sqlite3.IntegrityError:
                 raise Rejected("Concurrent deployment reserved; inspect only") from None
@@ -945,7 +956,7 @@ def bootstrap(root, policy, source_pin, policy_pin, runner_root, principal):
         (root / "trust.json").write_bytes(canonical(trust))
         db = sqlite3.connect(root / "records.sqlite")
         db.executescript(
-            "PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL; CREATE TABLE records(sequence INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,kind TEXT NOT NULL,scope TEXT NOT NULL,envelope TEXT NOT NULL,parent TEXT REFERENCES records(id),created TEXT NOT NULL,revoked INTEGER NOT NULL DEFAULT 0); CREATE TABLE contexts(id TEXT PRIMARY KEY REFERENCES records(id),state TEXT NOT NULL CHECK(state IN ('issued','reserved','consumed'))); CREATE TABLE deployments(id TEXT PRIMARY KEY REFERENCES records(id),authorization TEXT NOT NULL UNIQUE REFERENCES records(id),state TEXT NOT NULL CHECK(state IN ('request-recorded','deployed-unverified','accepted')));"
+            "PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL; CREATE TABLE records(sequence INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,kind TEXT NOT NULL,scope TEXT NOT NULL,envelope TEXT NOT NULL,parent TEXT REFERENCES records(id),created TEXT NOT NULL,revoked INTEGER NOT NULL DEFAULT 0); CREATE TABLE contexts(id TEXT PRIMARY KEY REFERENCES records(id),state TEXT NOT NULL CHECK(state IN ('issued','reserved','consumed'))); CREATE TABLE deployments(id TEXT PRIMARY KEY REFERENCES records(id),authorization TEXT NOT NULL UNIQUE REFERENCES records(id),qualification TEXT NOT NULL UNIQUE REFERENCES records(id),state TEXT NOT NULL CHECK(state IN ('request-recorded','deployed-unverified','accepted')));"
         )
         db.close()
     finally:
