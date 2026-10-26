@@ -8,6 +8,9 @@ export const env = schema.parse({
 });
 export const emailConfig = z.object({MAIL_PROVIDER:z.enum(['smtp','resend']).default('smtp'),RESEND_API_KEY:z.string().min(1).optional(),MAIL_REPLY_TO:z.string().email().optional()}).parse(process.env);
 export const companyOrigin = process.env.COMPANY_ORIGIN;
+// Opt-in only: production retains the five-second polling contract.
+export const workerIdleMaxMs=z.coerce.number().int().min(5000).max(600000).default(5000).parse(process.env.WORKER_IDLE_MAX_MS);
+if(workerIdleMaxMs>5000&&process.env.WORKER_PROFILE!=='staging')throw new Error('Idle worker backoff requires the explicit staging profile');
 if(companyOrigin){const url=new URL(companyOrigin);if(url.origin!==companyOrigin||(env.NODE_ENV==='production'&&url.protocol!=='https:')||companyOrigin===env.PUBLIC_ORIGIN)throw new Error('COMPANY_ORIGIN must be a distinct exact HTTPS origin in production');}
 if(emailConfig.MAIL_PROVIDER==='resend'&&(!emailConfig.RESEND_API_KEY||!env.MAIL_FROM))throw new Error('Resend requires RESEND_API_KEY and MAIL_FROM');
 if (env.NODE_ENV==='production' && (!env.PUBLIC_ORIGIN.startsWith('https://') || env.SESSION_KEY.length<48)) throw new Error('Production requires HTTPS and a 48-character encryption key');

@@ -11,3 +11,12 @@ Sign in through Onesa Portal with an individually approved engineering identity.
 Public repository history may contain earlier editions; moving this active copy
 does not erase historical exposure. Credentials, records and release evidence
 belong in their existing restricted stores, never in this reference page.
+
+## Oracle owner-run evidence bridge
+
+The new `scripts/release/oracle_owner.py` adapter preserves owner-run receipts
+with workflow run ID `0` and genuine CI run references. It requires a separately
+commissioned, pinned external verifier and owner-controlled signing custody.
+Repository code or an unsigned JSON file supplies no release authority.
+The protected guide contains installation, qualification and recovery instructions;
+source implementation alone does not establish commissioning or deployment.
