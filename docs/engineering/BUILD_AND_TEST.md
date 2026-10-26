@@ -103,6 +103,10 @@ Run the complete backend suite on the guarded disposable PostgreSQL target.
 `liveness.test.ts`, `worker-polling.test.ts` and `worker-idle.test.ts` cover database
 failure, bounded success expiry, preserved pending mail, reminders, retry exhaustion
 and pending deletion detection. Local tests do not establish deployment or savings.
+`database-recovery.test.ts` terminates only its own idle connection on the guarded
+local test database and proves the next operation reconnects. The pool discards a
+failed idle client and logs a fixed event without exception text or credentials;
+in-flight transactions still fail normally and are never replayed automatically.
 
 After qualified staging installation, observe Neon control-plane status for at
 least ten minutes without SQL or database-backed HTTP polling, then send one real

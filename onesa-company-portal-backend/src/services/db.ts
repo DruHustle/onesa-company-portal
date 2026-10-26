@@ -3,6 +3,9 @@ import pg from 'pg';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import { env } from '../config/env.js';
 const pool = new pg.Pool({ connectionString:env.DATABASE_URL, max:10, connectionTimeoutMillis:5000, statement_timeout:10000 });
+// pg-pool removes the failed idle client before emitting. Without a listener,
+// a provider suspend/resize terminates Node instead of reconnecting on demand.
+pool.on('error',()=>console.error(JSON.stringify({event:'database_idle_connection_failed'})));
 const context=new AsyncLocalStorage<pg.PoolClient>();
 // Transfer finalization and its existing route handler share a transaction.
 // Other requests retain the original pool behavior; context never comes from HTTP input.
