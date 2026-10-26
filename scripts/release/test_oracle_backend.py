@@ -53,6 +53,21 @@ class OracleBackendConfigTests(unittest.TestCase):
             for volume in service.get("volumes", []):
                 self.assertEqual(volume, f"{name}_storage:/app/storage")
 
+    def test_staging_liveness_preserves_production_dependency_monitoring(self):
+        stage = self.config["services"]["staging"]["healthcheck"]
+        expected = "/api/v1/health" if self.product == "portal" else "/health"
+        self.assertIn(expected, " ".join(stage["test"]))
+        self.assertNotIn("healthcheck", self.config["services"]["production"])
+        dockerfile = ROOT / (ROOT.name + "-backend") / "Dockerfile"
+        probe = next(
+            line
+            for line in dockerfile.read_text().splitlines()
+            if line.startswith("HEALTHCHECK")
+        )
+        self.assertIn(
+            "/api/v1/ready" if self.product == "portal" else "/core-ready", probe
+        )
+
     def test_resources_and_hardening_keep_staging_lower_priority(self):
         stage, prod = (
             self.config["services"][name] for name in ("staging", "production")

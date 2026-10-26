@@ -119,6 +119,11 @@
 
 ## Unreleased
 
+- Source candidate: use database-free Oracle staging API liveness and worker
+  liveness with explicit bounded staging idle backoff. Preserve real deployment
+  readiness, durable jobs and production polling defaults. Local tests do not
+  establish hosted deployment or CU-hour savings.
+
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.
