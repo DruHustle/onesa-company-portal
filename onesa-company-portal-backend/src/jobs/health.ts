@@ -1,8 +1,7 @@
 import {createConnection} from 'node:net';
 import {readFile} from 'node:fs/promises';
-import {env} from '../config/env.js';
-import {db} from '../services/db.js';
-import {applicationRoleSafe} from '../services/database-role.js';
+import {env,workerIdleMaxMs} from '../config/env.js';
+import {workerHeartbeatCurrent} from './polling.js';
 import {scannerStatusCurrent} from '../services/storage.js';
 
 async function scannerReady():Promise<boolean>{
@@ -18,11 +17,7 @@ async function scannerReady():Promise<boolean>{
  });
 }
 try{
- const heartbeat=await db.query("SELECT updated_at>now()-interval '60 seconds' AS recent FROM operational_state WHERE key='worker_success'");
- const ownSuccess=Number(await readFile('/tmp/onesa-worker-success','utf8'));
- const age=Date.now()-ownSuccess;
- const ready=Number.isFinite(ownSuccess)&&age>=0&&age<60000&&heartbeat.rows[0]?.recent===true&&await applicationRoleSafe(db)&&await scannerReady();
+ const ready=workerHeartbeatCurrent(await readFile('/tmp/onesa-worker-success','utf8'),Date.now(),workerIdleMaxMs)&&await scannerReady();
  process.exitCode=ready?0:1;
  console.log(JSON.stringify({event:'worker_health',ready}));
 }catch{process.exitCode=1;console.log(JSON.stringify({event:'worker_health',ready:false}));}
-finally{await db.end();}

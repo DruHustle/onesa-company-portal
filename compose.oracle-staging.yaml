@@ -34,6 +34,8 @@ services:
       NODE_ENV: production
       CLAMAV_SOCKET: /run/onesa-scanner/clamd.sock
       PUBLISH_ENABLED: 'false'
+      WORKER_PROFILE: staging
+      WORKER_IDLE_MAX_MS: '600000'
     restart: unless-stopped
     init: true
     pids_limit: 128

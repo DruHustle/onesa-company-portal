@@ -4,7 +4,7 @@ scrape_configs:
     params:
       module: [http_2xx]
     static_configs:
-      - targets: ['http://backend:8300/api/v1/ready']
+      - targets: ['http://backend:8300/api/v1/health']
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

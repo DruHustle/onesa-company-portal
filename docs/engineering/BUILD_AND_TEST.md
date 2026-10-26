@@ -77,6 +77,42 @@ a separate gate.
 
 ## Backend
 
+### Idle database and worker regression
+
+Frequent API container probes use `/api/v1/health`. The full request-path regression
+poisons query and connection acquisition, supplies a session cookie, and proves
+that liveness succeeds while `/api/v1/ready` correctly returns 503. Deployment
+qualification retains real readiness, migration and restricted-role checks.
+
+Worker health reads its atomic local success/deadline record and checks the private
+scanner without SQL. A failed tick does not refresh that record. Successful
+processing, retry recovery and durable outboxes remain required.
+Restricted-role validation stays in startup and runs before processing when its
+30-second validation deadline is due; it cannot wake an idle worker independently.
+
+Explicit `WORKER_PROFILE=staging` permits `WORKER_IDLE_MAX_MS` from 5000 to 600000.
+The staging Compose profile opts into a ten-minute maximum. Empty successful ticks
+back off exponentially; actionable pending work, including delayed retries, keeps
+five-second polling, and failures reset the delay. Newly arriving work may wait up
+to ten minutes plus processing duration. Interactive staging sessions can select
+5000 through the qualified configuration procedure. Production retains its 5000
+default and no staging override. Disabled or unaddressed mail stays queued without
+counting as actionable work. SIGTERM interrupts idle sleep promptly.
+
+Run the complete backend suite on the guarded disposable PostgreSQL target.
+`liveness.test.ts`, `worker-polling.test.ts` and `worker-idle.test.ts` cover database
+failure, bounded success expiry, preserved pending mail, reminders, retry exhaustion
+and pending deletion detection. Local tests do not establish deployment or savings.
+
+After qualified staging installation, observe Neon control-plane status for at
+least ten minutes without SQL or database-backed HTTP polling, then send one real
+application request to verify wake-up. Free has a fixed five-minute idle tail.
+At 0.25 CU, ten-minute periodic idle polling approaches 90 CU-hours per 30 days
+before processing time, ramp-up and user traffic; continuous activity uses 180.
+These are forecasts summed across all project computes, not measured savings.
+Consumed allowance is not reset. See
+[Neon scale to zero](https://neon.com/docs/introduction/scale-to-zero).
+
 ```sh
 npm --prefix onesa-company-portal-backend ci
 npm --prefix onesa-company-portal-backend run lint

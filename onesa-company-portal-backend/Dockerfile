@@ -20,5 +20,5 @@ RUN rm -rf /usr/local/lib/node_modules/npm /opt/yarn-* && rm -f /usr/local/bin/n
 ENV NODE_OPTIONS="--import=/app/dist/src/security/tls-trust.js"
 USER node
 EXPOSE 8300
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || '8300') + '/api/v1/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || '8300') + '/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node","dist/src/server.js"]
