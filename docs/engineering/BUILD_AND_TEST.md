@@ -79,7 +79,8 @@ a separate gate.
 
 ### Idle database and worker regression
 
-Frequent API container probes use `/api/v1/health`. The full request-path regression
+Oracle staging API container probes use `/api/v1/health`; the production image
+default retains `/api/v1/ready` for existing dependency monitoring. The full request-path regression
 poisons query and connection acquisition, supplies a session cookie, and proves
 that liveness succeeds while `/api/v1/ready` correctly returns 503. Deployment
 qualification retains real readiness, migration and restricted-role checks.
