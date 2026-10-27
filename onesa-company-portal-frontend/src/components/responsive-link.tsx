@@ -16,5 +16,5 @@ function NavigationStatus() {
 }
 
 export function ResponsiveLink({children,...props}:ComponentProps<typeof Link>) {
-  return <Link {...props}>{children}<NavigationStatus /></Link>;
+  return <Link prefetch={false} {...props}>{children}<NavigationStatus /></Link>;
 }
