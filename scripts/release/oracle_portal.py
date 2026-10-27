@@ -907,6 +907,9 @@ def configuration_value(binding, plan, env):
         "protection_sha256": plan["vercel_protection_sha256"],
         "environment_metadata_sha256": plan["environment_metadata_sha256"],
         "retained_frontend": plan["retained_frontend"],
+        "source_comparison_baseline": plan.get(
+            "source_comparison_baseline", plan["retained_frontend"]
+        ),
         "qualified_builds_sha256": hashlib.sha256(
             canonical(plan["builds"])
         ).hexdigest(),
@@ -936,7 +939,7 @@ def configuration_path(binding, env):
 
 
 def source_equivalence(folder, binding, plan):
-    baseline = plan["retained_frontend"]
+    baseline = plan.get("source_comparison_baseline", plan["retained_frontend"])
     require(
         re.fullmatch("[a-f0-9]{40}", baseline["source"])
         and re.fullmatch("[a-f0-9]{40}", baseline["source_tree"]),
@@ -1102,18 +1105,27 @@ def readiness_and_denials(plan, env, observation=None):
         "PUBLICATION_DECISION_NOT_PRESERVED",
     )
     if observation:
+        frontend_origin = (
+            "https://portal.onesa.eu" if env == "production" else observation["origin"]
+        )
         require(
-            http_read(
-                observation["origin"], "/api/v1/ready", 200, observation["bypass"]
-            )
+            http_read(frontend_origin, "/api/v1/ready", 200, observation["bypass"])
             == {"status": "ready"},
             "ACTUAL_FRONTEND_API_BINDING",
         )
         for path in paths:
-            http_read(observation["origin"], path, 401, observation["bypass"])
+            http_read(frontend_origin, path, 401, observation["bypass"])
+        if env == "production":
+            require(
+                observation["origin"] == "https://onesa.eu",
+                "EXACT_COMPANY_SURFACE_REQUIRED",
+            )
+            for path in ["/api/v1/health", "/api/v1/ready", *paths]:
+                http_read(observation["origin"], path, 403)
     return {
         "database_readiness": "PASS",
         "private_anonymous_denials": len(paths) * (2 if observation else 1),
+        "company_surface_denials": 5 if observation and env == "production" else 0,
         "publication_stage": company["publication_stage"],
         "production_mutations": 0,
     }
@@ -1371,6 +1383,21 @@ def inspect_database_backup(receipt, plan):
     }
 
 
+def verify_rollback_frontend(plan):
+    import oracle_portal_frontend as frontend
+
+    rollback = plan["rollback"].get("frontend", plan["retained_frontend"])
+    old = frontend.provider("/v13/deployments/" + rollback["deployment_id"])
+    require(
+        old["id"] == rollback["deployment_id"]
+        and old["projectId"] == plan["project_id"]
+        and old["readyState"] == "READY"
+        and old["meta"]["githubCommitSha"] == rollback["source"],
+        "RETAINED_FRONTEND_ROLLBACK_ARTIFACT_REQUIRED",
+    )
+    return {"deployment_id": old["id"], "source": rollback["source"]}
+
+
 def operational_observations(binding, plan, folder, context_id):
     metrics = read(Path("/var/lib/onesa/operations/metrics.json"))
     require(
@@ -1418,18 +1445,7 @@ def operational_observations(binding, plan, folder, context_id):
         "GENUINE_STAGING_PRESERVATION_REQUIRED",
     )
     retained_services(plan)
-    import oracle_portal_frontend as frontend
-
-    old = frontend.provider(
-        "/v13/deployments/" + plan["retained_frontend"]["deployment_id"]
-    )
-    require(
-        old["id"] == plan["retained_frontend"]["deployment_id"]
-        and old["projectId"] == plan["project_id"]
-        and old["readyState"] == "READY"
-        and old["meta"]["githubCommitSha"] == plan["retained_frontend"]["source"],
-        "RETAINED_FRONTEND_ROLLBACK_ARTIFACT_REQUIRED",
-    )
+    rollback = verify_rollback_frontend(plan)
     require(
         plan["processing_scope"] == "existing-public-presentation-no-new-processing"
         and plan["privacy_decision"] == "G14_DEFERRED_BY_OWNER_PRELAUNCH"
@@ -1443,6 +1459,7 @@ def operational_observations(binding, plan, folder, context_id):
     return {
         "checks": {k: "PASS" for k in CHECKS["operations"]},
         "backup_readback": readback,
+        "retained_rollback_frontend": rollback,
         "backup_verified_at": backup["verified_at"],
         "staging_receipt_sha256": sha(
             folder / "observations" / context_id / "receipt.json"
@@ -1450,7 +1467,7 @@ def operational_observations(binding, plan, folder, context_id):
         "persistence_scope": "unchanged-accepted-api-worker-scanner-retained",
         "new_database_restore_performed": False,
         "schema_migrations": 0,
-        "rollback_deployment_id": old["id"],
+        "rollback_deployment_id": rollback["deployment_id"],
         "privacy_status": plan["privacy_decision"],
         "physical_hardware_authorized": False,
     }
