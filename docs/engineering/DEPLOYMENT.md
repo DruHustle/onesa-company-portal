@@ -2,6 +2,9 @@
 
 <!-- onesa-protected-source: portal-deployment -->
 
+Hosted browser observations check the existing Company and Portal access boundaries
+independently. Staging retains its protected preview boundary.
+
 Runtime preservation snapshots wait a bounded time for temporary Docker clients
 to finish. Every persistent and unknown workload remains in the snapshot; actual
 identity changes, missing services and incomplete observations still block release.
