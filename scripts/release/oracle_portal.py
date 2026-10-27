@@ -848,6 +848,7 @@ def probe_source_files(files):
         "scripts/release/oracle_frontend_build.py",
         "scripts/release/oracle_vercel_transport_guard.cjs",
         "scripts/check_tls_bundle.mjs",
+        "scripts/oracle_backup_store.mjs",
         "onesa-company-portal-frontend/package.json",
         "onesa-company-portal-frontend/package-lock.json",
     }
@@ -1216,6 +1217,13 @@ def probe(binding, env, operation, folder, plan):
 
 def inspect_database_backup(receipt, plan):
     profile = plan["legacy_backup"]
+    require(
+        profile["transport_path"]
+        == str(Path(__file__).resolve().with_name("oracle_backup_store.mjs"))
+        and profile["transport_sha256"]
+        == trusted_toolchain(plan)["probe_files"]["scripts/oracle_backup_store.mjs"],
+        "BACKUP_TRANSPORT_DIFFERS_FROM_COMMISSIONED_SOURCE",
+    )
     script = pinned_public_file(
         Path(profile["transport_path"]), profile["transport_sha256"]
     )

@@ -23,6 +23,7 @@ ALLOWED = {
     "oracle_owner.py": "scripts/release/oracle_owner.py",
     "oracle_install.py": "scripts/release/oracle_install.py",
     "runners/oracle_portal.py": "scripts/release/oracle_portal.py",
+    "runners/oracle_backup_store.mjs": "scripts/oracle_backup_store.mjs",
     "runners/oracle_portal_frontend.py": "scripts/release/oracle_portal_frontend.py",
     "runners/oracle_portal_browser.mjs": "scripts/release/oracle_portal_browser.mjs",
     "runners/oracle_frontend_build.py": "scripts/release/oracle_frontend_build.py",

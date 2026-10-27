@@ -1,5 +1,11 @@
 # Separate application builds and tests
 
+`scripts/test_oracle_backup_output.py` exercises the backup decoder and read transport
+with synthetic encrypted objects and a deliberately slow pipe reader. It verifies
+complete bytes under backpressure, reproduces the former synchronous truncation and
+rejects failed or oversized reads. Owner-run qualification pins the read transport
+to its separately installed, exact-source tool bundle.
+
 CI and hosted artifact-build workflows pin Node 24.22.1 explicitly; a cached
 `24` major selector can otherwise select an older vulnerable patch. Runtime images
 and provider-managed runtimes require their own source-bound verification.
