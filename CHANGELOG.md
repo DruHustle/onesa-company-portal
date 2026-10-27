@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-10-27 — Temporary backup-client cleanup prepared
+
+- Both PostgreSQL backup helpers now automatically remove their temporary
+  containers on exit and explicitly remove anonymous image volumes on forced
+  cleanup. Interrupted pipe waits and Docker cleanup timeouts still reach private
+  connection-file removal. No named application volume is pruned.
+- All 79 offline Oracle regression tests and seven encrypted snapshot payload
+  controls passed. Four network-isolated Docker cases exercised forced removal
+  and natural expiry for both helpers without executing database commands;
+  all 11 existing application containers and all pre-existing volumes were
+  preserved. These are component qualification results, not a new application
+  release or a production backup result. Exact-source hosted CI and scoped
+  installation remain separate gates until their receipts are recorded.
+
+## 2026-10-26 — Cloudflare Tunnel security update accepted
+
+- Upgraded staging first, then production, from cloudflared 2026.10.1 to the
+  official [2026.10.3 release](https://github.com/cloudflare/cloudflared/releases/tag/2026.10.3).
+  Verified the ARM64 binary against Cloudflare's published SHA256 and reconciled
+  the systemd template executable pin. Preserved every service hardening directive
+  and existing file-based credential.
+- Each restart was covered by a temporary patched replica with the same origins,
+  four connected edge sessions and readiness HTTP 200. Both original connectors
+  now run 2026.10.3; Cloudflare reports both tunnels Healthy with one replica each.
+  Temporary replicas are removed. The obsolete binary is retained only as
+  restricted, non-executable historical evidence.
+- All seven routed APIs passed 34 loopback/external liveness and readiness checks
+  after the update. Certificate verification remains enabled. Existing credential
+  and firewall files and all pre-existing application container identities, images,
+  start times and restart counts match the pre-update baseline. No Mac installation,
+  launch service or running cloudflared process was found. Detailed verification
+  receipts remain in restricted operator custody; no application release changed.
+
 ## 2026-10-24 — Credential-first sign-in and monitor interruption fix accepted
 
 - Centralize accepted component identities in this changelog. README describes
