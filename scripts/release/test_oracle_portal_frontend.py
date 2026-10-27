@@ -21,7 +21,7 @@ class ProviderConfigurationTests(unittest.TestCase):
             "rootDirectory": f.APP_ROOT,
             "framework": "nextjs",
             "nodeVersion": "24.x",
-            "serverlessFunctionRegion": "fra1",
+            "serverlessFunctionRegion": "iad1",
             "ssoProtection": {"deploymentType": "all"},
             "protectionBypass": {},
             "passwordProtection": None,
@@ -49,6 +49,7 @@ class ProviderConfigurationTests(unittest.TestCase):
             "origins": {"staging": self.cfg["staging_origin"]},
             "retained_frontend": {"deployment_id": "dpl_old"},
             "serverless_function_region": "fra1",
+            "project_default_region": "iad1",
             "vercel_protection_sha256": hashlib.sha256(
                 json.dumps(fields, sort_keys=True).encode()
             ).hexdigest(),
@@ -147,6 +148,55 @@ class ProviderConfigurationTests(unittest.TestCase):
         reads = [p.rsplit("/", 1)[1] for p in self.calls if "/env/" in p]
         self.assertEqual(set(reads), set(self.variables) - {"fixture_production_proxy"})
         self.assertEqual(len(reads), 9)
+
+    def test_project_default_and_actual_deployment_region_are_separately_preserved(
+        self,
+    ):
+        self.assertEqual(self.call(), self.project)
+        self.project["serverlessFunctionRegion"] = "fra1"
+        with self.assertRaisesRegex(r.Refused, "EXISTING_PROVIDER_PROTECTION_CHANGED"):
+            self.call()
+        self.project["serverlessFunctionRegion"] = "iad1"
+        self.plan["serverless_function_region"] = "iad1"
+        with (
+            patch.object(f, "provider") as provider,
+            self.assertRaisesRegex(
+                r.Refused, "EXISTING_PROJECT_AND_DEPLOYMENT_REGIONS"
+            ),
+        ):
+            f.protection(self.plan)
+        provider.assert_not_called()
+
+    def test_existing_access_callback_contract_is_preserved_before_credential_use(self):
+        for env in ["staging", "production"]:
+            callback = (
+                "https://fixture-team.cloudflareaccess.com/cdn-cgi/access/callback"
+            )
+            self.plan["server_public_configuration"][env][
+                "ENGINEERING_ACCESS_CALLBACK_URL"
+            ] = callback
+            identifier = self.plan["server_public_variable_ids"][env][
+                "ENGINEERING_ACCESS_CALLBACK_URL"
+            ]
+            self.variables[identifier]["value"] = callback
+        self.assertEqual(self.call(), self.project)
+        for callback in [
+            "https://foreign.invalid/cdn-cgi/access/callback",
+            "https://fixture-team.cloudflareaccess.com/other",
+            "https://fixture-team.cloudflareaccess.com/cdn-cgi/access/callback?code=untrusted",
+            "https://user@fixture-team.cloudflareaccess.com/cdn-cgi/access/callback",
+            "https://fixture-team.cloudflareaccess.com:444/cdn-cgi/access/callback",
+        ]:
+            self.plan["server_public_configuration"]["staging"][
+                "ENGINEERING_ACCESS_CALLBACK_URL"
+            ] = callback
+            with (
+                self.subTest(callback=callback),
+                patch.object(f, "provider") as provider,
+                self.assertRaisesRegex(r.Refused, "EXISTING_CALLBACK_SCOPE"),
+            ):
+                f.protection(self.plan)
+            provider.assert_not_called()
 
     def test_foreign_origin_is_rejected_before_credential_use(self):
         with (

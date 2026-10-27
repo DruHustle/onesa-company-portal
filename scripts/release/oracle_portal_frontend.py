@@ -92,6 +92,13 @@ def protection(plan):
     r.require(
         plan["api_origins"] == API_ORIGINS, "CANONICAL_PORTAL_API_ORIGINS_REQUIRED"
     )
+    r.require(
+        plan.get("serverless_function_region") == "fra1"
+        and plan.get("project_default_region") == "iad1",
+        "EXISTING_PROJECT_AND_DEPLOYMENT_REGIONS_REQUIRED",
+    )
+    for environment in API_ORIGINS:
+        r.public_server_configuration(plan, environment)
     cfg = r.read(PROVIDER)
     project = provider("/v9/projects/" + cfg["project_id"])
     fields = {
@@ -110,8 +117,7 @@ def protection(plan):
         and project.get("rootDirectory") == APP_ROOT
         and project.get("framework") == "nextjs"
         and project.get("nodeVersion") == "24.x"
-        and project.get("serverlessFunctionRegion")
-        == plan["serverless_function_region"]
+        and project.get("serverlessFunctionRegion") == plan["project_default_region"]
         and hashlib.sha256(json.dumps(fields, sort_keys=True).encode()).hexdigest()
         == plan["vercel_protection_sha256"],
         "EXISTING_PROVIDER_PROTECTION_CHANGED",

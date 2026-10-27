@@ -58,14 +58,14 @@ async function fullCliFixture(mode){
   const url=new URL(req.url,'http://fixture'),chunks=[];for await(const chunk of req)chunks.push(chunk);const bytes=Buffer.concat(chunks);
   if(req.method==='POST'&&url.pathname.startsWith('/v2/files')){const sha=crypto.createHash('sha1').update(bytes).digest('hex');assert.equal(sha,req.headers['x-now-digest']);uploaded.add(sha);uploads++;return send(res,{});}
   if(req.method==='POST'&&/\/v[0-9]+\/deployments$/.test(url.pathname)){
-   posts++;const body=JSON.parse(bytes);regions=body.regions;assert.equal(body.env.BACKEND_URL,environment==='production'?'https://portal-api.onesa.eu':'https://portal-api-staging.onesa.eu');if(environment==='staging'){assert.equal(body.env.PROXY_SHARED_KEY,'synthetic-loopback-proxy-'.repeat(2));assert.equal(body.env.ACCESS_REGISTRATION_ENABLED,'false');assert.equal(body.env.ENGINEERING_SIGNIN_ENABLED,'true');assert.equal(body.env.ENGINEERING_ACCESS_CALLBACK_URL,'https://fixture.invalid/callback');}else assert.equal(body.env.PROXY_SHARED_KEY,undefined);assert.equal(body.meta.githubCommitSha,'a'.repeat(40));assert.equal(body.meta.onesaOracleOperation,operation);
+   posts++;const body=JSON.parse(bytes);regions=body.regions;assert.equal(body.env.BACKEND_URL,environment==='production'?'https://portal-api.onesa.eu':'https://portal-api-staging.onesa.eu');if(environment==='staging'){assert.equal(body.env.PROXY_SHARED_KEY,'synthetic-loopback-proxy-'.repeat(2));assert.equal(body.env.ACCESS_REGISTRATION_ENABLED,'false');assert.equal(body.env.ENGINEERING_SIGNIN_ENABLED,'true');assert.equal(body.env.ENGINEERING_ACCESS_CALLBACK_URL,'https://fixture-team.cloudflareaccess.com/cdn-cgi/access/callback');}else assert.equal(body.env.PROXY_SHARED_KEY,undefined);assert.equal(body.meta.githubCommitSha,'a'.repeat(40));assert.equal(body.meta.onesaOracleOperation,operation);
    assert.ok(environment==='production'?body.target==='production':[undefined,'preview'].includes(body.target));
    const missing=body.files.filter(f=>f.sha&&!uploaded.has(f.sha)).map(f=>f.sha);
    if(mode==='cold'&&missing.length)return send(res,{error:{code:'missing_files',missing}},400);
    created++;assert.equal(created,1);return send(res,deployment,201);
   }
   if(req.method==='GET'&&url.pathname==='/v2/user')return send(res,{user:{id:'user_fixture',username:'synthetic-fixture',email:'fixture@example.com'}});
-  if(req.method==='GET'&&url.pathname.startsWith('/v9/projects/'))return send(res,{id:project.projectId,name:project.projectName,accountId:project.orgId,rootDirectory:'onesa-company-portal-frontend',framework:'nextjs',nodeVersion:'24.x',directoryListing:false,autoExposeSystemEnvs:true,latestDeployments:[],targets:{}});
+  if(req.method==='GET'&&url.pathname.startsWith('/v9/projects/'))return send(res,{id:project.projectId,name:project.projectName,accountId:project.orgId,rootDirectory:'onesa-company-portal-frontend',framework:'nextjs',nodeVersion:'24.x',serverlessFunctionRegion:'iad1',directoryListing:false,autoExposeSystemEnvs:true,latestDeployments:[],targets:{}});
   if(req.method==='GET'&&url.pathname==='/v2/teams')return send(res,{teams:[team],pagination:{count:1,next:null,prev:null}});
   if(req.method==='GET'&&url.pathname.startsWith('/v2/teams/'))return send(res,team);
   if(req.method==='GET'&&url.pathname.startsWith('/v13/deployments/'))return send(res,deployment);
@@ -75,7 +75,7 @@ async function fullCliFixture(mode){
  try{
   const origin='http://127.0.0.1:'+server.address().port,preload=path.join(directory,'preload.cjs');fs.writeFileSync(preload,'require("/tests/oracle_vercel_transport_guard.cjs").install('+JSON.stringify(transport)+','+JSON.stringify(origin)+');',{mode:0o600});
   const bootstrap=fs.readFileSync(path.join(__dirname,'oracle_portal_frontend.py'),'utf8').match(/CLI_BOOTSTRAP = r"""([\s\S]*?)"""/)[1];
-  const args=['-e',bootstrap,'--','--require',preload,cli,'deploy','--prebuilt','--yes','--no-wait','--json','--global-config','/tmp/onesa-vercel-cli','--project',project.projectId,'--env','BACKEND_URL='+ (environment==='production'?'https://portal-api.onesa.eu':'https://portal-api-staging.onesa.eu'),...(environment==='staging'?['--env','PROXY_SHARED_KEY','--env','ACCESS_REGISTRATION_ENABLED=false','--env','ENGINEERING_SIGNIN_ENABLED=true','--env','ENGINEERING_ACCESS_CALLBACK_URL=https://fixture.invalid/callback']:[]),'--api',origin,'--meta','githubCommitSha='+'a'.repeat(40),'--meta','onesaOracleOperation='+operation,...(environment==='production'?['--prod']:[])];
+  const args=['-e',bootstrap,'--','--require',preload,cli,'deploy','--prebuilt','--yes','--no-wait','--json','--global-config','/tmp/onesa-vercel-cli','--project',project.projectId,'--env','BACKEND_URL='+ (environment==='production'?'https://portal-api.onesa.eu':'https://portal-api-staging.onesa.eu'),...(environment==='staging'?['--env','PROXY_SHARED_KEY','--env','ACCESS_REGISTRATION_ENABLED=false','--env','ENGINEERING_SIGNIN_ENABLED=true','--env','ENGINEERING_ACCESS_CALLBACK_URL=https://fixture-team.cloudflareaccess.com/cdn-cgi/access/callback']:[]),'--api',origin,'--meta','githubCommitSha='+'a'.repeat(40),'--meta','onesaOracleOperation='+operation,...(environment==='production'?['--prod']:[])];
   const result=await new Promise(resolve=>{
    const child=spawn(process.execPath,args,{cwd:workspace,env:{PATH:process.env.PATH,HOME:'/tmp',PROXY_SHARED_KEY:'synthetic-loopback-proxy-'.repeat(2)},stdio:['ignore','pipe','pipe']});let stdout='',stderr='';child.stdout.on('data',b=>stdout+=b);child.stderr.on('data',b=>stderr+=b);
    const timer=setTimeout(()=>child.kill('SIGTERM'),25000);child.once('error',e=>{clearTimeout(timer);resolve({code:null,stderr:e.message,stdout});});child.once('exit',code=>{clearTimeout(timer);resolve({code,stdout,stderr});});
@@ -86,7 +86,7 @@ async function fullCliFixture(mode){
    assert.equal(result.code,1);assert.match(result.stderr,/provided path.*does not exist/s);assert.equal(created,0);assert.equal(posts,0);assert.equal(fs.existsSync(path.join(transport,'create-request.json')),false);
   }else{
    assert.equal(result.code,0,result.stderr);assert.equal(created,1);assert.equal(posts,mode==='cold'?2:1);assert.equal(uploads>0,mode==='cold');
-   if(environment==='production')assert.deepEqual(regions,['fra1']);
+   assert.deepEqual(regions,['fra1']);
    assert.ok(fs.existsSync(path.join(transport,'create-request.json')));assert.equal(fs.existsSync(path.join(transport,'missing-files-response.json')),mode==='cold');
   }
   console.log(JSON.stringify({cli:'65.2.0',full_cli:true,mode,environment,deployment_post_requests:posts,actual_creates:created,file_uploads:uploads,network:'loopback-only',provider_credentials:false,master_custody_preserved:true}));
