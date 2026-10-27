@@ -520,3 +520,14 @@ avoids the reproduced WebKit speculative-fetch failures during page transitions.
 The source-equivalence gate accepts only that exact navigation-byte transformation;
 a broader navigation edit requires broader qualification. The browser probe keeps
 its zero-error gate and also requires zero speculative prefetches.
+
+The Portal project's existing default region and prebuilt deployment regions are
+separate identities: the source-bound profile preserves project default `iad1`
+and actual function region `fra1`. The named provider readback and real pinned-CLI
+fixture verify both; qualification never changes a provider setting to make an
+assumption pass. A changed project default or deployment region is unqualified.
+
+Callback preservation uses the application's existing HTTPS Cloudflare Access team
+host and exact callback-path contract, with no userinfo, custom port, query or
+fragment. The runner validates that structure before credential use, then checks
+the exact named existing provider value; it never changes Access, accounts or MFA.

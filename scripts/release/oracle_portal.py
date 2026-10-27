@@ -888,6 +888,7 @@ def configuration_value(binding, plan, env):
         "physical_hardware_authorized": plan["physical_hardware_authorized"],
         "rollback": plan["rollback"],
         "serverless_function_region": "fra1",
+        "project_default_region": "iad1",
         "retained_services_sha256": hashlib.sha256(
             canonical(plan["retained_services"])
         ).hexdigest(),
@@ -975,7 +976,8 @@ def validate_plan(binding):
             r"https://onesa-company-portal-git-staging-[a-z0-9-]+\.vercel\.app",
             plan["origins"]["staging"],
         )
-        and plan["serverless_function_region"] == "fra1",
+        and plan["serverless_function_region"] == "fra1"
+        and plan["project_default_region"] == "iad1",
         "OWNER_PORTAL_PLAN_SCOPE",
     )
     verify_toolchain(plan, binding)
@@ -1429,12 +1431,9 @@ def public_server_configuration(plan, env):
             and url.password is None
             and not url.query
             and not url.fragment
-            and url.hostname
-            in {
-                "docs.engineering.onesa.eu",
-                "portal.onesa.eu",
-                urllib.parse.urlsplit(plan["origins"]["staging"]).hostname,
-            },
+            and url.port is None
+            and re.fullmatch(r"[-a-z0-9]+\.cloudflareaccess\.com", url.hostname or "")
+            and url.path == "/cdn-cgi/access/callback",
             "EXISTING_CALLBACK_SCOPE_REQUIRED",
         )
     return values
