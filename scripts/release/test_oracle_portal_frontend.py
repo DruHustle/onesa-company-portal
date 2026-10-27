@@ -2,6 +2,7 @@
 
 import copy
 import hashlib
+import io
 import json
 import subprocess
 import tempfile
@@ -378,3 +379,77 @@ class ProviderIntentTests(unittest.TestCase):
                     "reconciled_read_only"
                 ]
             )
+
+
+class StaticAssetVerificationTests(unittest.TestCase):
+    def setUp(self):
+        self.body = b"synthetic compiled chunk"
+        self.digest = hashlib.sha256(self.body).hexdigest()
+        self.receipt = {"served_static_files": {}}
+        patch.object(r, "read", return_value=self.receipt).start()
+        self.plan = {"builds": {"staging": {"receipt": "build.json"}}}
+        self.observer = patch.object(
+            f,
+            "observe_provider",
+            return_value={
+                "origin": "https://fixture.invalid",
+                "bypass": "synthetic-bypass",
+            },
+        ).start()
+        self.factory = patch.object(f.urllib.request, "build_opener").start()
+        self.reader = self.factory.return_value.open
+        self.reader.side_effect = lambda *args, **kwargs: io.BytesIO(self.body)
+        self.addCleanup(patch.stopall)
+
+    def verify(self, paths):
+        self.receipt["served_static_files"] = {name: self.digest for name in paths}
+        return f.verify_static(
+            {}, "staging", Path("/fixture"), self.plan, "fixture-operation"
+        )
+
+    def test_generated_catch_all_chunks_are_requested_and_hashed(self):
+        self.verify(
+            [
+                "/_next/static/chunks/app/api/[...path]/route-fixture.js",
+                "/_next/static/chunks/app/[[...slug]]/page-fixture.js",
+            ]
+        )
+        urls = [
+            getattr(call.args[0], "full_url", call.args[0])
+            for call in self.reader.call_args_list
+        ]
+        self.assertEqual(
+            urls,
+            [
+                "https://fixture.invalid"
+                + "/_next/static/chunks/app/api/%5B...path%5D/route-fixture.js",
+                "https://fixture.invalid"
+                + "/_next/static/chunks/app/%5B%5B...slug%5D%5D/page-fixture.js",
+            ],
+        )
+        self.assertEqual(self.reader.call_count, 2)
+
+    def test_traversal_and_url_controls_fail_before_any_asset_request(self):
+        for name in [
+            "/_next/static/../secret.js",
+            "/_next/static/./a.js",
+            "/_next/static//a.js",
+            "//foreign.invalid/a.js",
+            "https://foreign.invalid/a.js",
+            "/_next/static/%2e%2e/a.js",
+            "/_next/static/%252e%252e/a.js",
+            "/_next/static/a.js?token=fixture",
+            "/_next/static/a.js#fragment",
+            "/_next/static/\\secret.js",
+            "/_next/static/a\x00.js",
+            "/_next/static/a\n.js",
+        ]:
+            with self.subTest(path=name), self.assertRaises(r.Refused):
+                self.verify(["/_next/static/valid.js", name])
+            self.reader.assert_not_called()
+
+    def test_changed_and_oversized_served_bodies_remain_unqualified(self):
+        for body in [b"modified chunk", b"x" * (4194304 + 1)]:
+            self.body = body
+            with self.subTest(bytes=len(body)), self.assertRaises(r.Refused):
+                self.verify(["/_next/static/chunks/app/[...path]/route-fixture.js"])

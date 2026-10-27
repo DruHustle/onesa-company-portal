@@ -715,22 +715,32 @@ def create(binding, env, operation, folder, plan):
     return receipt, op / "provider-receipt.json"
 
 
+def static_asset_path(name):
+    """Encode a literal build filename without permitting URL or path traversal."""
+    r.require(
+        isinstance(name, str)
+        and 0 < len(name) <= 4096
+        and name.startswith("/")
+        and not any(character in name for character in ["\\", "%", "?", "#"])
+        and not any(ord(character) < 32 or ord(character) == 127 for character in name)
+        and all(part not in {"", ".", ".."} for part in name[1:].split("/")),
+        "STATIC_ASSET_PATH_SCOPE",
+    )
+    # Next emits literal [param], [...param] and [[...param]] chunk filenames.
+    # Their dots are part of the filename, not a parent-directory segment.
+    return urllib.parse.quote(name, safe="/")
+
+
 def verify_static(binding, env, folder, plan, operation):
     """Compare real served static bytes, not only a provider success status."""
-    observation = observe_provider(binding, env, plan, operation)
     receipt = r.read(folder / plan["builds"][env]["receipt"])
     hashes = receipt["served_static_files"]
     r.require(hashes and len(hashes) < 20000, "STATIC_BUILD_MANIFEST_REQUIRED")
     import hashlib
 
-    for name, expected in hashes.items():
-        r.require(
-            name.startswith("/")
-            and ".." not in name
-            and "?" not in name
-            and "\\" not in name,
-            "STATIC_ASSET_PATH_SCOPE",
-        )
+    paths = [(static_asset_path(name), expected) for name, expected in hashes.items()]
+    observation = observe_provider(binding, env, plan, operation)
+    for name, expected in paths:
         headers = {"User-Agent": "OnesaOwnerOracleRelease/1.0"}
         if observation["bypass"]:
             headers["x-vercel-protection-bypass"] = observation["bypass"]

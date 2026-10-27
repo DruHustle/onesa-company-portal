@@ -2,6 +2,10 @@
 
 <!-- onesa-protected-source: portal-deployment -->
 
+Static artifact verification accepts generated Next.js catch-all filenames while
+retaining canonical path, response-size and byte-digest checks. A verifier fix
+requires new source qualification and commissioning; failed contexts stay consumed.
+
 The owner-run backup readback uses a source-pinned transport that drains its output
 under pipe backpressure. A truncated read remains a failed check. Installing a fix
 requires the normal source qualification and separate commissioning; it does not
