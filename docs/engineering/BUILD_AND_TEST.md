@@ -1,5 +1,11 @@
 # Separate application builds and tests
 
+The offline release suite includes `test_oracle_inventory.py`: completed temporary
+monitoring clients and list/inspect races do not become preservation baselines.
+Long-lived temporary workloads, unchanged-inventory command failures, incomplete
+metadata and real independent runtime changes still fail closed. These fixtures
+make only mocked Docker reads and do not establish hosted qualification.
+
 Owner-run static artifact checks treat Next.js catch-all chunk names such as
 `[...path]` as literal filenames, encode them for HTTP, and reject traversal
 segments, encoded paths, controls, query strings and fragments. Regressions verify

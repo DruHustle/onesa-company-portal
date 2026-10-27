@@ -2,6 +2,10 @@
 
 <!-- onesa-protected-source: portal-deployment -->
 
+Runtime preservation snapshots wait a bounded time for temporary Docker clients
+to finish. Every persistent and unknown workload remains in the snapshot; actual
+identity changes, missing services and incomplete observations still block release.
+
 Static artifact verification accepts generated Next.js catch-all filenames while
 retaining canonical path, response-size and byte-digest checks. A verifier fix
 requires new source qualification and commissioning; failed contexts stay consumed.
