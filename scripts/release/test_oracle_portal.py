@@ -31,6 +31,38 @@ class ImageEvidenceTests(unittest.TestCase):
                 r.image_security(changed, "fixture")
 
 
+class BackupTransportSourceTests(unittest.TestCase):
+    def test_wrong_path_or_source_pin_is_rejected_before_credentials(self):
+        expected = str(Path(r.__file__).resolve().with_name("oracle_backup_store.mjs"))
+        for path, pin in [("/tmp/caller-script.mjs", "a" * 64), (expected, "b" * 64)]:
+            with (
+                self.subTest(path=path, pin=pin),
+                patch.object(
+                    r,
+                    "trusted_toolchain",
+                    return_value={
+                        "probe_files": {"scripts/oracle_backup_store.mjs": "a" * 64}
+                    },
+                ),
+                patch.object(r, "pinned_public_file") as public_file,
+                patch.object(r, "runtime_values") as credentials,
+                patch.object(r, "docker") as docker,
+                self.assertRaisesRegex(r.Refused, "BACKUP_TRANSPORT_DIFFERS"),
+            ):
+                r.inspect_database_backup(
+                    {},
+                    {
+                        "legacy_backup": {
+                            "transport_path": path,
+                            "transport_sha256": pin,
+                        }
+                    },
+                )
+            public_file.assert_not_called()
+            credentials.assert_not_called()
+            docker.assert_not_called()
+
+
 class OciDescriptorTests(unittest.TestCase):
     def proof(self, value):
         raw = json.dumps(value).encode()
