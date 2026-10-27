@@ -1,5 +1,10 @@
 # Separate application builds and tests
 
+Owner-run static artifact checks treat Next.js catch-all chunk names such as
+`[...path]` as literal filenames, encode them for HTTP, and reject traversal
+segments, encoded paths, controls, query strings and fragments. Regressions verify
+that every accepted asset is read and hashed; changed or oversized bodies still fail.
+
 `scripts/test_oracle_backup_output.py` exercises the backup decoder and read transport
 with synthetic encrypted objects and a deliberately slow pipe reader. It verifies
 complete bytes under backpressure, reproduces the former synchronous truncation and
