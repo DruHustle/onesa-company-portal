@@ -523,6 +523,7 @@ class NotificationLifecycle(unittest.TestCase):
             .datetime.fromisoformat(self.last["checked_at"])
             .timestamp()
         )
+        self.sample_time = self.now
 
     def decision(self, metrics=None, previous=None, last=None, elapsed=0):
         return monitor.notification_decision(
@@ -538,7 +539,7 @@ class NotificationLifecycle(unittest.TestCase):
             self.assertEqual(self.decision(elapsed=elapsed), (None, 0))
         self.assertEqual(self.decision(elapsed=21600), ("reminder", 0))
 
-    def test_new_affected_service_and_new_rule_are_not_hidden_by_cooldown(self):
+    def test_new_affected_service_and_new_rule_are_grouped_for_thirty_minutes(self):
         metrics = {
             **self.failed,
             "backends": {
@@ -546,14 +547,15 @@ class NotificationLifecycle(unittest.TestCase):
                 "portal-production": {"container_healthy": False, "http_status": 503},
             },
         }
-        self.assertEqual(self.decision(metrics=metrics)[0], "update")
+        self.assertIsNone(self.decision(metrics=metrics, elapsed=1799)[0])
+        self.assertEqual(self.decision(metrics=metrics, elapsed=1800)[0], "update")
         self.assertEqual(
             monitor.notification_decision(
                 ["backend-api-unavailable", "backup-failed"],
                 self.failed,
                 {"healthy_samples": 0},
                 self.last,
-                self.now,
+                self.now + 1800,
             )[0],
             "update",
         )
@@ -571,7 +573,7 @@ class NotificationLifecycle(unittest.TestCase):
         }
         self.assertIsNone(self.decision(metrics=changed)[0])
 
-    def test_two_clean_samples_confirm_recovery_and_one_does_not_reset_fault(self):
+    def test_recovery_requires_five_minutes_and_six_fresh_healthy_samples(self):
         self.assertEqual(
             monitor.notification_decision(
                 [],
@@ -586,17 +588,44 @@ class NotificationLifecycle(unittest.TestCase):
             monitor.notification_decision(
                 [],
                 self.metrics,
-                {"alerts": [], "healthy_samples": 1},
+                {
+                    "alerts": [],
+                    "healthy_samples": 1,
+                    "incident_open": True,
+                    "checked_at": self.last["checked_at"],
+                    "healthy_since": self.last["checked_at"],
+                },
                 self.last,
-                self.now,
+                self.now + 60,
             ),
-            ("recovery", 2),
+            (None, 2),
         )
         self.assertIsNone(
             self.decision(previous={"alerts": [], "healthy_samples": 1})[0]
         )
         self.assertEqual(
-            self.decision(previous={"alerts": [], "healthy_samples": 2})[0], "alert"
+            self.decision(previous={"incident_open": False})[0], "alert"
+        )
+        self.assertIsNone(
+            self.decision(previous={"incident_open": True, "healthy_samples": 2})[0]
+        )
+        self.assertEqual(
+            monitor.notification_decision(
+                [],
+                self.metrics,
+                {
+                    "alerts": [],
+                    "healthy_samples": 5,
+                    "incident_open": True,
+                    "checked_at": datetime.datetime.fromtimestamp(
+                        self.now + 240, datetime.timezone.utc
+                    ).isoformat(),
+                    "healthy_since": self.last["checked_at"],
+                },
+                self.last,
+                self.now + 300,
+            ),
+            ("recovery", 6),
         )
 
     def test_initial_migration_does_not_email_a_historical_recovery(self):
@@ -604,7 +633,7 @@ class NotificationLifecycle(unittest.TestCase):
             monitor.notification_decision(
                 [], self.metrics, {"alerts": []}, self.last, self.now
             ),
-            (None, 2),
+            (None, 1),
         )
 
     def test_robot_liveness_200_cannot_substitute_for_readiness(self):
@@ -645,10 +674,12 @@ class NotificationLifecycle(unittest.TestCase):
             ),
             patch.object(monitor.Path, "read_text", read),
             patch.object(monitor, "sample", side_effect=samples),
+            patch.object(monitor.time, "time", side_effect=lambda: self.sample_time),
             patch.object(monitor, "notify", side_effect=sender),
             patch("builtins.print"),
         ):
             for _ in samples:
+                self.sample_time += 60
                 monitor.main()
 
     def test_ambiguous_delivery_keeps_identical_reference_and_body_across_timer_runs(
@@ -698,7 +729,7 @@ class NotificationLifecycle(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             state = Path(directory)
             self.run_monitor(
-                state, [self.failed, self.metrics, self.metrics, self.metrics], send
+                state, [self.failed, *([self.metrics] * 8)], send
             )
             self.assertEqual(calls, ["alert", "recovery"])
             failure = json.loads((state / "last-failure.json").read_text())
@@ -729,7 +760,7 @@ class NotificationLifecycle(unittest.TestCase):
             record = json.loads((state / "last-notified-incident.json").read_text())
             self.assertEqual(record["alerts"], ["backend-api-unavailable"])
             self.assertFalse(record["metrics"]["backend_api_healthy"])
-            self.run_monitor(state, [self.metrics, self.metrics], send)
+            self.run_monitor(state, [self.metrics] * 6, send)
             self.assertEqual(
                 [v[1]["kind"] for v in calls], ["alert", "alert", "recovery"]
             )
@@ -772,7 +803,7 @@ class NotificationLifecycle(unittest.TestCase):
                 ["backend-api-unavailable"],
             )
 
-    def test_other_critical_rule_reminders_keep_existing_thirty_minute_budget(self):
+    def test_unchanged_critical_rules_use_six_hour_reminders(self):
         for alerts in [
             ["backup-failed"],
             ["resource-exhaustion"],
@@ -781,12 +812,125 @@ class NotificationLifecycle(unittest.TestCase):
             last = {**self.last, "rules": alerts}
             self.assertEqual(
                 monitor.notification_decision(
-                    alerts, self.failed, {"healthy_samples": 0}, last, self.now + 1800
+                    alerts, self.failed, {"healthy_samples": 0}, last, self.now + 21600
                 )[0],
                 "reminder",
             )
             self.assertIsNone(
                 monitor.notification_decision(
-                    alerts, self.failed, {"healthy_samples": 0}, last, self.now + 1799
+                    alerts, self.failed, {"healthy_samples": 0}, last, self.now + 21599
                 )[0]
             )
+
+    def test_two_hours_of_changing_rules_and_brief_health_stays_one_incident(self):
+        calls = []
+        recovered_backends = []
+
+        def send(alerts, simulation, **kwargs):
+            calls.append(kwargs["kind"])
+            if kwargs["kind"] == "recovery":
+                recovered_backends.extend(kwargs["recovered_backends"])
+            return {
+                "reference": kwargs["reference"],
+                "rules": alerts,
+                "affected_backends": monitor.failed_backends(kwargs["metrics"]),
+            }
+
+        unavailable = {
+            **self.failed, "scanner_ready": False, "database_available": False
+        }
+        low_memory = {**self.metrics, "memory_available_bytes": 128 * 1024 * 1024}
+        both = {**unavailable, "memory_available_bytes": 128 * 1024 * 1024}
+        cycle = [unavailable, both, low_memory, self.metrics, self.metrics, low_memory]
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            self.run_monitor(state, cycle * 20, send)
+            self.assertEqual(calls, ["alert", "update"])
+            last = json.loads((state / "notification.json").read_text())
+            self.assertEqual(
+                set(last["incident_rules"]),
+                {
+                    "backend-api-unavailable", "database-unavailable",
+                    "clamav-unavailable", "resource-exhaustion",
+                },
+            )
+            self.assertTrue(
+                json.loads((state / "metrics.json").read_text())["incident_open"]
+            )
+            self.assertEqual(
+                json.loads((state / "last-failure.json").read_text())["alerts"],
+                ["resource-exhaustion"],
+            )
+            self.run_monitor(state, [self.metrics] * 8, send)
+            self.assertEqual(calls, ["alert", "update", "recovery"])
+            self.assertEqual(recovered_backends, ["robot-production"])
+            self.assertFalse(
+                json.loads((state / "metrics.json").read_text())["incident_open"]
+            )
+            self.run_monitor(state, [self.failed], send)
+            self.assertEqual(calls[-1], "alert")
+
+    def test_missing_samples_reset_recovery_confirmation(self):
+        calls = []
+
+        def send(alerts, simulation, **kwargs):
+            calls.append(kwargs["kind"])
+            return {"reference": kwargs["reference"], "rules": alerts}
+
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            self.run_monitor(state, [self.failed, *([self.metrics] * 5)], send)
+            self.assertEqual(calls, ["alert"])
+            self.sample_time += 300
+            self.run_monitor(state, [self.metrics], send)
+            self.assertEqual(
+                json.loads((state / "metrics.json").read_text())["healthy_samples"], 1
+            )
+            self.assertEqual(calls, ["alert"])
+            self.run_monitor(state, [self.metrics] * 5, send)
+            self.assertEqual(calls, ["alert", "recovery"])
+
+    def test_partial_improvement_does_not_send_an_update(self):
+        last = {
+            **self.last, "rules": ["backend-api-unavailable", "database-unavailable"]
+        }
+        self.assertIsNone(self.decision(last=last, elapsed=1800)[0])
+        self.assertEqual(self.decision(last=last, elapsed=21600)[0], "reminder")
+
+    def test_fast_repeated_samples_cannot_confirm_recovery(self):
+        previous = {
+            "alerts": [],
+            "incident_open": True,
+            "healthy_samples": 5,
+            "healthy_since": self.last["checked_at"],
+            "checked_at": self.last["checked_at"],
+        }
+        self.assertEqual(
+            monitor.notification_decision(
+                [], self.metrics, previous, self.last, self.now + 1
+            ),
+            (None, 6),
+        )
+
+    def test_clock_rollback_and_invalid_times_do_not_send_repeated_mail(self):
+        for value in [
+            None, "invalid", "2026-10-23T15:40:00", "2026-10-24T15:40:00+00:00"
+        ]:
+            last = {**self.last, "checked_at": value}
+            self.assertIsNone(self.decision(last=last, elapsed=1800)[0])
+
+    def test_configured_update_cooldown_is_bounded_and_honored(self):
+        alerts = ["backend-api-unavailable", "backup-failed"]
+        self.assertEqual(
+            monitor.notification_decision(
+                alerts, self.failed, {"incident_open": True}, self.last,
+                self.now + 60, cooldown_seconds=60,
+            )[0],
+            "update",
+        )
+        for value in [True, "1800", 0, -1, 21601]:
+            with self.assertRaises(ValueError):
+                monitor.notification_decision(
+                    alerts, self.failed, {}, self.last, self.now,
+                    cooldown_seconds=value,
+                )

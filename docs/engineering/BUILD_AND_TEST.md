@@ -483,12 +483,29 @@ pending delivery identity, restart counters, private file modes and simulation
 separation. Delivery is mocked; no production state or mail is used.
 
 The notification controls additionally cover
-synthetic incident transitions, six-hour backend-only reminders (other critical
-rules retain thirty-minute reminders), two-sample recovery, stable
-notification identities after ambiguous delivery, and bounded credential-free Robot
+synthetic incident transitions, immediate initial alerts, thirty-minute grouping of
+new failure rules/services and six-hour reminders for all unchanged incidents.
+The existing `notification_cooldown_seconds` controls the update window (default
+1800, integer range 60–21600). Partial improvement does not send another update;
+previously emailed rules/services remain grouped until that incident closes.
+Recovery requires at least five elapsed minutes and six consecutive healthy samples,
+with gaps of at most two minutes. Brief health, rapid repeated samples, missed samples
+and invalid/future timestamps cannot prematurely confirm recovery. A two-hour replay
+of changing failures and brief health produces one initial alert and one grouped update,
+followed by one recovery after sustained health. These counts describe that synthetic
+sequence, not a daily message cap or hosted reliability guarantee.
+Tests also cover stable
+notification identities after ambiguous delivery and bounded credential-free Robot
 readiness probes. These controls send no mail or application command and do not restart
 services. Installation is a separately qualified operations-component change; never
 rerun the initial operations bootstrap against existing production.
+
+Every observation still reaches the private metrics/failure records, independently of
+email suppression. `last-recovery.json` records the first clean observation; only the
+confirmed recovery notification closes the emailed incident. Keep the existing one-minute
+timer, probe timeouts, dependencies and scanner enforcement. Validate the installed source
+hash, singleton scheduling and normal samples through the protected operator procedure;
+local regression results alone do not establish that the notification policy is live.
 
 Pending delivery retries stop after23 hours and require provider reconciliation before
 the24-hour [Resend idempotency window](https://resend.com/changelog/idempotency-keys)
