@@ -32,6 +32,43 @@ class ImageEvidenceTests(unittest.TestCase):
 
 
 class BackupTransportSourceTests(unittest.TestCase):
+    def test_container_copy_preserves_private_install_and_matches_source(self):
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(r, "private") as custody,
+        ):
+            folder = Path(directory).resolve()
+            source = folder / "installed-private.mjs"
+            source.write_bytes(b"// public synthetic source only\n")
+            source.chmod(0o600)
+            pin = r.sha(source)
+            copy = r.container_readable_transport(source, pin, folder)
+            self.assertEqual(copy.read_bytes(), source.read_bytes())
+            self.assertEqual(copy.stat().st_mode & 0o777, 0o444)
+            self.assertEqual(source.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(folder.stat().st_mode & 0o077, 0)
+            custody.assert_called_with(folder, uid=r.os.geteuid(), directory=True)
+            with self.assertRaises(FileExistsError):
+                r.container_readable_transport(source, pin, folder)
+
+    def test_changed_copy_is_rejected_and_custody_refusal_precedes_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory).resolve()
+            source = folder / "installed-private.mjs"
+            source.write_bytes(b"// synthetic source\n")
+            with (
+                patch.object(r, "private"),
+                self.assertRaisesRegex(r.Refused, "COPY_SOURCE_CHANGED"),
+            ):
+                r.container_readable_transport(source, "0" * 64, folder)
+            (folder / "backup.mjs").unlink()
+            with (
+                patch.object(r, "private", side_effect=r.Refused("CUSTODY_MODE")),
+                self.assertRaises(r.Refused),
+            ):
+                r.container_readable_transport(source, r.sha(source), folder)
+            self.assertFalse((folder / "backup.mjs").exists())
+
     def test_wrong_path_or_source_pin_is_rejected_before_credentials(self):
         expected = str(Path(r.__file__).resolve().with_name("oracle_backup_store.mjs"))
         for path, pin in [("/tmp/caller-script.mjs", "a" * 64), (expected, "b" * 64)]:

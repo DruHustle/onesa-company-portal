@@ -6,6 +6,13 @@ complete bytes under backpressure, reproduces the former synchronous truncation 
 rejects failed or oversized reads. Owner-run qualification pins the read transport
 to its separately installed, exact-source tool bundle.
 
+The pinned backup container runs as its existing unprivileged user. Its reader is
+a hash-verified temporary copy of public transport source, mode `0444` inside a
+private temporary directory. The installed source and credential file stay `0600`.
+Copy tests reject changed bytes, reused destinations and failed custody; a
+network-disabled pinned-container fixture must reproduce private-source EACCES
+and read all 512 KiB through the unchanged nonblocking writer from the copied source.
+
 CI and hosted artifact-build workflows pin Node 24.22.1 explicitly; a cached
 `24` major selector can otherwise select an older vulnerable patch. Runtime images
 and provider-managed runtimes require their own source-bound verification.

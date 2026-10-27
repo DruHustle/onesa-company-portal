@@ -1215,6 +1215,16 @@ def probe(binding, env, operation, folder, plan):
     return value
 
 
+def container_readable_transport(script, expected, folder):
+    """Expose public source bytes to the unprivileged, read-only container only."""
+    private(Path(folder), uid=os.geteuid(), directory=True)
+    target = Path(folder) / "backup.mjs"
+    write_raw(target, script.read_bytes())
+    require(sha(target) == expected, "BACKUP_TRANSPORT_COPY_SOURCE_CHANGED")
+    os.chmod(target, 0o444)
+    return target
+
+
 def inspect_database_backup(receipt, plan):
     profile = plan["legacy_backup"]
     require(
@@ -1272,6 +1282,9 @@ def inspect_database_backup(receipt, plan):
         "EXISTING_PORTAL_BACKUP_S3_CUSTODY",
     )
     with tempfile.TemporaryDirectory(prefix=".backup-readback-", dir=ROOT) as folder:
+        transport = container_readable_transport(
+            script, profile["transport_sha256"], folder
+        )
         env = Path(folder) / "transport.env"
         with os.fdopen(
             os.open(env, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600),
@@ -1309,7 +1322,7 @@ def inspect_database_backup(receipt, plan):
                 "--env-file",
                 str(env),
                 "-v",
-                str(script) + ":/app/backup.mjs:ro",
+                str(transport) + ":/app/backup.mjs:ro",
                 "--entrypoint",
                 "node",
                 profile["transport_image"],
