@@ -2,6 +2,7 @@
 
 import base64
 import json
+import os
 import shutil
 import subprocess
 import time
@@ -80,7 +81,11 @@ class BackupOutputTests(unittest.TestCase):
     def test_old_writer_reproduces_truncation(self):
         # Reproduce the old output boundary without needing history in shallow CI.
         lines = self.source.splitlines()
-        writers = [i for i, line in enumerate(lines) if "process.stdout.write(JSON.stringify" in line]
+        writers = [
+            i
+            for i, line in enumerate(lines)
+            if "process.stdout.write(JSON.stringify" in line
+        ]
         self.assertEqual(len(writers), 1)
         lines[writers[0]] = "fs.writeFileSync(1,JSON.stringify(payload));"
         old = "\n".join(lines)
@@ -105,6 +110,101 @@ class BackupOutputTests(unittest.TestCase):
         code, output, _ = self.decode(request)
         self.assertNotEqual(code, 0)
         self.assertEqual(output, b"")
+
+
+STORE_IMPORT = "import {S3Client,PutObjectCommand,GetObjectCommand,ListObjectsV2Command,DeleteObjectCommand} from '@aws-sdk/client-s3';"
+STORE_MOCK = r"""
+void process.stdout; // Exercise Node's real nonblocking output boundary.
+class GetObjectCommand { constructor(input){this.input=input;} }
+class S3Client { async send(command){
+ if(!(command instanceof GetObjectCommand))throw Error('Read-only fixture');
+ const bytes=Buffer.from(input.fixture_objects[command.input.Key],'base64');
+ return {ContentLength:input.reported_length??bytes.length,Body:{transformToByteArray:async()=>bytes}};
+} }
+class PutObjectCommand { constructor(){throw Error('Read-only fixture');} }
+class ListObjectsV2Command { constructor(){throw Error('Read-only fixture');} }
+class DeleteObjectCommand { constructor(){throw Error('Read-only fixture');} }
+"""
+STREAM_WRITER = "await new Promise((resolve,reject)=>process.stdout.write(bytes,error=>error?reject(error):resolve()));"
+
+
+@unittest.skipUnless(NODE, "Node is required for the synthetic transport control")
+class BackupTransportOutputTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.fixture = json.loads(
+            subprocess.check_output(
+                [NODE, "--input-type=module", "-e", FIXTURE], timeout=20
+            )
+        )
+        cls.source = (ROOT / "scripts/oracle_backup_store.mjs").read_text()
+
+    def read(self, changes=None, source=None):
+        request = {
+            "action": "read",
+            "key": self.fixture["object_key"],
+            "fixture_objects": self.fixture["fixture_objects"],
+            **(changes or {}),
+        }
+        script = source or self.source
+        self.assertEqual(script.count(STORE_IMPORT), 1)
+        child = subprocess.Popen(
+            [
+                NODE,
+                "--input-type=module",
+                "-e",
+                script.replace(STORE_IMPORT, STORE_MOCK),
+            ],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={
+                "PATH": os.environ.get("PATH", ""),
+                "S3_ENDPOINT": self.fixture["endpoint"],
+                "S3_REGION": "synthetic",
+                "S3_BUCKET": "synthetic",
+            },
+        )
+        try:
+            child.stdin.write(json.dumps(request).encode())
+            child.stdin.close()
+            child.stdin = None
+            time.sleep(0.15)
+            output, error = child.communicate(timeout=10)
+            return child.returncode, output, error
+        finally:
+            if child.poll() is None:
+                child.kill()
+                child.communicate()
+
+    def test_complete_ciphertext_survives_real_pipe_backpressure(self):
+        code, output, _ = self.read()
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            output,
+            base64.b64decode(
+                self.fixture["fixture_objects"][self.fixture["object_key"]]
+            ),
+        )
+
+    def test_former_synchronous_transport_reproduces_truncation(self):
+        self.assertEqual(self.source.count(STREAM_WRITER), 1)
+        code, output, _ = self.read(
+            source=self.source.replace(STREAM_WRITER, "fs.writeFileSync(1,bytes);")
+        )
+        self.assertNotEqual(code, 0)
+        self.assertLess(len(output), 524288)
+
+    def test_oversized_missing_and_out_of_scope_objects_produce_no_bytes(self):
+        for changes in [
+            {"reported_length": 128 * 1024 * 1024 + 1},
+            {"fixture_objects": {}},
+            {"key": "unapproved-object"},
+        ]:
+            with self.subTest(changes=list(changes)):
+                code, output, _ = self.read(changes)
+                self.assertNotEqual(code, 0)
+                self.assertEqual(output, b"")
 
 
 if __name__ == "__main__":
