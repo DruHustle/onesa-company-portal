@@ -6,6 +6,8 @@ The owner-run backup readback uses a source-pinned transport that drains its out
 under pipe backpressure. A truncated read remains a failed check. Installing a fix
 requires the normal source qualification and separate commissioning; it does not
 replace backup evidence or authorize an application deployment.
+Public transport source is copied temporarily for the existing unprivileged
+container; installed tools and credentials retain their private custody modes.
 
 Detailed operational instructions are maintained in protected Engineering Docs.
 This public source is a reference page, not a deployment or recovery runbook.
