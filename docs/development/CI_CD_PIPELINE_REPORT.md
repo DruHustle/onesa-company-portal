@@ -1,3 +1,11 @@
+> Implementation update — 2026-10-27: the new Portal frontend-only owner-run
+> extension adds source-bound configuration and artifact checks, explicit staging
+> routing, preservation of existing private proxy custody and one-create durable
+> provider intents. Existing hosted CI now includes its credential-free transport
+> regressions. These source changes do not establish installation, commissioning,
+> hosted qualification, authorization or deployment; protected evidence records
+> those outcomes independently. All existing release checks remain required.
+
 > Owner update — 2026-10-18: GitHub Free is permanent; public visibility is temporary.
 > Local-runner implementation has now been removed, superseding earlier private-first
 > runner plans below. Use standard hosted runners while public and included hosted
