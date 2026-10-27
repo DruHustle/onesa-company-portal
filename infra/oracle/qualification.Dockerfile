@@ -13,6 +13,7 @@ RUN node /tmp/npm/bin/npm-cli.js ci --ignore-scripts --prefix onesa-company-port
 RUN rm -f /usr/bin/pebble
 COPY scripts/release ./scripts/release
 COPY scripts/check_tls_bundle.mjs ./scripts/check_tls_bundle.mjs
+COPY scripts/oracle_backup_store.mjs ./scripts/oracle_backup_store.mjs
 # Remove build history/tooling from the final host-mounted credential boundary.
 FROM scratch
 COPY --from=complete / /
