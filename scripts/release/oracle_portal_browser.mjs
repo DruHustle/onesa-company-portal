@@ -3,6 +3,16 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {chromium,firefox,webkit,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+export async function checkAnonymousBoundaries(request,client){
+ const targets=request.environment==='production'
+  ? [['https://onesa.eu',403],['https://portal.onesa.eu',401]]
+  : [[request.origin,401]];
+ for(const [origin,expected]of targets){
+  for(const path of ['/api/v1/auth/me','/api/v1/admin/content','/api/v1/admin/governance/records']){
+   assert.equal((await client.get(origin+path)).status(),expected);
+  }
+ }
+}
 async function observeUI(request,directory,engines,status){
  assert.equal(request.binding.repository,'DruHustle/onesa-company-portal');
  assert.equal(request.binding.component,'frontend');
@@ -25,7 +35,11 @@ async function observeUI(request,directory,engines,status){
     await expect(section).toContainText(locale==='en'?'synthetic':'synthetischen');
     const link=section.getByRole('link',{name:locale==='en'?'Explore robotics':'Robotik entdecken'});
     const destination=new URL(await link.getAttribute('href'),request.origin);assert.ok([`/${locale}/products`,...(locale==='en'?['/products']:[])].includes(destination.pathname));assert.equal(destination.hash,'#product-robot');
-    await link.click();await expect(page.locator('#product-robot')).toBeVisible();await page.waitForLoadState('networkidle');
+    await Promise.all([
+     page.waitForURL(url=>url.pathname===destination.pathname&&url.hash===destination.hash,{waitUntil:'networkidle'}),
+     link.click(),
+    ]);
+    await expect(page.locator('#product-robot')).toBeVisible();
     await expect(page.locator('article').filter({has:page.locator('#product-robot')})).toContainText('P-101');
     const root=page.locator('html');await expect(root).toBeVisible();
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
@@ -39,7 +53,7 @@ async function observeUI(request,directory,engines,status){
    await page.goto(request.origin+'/en/contact?topic=robot');await page.waitForLoadState('networkidle');
    await expect(page.getByRole('heading',{level:1})).toBeVisible();
    // Inspect only: this probe submits no enquiry, sign-in, publication or file.
-   for(const path of ['/api/v1/auth/me','/api/v1/admin/content','/api/v1/admin/governance/records'])assert.equal((await page.request.get(request.origin+path)).status(),401);
+   await checkAnonymousBoundaries(request,page.request);
    await context.close();
   }finally{await browser.close();}
  }
