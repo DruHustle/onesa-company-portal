@@ -1,5 +1,13 @@
 # Separate application builds and tests
 
+Production observations check readiness and anonymous private-route denials on the
+existing Portal hostname, and require the Company hostname to keep those routes
+blocked. Isolated staging still uses its combined protected Preview. The public
+UI and served-asset checks continue on the Company hostname. An interrupted release
+keeps its actual current deployment separate from the hash-checked source comparison
+baseline and explicitly retained rollback artifact; none of these substitutes for
+fresh qualification and authorization of a corrected candidate.
+
 The offline release suite includes `test_oracle_inventory.py`: completed temporary
 monitoring clients and list/inspect races do not become preservation baselines.
 Long-lived temporary workloads, unchanged-inventory command failures, incomplete
