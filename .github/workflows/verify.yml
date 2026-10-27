@@ -80,6 +80,8 @@ jobs:
       run: node scripts/test_system_appearance.mjs
     - name: 'Release requirement: qualification failure-path tests'
       run: python3 -m unittest discover -s scripts/release -p 'test_*.py'
+    - name: Verify bounded owner deployment transport
+      run: node --test scripts/release/oracle_vercel_transport_guard.test.cjs
     - run: npm ci
       working-directory: onesa-company-portal-backend
     - run: npm ci

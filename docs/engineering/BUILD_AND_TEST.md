@@ -495,3 +495,39 @@ image must pass before release. A source lock update does not update the serving
 or worker. Private `records/` owner inputs are excluded from the Docker build context.
 
 The current source candidate pins official Node 24.22.1 runtime images (21 October security patch), plus explicit musl and scanner Brotli package minima so cached older layers cannot satisfy the new runtime requirement. The scanner engine remains the reviewed ClamAV 1.4.6. Qualify the API, mail worker and scanner independently; a source lock patch does not update their serving containers. [Node maintainer advisory](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases) and [Brotli release](https://github.com/google/brotli/releases/tag/v1.2.1) provide provenance.
+
+## Owner-run frontend boundary regressions
+
+`python3 -m unittest discover -s scripts/release -p 'test_*.py'` includes disposable
+installer provenance, source/artifact identity, frontend scope, provider configuration,
+secret custody, interrupted requests and read-only reconciliation cases. Run
+`node --test scripts/release/oracle_vercel_transport_guard.test.cjs` with loopback
+socket access for atomic request-budget and real transport failure cases.
+The separate pinned CLI protocol fixture requires the credential-free disposable
+CLI image and synthetic custody/workspaces; the protected guide specifies that
+fixture arrangement. It never accepts provider credentials or authorizes a release.
+
+The anonymous Portal browser probe checks EN/DE presentation, mobile and desktop,
+system appearance, reduced motion, accessibility, existing contact navigation and
+private anonymous denials in Chromium, Firefox and WebKit. Its explicit synthetic
+loopback entry emits `LOCAL_SYNTHETIC_NOT_HOSTED`, which cannot satisfy the hosted
+receipt gate. Real owner-run CLI invocation accepts only the approved HTTPS origins.
+It submits no contact form and makes no account, publication or data mutation.
+
+Shared responsive links now default to `prefetch={false}` while preserving explicit
+caller overrides and click navigation. This bounds anonymous background work and
+avoids the reproduced WebKit speculative-fetch failures during page transitions.
+The source-equivalence gate accepts only that exact navigation-byte transformation;
+a broader navigation edit requires broader qualification. The browser probe keeps
+its zero-error gate and also requires zero speculative prefetches.
+
+The Portal project's existing default region and prebuilt deployment regions are
+separate identities: the source-bound profile preserves project default `iad1`
+and actual function region `fra1`. The named provider readback and real pinned-CLI
+fixture verify both; qualification never changes a provider setting to make an
+assumption pass. A changed project default or deployment region is unqualified.
+
+Callback preservation uses the application's existing HTTPS Cloudflare Access team
+host and exact callback-path contract, with no userinfo, custom port, query or
+fragment. The runner validates that structure before credential use, then checks
+the exact named existing provider value; it never changes Access, accounts or MFA.

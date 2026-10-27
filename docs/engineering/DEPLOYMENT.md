@@ -20,3 +20,10 @@ commissioned, pinned external verifier and owner-controlled signing custody.
 Repository code or an unsigned JSON file supplies no release authority.
 The protected guide contains installation, qualification and recovery instructions;
 source implementation alone does not establish commissioning or deployment.
+
+The Portal-specific frontend extension is new source, not a commissioned service.
+It binds public presentation artifacts and existing provider configuration while
+retaining the independently deployed API, workers and scanner. Its limited copy scope additionally accepts only the exact default-prefetch
+change that prevents speculative page requests. It rejects authentication, hero
+or other navigation changes requiring broader qualification. Separate installation, owner commissioning, genuine hosted evidence
+and exact-source authorization remain required before release.
