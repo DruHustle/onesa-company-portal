@@ -266,19 +266,30 @@ class GitHub:
             (workflow, jobs),
             ("repository-hygiene.yml", ["publication-hygiene"]),
         ]:
-            runs = self.api(
+            listing = self.api(
                 prefix
                 + "actions/workflows/"
                 + name
                 + "/runs?head_sha="
                 + sha
                 + "&per_page=100"
-            )["workflow_runs"]
+            )
+            runs = listing["workflow_runs"]
+            require(
+                type(listing.get("total_count")) is int
+                and listing["total_count"] == len(runs)
+                and len(runs) <= 100,
+                "Complete exact-source CI run listing required",
+            )
+            pushes = [
+                r for r in runs if r["event"] == "push" and r["head_branch"] == "main"
+            ]
             runs = sorted(
                 [
                     r
-                    for r in runs
-                    if r["event"] == "push" and r["head_branch"] == "main"
+                    for r in (pushes or runs)
+                    if r["event"] in {"push", "workflow_dispatch"}
+                    and r["head_branch"] == "main"
                 ],
                 key=lambda r: r["id"],
                 reverse=True,
@@ -290,12 +301,19 @@ class GitHub:
                 and run["head_repository"]["full_name"] == repo
                 and run["head_sha"] == sha
                 and run["head_branch"] == "main"
-                and run["event"] == "push"
+                and run["event"] == runs[0]["event"]
+                and (
+                    run["event"] == "push"
+                    or (
+                        (run.get("actor") or {}).get("login") == OWNER
+                        and (run.get("triggering_actor") or {}).get("login") == OWNER
+                    )
+                )
                 and run["path"] == ".github/workflows/" + name
                 and run["run_attempt"] == 1
                 and run["status"] == "completed"
                 and run["conclusion"] == "success",
-                "Exact-main first-attempt CI failed or incomplete",
+                "Exact-main first-attempt owner CI failed or incomplete",
             )
             require(
                 timedelta(0)
@@ -355,6 +373,7 @@ class GitHub:
             references.append(
                 {
                     "run_id": run["id"],
+                    "event": run["event"],
                     "workflow": name,
                     "candidate_commit": sha,
                     "run_attempt": 1,
