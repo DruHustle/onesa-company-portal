@@ -170,11 +170,38 @@ def docker(*args, **kwargs):
 
 
 def inventory():
-    names = docker("ps", "--format", "{{.Names}}").decode().splitlines()
-    require(all(v in names for v in TARGET.values()), "PORTAL_RUNTIME_MISSING")
-    # All currently running workloads are captured, without emitting their secrets.
-    values = json.loads(docker("inspect", *names))
-    return {v["Name"].lstrip("/"): v for v in values}
+    """Capture every workload only after temporary Docker clients finish."""
+    deadline = time.monotonic() + 20
+    while True:
+        require(time.monotonic() < deadline, "RUNTIME_INVENTORY_NOT_QUIESCENT")
+        names = docker("ps", "--format", "{{.Names}}", timeout=5).decode().splitlines()
+        require(all(v in names for v in TARGET.values()), "PORTAL_RUNTIME_MISSING")
+        try:
+            values = json.loads(docker("inspect", *names, timeout=5))
+        except Refused:
+            # A --rm client can finish between list and inspect. Only retry this
+            # read when a fresh list proves the inventory actually changed.
+            current = docker("ps", "--format", "{{.Names}}", timeout=5)
+            require(
+                set(current.decode().splitlines()) != set(names),
+                "PINNED_COMMAND_FAILED_INSPECT_WITHOUT_RETRY",
+            )
+        else:
+            observed = {v["Name"].lstrip("/"): v for v in values}
+            require(set(observed) == set(names), "RUNTIME_INVENTORY_INCOMPLETE")
+            require(
+                all(
+                    type(v.get("HostConfig", {}).get("AutoRemove")) is bool
+                    for v in values
+                ),
+                "RUNTIME_LIFECYCLE_METADATA_REQUIRED",
+            )
+            # Do not omit helpers or classify an unknown workload as safe. Wait
+            # for automatic removal; a long-lived --rm workload blocks release.
+            if not any(v["HostConfig"]["AutoRemove"] for v in values):
+                return observed
+        require(time.monotonic() < deadline, "RUNTIME_INVENTORY_NOT_QUIESCENT")
+        time.sleep(0.25)
 
 
 def summary(row):
