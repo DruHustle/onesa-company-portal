@@ -86,6 +86,7 @@ def backup():
                     "docker",
                     "run",
                     "-d",
+                    "--rm",
                     "--name",
                     client,
                     "--memory",
@@ -227,16 +228,20 @@ def backup():
                 )
             )
         finally:
-            if pipe and pipe.poll() is None:
-                pipe.kill()
-                pipe.wait(timeout=20)
-            subprocess.run(
-                ["docker", "rm", "-f", client],
-                capture_output=True,
-                timeout=20,
-                check=False,
-            )
-            service.unlink(missing_ok=True)
+            try:
+                if pipe and pipe.poll() is None:
+                    pipe.kill()
+                    pipe.wait(timeout=20)
+            finally:
+                try:
+                    subprocess.run(
+                        ["docker", "rm", "-f", "--volumes", client],
+                        capture_output=True,
+                        timeout=20,
+                        check=False,
+                    )
+                finally:
+                    service.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

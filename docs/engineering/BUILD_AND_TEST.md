@@ -412,6 +412,25 @@ substitution, future/expired/malformed evidence and renewal without extending MF
 freshness. Legacy sessions keep normal Portal access but cannot provide a made-up
 authentication time to Docs. No schema, application credential or MFA key changes.
 
+## Temporary backup-client cleanup
+
+The Oracle regression command below includes
+`scripts/test_oracle_backup_cleanup.py`. It exercises both PostgreSQL backup
+helpers with disposable state and synthetic connection settings. Failed container
+startup, failed psql startup, a Docker cleanup timeout and an interrupted pipe wait
+must still remove the private connection file and attempt scoped helper cleanup.
+The helpers use automatic removal on exit and explicitly remove their anonymous
+image volumes during cleanup. Named application volumes are outside this scope.
+
+Before installing these helper changes, qualify the exact source with the existing
+CI path and network-isolated containers using the already pinned PostgreSQL image.
+Verify forced removal and natural expiry without running a database executable,
+then confirm existing application containers and volumes are preserved. Update
+only these operations files through the existing component installation; preserve
+configuration, keys, receipts and timers, and never rerun the bootstrap installer.
+Observe the next normal scheduled backup rather than triggering a production backup
+to test cleanup.
+
 ## Operations notification regression
 
 Run `python3 -m unittest discover -s scripts -p 'test_oracle*.py'` for the

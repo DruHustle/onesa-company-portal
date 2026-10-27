@@ -132,6 +132,7 @@ def pg_snapshot(uri):
                 "docker",
                 "run",
                 "-d",
+                "--rm",
                 "--pull=never",
                 "--name",
                 client,
@@ -220,13 +221,20 @@ def pg_snapshot(uri):
             raise ValueError("Snapshot transaction failed")
         return dump, manifest
     finally:
-        if pipe and pipe.poll() is None:
-            pipe.kill()
-            pipe.wait(timeout=15)
-        subprocess.run(
-            ["docker", "rm", "-f", client], capture_output=True, timeout=20, check=False
-        )
-        service.unlink(missing_ok=True)
+        try:
+            if pipe and pipe.poll() is None:
+                pipe.kill()
+                pipe.wait(timeout=15)
+        finally:
+            try:
+                subprocess.run(
+                    ["docker", "rm", "-f", "--volumes", client],
+                    capture_output=True,
+                    timeout=20,
+                    check=False,
+                )
+            finally:
+                service.unlink(missing_ok=True)
 
 
 def robot_snapshot(values, uri):
