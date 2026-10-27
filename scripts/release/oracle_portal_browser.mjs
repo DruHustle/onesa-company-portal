@@ -35,7 +35,11 @@ async function observeUI(request,directory,engines,status){
     await expect(section).toContainText(locale==='en'?'synthetic':'synthetischen');
     const link=section.getByRole('link',{name:locale==='en'?'Explore robotics':'Robotik entdecken'});
     const destination=new URL(await link.getAttribute('href'),request.origin);assert.ok([`/${locale}/products`,...(locale==='en'?['/products']:[])].includes(destination.pathname));assert.equal(destination.hash,'#product-robot');
-    await link.click();await expect(page.locator('#product-robot')).toBeVisible();await page.waitForLoadState('networkidle');
+    await Promise.all([
+     page.waitForURL(url=>url.pathname===destination.pathname&&url.hash===destination.hash,{waitUntil:'networkidle'}),
+     link.click(),
+    ]);
+    await expect(page.locator('#product-robot')).toBeVisible();
     await expect(page.locator('article').filter({has:page.locator('#product-robot')})).toContainText('P-101');
     const root=page.locator('html');await expect(root).toBeVisible();
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
