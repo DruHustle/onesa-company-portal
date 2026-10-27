@@ -11,6 +11,109 @@ from unittest.mock import patch
 import oracle_portal as r
 
 
+class HostedSurfaceTests(unittest.TestCase):
+    def observations(self, env, *, portal_ready=200, company_private=403):
+        calls = []
+        api = r.API_ORIGINS[env]
+        frontend = (
+            "https://portal.onesa.eu"
+            if env == "production"
+            else "https://onesa-company-portal-git-staging-synthetic.vercel.app"
+        )
+        company = "https://onesa.eu"
+
+        def read(origin, path, expected, bypass=None):
+            calls.append((origin, path, expected, bypass))
+            if env == "production" and origin == company:
+                status, body = company_private, None
+            elif path == "/api/v1/health":
+                status, body = 200, {"status": "ok"}
+            elif path == "/api/v1/ready":
+                status = portal_ready if origin == frontend else 200
+                body = {"status": "ready"}
+            elif path == "/api/v1/public/company":
+                status, body = 200, {"publication_stage": "prelaunch"}
+            else:
+                status, body = 401, None
+            r.require(status == expected, "SYNTHETIC_HOSTED_STATUS_MISMATCH")
+            return body
+
+        observation = {
+            "origin": company if env == "production" else frontend,
+            "bypass": None if env == "production" else "synthetic-preview-only",
+        }
+        with patch.object(r, "http_read", side_effect=read):
+            result = r.readiness_and_denials({}, env, observation)
+        return result, calls, api, frontend
+
+    def test_production_uses_portal_api_and_preserves_company_route_denials(self):
+        result, calls, api, frontend = self.observations("production")
+        self.assertIn((frontend, "/api/v1/ready", 200, None), calls)
+        self.assertIn((api, "/api/v1/ready", 200, None), calls)
+        self.assertEqual(result["private_anonymous_denials"], 6)
+        self.assertEqual(result["company_surface_denials"], 5)
+        self.assertEqual(result["production_mutations"], 0)
+        for path in [
+            "/api/v1/health",
+            "/api/v1/ready",
+            "/api/v1/auth/me",
+            "/api/v1/admin/content",
+            "/api/v1/admin/governance/records",
+        ]:
+            self.assertIn(("https://onesa.eu", path, 403, None), calls)
+
+    def test_unhealthy_portal_or_exposed_company_routes_still_fail(self):
+        for changed in [{"portal_ready": 503}, {"company_private": 200}]:
+            with self.subTest(changed=changed), self.assertRaises(r.Refused):
+                self.observations("production", **changed)
+
+    def test_staging_keeps_its_exact_preview_origin_and_scoped_bypass(self):
+        result, calls, api, frontend = self.observations("staging")
+        self.assertEqual(result["company_surface_denials"], 0)
+        self.assertEqual(result["private_anonymous_denials"], 6)
+        self.assertTrue(
+            all(bypass is None for origin, _, _, bypass in calls if origin == api)
+        )
+        self.assertTrue(
+            all(
+                bypass == "synthetic-preview-only"
+                for origin, _, _, bypass in calls
+                if origin == frontend
+            )
+        )
+
+    def test_partial_deployment_does_not_replace_verified_rollback_reference(self):
+        import oracle_portal_frontend as frontend
+
+        retained = {"deployment_id": "dpl-current", "source": "b" * 40}
+        rollback = {"deployment_id": "dpl-previous", "source": "a" * 40}
+        plan = {
+            "project_id": "project",
+            "retained_frontend": retained,
+            "rollback": {"frontend": rollback},
+        }
+        actual = {
+            "id": "dpl-previous",
+            "projectId": "project",
+            "readyState": "READY",
+            "meta": {"githubCommitSha": "a" * 40},
+        }
+        with patch.object(frontend, "provider", return_value=actual) as get:
+            self.assertEqual(r.verify_rollback_frontend(plan), rollback)
+            get.assert_called_once_with("/v13/deployments/dpl-previous")
+        for changed in [
+            dict(actual, readyState="ERROR"),
+            dict(actual, projectId="foreign"),
+            dict(actual, meta={"githubCommitSha": "c" * 40}),
+        ]:
+            with (
+                self.subTest(changed=changed),
+                patch.object(frontend, "provider", return_value=changed),
+                self.assertRaises(r.Refused),
+            ):
+                r.verify_rollback_frontend(plan)
+
+
 class ImageEvidenceTests(unittest.TestCase):
     def test_current_exact_image_keeps_same_high_critical_and_secret_gate(self):
         scan = {
@@ -264,6 +367,25 @@ class FrontendScopeTests(unittest.TestCase):
                     result["changed_frontend_paths"],
                     [prefix + "src/config/products.ts"],
                 )
+                # A real partial deployment may be current without replacing the
+                # independently hash-checked original comparison baseline.
+                original = plan["retained_frontend"]
+                plan["source_comparison_baseline"] = original
+                plan["retained_frontend"] = {
+                    "source": "b" * 40,
+                    "source_tree": new,
+                    "source_sha256": r.sha(folder / "source.tar"),
+                }
+                repeated = r.source_equivalence(folder, {"source_tree": new}, plan)
+                self.assertEqual(repeated, result)
+                plan["source_comparison_baseline"] = dict(
+                    original, source_sha256="0" * 64
+                )
+                with self.assertRaisesRegex(
+                    r.Refused, "BASELINE_SOURCE_ARCHIVE_CHANGED"
+                ):
+                    r.source_equivalence(folder, {"source_tree": new}, plan)
+                plan["source_comparison_baseline"] = original
                 put(
                     "src/components/responsive-link.tsx",
                     "return <Link prefetch={false} {...props}>{children}</Link>;",
