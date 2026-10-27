@@ -1,5 +1,23 @@
 # Separate application builds and tests
 
+Oracle CI selection keeps an existing push authoritative, including failed,
+pending, skipped or cancelled evidence. Only an absent push permits the existing
+owner-dispatched full workflow; both owner identities, a complete run listing,
+first attempt and every mandatory job/security step remain required. Signed
+references preserve the actual CI event. Synthetic mixed-event regressions must
+reject a newer successful manual run presented over a failing push.
+
+Production observations check readiness and anonymous private-route denials on the
+existing Portal hostname, and require the Company hostname to keep those routes
+blocked. Isolated staging still uses its combined protected Preview. The public
+UI and served-asset checks continue on the Company hostname. An interrupted release
+keeps its actual current deployment separate from the hash-checked source comparison
+baseline and explicitly retained rollback artifact; none of these substitutes for
+fresh qualification and authorization of a corrected candidate.
+
+The browser verification job uses supported Ubuntu24.04 explicitly, retaining all
+three engines, the bounded signed dependency installer and every existing deadline.
+
 The offline release suite includes `test_oracle_inventory.py`: completed temporary
 monitoring clients and list/inspect races do not become preservation baselines.
 Long-lived temporary workloads, unchanged-inventory command failures, incomplete
