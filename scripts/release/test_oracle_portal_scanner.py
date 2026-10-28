@@ -285,6 +285,7 @@ class SignedScannerContextTests(unittest.TestCase):
         trust = json.loads((self.owner.root / "trust.json").read_bytes())
         trust["policy_sha256"] = r.sha(self.owner.root / "policy.json")
         (self.owner.root / "trust.json").write_bytes(r.canonical(trust))
+        self.owner.commission_fixture()
         self.owner.store = self.owner.open()
         self.addCleanup(self.owner.store.db.close)
         self.plan = {"verifier_store": str(self.owner.root)}

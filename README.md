@@ -38,8 +38,9 @@ UI; bootstrap does not activate or print an unverified secret.
 
 Onesa UG is the company. Its products are Onesa AI Platform (Applications and
 Industrial AI), Onesa Robotics / Physical AI, and Onesa Drone. The drone product
-is at the architecture/design stage, with an initial simulation-only software
-direction. Its public concept pictures and silent film are illustrations, not
+has a simulation-only development implementation for delivery planning, fleet
+coordination and recorded telemetry; public hosted acceptance remains a separate
+release gate. Its public concept pictures and silent film are illustrations, not
 aircraft or flight footage. The isolated Industrial Investigation
 software demonstration uses synthetic data; ordinary AI production keeps Industrial
 disabled. Wider factory integrations and physical robotics remain development
