@@ -52,6 +52,11 @@ class Source:
 
 
 class InstallTests(unittest.TestCase):
+    allowed = installer.ALLOWED
+    component = "frontend"
+    script = "oracle_portal_frontend.py"
+    prefix = "portal-"
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(
             dir="/private/tmp" if Path("/private/tmp").exists() else None
@@ -72,7 +77,7 @@ class InstallTests(unittest.TestCase):
         source_root = self.root / "synthetic-source"
         source_root.mkdir(mode=0o700)
         repo = Path(__file__).resolve().parents[2]
-        for local, source in installer.ALLOWED.items():
+        for local, source in self.allowed.items():
             data = (repo / source).read_bytes()
             files[source] = data
             self.put(local, data)
@@ -109,7 +114,7 @@ class InstallTests(unittest.TestCase):
         self.put("tool-source.tar", archive)
         self.manifest["tool_source_sha256"] = hashlib.sha256(archive).hexdigest()
         self.github = Source(files)
-        target = installer.INSTALL_PARENT / ("portal-" + tree)
+        target = installer.INSTALL_PARENT / (self.prefix + tree)
         self.policy = {
             "schema_version": 1,
             "components": {},
@@ -134,7 +139,7 @@ class InstallTests(unittest.TestCase):
                 ),
             },
         }
-        for component, script in [("frontend", "oracle_portal_frontend.py")]:
+        for component, script in [(self.component, self.script)]:
             self.policy["components"]["DruHustle/onesa-company-portal:" + component] = {
                 "qualification_attempt_limit": 1,
                 "runners": {
@@ -148,6 +153,26 @@ class InstallTests(unittest.TestCase):
                 "required_checks": {
                     phase: sorted(verifier.REQUIRED_CHECKS[phase])
                     for phase in verifier.PHASES
+                },
+            }
+        if self.component == "scanner":
+            tool = self.policy["toolchain"]
+            self.policy["toolchain"] = {
+                **{
+                    key: tool[key]
+                    for key in ["source_commit", "source_tree", "source_sha256"]
+                },
+                "probe_files": {
+                    "scripts/oracle_backup_store.mjs": hashlib.sha256(
+                        files["scripts/oracle_backup_store.mjs"]
+                    ).hexdigest()
+                },
+                "transport_image": "sha256:" + "4" * 64,
+                "workflow_files": {
+                    upstream: hashlib.sha256(files[upstream]).hexdigest()
+                    for local, upstream in installer.SCANNER_ALLOWED.items()
+                    if local not in installer.ALLOWED
+                    and local != "runners/oracle_portal_scanner.py"
                 },
             }
         self.seal()
@@ -195,7 +220,7 @@ class InstallTests(unittest.TestCase):
             setattr(self.github, field, original)
 
     def test_incomplete_policy_refused(self):
-        self.policy["components"]["DruHustle/onesa-company-portal:frontend"][
+        self.policy["components"]["DruHustle/onesa-company-portal:" + self.component][
             "required_checks"
         ]["staging"].remove("persistence")
         self.seal()
@@ -206,7 +231,9 @@ class InstallTests(unittest.TestCase):
         import copy
 
         self.policy["components"]["DruHustle/onesa-company-portal:api"] = copy.deepcopy(
-            self.policy["components"]["DruHustle/onesa-company-portal:frontend"]
+            self.policy["components"][
+                "DruHustle/onesa-company-portal:" + self.component
+            ]
         )
         self.seal()
         with self.assertRaises(verifier.Rejected):
@@ -226,13 +253,13 @@ class InstallTests(unittest.TestCase):
     def test_dry_run_performs_no_install_or_authority_write(self):
         with patch.object(installer, "INSTALL_PARENT", self.root / "not-created"):
             # Regenerate paths in the checked policy for this disposable location.
-            for component, script in [("frontend", "oracle_portal_frontend.py")]:
+            for component, script in [(self.component, self.script)]:
                 for r in self.policy["components"][
                     "DruHustle/onesa-company-portal:" + component
                 ]["runners"].values():
                     r["path"] = str(
                         installer.INSTALL_PARENT
-                        / ("portal-" + self.manifest["source_tree"])
+                        / (self.prefix + self.manifest["source_tree"])
                         / "runners"
                         / script
                     )
@@ -242,6 +269,22 @@ class InstallTests(unittest.TestCase):
             )
             self.assertEqual(result["state"], "INSTALLATION_READY")
             self.assertFalse(installer.INSTALL_PARENT.exists())
+
+
+class ScannerInstallTests(InstallTests):
+    allowed = installer.SCANNER_ALLOWED
+    component = "scanner"
+    script = "oracle_portal_scanner.py"
+    prefix = "portal-scanner-"
+
+    def test_scanner_profile_cannot_install_or_authorize_frontend(self):
+        profile = self.policy["components"].pop(
+            "DruHustle/onesa-company-portal:scanner"
+        )
+        self.policy["components"]["DruHustle/onesa-company-portal:frontend"] = profile
+        self.seal()
+        with self.assertRaises(verifier.Rejected):
+            self.validate()
 
 
 class IsolatedInstallerEntryTests(unittest.TestCase):

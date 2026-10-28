@@ -1,5 +1,36 @@
 # Separate application builds and tests
 
+The scanner release regressions run in the existing Python release suite. They
+exercise real Ed25519 signatures in a disposable issuer fixture, source/artifact
+and environment mismatches, revoked/expired or consumed contexts, unsafe rendered
+settings, concurrent attempts and interrupted provider requests. The sanitized
+`scanner-compose.fixture.json` describes public configuration for parsing tests;
+it is neither a provider receipt nor owner authorization. Real default-entrypoint,
+socket access, benign/EICAR, signature persistence and restart observations still
+require the separately commissioned isolated owner-run path.
+
+The database fixture now uses an owner with `CREATEDB` and `CREATEROLE`, without
+superuser access. PostgreSQL does not grant a role creator `SET`/`INHERIT` access
+by default. The provisioner checks the exact source/context marker before granting
+access to its temporary non-login owner role. Read-only inspection grants nothing;
+cleanup still refuses active connections and preserves the existing catalog.
+See [PostgreSQL's role-creator settings](https://www.postgresql.org/docs/17/runtime-config-client.html#GUC-CREATEROLE-SELF-GRANT).
+
+The owned worker-fixture tests use a fresh internal Docker network, synthetic TLS
+certificate and disposable PostgreSQL 17 database. The approved staging hostname
+resolves only to that test container; no hosted credential, published port, provider
+account or application environment is used. The actual backend image applies its
+canonical migrations to the empty fixture and proves concurrent provisioning,
+runtime least privilege, expiry/source/context refusal and cleanup without forced
+connection termination or changes to the existing catalog. CI requires this proof
+after building the backend image. A local run uses
+`python3 scripts/release/worker_fixture_smoke.py <immutable-backend-image-ID>` with
+the pinned PostgreSQL image already downloaded. The nine guard/TLS SMTP tests run
+with `node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs`.
+SMTP accepts one named synthetic recipient over TLS and reports acceptance only.
+These checks create no release authority or hosted qualification. The owner worker
+adapter still requires separate review, commissioning and exact-source evidence.
+
 Oracle CI selection keeps an existing push authoritative, including failed,
 pending, skipped or cancelled evidence. Only an absent push permits the existing
 owner-dispatched full workflow; both owner identities, a complete run listing,
@@ -600,3 +631,8 @@ Callback preservation uses the application's existing HTTPS Cloudflare Access te
 host and exact callback-path contract, with no userinfo, custom port, query or
 fragment. The runner validates that structure before credential use, then checks
 the exact named existing provider value; it never changes Access, accounts or MFA.
+
+Worker process regressions use `node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs scripts/release/oracle_portal_worker_probe.test.mjs`.
+The backend image-security job additionally runs `sudo -n python3 scripts/release/worker_fixture_smoke.py "$image" --worker-workflows --synthetic-scanner` on the disposable GitHub-hosted runner. It uses an internal Docker network, temporary PostgreSQL/TLS, loopback S3/SMTP protocol fixtures, and a synthetic scanner protocol fixture. The original seven-case database fixture test remains separate.
+
+The process suite starts the actual worker and verifies password/MFA login and replay denial, private-file quarantine and role denials, clean/rejected scan handling, TLS mail acceptance, once-only queue execution, actual object deletion, stale-lock recovery, retry exhaustion, staging idle backoff, graceful shutdown, and session persistence across worker restarts. SMTP acceptance does not establish inbox delivery; the protocol fixtures do not establish external storage or scanner acceptance. The synthetic source/CI inputs are parser-test data, never issued release records. Hosted staging still requires the commissioned external verifier, a reserved source-bound context, exact artifacts and real operational evidence. The new probe is not a production worker executor or an issuer.
