@@ -108,7 +108,10 @@ def main():
             )[0]
             assert inspected["Internal"] is True and inspected["Driver"] == "bridge"
             assert inspected["Labels"]["org.onesa.worker-fixture-test"] == operation
-            command = "cp /fixture/server.key /tmp/server.key && chown postgres:postgres /tmp/server.key && chmod 600 /tmp/server.key && exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/fixture/server.crt -c ssl_key_file=/tmp/server.key"
+            # Linux bind mounts retain the host's private directory ownership.
+            # Copy both files before dropping to postgres; do not expose/chmod
+            # the host directory merely to let the daemon traverse it.
+            command = "cp /fixture/server.key /tmp/server.key && cp /fixture/server.crt /tmp/server.crt && chown postgres:postgres /tmp/server.key /tmp/server.crt && chmod 600 /tmp/server.key && chmod 644 /tmp/server.crt && exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/tmp/server.crt -c ssl_key_file=/tmp/server.key"
             execute(
                 [
                     docker,
@@ -159,6 +162,29 @@ def main():
                 )
                 if ready.returncode == 0:
                     break
+                state = json.loads(execute([docker, "inspect", name]).stdout)[0][
+                    "State"
+                ]
+                if not state["Running"]:
+                    logs = subprocess.run(
+                        [docker, "logs", name], capture_output=True, check=False
+                    )
+                    text = (logs.stdout + logs.stderr).decode(errors="replace")
+                    print(
+                        json.dumps(
+                            {
+                                "state": "LOCAL_FIXTURE_POSTGRES_STARTUP_FAILED",
+                                "exit_code": state["ExitCode"],
+                                "certificate_access_error": "could not load server certificate"
+                                in text
+                                or "Permission denied" in text,
+                                "private_log_contents_printed": False,
+                            }
+                        )
+                    )
+                    raise RuntimeError(
+                        "Disposable PostgreSQL exited; inspect fixed diagnostics"
+                    )
                 assert time.monotonic() < deadline, (
                     "Disposable PostgreSQL did not start"
                 )
