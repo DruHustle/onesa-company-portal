@@ -11,6 +11,8 @@
 - Clarifies the architecture/design stage, retains the existing drone enquiry
   workflow and canonical/legacy URLs, and records prompts and asset hashes in
   `public/brand/sources.json`. This source update is not a production release.
+- Wraps long product copy inside the drone card at narrow widths and 200% text
+  size, preserving the existing no-horizontal-overflow accessibility check.
 
 ## Unreleased — Onesa Drone canonical naming
 

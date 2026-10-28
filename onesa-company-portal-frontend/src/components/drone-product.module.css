@@ -13,7 +13,7 @@
 .heroVisual img { aspect-ratio: 16 / 11; object-fit: cover; object-position: 65% center; }
 .portfolioImage img { aspect-ratio: 4 / 3; object-fit: cover; object-position: 65% center; }
 .heroVisual figcaption, .cargoVisual figcaption, .portfolioImage figcaption, .film figcaption { font-size: .78rem; line-height: 1.6; margin-block-start: 14px; color: var(--muted); }
-.portfolioCard { padding: clamp(24px, 4vw, 48px); border: 1px solid var(--line); border-radius: 24px; gap: 4vw; }
+.portfolioCard { min-width: 0; overflow-wrap: anywhere; padding: clamp(24px, 4vw, 48px); border: 1px solid var(--line); border-radius: 24px; gap: 4vw; }
 .highlights { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; padding-block: 36px; border-block: 1px solid var(--line); }
 .highlights span { font: .7rem var(--onesa-font-code); color: var(--muted); letter-spacing: .08em; }
 .highlights p { margin-block: 10px 0; font-size: clamp(1.05rem, 1.6vw, 1.4rem); letter-spacing: -.025em; }
