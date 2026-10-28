@@ -38,7 +38,7 @@ SHIPPED = {
     "health.sh": "/usr/local/bin/onesa-scanner-health",
 }
 STAGING_PROFILE = {
-    "memory_bytes": 1024**3,
+    "memory_bytes": 2560 * 1024**2,
     "nano_cpus": 250000000,
     "pids_limit": 64,
     "published_ports": False,
@@ -436,6 +436,37 @@ def wait_healthy(name, expected):
         time.sleep(1)
 
 
+def staging_resources(row):
+    """Read back enforced limits and isolation, including after a restart."""
+    host = row["HostConfig"]
+    r.require(
+        type(host["Memory"]) is int
+        and host["Memory"] == STAGING_PROFILE["memory_bytes"]
+        and type(host["NanoCpus"]) is int
+        and host["NanoCpus"] == STAGING_PROFILE["nano_cpus"]
+        and type(host["PidsLimit"]) is int
+        and host["PidsLimit"] == STAGING_PROFILE["pids_limit"],
+        "SCANNER_STAGING_RESOURCE_LIMITS_DIFFER",
+    )
+    r.require(
+        host["ReadonlyRootfs"] is True
+        and host["Privileged"] is False
+        and not host["PortBindings"]
+        and not host["CapAdd"]
+        and host["CapDrop"] == ["ALL"]
+        and host["SecurityOpt"] == ["no-new-privileges:true"]
+        and not host.get("DeviceRequests")
+        and not host.get("Devices")
+        and len(row["Mounts"]) == 2,
+        "SCANNER_STAGING_ISOLATION",
+    )
+    return {
+        "memory_bytes": host["Memory"],
+        "nano_cpus": host["NanoCpus"],
+        "pids_limit": host["PidsLimit"],
+    }
+
+
 def socket_directory(row):
     mounts = [v for v in row["Mounts"] if v["Destination"] == "/run/onesa-scanner"]
     r.require(
@@ -601,7 +632,7 @@ def stage_one(image_id, baseline, folder, operation, suffix, workflow=None):
             network,
             "--read-only",
             "--memory",
-            "1g",
+            str(STAGING_PROFILE["memory_bytes"]),
             "--cpus",
             "0.25",
             "--pids-limit",
@@ -619,18 +650,14 @@ def stage_one(image_id, baseline, folder, operation, suffix, workflow=None):
             image_id,
         )
         actual = wait_healthy(name, image_id)
-        r.require(
-            not actual["HostConfig"]["PortBindings"]
-            and actual["HostConfig"]["ReadonlyRootfs"]
-            and len(actual["Mounts"]) == 2,
-            "SCANNER_STAGING_ISOLATION",
-        )
         observations = {
+            "before_restart_resources": staging_resources(actual),
             "before_restart": protocol(directory),
             "access": access_probe(image_id, directory),
         }
         r.docker("restart", "--time", "10", name, timeout=30)
-        wait_healthy(name, image_id)
+        actual = wait_healthy(name, image_id)
+        observations["after_restart_resources"] = staging_resources(actual)
         observations["after_restart"] = protocol(directory)
         if workflow is not None:
             observations["authenticated_workflows"] = workflow(network, socket_volume)

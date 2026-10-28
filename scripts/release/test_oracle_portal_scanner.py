@@ -682,6 +682,75 @@ class ImageSourceTests(unittest.TestCase):
             scanner.image(self.binding, self.folder)
 
 
+class StagingResourceTests(unittest.TestCase):
+    def sample(self):
+        return {
+            "HostConfig": {
+                "Memory": 2560 * 1024**2,
+                "NanoCpus": 250000000,
+                "PidsLimit": 64,
+                "ReadonlyRootfs": True,
+                "Privileged": False,
+                "PortBindings": {},
+                "CapAdd": None,
+                "CapDrop": ["ALL"],
+                "SecurityOpt": ["no-new-privileges:true"],
+                "DeviceRequests": None,
+                "Devices": [],
+            },
+            "Mounts": [
+                {"Destination": "/var/lib/clamav"},
+                {"Destination": "/run/onesa-scanner"},
+            ],
+        }
+
+    def test_actual_staging_limits_are_recorded_without_exporting_configuration(self):
+        sample = self.sample()
+        sample["Config"] = {"Env": ["SYNTHETIC_PRIVATE_CONFIGURATION=not-exported"]}
+        result = scanner.staging_resources(sample)
+        self.assertEqual(
+            result,
+            {"memory_bytes": 2684354560, "nano_cpus": 250000000, "pids_limit": 64},
+        )
+        self.assertNotIn("not-exported", json.dumps(result))
+
+    def test_old_undersized_or_unbounded_and_mismatched_limits_fail(self):
+        for key, value in [
+            ("Memory", 1024**3),
+            ("Memory", 0),
+            ("Memory", 4 * 1024**3),
+            ("Memory", str(2684354560)),
+            ("NanoCpus", 0),
+            ("NanoCpus", 1000000000),
+            ("PidsLimit", -1),
+            ("PidsLimit", True),
+        ]:
+            with self.subTest(key=key, value=value):
+                sample = self.sample()
+                sample["HostConfig"][key] = value
+                with self.assertRaisesRegex(
+                    r.Refused, "SCANNER_STAGING_RESOURCE_LIMITS_DIFFER"
+                ):
+                    scanner.staging_resources(sample)
+
+    def test_resource_match_cannot_hide_weakened_isolation(self):
+        for key, value in [
+            ("ReadonlyRootfs", False),
+            ("Privileged", True),
+            ("PortBindings", {"3310/tcp": [{"HostPort": "3310"}]}),
+            ("CapAdd", ["SYS_ADMIN"]),
+            ("CapDrop", []),
+            ("SecurityOpt", []),
+            ("DeviceRequests", [{"Count": -1}]),
+            ("Devices", [{"PathOnHost": "/dev/synthetic"}]),
+        ]:
+            with self.subTest(key=key):
+                sample = self.sample()
+                sample["HostConfig"][key] = value
+                with self.assertRaisesRegex(r.Refused, "SCANNER_STAGING_ISOLATION"):
+                    scanner.staging_resources(sample)
+
+
 class CapacityTests(unittest.TestCase):
     def test_failed_stale_simulated_or_insufficient_samples_never_qualify(self):
         valid = {
