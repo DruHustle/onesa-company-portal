@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-10-28 — Operations notification grouping prepared
+
+- Keep the initial outage alert immediate. Group newly affected services/rules using
+  the existing notification cooldown (thirty minutes by default), retain already
+  emailed failures within the incident, and send unchanged reminders every six hours.
+  Partial improvement no longer triggers another update email.
+- Confirm recovery only after five elapsed minutes and six consecutive healthy
+  samples. Gaps longer than two minutes restart confirmation. Brief or rapid healthy
+  samples do not close/reopen the incident. Keep raw failure observations, private
+  atomic records, pending provider identities and the existing reconciliation hold.
+- Offline notification, persistence and Oracle-operation regressions cover changing
+  rules, short-lived recovery, clock anomalies and interruption. No provider mail,
+  service restart, application deployment or production state change is part of
+  those tests. Qualified installation and normal scheduled readback remain required
+  before this policy is recorded as live; underlying intermittent failures still
+  require separate runtime diagnosis.
+
 ## 2026-10-27 — Temporary backup-client cleanup prepared
 
 - Both PostgreSQL backup helpers now automatically remove their temporary

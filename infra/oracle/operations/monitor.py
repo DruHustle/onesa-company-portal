@@ -14,7 +14,10 @@ from pathlib import Path
 
 STATE = Path("/var/lib/onesa/operations")
 REMINDER_SECONDS = 6 * 60 * 60
-OTHER_REMINDER_SECONDS = 30 * 60
+UPDATE_SECONDS = 30 * 60
+RECOVERY_SECONDS = 5 * 60
+RECOVERY_SAMPLES = 6
+MAX_SAMPLE_GAP_SECONDS = 120
 # Provider keys last 24 hours; leave an hour before manual reconciliation is needed.
 PENDING_RETRY_SECONDS = 23 * 60 * 60
 RULES = (
@@ -366,28 +369,57 @@ def write_record(path, value):
     temporary.replace(path)
 
 
-def notification_decision(alerts, metrics, previous, last, now):
-    """Notify transitions immediately; bound unchanged reminders, confirm clearance."""
-    healthy_samples = (
-        0
-        if alerts
-        else min(
-            2,
-            previous.get(
-                "healthy_samples", 2 if previous and not previous.get("alerts") else 0
-            )
-            + 1,
-        )
+def incident_open(previous):
+    # A clean legacy baseline must not create a retrospective recovery email.
+    return previous.get(
+        "incident_open",
+        bool(previous.get("alerts")) or previous.get("healthy_samples") == 1,
     )
+
+
+def observation_age(checked_at, now):
+    """Missing, invalid or future times cannot bypass a notification hold."""
+    try:
+        stamp = datetime.datetime.fromisoformat(checked_at)
+        if stamp.utcoffset() is None:
+            return None
+        age = now - stamp.timestamp()
+        return age if age >= 0 else None
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def continuous_health(previous, now):
+    gap = observation_age(previous.get("checked_at"), now)
+    return (
+        not previous.get("alerts")
+        and gap is not None
+        and gap <= MAX_SAMPLE_GAP_SECONDS
+    )
+
+
+def notification_decision(
+    alerts, metrics, previous, last, now, *, cooldown_seconds=UPDATE_SECONDS
+):
+    """Group incident changes and require sustained health before closing one."""
+    if (
+        type(cooldown_seconds) is not int
+        or not 60 <= cooldown_seconds <= REMINDER_SECONDS
+    ):
+        raise ValueError("Invalid notification cooldown")
+    healthy_samples = 0
     if not alerts:
-        # Do not retroactively email historical recoveries on first installation.
+        healthy_samples = (
+            min(RECOVERY_SAMPLES, previous.get("healthy_samples", 0) + 1)
+            if continuous_health(previous, now)
+            else 1
+        )
+    if not alerts:
         recovered = (
-            healthy_samples == 2
-            and (
-                previous.get("healthy_samples") == 1
-                or previous.get("notification", {}).get("kind")
-                in {"alert", "update", "reminder"}
-            )
+            incident_open(previous)
+            and healthy_samples == RECOVERY_SAMPLES
+            and (observation_age(previous.get("healthy_since"), now) or 0)
+            >= RECOVERY_SECONDS
             and last.get("rules")
             and last.get("kind", "alert") != "recovery"
         )
@@ -395,29 +427,19 @@ def notification_decision(alerts, metrics, previous, last, now):
     if (
         not last
         or last.get("kind") == "recovery"
-        or previous.get(
-            "healthy_samples", 2 if previous and not previous.get("alerts") else 0
-        )
-        >= 2
+        or previous.get("incident_open") is False
     ):
         return "alert", 0
-    signature = (sorted(alerts), sorted(failed_backends(metrics)))
-    old_signature = (
-        sorted(last.get("rules", [])),
-        sorted(last.get("affected_backends", {})),
+    added_failures = bool(
+        set(alerts) - set(last.get("incident_rules", last.get("rules", [])))
+        or set(failed_backends(metrics))
+        - set(last.get("incident_backends", last.get("affected_backends", {})))
     )
-    if signature != old_signature:
+    age = observation_age(last.get("checked_at"), now) or 0
+    if added_failures and age >= cooldown_seconds:
         return "update", 0
-    interval = (
-        REMINDER_SECONDS
-        if set(alerts) == {"backend-api-unavailable"}
-        else OTHER_REMINDER_SECONDS
-    )
-    try:
-        age = now - datetime.datetime.fromisoformat(last["checked_at"]).timestamp()
-    except (KeyError, TypeError, ValueError, OverflowError):
-        age = interval
-    return ("reminder" if age < 0 or age >= interval else None), 0
+    # Partial improvement is retained in metrics, without another email.
+    return ("reminder" if age >= REMINDER_SECONDS else None), 0
 
 
 def notify(
@@ -465,7 +487,7 @@ def notify(
             else ""
         )
         + (
-            "Recovered: two consecutive healthy samples.\n"
+            "Recovered: at least five minutes of health across six consecutive samples.\n"
             if kind == "recovery"
             else "State: " + kind + "\n"
         )
@@ -554,8 +576,11 @@ def main():
     if args.simulate and set(alerts) != set(RULES):
         raise ValueError("Fault simulation incomplete")
     last = STATE / "notification.json"
+    now = time.time()
     record = {
-        "checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "checked_at": datetime.datetime.fromtimestamp(
+            now, datetime.timezone.utc
+        ).isoformat(),
         "metrics": metrics,
         "alerts": alerts,
         "simulation": args.simulate,
@@ -564,8 +589,22 @@ def main():
     path = STATE / ("simulation.json" if args.simulate else "metrics.json")
     previous = json.loads(path.read_text()) if path.exists() else {}
     last_notification = json.loads(last.read_text()) if last.exists() else {}
+    record["incident_open"] = bool(alerts) or incident_open(previous)
+    if not alerts:
+        since = (
+            previous.get("healthy_since") if continuous_health(previous, now) else None
+        )
+        # Rebase an invalid/future clock value; missing observations never count as health.
+        record["healthy_since"] = (
+            since if observation_age(since, now) is not None else record["checked_at"]
+        )
     kind, record["healthy_samples"] = notification_decision(
-        alerts, metrics, previous, last_notification, time.time()
+        alerts,
+        metrics,
+        previous,
+        last_notification,
+        now,
+        cooldown_seconds=config.get("notification_cooldown_seconds", UPDATE_SECONDS),
     )
     pending = None if args.simulate else previous.get("notification_pending")
     reconciliation_required = False
@@ -574,7 +613,7 @@ def main():
         if str(uuid.UUID(pending["reference"])) != pending["reference"]:
             raise ValueError("Invalid pending notification identity")
         pending_age = (
-            time.time()
+            now
             - datetime.datetime.fromisoformat(pending["checked_at"]).timestamp()
         )
         reconciliation_required = not 0 <= pending_age < PENDING_RETRY_SECONDS
@@ -585,7 +624,11 @@ def main():
             "alerts": alerts,
             "metrics": metrics,
             "checked_at": record["checked_at"],
-            "recovered_backends": list(last_notification.get("affected_backends", {}))
+            "recovered_backends": list(
+                last_notification.get(
+                    "incident_backends", last_notification.get("affected_backends", {})
+                )
+            )
             if kind == "recovery"
             else [],
         }
@@ -626,9 +669,22 @@ def main():
             recovered_backends=pending["recovered_backends"],
         )
         record.pop("notification_pending", None)
+        if pending["kind"] == "recovery":
+            record["incident_open"] = bool(alerts)
         # Retain the observation time/type even with a minimal provider receipt.
         record["notification"].setdefault("checked_at", pending["checked_at"])
         record["notification"].setdefault("kind", pending["kind"])
+        # Remember previously emailed failures within this incident. A rule that
+        # clears then returns is not a new update on every cooldown boundary.
+        prior = last_notification if pending["kind"] in {"update", "reminder"} else {}
+        record["notification"]["incident_rules"] = sorted(
+            set(prior.get("incident_rules", prior.get("rules", [])))
+            | set(pending["alerts"])
+        )
+        record["notification"]["incident_backends"] = sorted(
+            set(prior.get("incident_backends", prior.get("affected_backends", {})))
+            | set(failed_backends(pending["metrics"]))
+        )
         if not args.simulate:
             write_record(last, record["notification"])
             write_record(
