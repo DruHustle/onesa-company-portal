@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased — Onesa Drone product imagery and concept film
+
+- Adds two original AI-generated drone concept images to the EN/DE product page,
+  homepage preview and product portfolio, plus a footer link, with responsive WebP variants and
+  captions that distinguish artwork from actual aircraft.
+- Adds a silent 12-second film assembled from the concept images. Playback and
+  video transfer require an explicit play request; native controls, a static
+  poster and a playback-failure message preserve access to the product story.
+- Clarifies the architecture/design stage, retains the existing drone enquiry
+  workflow and canonical/legacy URLs, and records prompts and asset hashes in
+  `public/brand/sources.json`. This source update is not a production release.
+- Wraps long product copy inside the drone card at narrow widths and 200% text
+  size, preserving the existing no-horizontal-overflow accessibility check.
+
 ## Unreleased — Onesa Drone canonical naming
 
 - Aligns the product label with the reviewed `onesa-drone` repository name.

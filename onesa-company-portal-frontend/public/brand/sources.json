@@ -548,7 +548,7 @@
         "tool": "OpenAI built-in imagegen",
         "date": "2026-10-20",
         "source": "Original generated illustration; not an Onesa deployment or customer facility",
-        "prompt": "Create a premium photorealistic editorial illustration for the Industrial AI section of a technology company website. Landscape 3:2 composition. A precisely engineered industrial robotic arm in the foreground working beside an unfinished silver car body on a modern automotive assembly line, additional assembly robots receding into the background. Clean organized factory, believable joints and tooling, refined cool steel and blue lighting with restrained warm safety accents, realistic materials, cinematic architectural photography, crisp focal subject, visual depth. No people, logos, branding, text, labels, charts, UI overlays or watermarks. This is illustrative automotive manufacturing imagery, not a named company\u2019s real factory.",
+        "prompt": "Create a premium photorealistic editorial illustration for the Industrial AI section of a technology company website. Landscape 3:2 composition. A precisely engineered industrial robotic arm in the foreground working beside an unfinished silver car body on a modern automotive assembly line, additional assembly robots receding into the background. Clean organized factory, believable joints and tooling, refined cool steel and blue lighting with restrained warm safety accents, realistic materials, cinematic architectural photography, crisp focal subject, visual depth. No people, logos, branding, text, labels, charts, UI overlays or watermarks. This is illustrative automotive manufacturing imagery, not a named company’s real factory.",
         "sha256": "efd1a028036be2c81720033a2f61010281f5cd6231b5e25065fed1ef251b7d4a"
       },
       "processing": {
@@ -574,6 +574,79 @@
         }
       ],
       "use": "Home Industrial AI preview and Products Industrial AI section; responsive, lazy-loaded illustration with descriptive English/German alt text."
+    },
+    {
+      "role": "Onesa Drone flight concept illustration",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-28",
+        "source": "Original AI-generated concept artwork; not an existing Onesa aircraft, facility, operation or validated specification",
+        "prompt": "Use case: product-mockup. Create one original wide 16:9 cinematic concept visualization for Onesa Drone, an early-stage aerial logistics product. A credible compact electric delivery hexacopter with six black rotors, matte ivory central fuselage, charcoal arms, subtle cyan status lights, and a securely integrated small rectangular cargo pod, in flight above a verdant semi-rural landscape with a small contemporary logistics building in the distance, warm dawn sunlight and soft haze. Premium precise industrial design, realistic materials, tasteful technology campaign photography style, welcoming and vibrant natural color, sophisticated and restrained. Drone clearly visible occupying the right middle two thirds, plenty of dark green/blue negative space on the left for website headline overlay. Horizontal panoramic composition, camera at aircraft height, crisp drone, depth in terrain. Concept aircraft only, avoid recognizable manufacturers and actual brands. No text, no logos, no numerical specs, no watermark, no people, no military elements. High resolution, intended as website hero and video poster.",
+        "width": 1672,
+        "height": 941,
+        "bytes": 2091456,
+        "sha256": "b3c94e1ee6d008e165474b1748bf6fe7f952660259ad03b464277dcdb272785a"
+      },
+      "processing": {
+        "tool": "sharp",
+        "operation": "Resize, crop to 16:9 for flight or 3:2 for cargo, encode responsive WebP",
+        "quality": 80,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/drone-flight-640.webp",
+          "width": 640,
+          "height": 360,
+          "bytes": 36418,
+          "sha256": "421a20754aa84e538f98c08c35324e11f4a08286b33d456a52270f1bda3eafd7"
+        },
+        {
+          "path": "/images/drone-flight-1280.webp",
+          "width": 1280,
+          "height": 720,
+          "bytes": 88206,
+          "sha256": "521126466c5db49d1cf3f0ca4cf4e13ebf27982552d3b4b513746db152c0752c"
+        }
+      ],
+      "use": "EN/DE Drone product page, Company homepage and product portfolio; descriptive alt text and explicit concept captions."
+    },
+    {
+      "role": "Onesa Drone cargo concept illustration",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-28",
+        "source": "Original AI-generated concept artwork; not an existing Onesa aircraft, facility, operation or validated specification",
+        "prompt": "Use case: product-mockup. The supplied image is a reference for a fictional Onesa delivery drone concept. Create a second original companion website photograph-style concept visualization of the SAME matte ivory and charcoal six-rotor hexacopter, matching its central shape, subtle cyan lights, six black arms and small secure cargo pod. This time show the aircraft resting on a simple ground-level landing pad beside a clean modern warehouse at morning blue hour, front three-quarter angle from near the ground, integrated cargo pod clearly visible beneath the body. One or two small closed unbranded parcels sit on a workstation in the background. Open, calm space, a few warm interior warehouse lights, authentic materials, cool navy surroundings, tasteful cyan highlights. Rich cinematic photographic lighting, premium precise industrial design, practical believable scale. Wide 3:2 composition with the entire drone and landing legs visible, balanced center composition suitable for mobile crop. This is a design concept, not a real prototype or customer facility. No typography, no labels, no visible logos, no people, no military elements, no watermark.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2185209,
+        "sha256": "a90a9d5ad5cd9261c5f3aff54a395c360b928c43ba23e9a67192c127f4ba2ea4",
+        "reference_sha256": "b3c94e1ee6d008e165474b1748bf6fe7f952660259ad03b464277dcdb272785a"
+      },
+      "processing": {
+        "tool": "sharp",
+        "operation": "Resize, crop to 16:9 for flight or 3:2 for cargo, encode responsive WebP",
+        "quality": 80,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/drone-cargo-640.webp",
+          "width": 640,
+          "height": 427,
+          "bytes": 37544,
+          "sha256": "00f62b1be063d1c2af12ec836cb0d7cc819740fb2cf067887c9730b85497c70d"
+        },
+        {
+          "path": "/images/drone-cargo-1280.webp",
+          "width": 1280,
+          "height": 853,
+          "bytes": 103356,
+          "sha256": "a6898dc95fc2240e1d41854940788378a7c74b54e21651fda472431b7c07e485"
+        }
+      ],
+      "use": "EN/DE Drone product page, Company homepage and product portfolio; descriptive alt text and explicit concept captions."
     }
   ],
   "product_interface_examples": {
@@ -610,5 +683,30 @@
         "scheme": "dark"
       }
     ]
-  }
+  },
+  "product_motion": [
+    {
+      "role": "Onesa Drone concept film",
+      "date": "2026-10-28",
+      "path": "/media/onesa-drone-concept.mp4",
+      "bytes": 1485459,
+      "sha256": "6b3b5349d82c56170d9c01e59d5761fbd9958eb7451ec51b25783b98ff73ab78",
+      "width": 1280,
+      "height": 720,
+      "duration_seconds": 12,
+      "fps": 24,
+      "codec": "H.264 / yuv420p, MP4 with faststart",
+      "audio": false,
+      "source_sha256": [
+        "b3c94e1ee6d008e165474b1748bf6fe7f952660259ad03b464277dcdb272785a",
+        "a90a9d5ad5cd9261c5f3aff54a395c360b928c43ba23e9a67192c127f4ba2ea4"
+      ],
+      "processing": {
+        "tool": "FFmpeg 6.1.1",
+        "operation": "Two 6.5-second still-image scenes with centered 3.5 percent zoom, 1-second crossfade; libx264 medium CRF24; no synthesized aircraft movement",
+        "qualification": "Animated concept illustrations; not flight, prototype, simulation or product interface footage"
+      },
+      "use": "Play on explicit request only, native controls, no autoplay or loop, no video source or download before interaction; static poster and all content remain available without playback or JavaScript."
+    }
+  ]
 }
