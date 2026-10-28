@@ -18,7 +18,7 @@ NODE_FILES = (
 )
 TOOL_FILES = (*NODE_FILES, "oracle_portal_scanner_workflow.py")
 STAGE = "onesa-portal-oracle-api-staging-1"
-PRODUCTION_WORKER = "onesa-portal-production-worker-1"
+PRODUCTION_WORKER = "onesa-portal-oracle-production-worker-1"
 S3_KEYS = {
     "S3_ENDPOINT",
     "S3_REGION",
@@ -348,7 +348,13 @@ def private_input(binding, plan, folder, context_id, records):
         and all(type(row.get("run_id")) is int and row["run_id"] > 0 for row in runs),
         "SCANNER_WORKFLOW_GENUINE_CI_REQUIRED",
     )
-    rollback = plan["baseline"][PRODUCTION_WORKER]
+    rollback = plan["baseline"].get(PRODUCTION_WORKER)
+    r.require(
+        isinstance(rollback, dict)
+        and re.fullmatch(r"[a-f0-9]{40}", rollback.get("source", ""))
+        and re.fullmatch(r"sha256:[a-f0-9]{64}", rollback.get("image", "")),
+        "SCANNER_WORKFLOW_RETAINED_WORKER_IDENTITY_REQUIRED",
+    )
     fixture = {
         "action": "provision",
         "owner_uri": owner["owner_uri"],
