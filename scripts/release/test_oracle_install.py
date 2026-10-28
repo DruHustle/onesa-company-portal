@@ -168,6 +168,12 @@ class InstallTests(unittest.TestCase):
                     ).hexdigest()
                 },
                 "transport_image": "sha256:" + "4" * 64,
+                "workflow_files": {
+                    upstream: hashlib.sha256(files[upstream]).hexdigest()
+                    for local, upstream in installer.SCANNER_ALLOWED.items()
+                    if local not in installer.ALLOWED
+                    and local != "runners/oracle_portal_scanner.py"
+                },
             }
         self.seal()
 

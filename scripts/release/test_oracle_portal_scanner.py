@@ -84,6 +84,23 @@ def inputs():
         "rollback": {"automatic": False, "artifact_digest": "sha256:" + "f" * 64},
         "legacy_backup": {},
     }
+    application = copy.deepcopy(binding)
+    application.update(
+        component="worker",
+        build_sha256="2" * 64,
+        artifact_digest="sha256:" + "1" * 64,
+        configuration_sha256={"staging": "3" * 64, "production": "4" * 64},
+    )
+    plan["workflow"] = {
+        "application_binding": application,
+        "fixture_id": "01234567-89ab-4cde-8123-456789abcdef",
+        "expires_at": "2026-10-28T23:00:00.000Z",
+        "runtime_sha256": "3" * 64,
+        "certificate_sha256": "5" * 64,
+        "private_key_sha256": "6" * 64,
+        "owner_custody_sha256": "7" * 64,
+        "application_scan_sha256": "8" * 64,
+    }
     seal(binding, plan)
     return binding, plan
 

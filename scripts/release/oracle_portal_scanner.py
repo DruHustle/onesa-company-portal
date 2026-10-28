@@ -24,6 +24,7 @@ from uuid import UUID
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import oracle_portal as r
+import oracle_portal_scanner_workflow as workflows
 
 PLAN = Path("/etc/onesa/oracle-portal-scanner-release.json")
 ROOT = Path("/var/lib/onesa/release-verification/portal/scanner")
@@ -163,6 +164,7 @@ def configuration(plan, environment):
         "recipe": plan["recipe"],
         "rollback": plan["rollback"],
         "legacy_backup": plan["legacy_backup"],
+        "workflow": plan["workflow"],
         "staging_profile": STAGING_PROFILE,
         "processing_scope": "existing-private-malware-scanning-no-new-processing",
         "publication_controls_unchanged": True,
@@ -181,6 +183,7 @@ def validate_plan(binding, plan):
             "recipe",
             "rollback",
             "legacy_backup",
+            "workflow",
         ],
         "SCANNER_PLAN_SCHEMA",
     )
@@ -193,6 +196,7 @@ def validate_plan(binding, plan):
         and re.fullmatch(r"[a-f0-9]{40}", binding["candidate_commit"]),
         "SCANNER_COMPONENT_SCOPE",
     )
+    workflows.validate_plan(binding, plan)
     r.require(
         isinstance(plan["baseline"], dict)
         and TARGET in plan["baseline"]
@@ -519,7 +523,7 @@ def public_definitions(row, destination, uid, gid):
     return values
 
 
-def stage_one(image_id, baseline, folder, operation, suffix):
+def stage_one(image_id, baseline, folder, operation, suffix, workflow=None):
     """Only disposable containers; production volumes are never mounted here."""
     name = "onesa-scanner-qualification-" + operation + "-" + suffix
     label = "org.onesa.scanner-qualification=" + operation
@@ -552,11 +556,32 @@ def stage_one(image_id, baseline, folder, operation, suffix):
     r.require(0 < uid < 65535 and 0 < gid < 65535, "UNPRIVILEGED_SCANNER_REQUIRED")
     definitions = folder / (suffix + "-definitions")
     copied = public_definitions(baseline, definitions, uid, gid)
-    parent = Path("/run/onesa-scanner-qualification")
-    parent.mkdir(mode=0o700, exist_ok=True)
-    r.private(parent, directory=True)
-    directory = parent / (operation + "-" + suffix)
-    directory.mkdir(mode=0o2770)
+    socket_volume = (
+        "onesa-sq-" + operation.replace("-", "")[:16] + "-" + suffix + "_scanner_socket"
+    )
+    existing = r.docker(
+        "volume",
+        "ls",
+        "--filter",
+        "name=^" + socket_volume + "$",
+        "--format",
+        "{{.Name}}",
+    )
+    r.require(not existing.strip(), "SCANNER_OWNED_SOCKET_ALREADY_EXISTS_INSPECT_ONLY")
+    r.docker("volume", "create", "--label", label, socket_volume)
+    volume = json.loads(r.docker("volume", "inspect", socket_volume))[0]
+    r.require(
+        volume["Driver"] == "local"
+        and volume["Labels"].get("org.onesa.scanner-qualification") == operation,
+        "SCANNER_OWNED_SOCKET_VOLUME_REQUIRED",
+    )
+    directory = Path(volume["Mountpoint"])
+    r.require(
+        str(directory).startswith("/var/lib/docker/volumes/")
+        and not directory.is_symlink()
+        and len(str(directory / "clamd.sock").encode()) < 104,
+        "SCANNER_OWNED_SOCKET_PATH",
+    )
     os.chown(directory, uid, 3000)
     os.chmod(directory, 0o2770)
     network = name + "-network"
@@ -590,7 +615,7 @@ def stage_one(image_id, baseline, folder, operation, suffix):
             "-v",
             str(definitions) + ":/var/lib/clamav:rw",
             "-v",
-            str(directory) + ":/run/onesa-scanner:rw",
+            socket_volume + ":/run/onesa-scanner:rw",
             image_id,
         )
         actual = wait_healthy(name, image_id)
@@ -607,6 +632,8 @@ def stage_one(image_id, baseline, folder, operation, suffix):
         r.docker("restart", "--time", "10", name, timeout=30)
         wait_healthy(name, image_id)
         observations["after_restart"] = protocol(directory)
+        if workflow is not None:
+            observations["authenticated_workflows"] = workflow(network, socket_volume)
         observations.update(
             image=image_id,
             public_signature_copies=copied,
@@ -644,6 +671,12 @@ def stage_one(image_id, baseline, folder, operation, suffix):
                 "SCANNER_NETWORK_CLEANUP_OWNERSHIP",
             )
             r.docker("network", "rm", network)
+        owned = json.loads(r.docker("volume", "inspect", socket_volume))[0]
+        r.require(
+            owned["Labels"].get("org.onesa.scanner-qualification") == operation,
+            "SCANNER_SOCKET_CLEANUP_OWNERSHIP",
+        )
+        r.docker("volume", "rm", socket_volume)
 
 
 def capacity(*, staging=False):
@@ -670,12 +703,12 @@ def capacity(*, staging=False):
     return metrics
 
 
-def staging(binding, plan, context, folder):
+def staging(binding, plan, context, folder, records):
     with component_lock():
-        return staging_once(binding, plan, context, folder)
+        return staging_once(binding, plan, context, folder, records)
 
 
-def staging_once(binding, plan, context, folder):
+def staging_once(binding, plan, context, folder, records):
     capacity(staging=True)
     before = retained(plan)
     observations = ROOT / "observations"
@@ -699,6 +732,16 @@ def staging_once(binding, plan, context, folder):
             target,
             context["context_id"],
             "candidate",
+            workflow=lambda network, volume: workflows.observe(
+                binding,
+                plan,
+                folder,
+                context["context_id"],
+                records,
+                network,
+                volume,
+                target,
+            ),
         )
         rollback = stage_one(
             plan["rollback"]["artifact_digest"],
@@ -715,8 +758,8 @@ def staging_once(binding, plan, context, folder):
             "identity": identity,
             "candidate": candidate,
             "rollback": rollback,
-            "schema_migrations": 0,
-            "application_data_unchanged": True,
+            "production_schema_migrations": 0,
+            "existing_application_data_unchanged": True,
             "observed_at": r.now().isoformat(),
         }
         r.write(target / "receipt.json", receipt)
@@ -758,8 +801,10 @@ def operations(binding, plan, records):
     r.require(
         stage["binding"] == binding
         and stage["status"] == "PASS"
-        and stage["schema_migrations"] == 0
-        and stage["application_data_unchanged"] is True,
+        and stage["production_schema_migrations"] == 0
+        and stage["existing_application_data_unchanged"] is True
+        and stage["candidate"]["authenticated_workflows"]["state"]
+        == "SCANNER_DEPENDENCY_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION",
         "SCANNER_STAGING_EVIDENCE_MISSING",
     )
     for qualified in [v for v in records if v["kind"] == "qualification"]:
@@ -1040,7 +1085,7 @@ def runner(phase, binding, context):
     folder = validate_plan(binding, plan)
     records = r.verify_invocation(binding, context, phase, plan)
     if phase == "staging":
-        details = staging(binding, plan, context, folder)
+        details = staging(binding, plan, context, folder, records)
     elif phase == "operations":
         details = operations(binding, plan, records)
     elif phase == "deploy":

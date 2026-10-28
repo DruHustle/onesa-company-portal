@@ -32,6 +32,16 @@ ALLOWED = {
 SCANNER_ALLOWED = {
     **ALLOWED,
     "runners/oracle_portal_scanner.py": "scripts/release/oracle_portal_scanner.py",
+    **{
+        "runners/" + name: "scripts/release/" + name
+        for name in [
+            "oracle_portal_scanner_workflow.py",
+            "oracle_portal_scanner_workflows.mjs",
+            "oracle_portal_worker_fixture.mjs",
+            "oracle_portal_worker_probe.mjs",
+            "oracle_portal_worker_smtp.mjs",
+        ]
+    },
 }
 
 MAX_BYTES = 2 * 1024 * 1024
@@ -178,7 +188,7 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "transport_guard_sha256",
         }
         if component == "frontend"
-        else {"transport_image"}
+        else {"transport_image", "workflow_files"}
     )
     require(
         set(tool) == tool_fields
@@ -197,6 +207,15 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         )
         images = ["probe_image", "cli_image", "builder_image"]
     else:
+        workflow_files = {
+            upstream: files[upstream]
+            for name, upstream in SCANNER_ALLOWED.items()
+            if name not in ALLOWED and name != "runners/oracle_portal_scanner.py"
+        }
+        require(
+            tool["workflow_files"] == workflow_files,
+            "Scanner workflow tools differ from reviewed source",
+        )
         require(
             tool["probe_files"]
             == {

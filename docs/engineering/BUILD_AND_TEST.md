@@ -9,6 +9,13 @@ it is neither a provider receipt nor owner authorization. Real default-entrypoin
 socket access, benign/EICAR, signature persistence and restart observations still
 require the separately commissioned isolated owner-run path.
 
+The database fixture now uses an owner with `CREATEDB` and `CREATEROLE`, without
+superuser access. PostgreSQL does not grant a role creator `SET`/`INHERIT` access
+by default. The provisioner checks the exact source/context marker before granting
+access to its temporary non-login owner role. Read-only inspection grants nothing;
+cleanup still refuses active connections and preserves the existing catalog.
+See [PostgreSQL's role-creator settings](https://www.postgresql.org/docs/17/runtime-config-client.html#GUC-CREATEROLE-SELF-GRANT).
+
 The owned worker-fixture tests use a fresh internal Docker network, synthetic TLS
 certificate and disposable PostgreSQL 17 database. The approved staging hostname
 resolves only to that test container; no hosted credential, published port, provider
