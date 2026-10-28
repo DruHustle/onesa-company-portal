@@ -124,7 +124,7 @@ jobs:
       run: npm run test:engineering-sign-in
       working-directory: onesa-company-portal-frontend
     - name: Verify bounded public navigation with isolated synthetic services
-      run: npm run test:public-loading
+      run: npm run test:public-loading && npm run test:drone-product
       working-directory: onesa-company-portal-frontend
     - run: "cleanup() { kill \"$backend_pid\" \"$frontend_pid\" 2>/dev/null || true; wait \"$backend_pid\" \"$frontend_pid\"\
         \ 2>/dev/null || true; }\nnode onesa-company-portal-backend/dist/src/server.js > \"$RUNNER_TEMP/portal-backend.log\"\

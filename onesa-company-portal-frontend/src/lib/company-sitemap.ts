@@ -9,7 +9,7 @@ export function companySitemap(origin:string|undefined,releaseReady:boolean,publ
   if(!releaseReady||!origin)return [];
   const site=new URL(origin);
   if(site.protocol!=='https:'||site.origin!==origin)return [];
-  const sections=['',...companySections.map(section=>`/${section}`)];
+  const sections=['',...companySections.map(section=>`/${section}`),'/products/onesa-ai-drone'];
   // No guessed lastmod: add dates only when verified page revisions are available.
   const pages:MetadataRoute.Sitemap = (['en','de'] as const).flatMap(locale=>sections.map(section=>({
     url:companyPageUrl(origin,locale,section),

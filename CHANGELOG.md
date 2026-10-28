@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Onesa AI Drone product introduction
+
+- Adds an EN/DE Physical AI portfolio entry and a dedicated simulation-development
+  product page, with an interactive illustrative aircraft concept.
+- Reuses the existing enquiry workflow with the drone topic. No flight service,
+  certification or live platform URL is advertised. Publication and hosted
+  acceptance remain separate from this source change.
+
 ## 2026-10-27 — Temporary backup-client cleanup prepared
 
 - Both PostgreSQL backup helpers now automatically remove their temporary

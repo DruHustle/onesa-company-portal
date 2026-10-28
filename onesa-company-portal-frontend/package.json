@@ -23,7 +23,8 @@
     "test:public-fetch": "node --test unit/public-fetch.test.ts",
     "test:engineering-sign-in": "node scripts/test-engineering-sign-in.mjs && ONESA_TEST_ACCESS_MODE=disabled node scripts/test-engineering-sign-in.mjs",
     "test:workspace-drafts": "node --test unit/draft-history.test.ts",
-    "test:hero-motion": "node --test unit/hero-motion.test.ts && node scripts/test-hero-motion.mjs"
+    "test:hero-motion": "node --test unit/hero-motion.test.ts && node scripts/test-hero-motion.mjs",
+    "test:drone-product": "node scripts/test-drone-product.mjs"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.17",

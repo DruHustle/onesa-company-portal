@@ -549,3 +549,11 @@ Callback preservation uses the application's existing HTTPS Cloudflare Access te
 host and exact callback-path contract, with no userinfo, custom port, query or
 fragment. The runner validates that structure before credential use, then checks
 the exact named existing provider value; it never changes Access, accounts or MFA.
+
+## Drone product introduction
+
+After building the frontend, run `npm run test:drone-product` from
+`onesa-company-portal-frontend`. The production-renderer fixture refuses private frontend
+env files, uses a synthetic loopback content service and checks EN/DE, 390/1440px,
+light/dark, keyboard-operable concept rotation, axe and existing enquiry links.
+It does not submit a live enquiry or establish hosted publication approval.

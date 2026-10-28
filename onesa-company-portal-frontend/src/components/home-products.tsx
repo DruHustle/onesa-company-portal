@@ -1,3 +1,4 @@
+import {DronePortfolio} from './drone-product';
 import type {Locale} from '@/config/copy';
 import {products} from '@/config/products';
 import {ResponsiveLink as Link} from './responsive-link';
@@ -13,8 +14,8 @@ export function HomePlatform({locale}:{locale:Locale}) {
 
 export function HomeRobot({locale}:{locale:Locale}) {
  const de=locale==='de',robot=products[locale][1];
- return <section className={`section ${styles.robot}`} aria-labelledby="home-robot-title">
+ return <><section className={`section ${styles.robot}`} aria-labelledby="home-robot-title">
   <div className={styles.robotImage}><picture><source media="(max-width:640px)" srcSet="/images/robot-concept-640.webp"/><img src="/images/robot-concept-1280.webp" width="1280" height="853" loading="lazy" decoding="async" alt={robot.imageAlt}/></picture></div>
   <div className={styles.robotCopy}><p className="eyebrow">{de?'ROBOTIK · PHYSISCHE KI':'ROBOTICS · PHYSICAL AI'}</p><h2 id="home-robot-title">Onesa AI Robot</h2><p>{de?'Unsere Entwicklungsrichtung für industrielle Robotik: Pumpe P-101 in einer überwachten synthetischen Inspektion prüfen – vom begrenzten Plan und der Operator-Freigabe bis zu Bericht und Wiedergabe. Wahrnehmung, Roboterhardware und physische Steuerung benötigen eine eigene Integration und Qualifikation.':'Our industrial robotics development direction: inspect Pump P-101 in a supervised synthetic workflow, from a bounded plan and operator approval to a report and replay. Perception, robot hardware and physical control require their own integration and qualification.'}</p><Link className={styles.more} href={`/${locale}/products#product-robot`}>{de?'Robotik entdecken':'Explore robotics'}<span aria-hidden="true">→</span></Link></div>
- </section>;
+ </section><div className="section"><DronePortfolio locale={locale}/></div></>;
 }
