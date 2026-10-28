@@ -655,6 +655,13 @@ It does not submit a live enquiry or establish hosted publication approval.
 Worker process regressions use `node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs scripts/release/oracle_portal_worker_probe.test.mjs`.
 The backend image-security job additionally runs `sudo -n python3 scripts/release/worker_fixture_smoke.py "$image" --worker-workflows --synthetic-scanner` on the disposable GitHub-hosted runner. It uses an internal Docker network, temporary PostgreSQL/TLS, loopback S3/SMTP protocol fixtures, and a synthetic scanner protocol fixture. The original seven-case database fixture test remains separate.
 
+The worker-process step carries the mandatory release prefix only for the backend
+matrix entry. Frontend and ClamAV images have an explicitly inapplicable label;
+their runtime build, complete security scan and digest recording remain required.
+Pipeline tests inspect the actual matrix label and command. Verifier regressions
+allow those inapplicable skips and still reject a failed, skipped, cancelled or
+incomplete backend worker step. A green workflow does not replace this check.
+
 The process suite starts the actual worker and verifies password/MFA login and replay denial, private-file quarantine and role denials, clean/rejected scan handling, TLS mail acceptance, once-only queue execution, actual object deletion, stale-lock recovery, retry exhaustion, staging idle backoff, graceful shutdown, and session persistence across worker restarts. SMTP acceptance does not establish inbox delivery; the protocol fixtures do not establish external storage or scanner acceptance. The synthetic source/CI inputs are parser-test data, never issued release records. Hosted staging still requires the commissioned external verifier, a reserved source-bound context, exact artifacts and real operational evidence. The new probe is not a production worker executor or an issuer.
 
 ## Scanner qualification resource readback
