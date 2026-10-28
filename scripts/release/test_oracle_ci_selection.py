@@ -106,6 +106,36 @@ class CISelectionTests(unittest.TestCase):
             with self.subTest(total_count=count), self.assertRaises(owner.Rejected):
                 self.qualify()
 
+    def test_matrix_worker_step_keeps_backend_failure_closed(self):
+        original = self.original_api
+        backend_result = "success"
+
+        def matrix_steps(path):
+            result = original(path)
+            if "/jobs?" in path:
+                for job in result["jobs"]:
+                    if job["name"] == "image-security (onesa-company-portal-backend)":
+                        job["steps"].append(
+                            {
+                                "name": "Release requirement: actual worker process with disposable protocol fixtures",
+                                "conclusion": backend_result,
+                            }
+                        )
+                    elif job["name"].startswith("image-security ("):
+                        job["steps"].append(
+                            {
+                                "name": "Worker process fixtures apply only to the backend image",
+                                "conclusion": "skipped",
+                            }
+                        )
+            return result
+
+        self.original_api = matrix_steps
+        self.assertEqual([row["run_id"] for row in self.qualify()], [1, 2])
+        for backend_result in ["skipped", "failure", "cancelled", None]:
+            with self.subTest(result=backend_result), self.assertRaises(owner.Rejected):
+                self.qualify()
+
 
 if __name__ == "__main__":
     unittest.main()
