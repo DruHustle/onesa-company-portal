@@ -4,8 +4,8 @@ import net from 'node:net';
 import tls from 'node:tls';
 import {createHash} from 'node:crypto';
 
-export async function startSink({cert,key,recipient,jobId}){
- if(!/^[a-f0-9-]{36}@example\.invalid$/.test(recipient)||!/^[a-f0-9-]{36}$/.test(jobId))throw Error('SMTP_FIXTURE_SCOPE');
+export async function startSink({cert,key,recipient,jobId,port=0}){
+ if(!/^[a-f0-9-]{36}@example\.invalid$/.test(recipient)||!/^[a-f0-9-]{36}$/.test(jobId)||!Number.isInteger(port)||![0,2525].includes(port))throw Error('SMTP_FIXTURE_SCOPE');
  const context=tls.createSecureContext({cert,key}),accepted=[],sockets=new Set();
  let commands=0;
  const attach=(socket,encrypted=false)=>{
@@ -56,6 +56,6 @@ export async function startSink({cert,key,recipient,jobId}){
   if(!encrypted)write('220 localhost Onesa isolated SMTP fixture');
  };
  const server=net.createServer(socket=>attach(socket));
- await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
+ await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,'127.0.0.1',resolve);});
  return {port:server.address().port,accepted,async close(){for(const socket of sockets)socket.destroy();await new Promise(resolve=>server.close(resolve));}};
 }
