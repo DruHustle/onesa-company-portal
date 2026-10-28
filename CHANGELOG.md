@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Onesa Drone canonical naming
+
+- Aligns the product label with the reviewed `onesa-drone` repository name.
+- Uses `/products/onesa-drone` and preserves the previous product path as a
+  permanent redirect. Enquiries keep the existing drone topic and workflow.
+- This source update does not establish production publication.
+
 ## Unreleased — Onesa AI Drone product introduction
 
 - Adds an EN/DE Physical AI portfolio entry and a dedicated simulation-development
