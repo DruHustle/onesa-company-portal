@@ -59,7 +59,11 @@ class InstallTests(unittest.TestCase):
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(
-            dir="/private/tmp" if Path("/private/tmp").exists() else None
+            dir=Path.home()
+            if os.getuid() == 0
+            else "/private/tmp"
+            if Path("/private/tmp").exists()
+            else None
         )
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
@@ -193,6 +197,16 @@ class InstallTests(unittest.TestCase):
 
     def validate(self):
         return installer.validate(self.root, self.pin, self.github, uid=os.getuid())
+
+    @unittest.skipUnless(os.getuid() == 0, "Root custody ancestor policy")
+    def test_shared_writable_parent_still_refused(self):
+        shared = self.root / "shared-parent"
+        shared.mkdir(mode=0o700)
+        shared.chmod(0o777)
+        child = shared / "custody"
+        child.mkdir(mode=0o700)
+        with self.assertRaisesRegex(verifier.Rejected, "ancestors"):
+            verifier.private(child, directory=True, uid=0)
 
     def test_exact_main_bytes_and_complete_policy(self):
         m, _target, files, ci = self.validate()

@@ -1,5 +1,9 @@
 # Separate application builds and tests
 
+Installer fixtures also place disposable custody under the private home directory
+when executed as root. The explicit writable-parent regression still requires the
+production verifier to reject shared writable ancestors; no custody guard changes.
+
 Release-unit fixtures pin a disposable commissioning registry and keep its keys,
 policy and database inside their temporary directory. Root test execution uses a
 private home-directory parent and never reads the host's production trust registry.
