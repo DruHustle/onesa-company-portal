@@ -9,6 +9,12 @@ import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {startSink} from './oracle_portal_worker_smtp.mjs';
 
+test('Only ephemeral or the isolated release-fixture SMTP port is eligible',async()=>{
+ for(const port of [25,465,587,2526,'2525',true,-1]){
+  await assert.rejects(startSink({cert:'synthetic',key:'synthetic',recipient:'01234567-89ab-4cde-8123-456789abcdef@example.invalid',jobId:'01234567-89ab-4cde-8123-456789abcdef',port}),/SMTP_FIXTURE_SCOPE/);
+ }
+});
+
 function reader(socket){
  let text='',lines=[],waiters=[];
  const receive=chunk=>{text+=chunk.toString();while(text.includes('\r\n')){const n=text.indexOf('\r\n'),line=text.slice(0,n);text=text.slice(n+2);if(waiters.length)waiters.shift()(line);else lines.push(line);}};

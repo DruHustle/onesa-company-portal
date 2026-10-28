@@ -8,6 +8,7 @@ its synthetic CA and password exist only in this test's private temporary files.
 import argparse
 import hashlib
 import json
+import os
 import re
 import secrets
 import subprocess
@@ -35,17 +36,38 @@ def main():
     parser.add_argument(
         "image", help="Existing credential-free backend Docker image ID"
     )
+    parser.add_argument("--worker-workflows", action="store_true")
+    parser.add_argument("--synthetic-scanner", action="store_true")
+    parser.add_argument(
+        "--scanner-socket-volume",
+        help="Existing scanner socket volume, mounted read-only for synthetic bytes",
+    )
     args = parser.parse_args()
     assert re.fullmatch(r"sha256:[a-f0-9]{64}", args.image), (
         "Immutable local image required"
     )
     docker = "docker"
+    assert args.worker_workflows == bool(
+        args.scanner_socket_volume or args.synthetic_scanner
+    )
+    assert not (args.scanner_socket_volume and args.synthetic_scanner)
+    if args.scanner_socket_volume:
+        assert re.fullmatch(
+            r"[a-z0-9][a-z0-9_-]{0,127}_scanner_socket", args.scanner_socket_volume
+        )
     operation = str(uuid4())
     label = "org.onesa.worker-fixture-test=" + operation
     name = "onesa-worker-fixture-" + operation
     network = name + "-network"
     source = Path(__file__).resolve().parent
-    pins = {n: hashlib.sha256((source / n).read_bytes()).hexdigest() for n in FILES}
+    files = list(FILES)
+    if args.worker_workflows:
+        files += [
+            "oracle_portal_worker_probe.mjs",
+            "oracle_portal_worker_smtp.mjs",
+            "oracle_portal_worker_workflows.integration.mjs",
+        ]
+    pins = {n: hashlib.sha256((source / n).read_bytes()).hexdigest() for n in files}
     postgres_id = json.loads(execute([docker, "image", "inspect", POSTGRES]).stdout)[0][
         "Id"
     ]
@@ -79,7 +101,9 @@ def main():
                 "-subj",
                 "/CN=" + HOST,
                 "-addext",
-                "subjectAltName=DNS:" + HOST,
+                "subjectAltName=DNS:"
+                + HOST
+                + ",DNS:fixture-storage.invalid,IP:127.0.0.1",
                 "-keyout",
                 str(root / "server.key"),
                 "-out",
@@ -88,6 +112,13 @@ def main():
         )
         (root / "server.key").chmod(0o600)
         (root / "server.crt").chmod(0o644)
+        if args.worker_workflows:
+            assert os.geteuid() == 0, (
+                "Linux owner fixture only; no privileged daemon client in the application"
+            )
+            for name in ["server.key", "server.crt"]:
+                os.chown(root / name, 1000, 1000)
+                (root / name).chmod(0o600)
         try:
             execute(
                 [
@@ -126,6 +157,10 @@ def main():
                     network,
                     "--network-alias",
                     HOST,
+                    "--memory",
+                    "256m",
+                    "--cpus",
+                    "0.25",
                     "--env-file",
                     str(env),
                     "--tmpfs",
@@ -194,66 +229,116 @@ def main():
             ]["PortBindings"], "Test ports must remain unpublished"
             mounts = [
                 part
-                for n in FILES
+                for n in files
                 for part in ["-v", str(source / n) + ":/app/release/" + n + ":ro"]
             ]
+            extra = []
+            if args.worker_workflows:
+                extra = [
+                    "--group-add",
+                    "3000",
+                    "--add-host",
+                    "fixture-storage.invalid:127.0.0.1",
+                    "--tmpfs",
+                    "/private:rw,mode=700,uid=1000,gid=1000,size=8m",
+                    "-v",
+                    str(root / "server.crt") + ":/private/tls/cert.pem:ro",
+                    "-v",
+                    str(root / "server.key") + ":/private/tls/key.pem:ro",
+                ]
+                if args.synthetic_scanner:
+                    extra += [
+                        "--tmpfs",
+                        "/run/onesa-scanner:rw,mode=700,uid=1000,gid=1000,size=1m",
+                    ]
+                else:
+                    extra += [
+                        "-v",
+                        args.scanner_socket_volume + ":/run/onesa-scanner:ro",
+                    ]
+            entry = (
+                "oracle_portal_worker_workflows.integration.mjs"
+                if args.worker_workflows
+                else "oracle_portal_worker_fixture.integration.mjs"
+            )
             result = execute(
                 [
                     docker,
                     "run",
                     "--rm",
                     "--pull=never",
+                    "--name",
+                    name + "-client",
+                    "--label",
+                    label,
                     "-i",
                     "--user",
-                    "0:0",
+                    "1000:1000" if args.worker_workflows else "0:0",
                     "--read-only",
                     "--network",
                     network,
                     "--tmpfs",
-                    "/tmp:rw,mode=700,size=64m",
+                    "/tmp:rw,mode=700,uid=1000,gid=1000,size=64m"
+                    if args.worker_workflows
+                    else "/tmp:rw,mode=700,size=64m",
                     "--memory",
-                    "512m",
+                    "768m" if args.worker_workflows else "512m",
                     "--cpus",
-                    "1",
+                    "0.25",
                     "--cap-drop",
                     "ALL",
                     "--security-opt",
                     "no-new-privileges:true",
                     "-e",
-                    "NODE_EXTRA_CA_CERTS=/fixture/server.crt",
+                    "NODE_EXTRA_CA_CERTS=/private/tls/cert.pem"
+                    if args.worker_workflows
+                    else "NODE_EXTRA_CA_CERTS=/fixture/server.crt",
                     "-v",
                     str(root / "server.crt") + ":/fixture/server.crt:ro",
                     *mounts,
+                    *extra,
                     "--entrypoint",
                     "node",
                     args.image,
-                    "/app/release/oracle_portal_worker_fixture.integration.mjs",
+                    "/app/release/" + entry,
                 ],
                 input=json.dumps(
                     {
-                        "scope": "LOCAL_DISPOSABLE_POSTGRES17_TLS_ONLY",
+                        "scope": "LOCAL_DISPOSABLE_WORKER_WORKFLOWS_ONLY"
+                        if args.worker_workflows
+                        else "LOCAL_DISPOSABLE_POSTGRES17_TLS_ONLY",
                         "owner_uri": "postgresql://neondb_owner:"
                         + password
                         + "@"
                         + HOST
                         + "/neondb?sslmode=verify-full&channel_binding=require",
+                        **(
+                            {"synthetic_scanner": args.synthetic_scanner}
+                            if args.worker_workflows
+                            else {}
+                        ),
                     }
                 ).encode(),
-                timeout=180,
+                timeout=300 if args.worker_workflows else 180,
             )
             observed = json.loads(result.stdout)
-            assert (
-                observed["state"]
-                == "LOCAL_WORKER_FIXTURE_POSTGRES17_TLS_PASS_NOT_HOSTED_QUALIFICATION"
+            assert observed["state"] == (
+                "LOCAL_WORKER_PROCESS_WORKFLOWS_PASS_NOT_HOSTED_QUALIFICATION"
+                if args.worker_workflows
+                else "LOCAL_WORKER_FIXTURE_POSTGRES17_TLS_PASS_NOT_HOSTED_QUALIFICATION"
             )
             assert (
                 observed["production_access"] is False
                 and observed["release_records_issued"] == 0
             )
-            assert len(observed["checks"]) == 7
+            assert (
+                len(observed["checks"]) >= 17
+                if args.worker_workflows
+                else len(observed["checks"]) == 7
+            )
             assert not result.stderr
             assert pins == {
-                n: hashlib.sha256((source / n).read_bytes()).hexdigest() for n in FILES
+                n: hashlib.sha256((source / n).read_bytes()).hexdigest() for n in files
             }
             print(
                 json.dumps(
@@ -271,6 +356,16 @@ def main():
                 "Disposable fixture test command failed; no credential values printed"
             ) from error
         finally:
+            client = subprocess.run(
+                [docker, "inspect", name + "-client"], capture_output=True, check=False
+            )
+            if client.returncode == 0:
+                own = json.loads(client.stdout)[0]
+                assert (
+                    own["Config"]["Labels"]["org.onesa.worker-fixture-test"]
+                    == operation
+                )
+                execute([docker, "rm", "-f", name + "-client"])
             if created_container:
                 own = json.loads(execute([docker, "inspect", name]).stdout)[0]
                 assert (
