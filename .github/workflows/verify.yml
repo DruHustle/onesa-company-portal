@@ -117,6 +117,12 @@ jobs:
         sudo -n --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,RUNNER_OS,GITHUB_REPOSITORY python3 ../scripts/ci/browser_dependencies.py
         npx playwright install --with-deps chromium firefox webkit
       working-directory: onesa-company-portal-frontend
+    - name: Verify owner probe readiness with real isolated browsers
+      run: |
+        portal_readiness_fixture=$(mktemp -d "$RUNNER_TEMP/portal-readiness.XXXXXX")
+        ln -s "$GITHUB_WORKSPACE/onesa-company-portal-frontend/node_modules" "$portal_readiness_fixture/node_modules"
+        cp scripts/release/oracle_portal_browser.mjs scripts/release/oracle_portal_browser_readiness.test.mjs "$portal_readiness_fixture/"
+        node --test "$portal_readiness_fixture/oracle_portal_browser_readiness.test.mjs"
     - name: Verify static-first hero media with isolated synthetic controls
       run: npm run test:hero-motion
       working-directory: onesa-company-portal-frontend
