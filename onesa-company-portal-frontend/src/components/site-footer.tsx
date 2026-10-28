@@ -26,6 +26,7 @@ export function SiteFooter({locale}: {locale: Locale}) {
           <li><Link href={`/${locale}/products`}>{de ? 'Produkte entdecken' : 'Explore products'}</Link></li>
           {applications.applications.filter(app => app.id === 'ai' || app.id === 'robot').map(app =>
             <li key={app.id}><a href={app.href}>{app.label} <span aria-hidden="true">↗</span></a></li>)}
+          <li><Link href={`/${locale}/products/onesa-drone`}>Onesa Drone</Link></li>
         </ul>
       </nav>
       <nav className={`${styles.group} ${styles.resources}`} aria-labelledby="footer-resources">

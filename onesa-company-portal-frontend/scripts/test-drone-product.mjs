@@ -17,13 +17,23 @@ try{
  }
  browser=await chromium.launch();let views=0;
  for(const locale of ['en','de'])for(const colorScheme of ['light','dark'])for(const width of [390,1440]){
-  const context=await browser.newContext({viewport:{width,height:950},colorScheme,reducedMotion:'reduce'});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const context=await browser.newContext({viewport:{width,height:950},colorScheme,reducedMotion:'reduce'});const page=await context.newPage();const errors=[],motionRequests=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',request=>{if(request.url().endsWith('.mp4'))motionRequests.push(request.url());});
   await page.goto(`http://127.0.0.1:3348/${locale}/products/onesa-drone`);assert.equal(await page.locator('h1').textContent(),'Onesa Drone');assert.ok(await page.getByText('Intelligent Delivery Beyond Roads',{exact:true}).isVisible());
-  const slider=page.getByRole('slider');await slider.fill('-30');assert.equal(await slider.inputValue(),'-30');assert.ok(await page.locator(`a[href="/${locale}/contact?topic=drone"]`).first().isVisible());
+  for(const image of await page.locator('img[src*="/images/drone-"]').all()) {await image.scrollIntoViewIfNeeded();await image.evaluate(node=>node.decode());assert.ok(await image.evaluate(node=>node.naturalWidth>0));}
+  const film=page.locator('video');await film.scrollIntoViewIfNeeded();assert.equal(await film.getAttribute('src'),null);assert.equal(await film.getAttribute('autoplay'),null);assert.deepEqual(motionRequests,[],'The concept film must not download before a play request, including with reduced motion');
+  await page.locator('main details summary').click();const slider=page.getByRole('slider');await slider.fill('-30');assert.equal(await slider.inputValue(),'-30');assert.ok(await page.locator(`a[href="/${locale}/contact?topic=drone"]`).first().isVisible());
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal overflow');
   const result=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();assert.deepEqual(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[]);assert.deepEqual(errors,[]);
-  await page.goto(`http://127.0.0.1:3348/${locale}/products`);assert.ok(await page.locator('#product-drone').isVisible());assert.ok(await page.locator(`a[href="/${locale}/products/onesa-drone"]`).first().isVisible());
+  await page.goto(`http://127.0.0.1:3348/${locale}/products`);assert.ok(await page.locator('#product-drone').isVisible());assert.ok(await page.locator(`a[href="/${locale}/products/onesa-drone"]`).first().isVisible());const preview=page.locator('#product-drone img');await preview.scrollIntoViewIfNeeded();await preview.evaluate(node=>node.decode());
+  if(locale==='en'&&colorScheme==='light'&&width===1440){
+   await page.goto('http://127.0.0.1:3348/en/products/onesa-drone');await page.getByRole('button',{name:/Play concept film/}).click();
+   await page.waitForFunction(()=>{const film=document.querySelector('video');return film?.readyState>=2&&!film.paused;});
+   assert.ok(motionRequests.length>0);assert.equal(await page.locator('video').evaluate(node=>node.controls),true);assert.equal(await page.locator('video').evaluate(node=>node.duration),12);await page.locator('video').evaluate(node=>node.pause());
+   await page.goto('http://127.0.0.1:3348/en');assert.ok(await page.locator('#product-drone').isVisible());assert.ok(await page.locator('#product-drone a[href="/en/products/onesa-drone"]').isVisible());
+   await page.route('**/media/onesa-drone-concept.mp4',route=>route.abort());await page.goto('http://127.0.0.1:3348/en/products/onesa-drone');await page.getByRole('button',{name:/Play concept film/}).click();await page.getByRole('status').filter({hasText:'The film could not play'}).waitFor();
+  }
   await context.close();views++;
  }
- console.log(JSON.stringify({scope:'LOCAL_SYNTHETIC_NOT_HOSTED',productViews:views,languages:['en','de'],widths:[390,1440],appearance:['light','dark'],axe:'passed',interactiveConcept:'passed',existingEnquiryLink:'passed'}));
+ const noJs=await browser.newContext({javaScriptEnabled:false,viewport:{width:390,height:844}});const staticPage=await noJs.newPage();await staticPage.goto('http://127.0.0.1:3348/en/products/onesa-drone');assert.ok(await staticPage.getByRole('heading',{name:'Onesa Drone',exact:true}).isVisible());assert.equal(await staticPage.locator('video').getAttribute('src'),null);assert.equal(await staticPage.locator('img[src*="/images/drone-"]').count(),2);await noJs.close();
+ console.log(JSON.stringify({scope:'LOCAL_SYNTHETIC_NOT_HOSTED',productViews:views,languages:['en','de'],widths:[390,1440],appearance:['light','dark'],axe:'passed',interactiveConcept:'passed',existingEnquiryLink:'passed',responsiveImages:'passed',onDemandFilm:'passed',failedPlayback:'passed',noJavaScript:'passed'}));
 }finally{await browser?.close();server.kill('SIGTERM');backend.close();}

@@ -643,6 +643,13 @@ After building the frontend, run `npm run test:drone-product` from
 `onesa-company-portal-frontend`. The production-renderer fixture refuses private frontend
 env files, uses a synthetic loopback content service and checks EN/DE, 390/1440px,
 light/dark, keyboard-operable concept rotation, axe and existing enquiry links.
+The drone media checks decode responsive images, require zero video requests before
+explicit playback (also under reduced motion), verify the real local 12-second MP4
+and native controls, exercise a failed video request and preserve no-JavaScript
+content. They also check the homepage and portfolio entry. The silent film animates
+AI-generated concept stills; it is not footage of aircraft, simulation or a working
+product. Prompts, image/video hashes and processing are in
+`onesa-company-portal-frontend/public/brand/sources.json`.
 It does not submit a live enquiry or establish hosted publication approval.
 
 Worker process regressions use `node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs scripts/release/oracle_portal_worker_probe.test.mjs`.
