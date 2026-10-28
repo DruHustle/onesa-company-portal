@@ -3,6 +3,15 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {chromium,firefox,webkit,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+export async function visitHome(page,origin,locale){
+ assert.ok(['en','de'].includes(locale));
+ const response=await page.goto(origin+(locale==='en'?'/':'/de'),{waitUntil:'domcontentloaded'});
+ assert.ok(response?.ok(),'Home document must return a successful response');
+ // Readiness is the actual rendered contract. Media/background connections can
+ // outlive a usable page; network-idle is not an application readiness signal.
+ await expect(page.locator('#home-robot-title')).toHaveText('Onesa AI Robot');
+ await expect(page.locator('#home-robot-title')).toBeVisible();
+}
 export async function checkAnonymousBoundaries(request,client){
  const targets=request.environment==='production'
   ? [['https://onesa.eu',403],['https://portal.onesa.eu',401]]
@@ -28,15 +37,14 @@ async function observeUI(request,directory,engines,status){
    page.on('request',r=>{const u=new URL(r.url());if(u.origin===request.origin&&r.headers()['next-router-prefetch']==='1')speculativePrefetches++;if(u.origin===request.origin&&!['GET','HEAD'].includes(r.method()))mutations++;});
    for(const locale of ['en','de'])for(const [width,mode]of [[390,'dark'],[1440,'light'],[320,'light']]){
     await page.setViewportSize({width,height:900});await page.emulateMedia({colorScheme:mode});
-    const home=locale==='en'?'/':'/de';await page.goto(request.origin+home);await page.waitForLoadState('networkidle');
-    await expect(page.locator('#home-robot-title')).toHaveText('Onesa AI Robot');
+    await visitHome(page,request.origin,locale);
     const section=page.locator('section').filter({has:page.locator('#home-robot-title')});
     await expect(section).toContainText('P-101');
     await expect(section).toContainText(locale==='en'?'synthetic':'synthetischen');
     const link=section.getByRole('link',{name:locale==='en'?'Explore robotics':'Robotik entdecken'});
-    const destination=new URL(await link.getAttribute('href'),request.origin);assert.ok([`/${locale}/products`,...(locale==='en'?['/products']:[])].includes(destination.pathname));assert.equal(destination.hash,'#product-robot');
+    const destination=new URL(await link.getAttribute('href'),request.origin);assert.equal(destination.origin,request.origin);assert.ok([`/${locale}/products`,...(locale==='en'?['/products']:[])].includes(destination.pathname));assert.equal(destination.hash,'#product-robot');
     await Promise.all([
-     page.waitForURL(url=>url.pathname===destination.pathname&&url.hash===destination.hash,{waitUntil:'networkidle'}),
+     page.waitForURL(url=>url.origin===destination.origin&&url.pathname===destination.pathname&&url.hash===destination.hash,{waitUntil:'domcontentloaded'}),
      link.click(),
     ]);
     await expect(page.locator('#product-robot')).toBeVisible();
@@ -50,7 +58,7 @@ async function observeUI(request,directory,engines,status){
     await page.screenshot({path:`${directory}/${name}-${locale}-${width}-${mode}.png`,fullPage:width===390});
     views.push({engine:name,locale,width,mode,robot_copy:'PASS',product_navigation:'PASS',horizontal_overflow:false});
    }
-   await page.goto(request.origin+'/en/contact?topic=robot');await page.waitForLoadState('networkidle');
+   const contact=await page.goto(request.origin+'/en/contact?topic=robot',{waitUntil:'domcontentloaded'});assert.ok(contact?.ok(),'Contact document must return a successful response');
    await expect(page.getByRole('heading',{level:1})).toBeVisible();
    // Inspect only: this probe submits no enquiry, sign-in, publication or file.
    await checkAnonymousBoundaries(request,page.request);
