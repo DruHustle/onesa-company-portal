@@ -82,6 +82,8 @@ jobs:
       run: python3 -m unittest discover -s scripts/release -p 'test_*.py'
     - name: Verify bounded owner deployment transport
       run: node --test scripts/release/oracle_vercel_transport_guard.test.cjs
+    - name: 'Release requirement: owned worker fixture and TLS mail guards'
+      run: node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs
     - run: npm ci
       working-directory: onesa-company-portal-backend
     - run: npm ci
@@ -188,6 +190,14 @@ jobs:
       env:
         APPLICATION: ${{ matrix.application }}
       run: python3 scripts/startup_smoke.py "onesa-security-candidate:$APPLICATION-$GITHUB_RUN_ID"
+    - name: "${{ matrix.application == 'onesa-company-portal-backend' && 'Release requirement: owned worker fixture PostgreSQL and TLS' || 'Worker database fixtures apply only to the backend image' }}"
+      if: matrix.application == 'onesa-company-portal-backend'
+      env:
+        APPLICATION: ${{ matrix.application }}
+      run: |
+        docker pull postgres@sha256:2ad58d61b036d41f2613302e8c0fee03f6fe51e94d68087327ac45d1cebd4b5e
+        image=$(docker image inspect "onesa-security-candidate:$APPLICATION-$GITHUB_RUN_ID" --format '{{.Id}}')
+        python3 scripts/release/worker_fixture_smoke.py "$image"
     - name: Scan full runtime, including unfixed vendor advisories
       run: 'mkdir -p data/security
 

@@ -1,5 +1,20 @@
 # Separate application builds and tests
 
+The owned worker-fixture tests use a fresh internal Docker network, synthetic TLS
+certificate and disposable PostgreSQL 17 database. The approved staging hostname
+resolves only to that test container; no hosted credential, published port, provider
+account or application environment is used. The actual backend image applies its
+canonical migrations to the empty fixture and proves concurrent provisioning,
+runtime least privilege, expiry/source/context refusal and cleanup without forced
+connection termination or changes to the existing catalog. CI requires this proof
+after building the backend image. A local run uses
+`python3 scripts/release/worker_fixture_smoke.py <immutable-backend-image-ID>` with
+the pinned PostgreSQL image already downloaded. The nine guard/TLS SMTP tests run
+with `node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs`.
+SMTP accepts one named synthetic recipient over TLS and reports acceptance only.
+These checks create no release authority or hosted qualification. The owner worker
+adapter still requires separate review, commissioning and exact-source evidence.
+
 Oracle CI selection keeps an existing push authoritative, including failed,
 pending, skipped or cancelled evidence. Only an absent push permits the existing
 owner-dispatched full workflow; both owner identities, a complete run listing,
