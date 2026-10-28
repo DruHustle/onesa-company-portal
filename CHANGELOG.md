@@ -8,7 +8,8 @@
 - Adds a silent 12-second film assembled from the concept images. Playback and
   video transfer require an explicit play request; native controls, a static
   poster and a playback-failure message preserve access to the product story.
-- Clarifies the architecture/design stage, retains the existing drone enquiry
+- Describes the simulation development implementation separately from public hosted
+  acceptance, retains the existing drone enquiry
   workflow and canonical/legacy URLs, and records prompts and asset hashes in
   `public/brand/sources.json`. This source update is not a production release.
 - Wraps long product copy inside the drone card at narrow widths and 200% text

@@ -1,5 +1,11 @@
 # Separate application builds and tests
 
+Release-unit fixtures pin a disposable commissioning registry and keep its keys,
+policy and database inside their temporary directory. Root test execution uses a
+private home-directory parent and never reads the host's production trust registry.
+Scanner fixtures that deliberately replace their policy explicitly update their
+synthetic commissioning record. Production trust checks and release authority are unchanged.
+
 The scanner release regressions run in the existing Python release suite. They
 exercise real Ed25519 signatures in a disposable issuer fixture, source/artifact
 and environment mismatches, revoked/expired or consumed contexts, unsafe rendered
@@ -638,6 +644,10 @@ fragment. The runner validates that structure before credential use, then checks
 the exact named existing provider value; it never changes Access, accounts or MFA.
 
 ## Drone product introduction
+
+EN/DE product copy distinguishes the implemented simulation development candidate
+from public hosted acceptance. Neither its concept media nor a Company publication
+qualifies the Drone service, physical flight or an operational delivery offering.
 
 After building the frontend, run `npm run test:drone-product` from
 `onesa-company-portal-frontend`. The production-renderer fixture refuses private frontend
