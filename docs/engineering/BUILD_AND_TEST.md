@@ -611,7 +611,12 @@ background requests cannot replace successful-document and visible-content check
 failed documents and missing expected content still fail. Navigation waits for the
 destination document and rendered product anchor. The probe retains all 18 views,
 accessibility, JavaScript-error, mutation, prefetch and anonymous-boundary checks.
-No timeout or source-specific qualification allowance is increased. This follows
+The disposable regression has a 60-second lifecycle budget for cold browser startup,
+assertions and cleanup; launch/navigation/background-request waits are separately
+bounded at 10/10/5 seconds. It releases held responses before closing the browser,
+including failed-launch cleanup, and records phase diagnostics. Rendered assertions
+remain at five seconds. Production probe timeouts and source-specific qualification
+allowances are unchanged. This follows
 [Playwright's readiness guidance](https://playwright.dev/docs/api/class-page#page-wait-for-load-state).
 
 Shared responsive links now default to `prefetch={false}` while preserving explicit
@@ -631,6 +636,21 @@ Callback preservation uses the application's existing HTTPS Cloudflare Access te
 host and exact callback-path contract, with no userinfo, custom port, query or
 fragment. The runner validates that structure before credential use, then checks
 the exact named existing provider value; it never changes Access, accounts or MFA.
+
+## Drone product introduction
+
+After building the frontend, run `npm run test:drone-product` from
+`onesa-company-portal-frontend`. The production-renderer fixture refuses private frontend
+env files, uses a synthetic loopback content service and checks EN/DE, 390/1440px,
+light/dark, keyboard-operable concept rotation, axe and existing enquiry links.
+The drone media checks decode responsive images, require zero video requests before
+explicit playback (also under reduced motion), verify the real local 12-second MP4
+and native controls, exercise a failed video request and preserve no-JavaScript
+content. They also check the homepage and portfolio entry. The silent film animates
+AI-generated concept stills; it is not footage of aircraft, simulation or a working
+product. Prompts, image/video hashes and processing are in
+`onesa-company-portal-frontend/public/brand/sources.json`.
+It does not submit a live enquiry or establish hosted publication approval.
 
 Worker process regressions use `node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs scripts/release/oracle_portal_worker_probe.test.mjs`.
 The backend image-security job additionally runs `sudo -n python3 scripts/release/worker_fixture_smoke.py "$image" --worker-workflows --synthetic-scanner` on the disposable GitHub-hosted runner. It uses an internal Docker network, temporary PostgreSQL/TLS, loopback S3/SMTP protocol fixtures, and a synthetic scanner protocol fixture. The original seven-case database fixture test remains separate.

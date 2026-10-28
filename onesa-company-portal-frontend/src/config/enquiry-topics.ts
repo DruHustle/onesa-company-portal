@@ -15,6 +15,11 @@ export const enquiryTopics = {
     de: "Onesa AI Robot — Softwareentwicklung",
     category: "enterprise",
   },
+  drone: {
+    en: "Onesa Drone — simulation development",
+    de: "Onesa Drone — Simulationsentwicklung",
+    category: "enterprise",
+  },
   enterprise: {
     en: "Enterprise technology",
     de: "Unternehmenstechnologie",
