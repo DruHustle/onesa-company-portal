@@ -1,5 +1,60 @@
 # Separate application builds and tests
 
+The scanner release regressions run in the existing Python release suite. They
+exercise real Ed25519 signatures in a disposable issuer fixture, source/artifact
+and environment mismatches, revoked/expired or consumed contexts, unsafe rendered
+settings, concurrent attempts and interrupted provider requests. The sanitized
+`scanner-compose.fixture.json` describes public configuration for parsing tests;
+it is neither a provider receipt nor owner authorization. Real default-entrypoint,
+socket access, benign/EICAR, signature persistence and restart observations still
+require the separately commissioned isolated owner-run path.
+
+The database fixture now uses an owner with `CREATEDB` and `CREATEROLE`, without
+superuser access. PostgreSQL does not grant a role creator `SET`/`INHERIT` access
+by default. The provisioner checks the exact source/context marker before granting
+access to its temporary non-login owner role. Read-only inspection grants nothing;
+cleanup still refuses active connections and preserves the existing catalog.
+See [PostgreSQL's role-creator settings](https://www.postgresql.org/docs/17/runtime-config-client.html#GUC-CREATEROLE-SELF-GRANT).
+
+The owned worker-fixture tests use a fresh internal Docker network, synthetic TLS
+certificate and disposable PostgreSQL 17 database. The approved staging hostname
+resolves only to that test container; no hosted credential, published port, provider
+account or application environment is used. The actual backend image applies its
+canonical migrations to the empty fixture and proves concurrent provisioning,
+runtime least privilege, expiry/source/context refusal and cleanup without forced
+connection termination or changes to the existing catalog. CI requires this proof
+after building the backend image. A local run uses
+`python3 scripts/release/worker_fixture_smoke.py <immutable-backend-image-ID>` with
+the pinned PostgreSQL image already downloaded. The nine guard/TLS SMTP tests run
+with `node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs`.
+SMTP accepts one named synthetic recipient over TLS and reports acceptance only.
+These checks create no release authority or hosted qualification. The owner worker
+adapter still requires separate review, commissioning and exact-source evidence.
+
+Oracle CI selection keeps an existing push authoritative, including failed,
+pending, skipped or cancelled evidence. Only an absent push permits the existing
+owner-dispatched full workflow; both owner identities, a complete run listing,
+first attempt and every mandatory job/security step remain required. Signed
+references preserve the actual CI event. Synthetic mixed-event regressions must
+reject a newer successful manual run presented over a failing push.
+
+Production observations check readiness and anonymous private-route denials on the
+existing Portal hostname, and require the Company hostname to keep those routes
+blocked. Isolated staging still uses its combined protected Preview. The public
+UI and served-asset checks continue on the Company hostname. An interrupted release
+keeps its actual current deployment separate from the hash-checked source comparison
+baseline and explicitly retained rollback artifact; none of these substitutes for
+fresh qualification and authorization of a corrected candidate.
+
+The browser verification job uses supported Ubuntu24.04 explicitly, retaining all
+three engines, the bounded signed dependency installer and every existing deadline.
+
+The offline release suite includes `test_oracle_inventory.py`: completed temporary
+monitoring clients and list/inspect races do not become preservation baselines.
+Long-lived temporary workloads, unchanged-inventory command failures, incomplete
+metadata and real independent runtime changes still fail closed. These fixtures
+make only mocked Docker reads and do not establish hosted qualification.
+
 Owner-run static artifact checks treat Next.js catch-all chunk names such as
 `[...path]` as literal filenames, encode them for HTTP, and reject traversal
 segments, encoded paths, controls, query strings and fragments. Regressions verify
@@ -459,12 +514,29 @@ pending delivery identity, restart counters, private file modes and simulation
 separation. Delivery is mocked; no production state or mail is used.
 
 The notification controls additionally cover
-synthetic incident transitions, six-hour backend-only reminders (other critical
-rules retain thirty-minute reminders), two-sample recovery, stable
-notification identities after ambiguous delivery, and bounded credential-free Robot
+synthetic incident transitions, immediate initial alerts, thirty-minute grouping of
+new failure rules/services and six-hour reminders for all unchanged incidents.
+The existing `notification_cooldown_seconds` controls the update window (default
+1800, integer range 60–21600). Partial improvement does not send another update;
+previously emailed rules/services remain grouped until that incident closes.
+Recovery requires at least five elapsed minutes and six consecutive healthy samples,
+with gaps of at most two minutes. Brief health, rapid repeated samples, missed samples
+and invalid/future timestamps cannot prematurely confirm recovery. A two-hour replay
+of changing failures and brief health produces one initial alert and one grouped update,
+followed by one recovery after sustained health. These counts describe that synthetic
+sequence, not a daily message cap or hosted reliability guarantee.
+Tests also cover stable
+notification identities after ambiguous delivery and bounded credential-free Robot
 readiness probes. These controls send no mail or application command and do not restart
 services. Installation is a separately qualified operations-component change; never
 rerun the initial operations bootstrap against existing production.
+
+Every observation still reaches the private metrics/failure records, independently of
+email suppression. `last-recovery.json` records the first clean observation; only the
+confirmed recovery notification closes the emailed incident. Keep the existing one-minute
+timer, probe timeouts, dependencies and scanner enforcement. Validate the installed source
+hash, singleton scheduling and normal samples through the protected operator procedure;
+local regression results alone do not establish that the notification policy is live.
 
 Pending delivery retries stop after23 hours and require provider reconciliation before
 the24-hour [Resend idempotency window](https://resend.com/changelog/idempotency-keys)
@@ -532,6 +604,16 @@ loopback entry emits `LOCAL_SYNTHETIC_NOT_HOSTED`, which cannot satisfy the host
 receipt gate. Real owner-run CLI invocation accepts only the approved HTTPS origins.
 It submits no contact form and makes no account, publication or data mutation.
 
+`node --test scripts/release/oracle_portal_browser_readiness.test.mjs` exercises the
+actual owner probe in all three installed browsers. The disposable test directory
+must resolve the frontend's locked browser dependencies, as in `verify.yml`. Open
+background requests cannot replace successful-document and visible-content checks;
+failed documents and missing expected content still fail. Navigation waits for the
+destination document and rendered product anchor. The probe retains all 18 views,
+accessibility, JavaScript-error, mutation, prefetch and anonymous-boundary checks.
+No timeout or source-specific qualification allowance is increased. This follows
+[Playwright's readiness guidance](https://playwright.dev/docs/api/class-page#page-wait-for-load-state).
+
 Shared responsive links now default to `prefetch={false}` while preserving explicit
 caller overrides and click navigation. This bounds anonymous background work and
 avoids the reproduced WebKit speculative-fetch failures during page transitions.
@@ -557,3 +639,8 @@ After building the frontend, run `npm run test:drone-product` from
 env files, uses a synthetic loopback content service and checks EN/DE, 390/1440px,
 light/dark, keyboard-operable concept rotation, axe and existing enquiry links.
 It does not submit a live enquiry or establish hosted publication approval.
+
+Worker process regressions use `node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs scripts/release/oracle_portal_worker_probe.test.mjs`.
+The backend image-security job additionally runs `sudo -n python3 scripts/release/worker_fixture_smoke.py "$image" --worker-workflows --synthetic-scanner` on the disposable GitHub-hosted runner. It uses an internal Docker network, temporary PostgreSQL/TLS, loopback S3/SMTP protocol fixtures, and a synthetic scanner protocol fixture. The original seven-case database fixture test remains separate.
+
+The process suite starts the actual worker and verifies password/MFA login and replay denial, private-file quarantine and role denials, clean/rejected scan handling, TLS mail acceptance, once-only queue execution, actual object deletion, stale-lock recovery, retry exhaustion, staging idle backoff, graceful shutdown, and session persistence across worker restarts. SMTP acceptance does not establish inbox delivery; the protocol fixtures do not establish external storage or scanner acceptance. The synthetic source/CI inputs are parser-test data, never issued release records. Hosted staging still requires the commissioned external verifier, a reserved source-bound context, exact artifacts and real operational evidence. The new probe is not a production worker executor or an issuer.

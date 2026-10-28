@@ -29,6 +29,20 @@ ALLOWED = {
     "runners/oracle_frontend_build.py": "scripts/release/oracle_frontend_build.py",
     "runners/oracle_vercel_transport_guard.cjs": "scripts/release/oracle_vercel_transport_guard.cjs",
 }
+SCANNER_ALLOWED = {
+    **ALLOWED,
+    "runners/oracle_portal_scanner.py": "scripts/release/oracle_portal_scanner.py",
+    **{
+        "runners/" + name: "scripts/release/" + name
+        for name in [
+            "oracle_portal_scanner_workflow.py",
+            "oracle_portal_scanner_workflows.mjs",
+            "oracle_portal_worker_fixture.mjs",
+            "oracle_portal_worker_probe.mjs",
+            "oracle_portal_worker_smtp.mjs",
+        ]
+    },
+}
 
 MAX_BYTES = 2 * 1024 * 1024
 
@@ -79,10 +93,24 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         and m["repository"] == "DruHustle/onesa-company-portal",
         "Installation repository refused",
     )
-    require(
-        set(m["files"]) == set(ALLOWED),
-        "Only reviewed verifier and component runner may be installed",
-    )
+    if set(m["files"]) == set(ALLOWED):
+        allowed, component, script, prefix = (
+            ALLOWED,
+            "frontend",
+            "oracle_portal_frontend.py",
+            "portal-",
+        )
+    elif set(m["files"]) == set(SCANNER_ALLOWED):
+        allowed, component, script, prefix = (
+            SCANNER_ALLOWED,
+            "scanner",
+            "oracle_portal_scanner.py",
+            "portal-scanner-",
+        )
+    else:
+        raise verifier.Rejected(
+            "Only complete reviewed component installation profiles are accepted"
+        )
     github.owner()
     # Actual main, owner merge, first-attempt jobs, hygiene and artifacts are fetched
     # by the existing verifier. No supplied PASS receipt is accepted here.
@@ -96,7 +124,7 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     require(not source.get("truncated"), "Source tree incomplete")
     blobs = {r["path"]: r for r in source["tree"] if r["type"] == "blob"}
     payloads = {}
-    for local, upstream in ALLOWED.items():
+    for local, upstream in allowed.items():
         relative(local)
         checksum = m["files"][local]
         require(
@@ -124,8 +152,8 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         "Installation policy schema",
     )
     require(
-        set(policy["components"]) == {"DruHustle/onesa-company-portal:frontend"},
-        "Only the reviewed Portal frontend profile is eligible",
+        set(policy["components"]) == {"DruHustle/onesa-company-portal:" + component},
+        "Only the selected independent Portal component profile is eligible",
     )
     # This source archive is data. Reconstruct its Git tree before using any
     # derived probe-code pins. All executable bootstrap modules were compared to
@@ -145,63 +173,90 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         bundle / "tool-source.tar", {"source_tree": m["source_tree"]}
     )
     tool = policy["toolchain"]
-    require(
-        set(tool)
-        == {
-            "source_commit",
-            "source_tree",
-            "source_sha256",
+    tool_fields = {
+        "source_commit",
+        "source_tree",
+        "source_sha256",
+        "probe_files",
+    }
+    tool_fields |= (
+        {
             "probe_image",
             "cli_image",
             "builder_image",
             "builder_sha256",
             "transport_guard_sha256",
-            "probe_files",
         }
+        if component == "frontend"
+        else {"transport_image", "workflow_files"}
+    )
+    require(
+        set(tool) == tool_fields
         and tool["source_commit"] == m["candidate_commit"]
         and tool["source_tree"] == m["source_tree"]
         and tool["source_sha256"] == m["tool_source_sha256"],
         "Commissioned tool source differs from reviewed main",
     )
-    require(
-        tool["probe_files"] == module.probe_source_files(files)
-        and tool["builder_sha256"] == m["files"]["runners/oracle_frontend_build.py"]
-        and tool["transport_guard_sha256"]
-        == m["files"]["runners/oracle_vercel_transport_guard.cjs"],
-        "Unreviewed probe or build code pins refused",
-    )
+    if component == "frontend":
+        require(
+            tool["probe_files"] == module.probe_source_files(files)
+            and tool["builder_sha256"] == m["files"]["runners/oracle_frontend_build.py"]
+            and tool["transport_guard_sha256"]
+            == m["files"]["runners/oracle_vercel_transport_guard.cjs"],
+            "Unreviewed probe or build code pins refused",
+        )
+        images = ["probe_image", "cli_image", "builder_image"]
+    else:
+        workflow_files = {
+            upstream: files[upstream]
+            for name, upstream in SCANNER_ALLOWED.items()
+            if name not in ALLOWED and name != "runners/oracle_portal_scanner.py"
+        }
+        require(
+            tool["workflow_files"] == workflow_files,
+            "Scanner workflow tools differ from reviewed source",
+        )
+        require(
+            tool["probe_files"]
+            == {
+                "scripts/oracle_backup_store.mjs": files[
+                    "scripts/oracle_backup_store.mjs"
+                ]
+            },
+            "Scanner backup transport differs from reviewed source",
+        )
+        images = ["transport_image"]
     require(
         all(
             isinstance(tool[k], str) and re.fullmatch("sha256:[a-f0-9]{64}", tool[k])
-            for k in ["probe_image", "cli_image", "builder_image"]
+            for k in images
         ),
         "Literal immutable tool image pins required",
     )
-    target = INSTALL_PARENT / ("portal-" + m["source_tree"])
-    for component, script in [("frontend", "oracle_portal_frontend.py")]:
-        profile = policy["components"][m["repository"] + ":" + component]
-        probe = {
-            "repository": m["repository"],
-            "component": component,
-            "candidate_commit": m["candidate_commit"],
-            "source_tree": m["source_tree"],
-            "source_sha256": "0" * 64,
-            "build_sha256": "0" * 64,
-            "artifact_digest": "sha256:" + "0" * 64,
-            "configuration_sha256": {"staging": "0" * 64, "production": "0" * 64},
-            "target_environment": "production",
-        }
-        verifier.binding_valid(probe, policy)
+    target = INSTALL_PARENT / (prefix + m["source_tree"])
+    profile = policy["components"][m["repository"] + ":" + component]
+    probe = {
+        "repository": m["repository"],
+        "component": component,
+        "candidate_commit": m["candidate_commit"],
+        "source_tree": m["source_tree"],
+        "source_sha256": "0" * 64,
+        "build_sha256": "0" * 64,
+        "artifact_digest": "sha256:" + "0" * 64,
+        "configuration_sha256": {"staging": "0" * 64, "production": "0" * 64},
+        "target_environment": "production",
+    }
+    verifier.binding_valid(probe, policy)
+    require(
+        profile["qualification_attempt_limit"] == 1,
+        "One initial context per component/source; no implicit renewal",
+    )
+    for runner in profile["runners"].values():
         require(
-            profile["qualification_attempt_limit"] == 1,
-            "One initial context per component/source; no implicit renewal",
+            runner["path"] == str(target / "runners" / script)
+            and runner["sha256"] == m["files"]["runners/" + script],
+            "Phase runner differs from reviewed installation",
         )
-        for runner in profile["runners"].values():
-            require(
-                runner["path"] == str(target / "runners" / script)
-                and runner["sha256"] == m["files"]["runners/" + script],
-                "Phase runner differs from reviewed installation",
-            )
     payloads["tool-source.tar"] = tool_bytes
     payloads["policy.json"] = policy_bytes
     return m, target, payloads, ci

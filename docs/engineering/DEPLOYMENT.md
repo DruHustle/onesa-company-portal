@@ -2,6 +2,13 @@
 
 <!-- onesa-protected-source: portal-deployment -->
 
+Hosted browser observations check the existing Company and Portal access boundaries
+independently. Staging retains its protected preview boundary.
+
+Runtime preservation snapshots wait a bounded time for temporary Docker clients
+to finish. Every persistent and unknown workload remains in the snapshot; actual
+identity changes, missing services and incomplete observations still block release.
+
 Static artifact verification accepts generated Next.js catch-all filenames while
 retaining canonical path, response-size and byte-digest checks. A verifier fix
 requires new source qualification and commissioning; failed contexts stay consumed.
@@ -31,6 +38,14 @@ commissioned, pinned external verifier and owner-controlled signing custody.
 Repository code or an unsigned JSON file supplies no release authority.
 The protected guide contains installation, qualification and recovery instructions;
 source implementation alone does not establish commissioning or deployment.
+
+The independent shared-scanner adapter is new source. Its installation profile
+retains the existing verifier and separate owner commissioning. It requires exact
+source, image bytes and current security evidence, isolated streaming/access and
+restart checks, recovery evidence and preservation of every independent workload.
+One durable request precedes a scanner-only update; inspection cannot repeat it.
+A new installation must resolve an earlier uncertain scanner request first.
+This implementation statement grants no deployment authority or hosted acceptance.
 
 The Portal-specific frontend extension is new source, not a commissioned service.
 It binds public presentation artifacts and existing provider configuration while

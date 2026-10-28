@@ -514,6 +514,7 @@ class GitHubEvidenceTests(unittest.TestCase):
             }
         if leaf.startswith("actions/workflows/"):
             return {
+                "total_count": 0 if self.bad.get("missing_run") else 1,
                 "workflow_runs": []
                 if self.bad.get("missing_run")
                 else [
@@ -522,7 +523,7 @@ class GitHubEvidenceTests(unittest.TestCase):
                         "event": "push",
                         "head_branch": "main",
                     }
-                ]
+                ],
             }
         if leaf in ["actions/runs/1", "actions/runs/2"]:
             run = {
