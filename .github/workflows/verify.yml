@@ -204,7 +204,7 @@ jobs:
         docker pull postgres@sha256:2ad58d61b036d41f2613302e8c0fee03f6fe51e94d68087327ac45d1cebd4b5e
         image=$(docker image inspect "onesa-security-candidate:$APPLICATION-$GITHUB_RUN_ID" --format '{{.Id}}')
         python3 scripts/release/worker_fixture_smoke.py "$image"
-    - name: 'Release requirement: actual worker process with disposable protocol fixtures'
+    - name: "${{ matrix.application == 'onesa-company-portal-backend' && 'Release requirement: actual worker process with disposable protocol fixtures' || 'Worker process fixtures apply only to the backend image' }}"
       if: matrix.application == 'onesa-company-portal-backend'
       env:
         APPLICATION: ${{ matrix.application }}

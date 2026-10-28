@@ -3,6 +3,7 @@
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -21,6 +22,50 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class PipelineTests(unittest.TestCase):
+    def test_worker_process_requirement_applies_to_backend_matrix_only(self):
+        workflow = (ROOT / ".github/workflows/verify.yml").read_text()
+        matrix = workflow.split("  image-security:\n", 1)[1].split(
+            "  pipeline-security:\n", 1
+        )[0]
+        steps = [
+            step
+            for step in matrix.split("    - name: ")[1:]
+            if "--worker-workflows --synthetic-scanner" in step
+        ]
+        self.assertEqual(len(steps), 1)
+        step = steps[0]
+        self.assertIn("if: matrix.application == 'onesa-company-portal-backend'", step)
+        self.assertIn(
+            'sudo -n python3 scripts/release/worker_fixture_smoke.py "$image" '
+            "--worker-workflows --synthetic-scanner",
+            step,
+        )
+        name = step.splitlines()[0].strip()
+        self.assertIn(name[0], "\"'")
+        self.assertEqual(name[-1], name[0])
+        name = name[1:-1]
+        conditional = re.fullmatch(
+            r"\$\{\{ matrix\.application == '([^']+)' && '([^']+)' \|\| '([^']+)' }}",
+            name,
+        )
+        for application in [
+            "onesa-company-portal-backend",
+            "onesa-company-portal-frontend",
+            "clamav",
+        ]:
+            rendered = name
+            if conditional:
+                selected, required, other = conditional.groups()
+                rendered = required if application == selected else other
+            with self.subTest(application=application):
+                if application == "onesa-company-portal-backend":
+                    self.assertEqual(
+                        rendered,
+                        "Release requirement: actual worker process with disposable protocol fixtures",
+                    )
+                else:
+                    self.assertFalse(rendered.startswith("Release requirement:"))
+
     @unittest.skipUnless(
         shutil.which("node"), "Node is required for the real operator workflow guard"
     )
