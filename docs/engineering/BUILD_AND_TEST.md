@@ -1,5 +1,14 @@
 # Separate application builds and tests
 
+The scanner release regressions run in the existing Python release suite. They
+exercise real Ed25519 signatures in a disposable issuer fixture, source/artifact
+and environment mismatches, revoked/expired or consumed contexts, unsafe rendered
+settings, concurrent attempts and interrupted provider requests. The sanitized
+`scanner-compose.fixture.json` describes public configuration for parsing tests;
+it is neither a provider receipt nor owner authorization. Real default-entrypoint,
+socket access, benign/EICAR, signature persistence and restart observations still
+require the separately commissioned isolated owner-run path.
+
 The owned worker-fixture tests use a fresh internal Docker network, synthetic TLS
 certificate and disposable PostgreSQL 17 database. The approved staging hostname
 resolves only to that test container; no hosted credential, published port, provider

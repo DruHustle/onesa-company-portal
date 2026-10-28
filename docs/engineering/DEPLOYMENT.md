@@ -39,6 +39,14 @@ Repository code or an unsigned JSON file supplies no release authority.
 The protected guide contains installation, qualification and recovery instructions;
 source implementation alone does not establish commissioning or deployment.
 
+The independent shared-scanner adapter is new source. Its installation profile
+retains the existing verifier and separate owner commissioning. It requires exact
+source, image bytes and current security evidence, isolated streaming/access and
+restart checks, recovery evidence and preservation of every independent workload.
+One durable request precedes a scanner-only update; inspection cannot repeat it.
+A new installation must resolve an earlier uncertain scanner request first.
+This implementation statement grants no deployment authority or hosted acceptance.
+
 The Portal-specific frontend extension is new source, not a commissioned service.
 It binds public presentation artifacts and existing provider configuration while
 retaining the independently deployed API, workers and scanner. Its limited copy scope additionally accepts only the exact default-prefetch
