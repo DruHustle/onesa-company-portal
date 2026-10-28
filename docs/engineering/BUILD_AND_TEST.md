@@ -573,6 +573,16 @@ loopback entry emits `LOCAL_SYNTHETIC_NOT_HOSTED`, which cannot satisfy the host
 receipt gate. Real owner-run CLI invocation accepts only the approved HTTPS origins.
 It submits no contact form and makes no account, publication or data mutation.
 
+`node --test scripts/release/oracle_portal_browser_readiness.test.mjs` exercises the
+actual owner probe in all three installed browsers. The disposable test directory
+must resolve the frontend's locked browser dependencies, as in `verify.yml`. Open
+background requests cannot replace successful-document and visible-content checks;
+failed documents and missing expected content still fail. Navigation waits for the
+destination document and rendered product anchor. The probe retains all 18 views,
+accessibility, JavaScript-error, mutation, prefetch and anonymous-boundary checks.
+No timeout or source-specific qualification allowance is increased. This follows
+[Playwright's readiness guidance](https://playwright.dev/docs/api/class-page#page-wait-for-load-state).
+
 Shared responsive links now default to `prefetch={false}` while preserving explicit
 caller overrides and click navigation. This bounds anonymous background work and
 avoids the reproduced WebKit speculative-fetch failures during page transitions.
