@@ -665,3 +665,11 @@ read-only isolation with the signed source profile before and after restart.
 Resource drift remains a failed check. Existing host-capacity, security, signature,
 authenticated-workflow and rollback gates are still required. The synthetic
 contract tests do not establish genuine hosted memory headroom or acceptance.
+
+## Independent worker owner adapter checks
+
+Run `python3 -m unittest discover -s scripts/release -p 'test_oracle_portal_worker.py'` and `node --test scripts/release/oracle_portal_scanner_workflows.test.mjs scripts/release/oracle_portal_worker_production.test.mjs`. The complete release suite also checks the worker installer profile, component boundaries and real signature-chain rejection. These local synthetic tests establish no hosted qualification or deployment.
+
+The worker adapter keeps the retained production worker recipe and resource profile. Staging uses a fresh marked database and a read-only retained scanner socket. Its production canary owns a fresh conditional object and a reserved outbox entry; the entry stays unprocessable until object ownership and integrity are established. Interrupted inspection cannot create objects, enqueue work or repeat deployment. Neither the probe nor inspection imports the production worker loop. Source-specific installation, separate owner commissioning, mandatory native checks and genuine hosted evidence remain required.
+
+The same credential-free backend image job also selects `worker_fixture_smoke.py --worker-workflows --synthetic-scanner --worker-production`. This adds an actual production-adapter process test using a second hostname alias on the fresh internal PostgreSQL fixture, synthetic TLS/object storage and the least-privilege runtime role. It checks conditional object ownership, real outbox execution by the worker process, collision preservation, duplicate refusal and inspection without writes. The alias never selects the real production database; no published port, provider credential or hosted release record is used. This test is mandatory in the backend image job and must pass before owner commissioning.

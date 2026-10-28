@@ -45,6 +45,7 @@ async function main(){
  const input=JSON.parse(Buffer.concat(chunks));
  assert.equal(input.scope,'LOCAL_DISPOSABLE_WORKER_WORKFLOWS_ONLY');
  assert.ok(input.synthetic_scanner===undefined||typeof input.synthetic_scanner==='boolean');
+ assert.ok(input.production_adapter===undefined||typeof input.production_adapter==='boolean');
  const uri=new URL(input.owner_uri);
  assert.equal(uri.hostname,stagingHost);assert.equal(uri.username,'neondb_owner');
  assert.match(uri.password,/^onesa_local_test_[a-f0-9]{48}$/);
@@ -69,6 +70,8 @@ async function main(){
     assert.ok(counts.put+counts.get+counts.delete<100);
     res.setHeader('x-amz-request-id',randomUUID());
     if(req.method==='PUT'){
+     if(req.headers['if-none-match'])assert.equal(req.headers['if-none-match'],'*');
+     if(req.headers['if-none-match']==='*'&&objects.has(id)){res.writeHead(412,{'content-type':'application/xml'}).end('<Error><Code>PreconditionFailed</Code></Error>');return;}
      assert.ok(!objects.has(id));const chunks=[];let bytes=0;
      for await(const chunk of req){bytes+=chunk.length;assert.ok(bytes<=16384);chunks.push(chunk);}
      objects.set(id,Buffer.concat(chunks));counts.put++;res.writeHead(200).end();
@@ -76,7 +79,8 @@ async function main(){
      counts.get++;
      if(objects.has(id)){res.writeHead(200,{'content-type':'application/octet-stream'}).end(objects.get(id));}
      else res.writeHead(404,{'content-type':'application/xml'}).end('<Error><Code>NoSuchKey</Code><Message>Disposable fixture key absent</Message></Error>');
-    }else if(req.method==='DELETE'){counts.delete++;objects.delete(id);res.writeHead(204).end();}
+    }else if(req.method==='HEAD'){res.writeHead(objects.has(id)?200:404).end();}
+    else if(req.method==='DELETE'){counts.delete++;objects.delete(id);res.writeHead(204).end();}
     else res.writeHead(405).end();
    }catch{res.writeHead(400).end();}
   });
@@ -111,7 +115,16 @@ async function main(){
   assert.ok(Object.keys(observed.checks).length>=17);assert.ok(Object.values(observed.checks).every(value=>value===true));
   assert.equal(observed.existing_application_databases_changed,false);assert.equal(observed.global_tick_imported,false);assert.equal(observed.inbox_delivery_verified,false);
   assert.equal(objects.size,0);assert.equal(counts.put,3);assert.ok(counts.get>=7);assert.ok(counts.delete>=3);
-  console.log(JSON.stringify({state:'LOCAL_WORKER_PROCESS_WORKFLOWS_PASS_NOT_HOSTED_QUALIFICATION',checks:observed.checks,object_protocol_requests:counts,postgres_tls_verified:true,smtp_tls_acceptance_verified:true,inbox_delivery_verified:false,external_storage_provider_verified:false,synthetic_scanner_protocol:input.synthetic_scanner===true,hosted_scanner_qualification_claimed:false,production_access:false,synthetic_binding_only:true,release_records_issued:0}));
+  let productionChecks;
+  if(input.production_adapter){
+   phase='production_adapter_internal_process_fixture';
+   assert.equal(input.synthetic_scanner,true);
+   const {runLocal}=await import('./oracle_portal_worker_production.integration.mjs');
+   productionChecks=await runLocal({owner_uri:uri.href,values,objects,counts,stageRequest:operation,stageRaw:raw});
+   assert.ok(Object.values(productionChecks).every(value=>value===true));
+   assert.equal(objects.size,0);
+  }
+  console.log(JSON.stringify({state:'LOCAL_WORKER_PROCESS_WORKFLOWS_PASS_NOT_HOSTED_QUALIFICATION',checks:observed.checks,production_adapter_checks:productionChecks,object_protocol_requests:counts,postgres_tls_verified:true,smtp_tls_acceptance_verified:true,inbox_delivery_verified:false,external_storage_provider_verified:false,synthetic_scanner_protocol:input.synthetic_scanner===true,hosted_scanner_qualification_claimed:false,production_access:false,synthetic_binding_only:true,release_records_issued:0}));
  }finally{
   if(server)await new Promise(resolve=>server.close(resolve));
   if(scanner)await scanner.close();
