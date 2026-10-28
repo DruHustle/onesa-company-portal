@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
+from uuid import uuid4
 
 import oracle_portal as r
 import oracle_portal_scanner as scanner
@@ -16,6 +17,106 @@ import test_oracle_portal_scanner as fixture
 
 
 class WorkflowScopeTests(unittest.TestCase):
+    def private_fixture(self):
+        binding, plan = fixture.inputs()
+        now = r.now()
+        expiry = (
+            (now + workflow.dt.timedelta(minutes=30)).isoformat().replace("+00:00", "Z")
+        )
+        plan["workflow"]["expires_at"] = expiry
+        context_id = str(uuid4())
+        owner = {
+            "schema_version": 1,
+            "state": "STAGING_CUSTODY_NOT_AUTHORIZATION",
+            **{
+                key: binding[key]
+                for key in ["candidate_commit", "source_tree", "artifact_digest"]
+            },
+            "owner_uri": "synthetic-owner-fixture-only",
+            "runtime_password": "synthetic-runtime-fixture-only",
+            "created_at": now.isoformat().replace("+00:00", "Z"),
+            "expires_at": expiry,
+        }
+        storage = {
+            "S3_ENDPOINT": "https://synthetic-store.invalid",
+            "S3_BUCKET": "owned-synthetic-fixture",
+            "AWS_ACCESS_KEY_ID": "synthetic-key-id",
+            "AWS_SECRET_ACCESS_KEY": "synthetic-key-value",
+        }
+        stage = {
+            "Config": {"Env": [key + "=" + value for key, value in storage.items()]}
+        }
+        plan["baseline"]["onesa-portal-oracle-api-staging-1"] = {"synthetic": "stage"}
+        plan["baseline"]["onesa-portal-oracle-production-worker-1"] = {
+            "source": "9" * 40,
+            "image": "sha256:" + "a" * 64,
+        }
+        records = [
+            {
+                "kind": "context",
+                "id": context_id,
+                "binding": binding,
+                "details": {"ci": [{"run_id": 4711}]},
+            }
+        ]
+        pins = {
+            "runtime.env": "3",
+            "cert.pem": "5",
+            "key.pem": "6",
+            "owner.json": "7",
+            "portal-production.env": "4",
+        }
+        self.enterContext(patch.object(r, "private", side_effect=Path))
+        self.enterContext(
+            patch.object(r, "sha", side_effect=lambda path: pins[Path(path).name] * 64)
+        )
+        self.enterContext(patch.object(r, "read", return_value=owner))
+        self.enterContext(patch.object(r, "now", return_value=now))
+        self.enterContext(patch.object(r, "runtime_values", return_value=storage))
+        self.enterContext(
+            patch.object(r, "summary", return_value={"synthetic": "stage"})
+        )
+        self.enterContext(patch.object(r, "healthy", return_value=True))
+        docker = self.enterContext(
+            patch.object(r, "docker", return_value=r.canonical([stage]))
+        )
+        return binding, plan, context_id, records, docker
+
+    def test_private_fixture_binds_the_existing_oracle_production_worker(self):
+        binding, plan, context_id, records, docker = self.private_fixture()
+        result = workflow.private_input(
+            binding, plan, Path("/synthetic"), context_id, records
+        )
+        self.assertEqual(
+            result["worker_probe"]["rollback"],
+            {"source": "9" * 40, "artifact_digest": "sha256:" + "a" * 64},
+        )
+        self.assertEqual(result["worker_probe"]["ci_run_id"], 4711)
+        docker.assert_called_once_with("inspect", "onesa-portal-oracle-api-staging-1")
+
+    def test_missing_or_malformed_retained_worker_cannot_use_a_similarly_named_baseline(
+        self,
+    ):
+        binding, plan, context_id, records, _docker = self.private_fixture()
+        original = plan["baseline"].pop("onesa-portal-oracle-production-worker-1")
+        plan["baseline"]["onesa-portal-production-worker-1"] = original
+        for replacement in [
+            None,
+            {**original, "source": "main"},
+            {**original, "image": "mutable:tag"},
+        ]:
+            if replacement is not None:
+                plan["baseline"]["onesa-portal-oracle-production-worker-1"] = (
+                    replacement
+                )
+            with (
+                self.subTest(replacement=replacement),
+                self.assertRaisesRegex(r.Refused, "RETAINED_WORKER_IDENTITY_REQUIRED"),
+            ):
+                workflow.private_input(
+                    binding, plan, Path("/synthetic"), context_id, records
+                )
+
     def test_application_keeps_its_separate_build_artifact_and_current_source(self):
         binding, plan = fixture.inputs()
         result = workflow.validate_plan(binding, plan)
