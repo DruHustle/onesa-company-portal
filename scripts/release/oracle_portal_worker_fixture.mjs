@@ -77,6 +77,24 @@ export async function run(request){
   // this unique fixture. Timeout fails closed; no duplicate DDL request follows.
   await client.query("SELECT pg_advisory_lock(hashtextextended('onesa-worker-fixture:'||$1,0))",[plan.database]);
   let state=await inspect(client,plan);
+  async function ownerAccess(){
+   // PostgreSQL 16+ gives a non-superuser role creator ADMIN, without SET or
+   // INHERIT by default. Access is limited to this transactionally marked,
+   // non-login fixture owner; no existing application role is granted.
+   require(state.owner&&ownedRole(state.owner,plan.marker,false));
+   const access=async()=>((await client.query("SELECT pg_has_role(current_user,$1,'SET') AS can_set,pg_has_role(current_user,$1,'USAGE') AS can_inherit",[plan.owner])).rows[0]);
+   let granted=await access();
+   if(!granted.can_set||!granted.can_inherit){
+    await client.query('BEGIN');
+    try{
+     await client.query(`GRANT ${ident(plan.owner)} TO CURRENT_USER WITH INHERIT TRUE`);
+     await client.query(`GRANT ${ident(plan.owner)} TO CURRENT_USER WITH SET TRUE`);
+     await client.query('COMMIT');
+    }catch(error){await client.query('ROLLBACK');throw error;}
+    granted=await access();
+   }
+   require(granted.can_set&&granted.can_inherit);
+  }
   if(request.action==='provision'){
    if(!state.owner){
     await client.query('BEGIN');
@@ -92,6 +110,7 @@ export async function run(request){
     }catch(error){await client.query('ROLLBACK');throw error;}
     state=await inspect(client,plan);require(state.owner&&state.runtime&&!state.db);
    }
+   await ownerAccess();
    if(!state.db){
     // If interrupted after CREATE DATABASE, its unique, transactionally marked
     // owner role proves ownership on inspection. Never repeat an uncertain DDL.
@@ -128,6 +147,7 @@ export async function run(request){
    }finally{await target.end();}
   }
   if(request.action==='cleanup'){
+   if(state.owner)await ownerAccess();
    if(state.db){
     const n=(await client.query('SELECT count(*)::int AS n FROM pg_stat_activity WHERE datid=$1',[state.db.oid])).rows[0].n;
     require(n===0); // No FORCE, backend termination or unknown connection killing.

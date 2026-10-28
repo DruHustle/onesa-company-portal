@@ -1,0 +1,21 @@
+{
+  "services": {
+    "scanner": {
+      "build": {"context": "/synthetic/infra/oracle/clamav", "dockerfile": "Dockerfile"},
+      "cap_drop": ["ALL"], "cpus": 0.8, "command": null, "entrypoint": null,
+      "group_add": ["3000"], "image": "synthetic-image", "init": true,
+      "labels": {},
+      "logging": {"driver": "json-file", "options": {"max-file": "3", "max-size": "10m"}},
+      "mem_limit": "4294967296", "networks": {"signature_updates": null},
+      "pids_limit": 128, "platform": "linux/arm64", "read_only": true,
+      "restart": "unless-stopped", "security_opt": ["no-new-privileges:true"],
+      "stop_grace_period": "3m0s", "tmpfs": ["/tmp"],
+      "volumes": [
+        {"type": "volume", "source": "staging_signatures", "target": "/var/lib/clamav", "volume": {}},
+        {"type": "volume", "source": "scanner_socket", "target": "/run/onesa-scanner", "volume": {}}
+      ]
+    }
+  },
+  "volumes": {"staging_signatures": {"name": "synthetic-definitions"}, "scanner_socket": {"name": "synthetic-socket"}},
+  "networks": {"signature_updates": {"name": "synthetic-signatures"}}
+}

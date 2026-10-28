@@ -83,7 +83,7 @@ def main():
         password = "onesa_local_test_" + secrets.token_hex(24)
         env = root / "postgres.env"
         env.write_text(
-            "POSTGRES_USER=neondb_owner\nPOSTGRES_DB=neondb\nPOSTGRES_PASSWORD="
+            "POSTGRES_USER=fixture_admin\nPOSTGRES_DB=neondb\nPOSTGRES_PASSWORD="
             + password
             + "\n"
         )
@@ -116,9 +116,9 @@ def main():
             assert os.geteuid() == 0, (
                 "Linux owner fixture only; no privileged daemon client in the application"
             )
-            for name in ["server.key", "server.crt"]:
-                os.chown(root / name, 1000, 1000)
-                (root / name).chmod(0o600)
+            for tls_name in ["server.key", "server.crt"]:
+                os.chown(root / tls_name, 1000, 1000)
+                (root / tls_name).chmod(0o600)
         try:
             execute(
                 [
@@ -188,7 +188,7 @@ def main():
                         "-h",
                         "127.0.0.1",
                         "-U",
-                        "neondb_owner",
+                        "fixture_admin",
                         "-d",
                         "neondb",
                     ],
@@ -227,6 +227,31 @@ def main():
             assert not json.loads(execute([docker, "inspect", name]).stdout)[0][
                 "HostConfig"
             ]["PortBindings"], "Test ports must remain unpublished"
+            # Match the hosted owner privileges. Superuser-only fixtures hide
+            # missing SET/INHERIT membership when a role creator owns a new DB.
+            execute(
+                [
+                    docker,
+                    "exec",
+                    "-i",
+                    name,
+                    "psql",
+                    "-U",
+                    "fixture_admin",
+                    "-d",
+                    "neondb",
+                    "--no-psqlrc",
+                    "-q",
+                    "-v",
+                    "ON_ERROR_STOP=1",
+                ],
+                input=(
+                    "CREATE ROLE neondb_owner LOGIN NOSUPERUSER CREATEDB CREATEROLE "
+                    "NOREPLICATION NOBYPASSRLS PASSWORD '" + password + "';\n"
+                    "ALTER DATABASE neondb OWNER TO neondb_owner;\n"
+                ).encode(),
+                timeout=15,
+            )
             mounts = [
                 part
                 for n in files
