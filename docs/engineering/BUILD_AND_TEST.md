@@ -632,6 +632,14 @@ host and exact callback-path contract, with no userinfo, custom port, query or
 fragment. The runner validates that structure before credential use, then checks
 the exact named existing provider value; it never changes Access, accounts or MFA.
 
+## Drone product introduction
+
+After building the frontend, run `npm run test:drone-product` from
+`onesa-company-portal-frontend`. The production-renderer fixture refuses private frontend
+env files, uses a synthetic loopback content service and checks EN/DE, 390/1440px,
+light/dark, keyboard-operable concept rotation, axe and existing enquiry links.
+It does not submit a live enquiry or establish hosted publication approval.
+
 Worker process regressions use `node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs scripts/release/oracle_portal_worker_probe.test.mjs`.
 The backend image-security job additionally runs `sudo -n python3 scripts/release/worker_fixture_smoke.py "$image" --worker-workflows --synthetic-scanner` on the disposable GitHub-hosted runner. It uses an internal Docker network, temporary PostgreSQL/TLS, loopback S3/SMTP protocol fixtures, and a synthetic scanner protocol fixture. The original seven-case database fixture test remains separate.
 
