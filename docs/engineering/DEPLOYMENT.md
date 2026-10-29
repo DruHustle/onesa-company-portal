@@ -2,6 +2,13 @@
 
 <!-- onesa-protected-source: portal-deployment -->
 
+An existing API deployment may be observed after a separately released component
+changes only through a new operation-scoped external owner commission. The
+recovery validates that component’s signed runtime and release chain, preserves
+the original plan and all strict unrelated-workload checks, and rechecks the
+independent evidence around its read-only observation. No source approval or
+deployment request is transferred. See the protected canonical procedure.
+
 Scanner preflight checks the existing disk reserve for both isolated signature
 copies before qualification starts. Each copy keeps its own reserve check. Failed
 runners retain bounded private diagnostics; those records never authorize retries.

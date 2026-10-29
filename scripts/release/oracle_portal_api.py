@@ -394,14 +394,22 @@ def effective_environment(binding, plan):
     return raw, expected
 
 
-def retained(plan, *, replacement=False):
+def retained(plan, *, replacement=False, independent=None):
+    # Only the separately commissioned recovery observer supplies these values,
+    # after checking independently signed release receipts. Never edit the plan.
+    independent = {} if independent is None else independent
+    r.require(
+        isinstance(independent, dict)
+        and set(independent) <= set(plan["baseline"]) - {TARGET},
+        "API_INDEPENDENT_SCOPE_REQUIRED",
+    )
     observed = r.inventory()
     r.require(set(observed) == set(plan["baseline"]), "API_WORKLOAD_SET_CHANGED")
     for name, row in observed.items():
         r.require(r.healthy(row), "API_PRESERVED_WORKLOAD_UNHEALTHY")
         if name != TARGET or not replacement:
             r.require(
-                r.summary(row) == plan["baseline"][name],
+                r.summary(row) == independent.get(name, plan["baseline"][name]),
                 "API_INDEPENDENT_RUNTIME_CHANGED",
             )
     r.require(
@@ -664,7 +672,7 @@ def production_probe(binding, plan, context, records, target, observer_tool=None
     return {**value, "public_ingress": api}
 
 
-def production(binding, plan, context, records, observer_tool=None):
+def production(binding, plan, context, records, observer_tool=None, independent=None):
     target = deployment_folder(context["operation_id"])
     request = r.read(target / "request.json")
     r.require(
@@ -674,7 +682,8 @@ def production(binding, plan, context, records, observer_tool=None):
         and request["automatic_retry"] is False,
         "API_DURABLE_REQUEST_REQUIRED",
     )
-    row = retained(plan, replacement=True)[TARGET]
+    preserved = {} if independent is None else {"independent": independent}
+    row = retained(plan, replacement=True, **preserved)[TARGET]
     labels = row["Config"].get("Labels", {})
     r.require(
         row["Id"] != plan["baseline"][TARGET]["container_id"]
@@ -692,7 +701,7 @@ def production(binding, plan, context, records, observer_tool=None):
     observation = production_probe(
         binding, plan, context, records, target, observer_tool
     )
-    retained(plan, replacement=True)
+    retained(plan, replacement=True, **preserved)
     return {
         "operation_id": context["operation_id"],
         "deployment_id": row["Id"],
@@ -802,11 +811,15 @@ def deploy(binding, plan, context, folder, records):
         return value
 
 
-def runner(phase, binding, context, *, observer_tool=None):
+def runner(phase, binding, context, *, observer_tool=None, independent=None):
     r.require(phase in CHECKS, "API_PHASE_SCOPE")
     r.require(
         observer_tool is None or phase == "production",
         "OBSERVER_CORRECTION_IS_READ_ONLY_PRODUCTION_ONLY",
+    )
+    r.require(
+        independent is None or (phase == "production" and observer_tool is not None),
+        "INDEPENDENT_RECONCILIATION_IS_COMMISSIONED_READ_ONLY_ONLY",
     )
     plan = r.read(PLAN)
     folder = validate_plan(binding, plan)
@@ -819,7 +832,14 @@ def runner(phase, binding, context, *, observer_tool=None):
     elif phase == "deploy":
         details = deploy(binding, plan, context, folder, records)
     else:
-        details = production(binding, plan, context, records, observer_tool)
+        details = production(
+            binding,
+            plan,
+            context,
+            records,
+            observer_tool,
+            **({"independent": independent} if independent is not None else {}),
+        )
     return {
         **details,
         "binding": binding,
