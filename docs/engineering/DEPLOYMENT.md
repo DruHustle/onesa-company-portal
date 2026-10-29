@@ -2,6 +2,12 @@
 
 <!-- onesa-protected-source: portal-deployment -->
 
+The external verifier preserves the existing root owner sudo principal when
+launching a pinned runner, while excluding ambient credentials. Other principals,
+non-root callers and Actions cannot gain that provenance through this handoff.
+This correction requires new checked source, installation and qualification;
+failed contexts remain consumed.
+
 Frontend staging explicitly selects the provider's preview target before dispatch.
 The observed deployment must still match the source, project, region and expected
 target before its staging alias is assigned. This source correction requires new
