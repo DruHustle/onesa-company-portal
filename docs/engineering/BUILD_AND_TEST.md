@@ -522,6 +522,32 @@ to test cleanup.
 
 ## Operations notification regression
 
+`scripts/test_oracle_notification_scope.py` exercises staging-only, production-only
+and mixed incidents with delivery and external commands mocked. All staging API
+initial alerts, updates, reminders, restarts and recoveries are excluded before
+notification decisions and incident bookkeeping. Health checks, raw failure/recovery
+records and restart baselines still include staging. The notification projection
+retains production and shared dependencies by actual consumers: the historically
+named staging scanner socket also serves the production worker; SQL/queue metrics
+use the production profile; backups and host resource rules remain eligible.
+
+The private observation has a separate versioned `notification_state` containing
+only eligible metrics, rules and recovery counters. Existing staging incidents retire
+silently; mixed history retains eligible rules/services and original notification
+timestamps. Migration requires fresh sustained health before any eligible recovery.
+Historical receipt files are not rewritten just to apply a new scope. A legacy
+pending payload containing excluded failures or recovered staging names is held for
+provider reconciliation with its original identity/body intact. Never edit its body
+under the old provider key or create a replacement identity. Existing reconciliation
+holds stay enforced even when their timestamps are recent. Sampling continues.
+
+Regressions also cover production recovery while staging still fails, original
+cooldown preservation, per-environment restart accounting, ambiguous delivery retries,
+unchanged receipts and observation persistence. These are offline controls; use the
+protected operations-component procedure for qualified source installation, source
+hash verification, singleton scheduling and normal timer samples. Never rerun the
+initial operations bootstrap or send a production test email for this change.
+
 Run `python3 -m unittest discover -s scripts -p 'test_oracle*.py'` for the
 complete Oracle-operation regression set, including
 `scripts/test_oracle_monitor_persistence.py`. Its eight disposable-state tests

@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased — Production and shared operations notifications
+
+- Exclude the fixed staging API targets before notification decisions and incident
+  bookkeeping. Initial alerts, updates, reminders and recoveries are all silent for
+  staging-only failures; raw health, failure/recovery records and restart baselines
+  still include staging. Production and shared scanner, queue, database, backup and
+  host-resource notifications remain enabled based on their actual consumers.
+- Migrate existing incident state without a notification burst or rewriting prior
+  receipts. Mixed incidents retain eligible history and the original cooldown clock.
+  Existing ambiguous payloads that would change under the new scope retain their
+  delivery identities and require reconciliation instead of being rewritten/rekeyed.
+  Existing provider holds remain enforced.
+- Preserve immediate production alerts, bounded update grouping, six-hour reminders
+  and five-minute/six-sample recovery confirmation. Mocked regressions cover staging,
+  production, mixed incidents, restarts, recovery, migration and ambiguous delivery.
+  Exact-source promotion, operations-component installation and ordinary scheduled
+  verification remain required before this source change is described as live.
+
 ## Unreleased — Drone public product qualification
 
 - Select preview explicitly before the staging CLI dispatch. Synthetic default-target and unexpected-provider-target regressions retain the one-create intent and refuse a crossed staging alias; no live runner is changed by this source update.

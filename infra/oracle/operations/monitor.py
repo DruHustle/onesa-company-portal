@@ -18,6 +18,7 @@ UPDATE_SECONDS = 30 * 60
 RECOVERY_SECONDS = 5 * 60
 RECOVERY_SAMPLES = 6
 MAX_SAMPLE_GAP_SECONDS = 120
+NOTIFICATION_SCOPE = "production-and-shared-v1"
 # Provider keys last 24 hours; leave an hour before manual reconciliation is needed.
 PENDING_RETRY_SECONDS = 23 * 60 * 60
 RULES = (
@@ -224,6 +225,7 @@ def sample_backends(previous):
             "container_healthy": healthy,
             "loopback_only": loopback,
             "restart_count": count,
+            "restarted": count > previous.get(name, count),
         }
     return {
         "backend_api_healthy": all(
@@ -369,6 +371,127 @@ def write_record(path, value):
     temporary.replace(path)
 
 
+def notification_metrics(metrics):
+    """Project known API environments before decisions; shared dependencies stay in scope.
+
+    Worker/SQL/queue metrics use portal-production.env. The scanner socket is shared
+    with that production worker despite its historical staging container name. Disk,
+    memory and configured backups also serve production. Only the fixed staging API
+    targets are excluded; unknown aggregate failures are retained, never guessed away.
+    """
+    result = dict(metrics)
+    details = metrics.get("backends")
+    if isinstance(details, dict):
+        eligible = {
+            name: value
+            for name, value in details.items()
+            if BACKENDS.get(name, {}).get("environment") != "staging"
+        }
+        result["backends"] = eligible
+        if details and set(details) <= set(BACKENDS):
+            result["backend_api_healthy"] = all(
+                value.get("container_healthy") is True
+                and value.get("http_healthy") is True
+                for value in eligible.values()
+            )
+            if not eligible or all("restarted" in value for value in details.values()):
+                result["backend_api_restarted"] = any(
+                    value.get("restarted") is True for value in eligible.values()
+                )
+    counts = metrics.get("backend_restart_counts")
+    if isinstance(counts, dict):
+        result["backend_restart_counts"] = {
+            name: count
+            for name, count in counts.items()
+            if BACKENDS.get(name, {}).get("environment") != "staging"
+        }
+    return result
+
+
+def notification_alerts(alerts, metrics):
+    """Project stored rules as well as current metrics without changing their history."""
+    scoped = notification_metrics(metrics)
+    return [
+        rule
+        for rule in alerts
+        if not (
+            rule == "backend-api-unavailable"
+            and scoped.get("backend_api_healthy") is True
+            or rule == "backend-api-restarted"
+            and scoped.get("backend_api_restarted") is False
+        )
+    ]
+
+
+def notification_history(last):
+    """Read a scoped view; never rewrite old receipts or reset their cooldown clock."""
+    if not last or last.get("kind") == "recovery":
+        return last
+    names = set(last.get("incident_backends", last.get("affected_backends", {})))
+    names.update(last.get("affected_backends", {}))
+    historical_metrics = {
+        "backends": {
+            name: {"container_healthy": False, "http_healthy": False, "restarted": True}
+            for name in names
+        }
+    }
+    rules = notification_alerts(last.get("rules", []), historical_metrics)
+    incident_rules = notification_alerts(
+        last.get("incident_rules", last.get("rules", [])), historical_metrics
+    )
+    if not rules and not incident_rules:
+        return {}
+    return {
+        **last,
+        "rules": rules or incident_rules,
+        "incident_rules": incident_rules,
+        "affected_backends": {
+            name: value
+            for name, value in last.get("affected_backends", {}).items()
+            if BACKENDS.get(name, {}).get("environment") != "staging"
+        },
+        "incident_backends": sorted(
+            name
+            for name in names
+            if BACKENDS.get(name, {}).get("environment") != "staging"
+        ),
+    }
+
+
+def previous_notification_state(previous, last):
+    scoped = previous.get("notification_state", {})
+    if scoped.get("scope") == NOTIFICATION_SCOPE:
+        return scoped
+    metrics = notification_metrics(previous.get("metrics", {}))
+    alerts = notification_alerts(previous.get("alerts", []), metrics)
+    # Migrate silently. Staging-only incidents cannot open or recover an emailed
+    # incident. Mixed incidents retain eligible history and its original timestamps;
+    # require fresh sustained health instead of inferring it from a raw staging streak.
+    return {
+        "checked_at": previous.get("checked_at"),
+        "alerts": alerts,
+        "metrics": metrics,
+        "healthy_samples": 0,
+        "incident_open": bool(alerts)
+        or bool(last.get("rules"))
+        and incident_open(previous),
+    }
+
+
+def pending_scope_hold(pending):
+    """Changed legacy payloads need reconciliation, never a rewritten idempotent retry."""
+    metrics = pending["metrics"]
+    return (
+        notification_alerts(pending["alerts"], metrics) != pending["alerts"]
+        or set(failed_backends(metrics))
+        != set(failed_backends(notification_metrics(metrics)))
+        or any(
+            BACKENDS.get(name, {}).get("environment") == "staging"
+            for name in pending.get("recovered_backends", [])
+        )
+    )
+
+
 def incident_open(previous):
     # A clean legacy baseline must not create a retrospective recovery email.
     return previous.get(
@@ -392,9 +515,7 @@ def observation_age(checked_at, now):
 def continuous_health(previous, now):
     gap = observation_age(previous.get("checked_at"), now)
     return (
-        not previous.get("alerts")
-        and gap is not None
-        and gap <= MAX_SAMPLE_GAP_SECONDS
+        not previous.get("alerts") and gap is not None and gap <= MAX_SAMPLE_GAP_SECONDS
     )
 
 
@@ -588,42 +709,69 @@ def main():
     }
     path = STATE / ("simulation.json" if args.simulate else "metrics.json")
     previous = json.loads(path.read_text()) if path.exists() else {}
-    last_notification = json.loads(last.read_text()) if last.exists() else {}
-    record["incident_open"] = bool(alerts) or incident_open(previous)
-    if not alerts:
+    last_notification = notification_history(
+        json.loads(last.read_text()) if last.exists() else {}
+    )
+    scoped_metrics = notification_metrics(metrics)
+    scoped_alerts = notification_alerts(alerts, scoped_metrics)
+    scoped_previous = previous_notification_state(previous, last_notification)
+    notification_state = {
+        "scope": NOTIFICATION_SCOPE,
+        "checked_at": record["checked_at"],
+        "metrics": scoped_metrics,
+        "alerts": scoped_alerts,
+        "incident_open": bool(scoped_alerts) or incident_open(scoped_previous),
+    }
+    if not scoped_alerts:
         since = (
-            previous.get("healthy_since") if continuous_health(previous, now) else None
+            scoped_previous.get("healthy_since")
+            if continuous_health(scoped_previous, now)
+            else None
         )
         # Rebase an invalid/future clock value; missing observations never count as health.
-        record["healthy_since"] = (
+        notification_state["healthy_since"] = (
             since if observation_age(since, now) is not None else record["checked_at"]
         )
-    kind, record["healthy_samples"] = notification_decision(
-        alerts,
-        metrics,
-        previous,
+    kind, notification_state["healthy_samples"] = notification_decision(
+        scoped_alerts,
+        scoped_metrics,
+        scoped_previous,
         last_notification,
         now,
         cooldown_seconds=config.get("notification_cooldown_seconds", UPDATE_SECONDS),
     )
+    record["notification_state"] = notification_state
+    # Compatibility mirrors describe notification health; raw metrics/alerts above
+    # always retain every staging failure for observations and restart baselines.
+    for key in ["incident_open", "healthy_samples", "healthy_since"]:
+        if key in notification_state:
+            record[key] = notification_state[key]
     pending = None if args.simulate else previous.get("notification_pending")
-    reconciliation_required = False
+    reconciliation_required = bool(
+        not args.simulate and previous.get("notification_reconciliation_required")
+    )
+    scope_hold = False
     if pending:
         # A prior ambiguous provider result must reuse the same idempotency key.
         if str(uuid.UUID(pending["reference"])) != pending["reference"]:
             raise ValueError("Invalid pending notification identity")
         pending_age = (
-            now
-            - datetime.datetime.fromisoformat(pending["checked_at"]).timestamp()
+            now - datetime.datetime.fromisoformat(pending["checked_at"]).timestamp()
         )
-        reconciliation_required = not 0 <= pending_age < PENDING_RETRY_SECONDS
-    elif args.simulate or kind:
+        scope_hold = bool(
+            previous.get("notification_pending_policy_hold")
+        ) or pending_scope_hold(pending)
+        reconciliation_required |= (
+            scope_hold or not 0 <= pending_age < PENDING_RETRY_SECONDS
+        )
+    elif (args.simulate or kind) and not reconciliation_required:
         pending = {
             "reference": str(uuid.uuid4()),
             "kind": "simulation" if args.simulate else kind,
-            "alerts": alerts,
-            "metrics": metrics,
+            "alerts": scoped_alerts,
+            "metrics": scoped_metrics,
             "checked_at": record["checked_at"],
+            "notification_scope": NOTIFICATION_SCOPE,
             "recovered_backends": list(
                 last_notification.get(
                     "incident_backends", last_notification.get("affected_backends", {})
@@ -635,6 +783,7 @@ def main():
     should_send = pending is not None and not reconciliation_required
     if pending and not args.simulate:
         record["notification_pending"] = pending
+    record["notification_pending_policy_hold"] = scope_hold
     record["notification_reconciliation_required"] = reconciliation_required
     # Preserve the latest observed failure even if notification delivery fails.
     # A cleared sample is recorded separately; it never converts a failed sample to PASS.
@@ -670,7 +819,8 @@ def main():
         )
         record.pop("notification_pending", None)
         if pending["kind"] == "recovery":
-            record["incident_open"] = bool(alerts)
+            notification_state["incident_open"] = bool(scoped_alerts)
+            record["incident_open"] = notification_state["incident_open"]
         # Retain the observation time/type even with a minimal provider receipt.
         record["notification"].setdefault("checked_at", pending["checked_at"])
         record["notification"].setdefault("kind", pending["kind"])
@@ -711,6 +861,10 @@ def main():
                 "simulation": args.simulate,
                 "notification_accepted": bool(should_send),
                 "notification_reconciliation_required": reconciliation_required,
+                "notification_pending_policy_hold": scope_hold,
+                "notification_scope": NOTIFICATION_SCOPE,
+                "notification_alerts": scoped_alerts,
+                "notification_kind": pending["kind"] if should_send else None,
                 "failed_backends": failed_backends(metrics),
                 "reference": record.get("notification", {}).get("reference"),
             }
