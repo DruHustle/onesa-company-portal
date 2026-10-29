@@ -73,6 +73,16 @@ failed/skipped checks, wrong identities, interrupted reads and simultaneous obse
 This recovery cannot qualify changed application source or accept an uncertain
 provider command. Operational commands remain in the protected canonical procedure.
 
+Independent-runtime recovery tests require a genuine externally commissioned peer
+issuer, its independently pinned verifier and complete signed runtime identity.
+A staging receipt cannot reconcile production; production needs its accepted
+deployment chain. Revoked ancestors, missing/skipped checks, unknown component
+scope and source/image/configuration drift fail closed. The operation-scoped
+commission retains the original plan and records; the observer rechecks peer
+revocation and identity before and after its read-only production verification.
+Historical receipts recognize an already existing runtime without renewing a
+qualification, transferring authorization or issuing another deployment request.
+
 The browser verification job uses supported Ubuntu24.04 explicitly, retaining all
 three engines, the bounded signed dependency installer and every existing deadline.
 
