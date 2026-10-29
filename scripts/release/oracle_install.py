@@ -52,6 +52,7 @@ API_ALLOWED = {
     **SCANNER_ALLOWED,
     "runners/oracle_portal_api.py": "scripts/release/oracle_portal_api.py",
     "runners/oracle_portal_api_production.mjs": "scripts/release/oracle_portal_api_production.mjs",
+    "runners/oracle_portal_api_recovery.py": "scripts/release/oracle_portal_api_recovery.py",
     "runners/oracle_portal_worker_production.mjs": "scripts/release/oracle_portal_worker_production.mjs",
 }
 

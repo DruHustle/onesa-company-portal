@@ -12,6 +12,18 @@ function fixture(){const calls=[];return {calls,async identity(){calls.push('ide
 test('Read-only runtime observation retains the existing publication configuration and issues no authority',async()=>{
  const value=input(),io=fixture();const result=await observe(value.request,value.raw,value.values,io);assert.deepEqual(io.calls,['identity','close']);assert.equal(result.state,'API_READ_ONLY_RUNTIME_OBSERVED_NOT_AUTHORIZATION');assert.equal(result.production_writes,0);assert.equal(result.release_records_issued,0);
 });
+test('Omitted publication setting retains the application false default with exact raw binding',async()=>{
+ const value=input();delete value.values.PUBLISH_ENABLED;
+ value.raw=Object.entries(value.values).map(([key,item])=>key+'='+item+'\n').join('');
+ value.request.runtime_sha256=createHash('sha256').update(value.raw).digest('hex');
+ assert.equal((await observe(value.request,value.raw,value.values,fixture())).production_writes,0);
+ for(const invalid of ['', '0', 'TRUE', 'invalid']){
+  const changed={...value.values,PUBLISH_ENABLED:invalid};
+  const raw=Object.entries(changed).map(([key,item])=>key+'='+item+'\n').join('');
+  assert.throws(()=>validate({...value.request,runtime_sha256:createHash('sha256').update(raw).digest('hex')},raw,changed));
+ }
+ assert.throws(()=>validate(value.request,value.raw,{...value.values,PUBLISH_ENABLED:'true'}));
+});
 test('Wrong component/source types, write mode, invented authority and CI zero fail before I/O',async()=>{
  for(const change of [v=>{v.request.binding.component='worker';},v=>{v.request.binding.repository='foreign/repo';},v=>{v.request.binding.candidate_commit=['a'.repeat(40)];},v=>{v.request.binding.artifact_digest='latest';},v=>{v.request.environment='staging';},v=>{v.request.binding.target_environment='staging';},v=>{v.request.ci_run_id=0;},v=>{v.request.ci_run_id=true;},v=>{v.request.mode='prepare';},v=>{v.request.owner_authorized=true;},v=>{v.raw+='NODE_TLS_REJECT_UNAUTHORIZED=0\n';},v=>{v.values.PUBLISH_ENABLED='false';}]){
   const value=input(),io=fixture();change(value);await assert.rejects(observe(value.request,value.raw,value.values,io));assert.deepEqual(io.calls,[]);
