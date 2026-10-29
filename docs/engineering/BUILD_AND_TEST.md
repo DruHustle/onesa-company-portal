@@ -1,5 +1,11 @@
 # Separate application builds and tests
 
+The frontend release regression injects a CLI default of production. Staging must
+explicitly select preview before dispatch; an unexpected provider target still
+retains the single durable intent and refuses alias assignment. The tests use no
+provider, credentials or actual CLI deployment. Installed runners require fresh
+source qualification and commissioning before using this correction.
+
 Installer fixtures also place disposable custody under the private home directory
 when executed as root. The explicit writable-parent regression still requires the
 production verifier to reject shared writable ancestors; no custody guard changes.
