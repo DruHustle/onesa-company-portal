@@ -22,17 +22,53 @@ export async function checkAnonymousBoundaries(request,client){
   }
  }
 }
+// Copied from the tested Onesa Drone ff493035 origin policy. No runtime sibling import.
+export function assertExactOrigin(url,origin){assert.equal(new URL(url).origin,origin,'Foreign origin refused');}
+export async function establishPreviewSession(context,origin,secret){
+ if(!secret)return;
+ const response=await context.request.get(origin,{headers:{'x-vercel-protection-bypass':secret,'x-vercel-set-bypass-cookie':'true'},maxRedirects:0});
+ assert.ok([200,302,303,307,308].includes(response.status()),'Preview access refused');
+ const location=response.headers().location;if(location)assertExactOrigin(new URL(location,origin).href,origin);
+ const cookie=(await context.cookies()).find(c=>c.name==='_vercel_jwt'&&c.secure);
+ await context.clearCookies();assert.ok(cookie,'Preview session not established');
+ await context.addCookies([{name:cookie.name,value:cookie.value,url:origin,secure:true,httpOnly:true,sameSite:'Lax'}]);
+}
+export async function visitDroneProduct(page,request,{engine,locale,width,mode,motionRequests}){
+ const prefix=locale==='en'?'/en':'/de';const productPath=prefix+'/products/onesa-drone';
+ const before=motionRequests();
+ const response=await page.goto(request.origin+productPath,{waitUntil:'domcontentloaded'});
+ assertExactOrigin(page.url(),request.origin);assert.ok(response?.ok(),'Drone product document unavailable');
+ await expect(page.locator('#drone-title')).toHaveText('Onesa Drone');
+ await expect(page.locator('#drone-title')).toBeVisible();
+ await expect(page.locator('main')).toContainText(locale==='en'?'UNDER DEVELOPMENT · SIMULATION ONLY':'IN ENTWICKLUNG · NUR SIMULATION');
+ await expect(page.locator('main')).toContainText(locale==='en'?'No operational delivery service, flight authorization or certification is offered.':'Keine betrieblichen Lieferdienste, Flugfreigaben oder Zertifizierung werden angeboten.');
+ const platform=page.getByRole('link',{name:locale==='en'?'Explore the platform':'Plattform entdecken',exact:true});
+ assert.equal(await platform.getAttribute('href'),'https://drone.onesa.eu');
+ const images=page.locator('main img[src*="/images/drone-"]');assert.equal(await images.count(),2);
+ for(const image of await images.all()){await image.scrollIntoViewIfNeeded();await image.evaluate(node=>node.decode());assert.ok(await image.evaluate(node=>node.naturalWidth>0));}
+ const film=page.locator('main video');assert.equal(await film.getAttribute('src'),null);assert.equal(await film.getAttribute('autoplay'),null);assert.equal(motionRequests(),before,'Film downloaded without a play request');
+ await page.locator('main details summary').click();const slider=page.getByRole('slider');const angle=Number(await slider.inputValue());await slider.focus();await slider.press('ArrowRight');await expect(slider).toHaveValue(String(angle+1));
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ const audit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze();assert.deepEqual(audit.violations.map(v=>v.id),[]);
+ if(locale==='en'&&width===1440){await page.getByRole('button',{name:/Play concept film/}).click();await page.waitForFunction(()=>{const video=document.querySelector('main video');return video?.readyState>=2&&!video.paused;});assert.equal(await film.evaluate(v=>v.duration),12);await film.evaluate(v=>v.pause());}
+ const legacy=await page.request.get(request.origin+prefix+'/products/onesa-ai-drone',{maxRedirects:0});assert.equal(legacy.status(),308);const target=new URL(legacy.headers().location,request.origin);assertExactOrigin(target.href,request.origin);assert.ok([productPath,...(locale==='en'?['/products/onesa-drone']:[])].includes(target.pathname));
+ const enquiry=page.locator('main a[href="'+prefix+'/contact?topic=drone"]').first();await Promise.all([page.waitForURL(url=>url.origin===request.origin&&[prefix+'/contact',...(locale==='en'?['/contact']:[])].includes(url.pathname)&&url.searchParams.get('topic')==='drone',{waitUntil:'domcontentloaded'}),enquiry.click()]);assertExactOrigin(page.url(),request.origin);const contact=new URL(page.url());assert.ok([prefix+'/contact',...(locale==='en'?['/contact']:[])].includes(contact.pathname));assert.equal(contact.searchParams.get('topic'),'drone');
+ await expect(page.locator('form select[name="topic"]')).toHaveValue('drone');await expect(page.locator('form select[name="category"]')).toHaveValue('enterprise');
+ return {engine,locale,width,mode,surface:'drone',product_page:'PASS',interactive_concept:'PASS',existing_enquiry_link:'PASS',simulation_only:'PASS',on_demand_media:'PASS',platform_link:'PASS',horizontal_overflow:false};
+}
 async function observeUI(request,directory,engines,status){
  assert.equal(request.binding.repository,'DruHustle/onesa-company-portal');
  assert.equal(request.binding.component,'frontend');
  assert.equal(request.provider_token_included,false);
  assert.ok(['staging','production'].includes(request.environment));
+ const scope=request.publication_scope??'existing-copy';assert.ok(['existing-copy','drone-product'].includes(scope));
  let errors=0,mutations=0,violations=0,speculativePrefetches=0;const views=[];
  for(const [name,type]of Object.entries(engines)){
   const browser=await type.launch({headless:true});
   try{
-   const context=await browser.newContext({viewport:{width:390,height:900},colorScheme:'dark',reducedMotion:'reduce',extraHTTPHeaders:request.bypass?{'x-vercel-protection-bypass':request.bypass}:{}});
-   const page=await context.newPage();
+   const context=await browser.newContext({viewport:{width:390,height:900},colorScheme:'dark',reducedMotion:'reduce'});
+   await establishPreviewSession(context,request.origin,request.bypass);
+   const page=await context.newPage();let motionRequests=0;page.on('request',r=>{if(new URL(r.url()).pathname.endsWith('.mp4'))motionRequests++;});
    page.on('pageerror',()=>errors++);
    page.on('request',r=>{const u=new URL(r.url());if(u.origin===request.origin&&r.headers()['next-router-prefetch']==='1')speculativePrefetches++;if(u.origin===request.origin&&!['GET','HEAD'].includes(r.method()))mutations++;});
    for(const locale of ['en','de'])for(const [width,mode]of [[390,'dark'],[1440,'light'],[320,'light']]){
@@ -56,8 +92,9 @@ async function observeUI(request,directory,engines,status){
     if(audit.violations.length)fs.writeFileSync(`${directory}/${name}-${locale}-${width}-axe.json`,JSON.stringify(audit.violations),{flag:'wx',mode:0o600});
     assert.equal(audit.violations.length,0);
     await page.screenshot({path:`${directory}/${name}-${locale}-${width}-${mode}.png`,fullPage:width===390});
-    views.push({engine:name,locale,width,mode,robot_copy:'PASS',product_navigation:'PASS',horizontal_overflow:false});
+    views.push({engine:name,locale,width,mode,surface:'robot',robot_copy:'PASS',product_navigation:'PASS',horizontal_overflow:false});
    }
+   if(scope==='drone-product')for(const locale of ['en','de'])for(const [width,mode]of [[390,'dark'],[1440,'light'],[320,'light']]){await page.setViewportSize({width,height:900});await page.emulateMedia({colorScheme:mode});views.push(await visitDroneProduct(page,request,{engine:name,locale,width,mode,motionRequests:()=>motionRequests}));}
    const contact=await page.goto(request.origin+'/en/contact?topic=robot',{waitUntil:'domcontentloaded'});assert.ok(contact?.ok(),'Contact document must return a successful response');
    await expect(page.getByRole('heading',{level:1})).toBeVisible();
    // Inspect only: this probe submits no enquiry, sign-in, publication or file.
@@ -66,7 +103,7 @@ async function observeUI(request,directory,engines,status){
   }finally{await browser.close();}
  }
  assert.equal(errors,0);assert.equal(mutations,0);assert.equal(violations,0);assert.equal(speculativePrefetches,0);
- const receipt={status,binding:request.binding,environment:request.environment,engines:Object.keys(engines),views,speculative_prefetches:speculativePrefetches,operational_mutations:mutations,javascript_errors:errors,accessibility_violations:violations,observed_at:new Date().toISOString(),scope:'public-copy-and-unchanged-private-boundaries-no-owner-session-claim'};
+ const receipt={status,publication_scope:scope,binding:request.binding,environment:request.environment,engines:Object.keys(engines),views,speculative_prefetches:speculativePrefetches,operational_mutations:mutations,javascript_errors:errors,accessibility_violations:violations,observed_at:new Date().toISOString(),scope:scope==='drone-product'?'drone-public-product-and-unchanged-private-boundaries-no-owner-session-claim':'public-copy-and-unchanged-private-boundaries-no-owner-session-claim'};
  fs.writeFileSync(directory+'/browser-receipt.json',JSON.stringify(receipt),{flag:'wx',mode:0o600});return receipt;
 }
 export async function checkUI(request,directory,engines={chromium,firefox,webkit}){

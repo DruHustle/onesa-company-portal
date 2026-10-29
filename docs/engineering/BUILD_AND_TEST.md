@@ -690,3 +690,29 @@ read-only isolation with the signed source profile before and after restart.
 Resource drift remains a failed check. Existing host-capacity, security, signature,
 authenticated-workflow and rollback gates are still required. The synthetic
 contract tests do not establish genuine hosted memory headroom or acceptance.
+
+
+## Source-bound Drone product publication
+
+The new `drone-product` owner scope is an explicit extension, not an exception to
+the existing-copy gate. Its source refusal/matrix tests run in the release Python
+suite; the session regressions run alongside the existing real-browser readiness
+tests. After a frontend build, `node scripts/test-owner-drone.mjs` from the frontend
+executes the actual product probe against an isolated renderer in Chromium,
+Firefox and WebKit across all18 Drone combinations. Every engine is required; an independent failure is
+reported and the command still exits unsuccessfully. It submits no enquiry and
+uses no database, provider credential or owner session.
+
+Hosted product qualification retains the original18 Robot views and requires18
+additional Drone views: each engine, EN/DE, 390px dark, 1440px light and320px light.
+It verifies actual images, on-demand film loading/playback, keyboard concept
+rotation, WCAG checks, overflow, the exact simulation-platform URL, legacy redirects
+and the existing selected Drone enquiry topic. Scope and view identity are checked
+against the signed request; count-only/duplicated receipts cannot pass.
+
+Local verification of this implementation observed219 passing release tests,
+frontend lint/typecheck/build and all8 existing Chromium product views. The new
+320px product probe passed in Chromium and WebKit. The installed Mac Firefox exited
+before launch with `Could not find profile folder`, including with a task-owned
+TMPDIR; that local case remains failed. Genuine Linux CI and all three hosted
+engines are mandatory before release. No local receipt grants publication authority.

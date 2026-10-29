@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — Drone public product qualification
+
+- Add a source-bound public product scope with unique cross-browser/language/viewport evidence and exact-host preview sessions. Existing copy, authentication, data and physical-control boundaries remain restricted.
+- Link the product CTA to the independently accepted simulation platform; retain development, illustrative-assets and no-flight-service statements. Portal publication still requires its own hosted release evidence.
+
 ## Unreleased — Onesa Drone product imagery and concept film
 
 - Adds two original AI-generated drone concept images to the EN/DE product page,

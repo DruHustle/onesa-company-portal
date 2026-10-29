@@ -123,8 +123,8 @@ jobs:
       run: |
         portal_readiness_fixture=$(mktemp -d "$RUNNER_TEMP/portal-readiness.XXXXXX")
         ln -s "$GITHUB_WORKSPACE/onesa-company-portal-frontend/node_modules" "$portal_readiness_fixture/node_modules"
-        cp scripts/release/oracle_portal_browser.mjs scripts/release/oracle_portal_browser_readiness.test.mjs "$portal_readiness_fixture/"
-        node --test "$portal_readiness_fixture/oracle_portal_browser_readiness.test.mjs"
+        cp scripts/release/oracle_portal_browser.mjs scripts/release/oracle_portal_browser_readiness.test.mjs scripts/release/oracle_portal_browser_session.test.mjs "$portal_readiness_fixture/"
+        node --test "$portal_readiness_fixture/oracle_portal_browser_readiness.test.mjs" "$portal_readiness_fixture/oracle_portal_browser_session.test.mjs"
     - name: Verify static-first hero media with isolated synthetic controls
       run: npm run test:hero-motion
       working-directory: onesa-company-portal-frontend
@@ -132,7 +132,7 @@ jobs:
       run: npm run test:engineering-sign-in
       working-directory: onesa-company-portal-frontend
     - name: Verify bounded public navigation with isolated synthetic services
-      run: npm run test:public-loading && npm run test:drone-product
+      run: npm run test:public-loading && npm run test:drone-product && node scripts/test-owner-drone.mjs
       working-directory: onesa-company-portal-frontend
     - run: "cleanup() { kill \"$backend_pid\" \"$frontend_pid\" 2>/dev/null || true; wait \"$backend_pid\" \"$frontend_pid\"\
         \ 2>/dev/null || true; }\nnode onesa-company-portal-backend/dist/src/server.js > \"$RUNNER_TEMP/portal-backend.log\"\
