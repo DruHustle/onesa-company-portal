@@ -695,6 +695,12 @@ Resource drift remains a failed check. Existing host-capacity, security, signatu
 authenticated-workflow and rollback gates are still required. The synthetic
 contract tests do not establish genuine hosted memory headroom or acceptance.
 
+## Owner frontend product-presentation coverage
+
+The frontend owner probe now exercises the source-reviewed Drone product routes and local media alongside every existing Robot copy, navigation, anonymous-denial, accessibility, preservation and recovery check. Both languages, all three browser engines, light/dark and narrow/desktop layouts must render decoded images without overflow; the concept film must remain unloaded until keyboard activation and then actually play. The legacy URL must redirect to the canonical product and the existing contact form must retain its topic without submitting. Runtime dependencies, build scripts, authentication and Home hero changes remain outside this presentation profile. Product media has explicit local size bounds. New source, pinned tool installation, commissioning and genuine hosted evidence are required; local tests cannot issue release authority.
+
+WebKit's media buffer requires a bounded writable `/var/tmp` in the read-only owner browser container. The probe adds only a 32 MiB memory-backed, non-executable temporary mount; all existing filesystem, memory, CPU, capability and credential boundaries remain. The three-engine production-build regression exercises real film playback, so an unavailable media buffer stays a failure. Image decoding waits for actual loaded image state before requesting decode, preserving a failed/missing image as an error.
+
 ## Scanner image metadata variants
 
 `python3 -m unittest discover -s scripts/release -p 'test_oracle_scanner_image_metadata.py'` checks the observed Docker image metadata shape that omits an unset default command. Omitted and explicit-null `Cmd` both retain the prescribed scanner entrypoint without extra arguments. An actual command, an empty command array or altered required identity/user/entrypoint/environment fields remain refused. The complete source, shipped-file and image-security checks still run. This parser regression does not qualify a hosted scanner or transfer any prior approval.
@@ -712,3 +718,22 @@ The same credential-free backend image job also selects `worker_fixture_smoke.py
 The new API adapter retains the existing runtime recipe, loopback ingress, storage volume, resource limits and effective configuration. Its source comparison is anchored to an owner-commissioned baseline and rejects business/authentication/migration changes. Disposable staging exercises the existing password/MFA, authorization, quarantine/download, persistence and worker workflows plus a real interruption of an owned idle database connection; authenticated sessions and schema readiness must recover without a test-added error listener. The read-only production observer checks actual TLS, application role/schema and retained public/anonymous boundaries; it cannot create accounts, publish, mutate business records or repeat deployment.
 
 Run the complete release Python tests and `node --test scripts/release/oracle_portal_api_production.test.mjs scripts/release/oracle_portal_scanner_workflows.test.mjs`. The mandatory backend image fixture adds `worker_fixture_smoke.py --worker-workflows --synthetic-scanner --api-runtime` using an isolated internal PostgreSQL alias and synthetic TLS only. Local parser tests confer no hosted acceptance. Source-specific external installation, explicit commissioning and fresh source-bound qualification/authorization are still required.
+
+
+## Preview session and distinct product views
+
+The follow-up to the public-product adapter exchanges the existing scoped preview
+credential for a provider cookie with redirects disabled and rebinds it to the
+exact host. Global credential-bearing browser headers are absent. Two real
+localhost/session regressions cover foreign redirects and cookie scope; they do
+not access a provider. All original Robot/Drone views and bounded media mounts
+remain required. Receipt validation checks each browser/language/width/theme
+identity once, so duplicated counts or skipped interactions fail. The hosted
+product observer additionally checks the actual simulation URL and keyboard
+concept rotation without leaving the Portal origin or submitting an enquiry.
+
+The simulation application at `https://drone.onesa.eu` passed its independent
+release verification from Drone source `ff493035`. The Portal CTA reflects that
+available simulation release while retaining development and no-flight-service
+statements. This documentation does not claim the Portal is published; fresh
+main checks and source-bound hosted release evidence remain mandatory.

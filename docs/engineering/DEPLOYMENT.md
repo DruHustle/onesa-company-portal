@@ -55,3 +55,13 @@ or other navigation changes requiring broader qualification. Separate installati
 and exact-source authorization remain required before release.
 
 The new API runtime adapter is a separate component profile in the existing owner verifier. It binds a reviewed existing-business-code baseline, exact current artifacts and retained configuration, and requires genuine idle-connection recovery in isolated staging. Its single API-only request is durable; production observation is read-only. This implementation statement does not establish installation, commissioning, qualification or deployment.
+
+The extended frontend presentation profile additionally covers the reviewed Drone public routes, images, film, footer, sitemap and enquiry topic. It requires current hosted product/media observations and preserves the existing authentication, Home hero, dependency, privacy and independent-component boundaries. This source change does not extend an older commissioned installation or qualify an existing artifact.
+
+
+Preview automation uses a no-redirect provider-session request followed by an
+exact-host cookie. The complete Robot and Drone browser matrix is validated by
+identity as well as count. Failed/skipped/duplicated interactions, foreign origins
+or operational mutations cannot qualify. These changes require a new reviewed
+source, immutable installation and owner commissioning; the existing failed
+reservations and current production operation must never be reset or resubmitted.
