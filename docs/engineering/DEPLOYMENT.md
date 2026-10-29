@@ -14,6 +14,11 @@ Runtime preservation snapshots wait a bounded time for temporary Docker clients
 to finish. Every persistent and unknown workload remains in the snapshot; actual
 identity changes, missing services and incomplete observations still block release.
 
+Independent API and worker recipes bind their existing private Compose identity
+file by path and digest. Configuration and deployment use that explicit file;
+missing, changed or caller-selected identity files fail closed. This correction
+requires fresh source qualification and separate commissioning before use.
+
 Static artifact verification accepts generated Next.js catch-all filenames while
 retaining canonical path, response-size and byte-digest checks. A verifier fix
 requires new source qualification and commissioning; failed contexts stay consumed.

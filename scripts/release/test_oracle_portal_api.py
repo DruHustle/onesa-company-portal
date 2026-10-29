@@ -60,6 +60,10 @@ def inputs():
         "project": "onesa-portal-oracle-api",
         "directory": directory,
         "files": [{"path": directory + "/portal.yaml", "sha256": "0" * 64}],
+        "environment_file": {
+            "path": "/etc/onesa/backends/portal.images.env",
+            "sha256": "6" * 64,
+        },
     }
     plan["production_probe"] = {
         "runtime_path": str(worker.RUNTIME),
