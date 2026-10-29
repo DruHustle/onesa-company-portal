@@ -704,3 +704,22 @@ Run `python3 -m unittest discover -s scripts/release -p 'test_oracle_portal_work
 The worker adapter keeps the retained production worker recipe and resource profile. Staging uses a fresh marked database and a read-only retained scanner socket. Its production canary owns a fresh conditional object and a reserved outbox entry; the entry stays unprocessable until object ownership and integrity are established. Interrupted inspection cannot create objects, enqueue work or repeat deployment. Neither the probe nor inspection imports the production worker loop. Source-specific installation, separate owner commissioning, mandatory native checks and genuine hosted evidence remain required.
 
 The same credential-free backend image job also selects `worker_fixture_smoke.py --worker-workflows --synthetic-scanner --worker-production`. This adds an actual production-adapter process test using a second hostname alias on the fresh internal PostgreSQL fixture, synthetic TLS/object storage and the least-privilege runtime role. It checks conditional object ownership, real outbox execution by the worker process, collision preservation, duplicate refusal and inspection without writes. The alias never selects the real production database; no published port, provider credential or hosted release record is used. This test is mandatory in the backend image job and must pass before owner commissioning.
+
+
+## Preview session and distinct product views
+
+The follow-up to the public-product adapter exchanges the existing scoped preview
+credential for a provider cookie with redirects disabled and rebinds it to the
+exact host. Global credential-bearing browser headers are absent. Two real
+localhost/session regressions cover foreign redirects and cookie scope; they do
+not access a provider. All original Robot/Drone views and bounded media mounts
+remain required. Receipt validation checks each browser/language/width/theme
+identity once, so duplicated counts or skipped interactions fail. The hosted
+product observer additionally checks the actual simulation URL and keyboard
+concept rotation without leaving the Portal origin or submitting an enquiry.
+
+The simulation application at `https://drone.onesa.eu` passed its independent
+release verification from Drone source `ff493035`. The Portal CTA reflects that
+available simulation release while retaining development and no-flight-service
+statements. This documentation does not claim the Portal is published; fresh
+main checks and source-bound hosted release evidence remain mandatory.

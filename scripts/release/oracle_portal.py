@@ -1044,6 +1044,65 @@ def source_equivalence(folder, binding, plan):
     }
 
 
+def verify_browser_receipt(browser, binding, env):
+    expected = {
+        (engine, locale, width, mode)
+        for engine in ["chromium", "firefox", "webkit"]
+        for locale in ["en", "de"]
+        for width, mode in [(390, "dark"), (1440, "light"), (320, "light")]
+    }
+    for field in ["views", "drone_views"]:
+        rows = browser.get(field, [])
+        require(
+            isinstance(rows, list) and all(isinstance(row, dict) for row in rows),
+            "BROWSER_VIEW_SCHEMA",
+        )
+        observed = {
+            tuple(row.get(key) for key in ["engine", "locale", "width", "mode"])
+            for row in rows
+        }
+        require(
+            len(rows) == len(expected) and observed == expected,
+            "COMPLETE_UNIQUE_BROWSER_MATRIX_REQUIRED",
+        )
+    require(
+        browser.get("status") == "PASS"
+        and browser.get("binding") == binding
+        and browser.get("environment") == env
+        and browser.get("engines") == ["chromium", "firefox", "webkit"]
+        and all(
+            row.get("robot_copy") == row.get("product_navigation") == "PASS"
+            and row.get("horizontal_overflow") is False
+            for row in browser["views"]
+        )
+        and all(
+            all(
+                row.get(key) == "PASS"
+                for key in [
+                    "presentation",
+                    "deferred_media",
+                    "keyboard_playback",
+                    "interactive_concept",
+                    "platform_link",
+                ]
+            )
+            and row.get("accessibility_violations") == 0
+            and row.get("horizontal_overflow") is False
+            for row in browser["drone_views"]
+        )
+        and all(
+            browser.get(key) == 0
+            for key in [
+                "operational_mutations",
+                "javascript_errors",
+                "accessibility_violations",
+                "speculative_prefetches",
+            ]
+        ),
+        "GENUINE_HOSTED_BROWSER_RECEIPT_REQUIRED",
+    )
+
+
 def validate_plan(binding):
     plan = read(PLAN)
     require(
@@ -1271,27 +1330,7 @@ def probe(binding, env, operation, folder, plan):
         request.unlink(missing_ok=True)
     require(result.returncode == 0, "HOSTED_BROWSER_FAILED_INSPECT_PRIVATE_EVIDENCE")
     browser = read(output / "browser-receipt.json")
-    require(
-        browser["status"] == "PASS"
-        and browser["binding"] == binding
-        and browser["environment"] == env
-        and browser["engines"] == ["chromium", "firefox", "webkit"]
-        and len(browser["views"]) == 18
-        and len(browser["drone_views"]) == 18
-        and all(
-            row["presentation"] == "PASS"
-            and row["deferred_media"] == "PASS"
-            and row["keyboard_playback"] == "PASS"
-            and row["accessibility_violations"] == 0
-            and row["horizontal_overflow"] is False
-            for row in browser["drone_views"]
-        )
-        and browser["operational_mutations"] == 0
-        and browser["javascript_errors"] == 0
-        and browser["accessibility_violations"] == 0
-        and browser["speculative_prefetches"] == 0,
-        "GENUINE_HOSTED_BROWSER_RECEIPT_REQUIRED",
-    )
+    verify_browser_receipt(browser, binding, env)
     retained_services(plan)
     unchanged(before, inventory())
     value = {

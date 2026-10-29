@@ -3,10 +3,20 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {chromium,firefox,webkit,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+export function assertExactOrigin(url,origin){assert.equal(new URL(url).origin,origin,'Foreign origin refused');}
+export async function establishPreviewSession(context,origin,secret){
+ if(!secret)return;
+ const response=await context.request.get(origin,{headers:{'x-vercel-protection-bypass':secret,'x-vercel-set-bypass-cookie':'true'},maxRedirects:0});
+ assert.ok([200,302,303,307,308].includes(response.status()),'Preview access refused');
+ const location=response.headers().location;if(location)assertExactOrigin(new URL(location,origin).href,origin);
+ const cookie=(await context.cookies()).find(c=>c.name==='_vercel_jwt'&&c.secure);
+ await context.clearCookies();assert.ok(cookie,'Preview session not established');
+ await context.addCookies([{name:cookie.name,value:cookie.value,url:origin,secure:true,httpOnly:true,sameSite:'Lax'}]);
+}
 export async function visitHome(page,origin,locale){
  assert.ok(['en','de'].includes(locale));
  const response=await page.goto(origin+(locale==='en'?'/':'/de'),{waitUntil:'domcontentloaded'});
- assert.ok(response?.ok(),'Home document must return a successful response');
+ assertExactOrigin(page.url(),origin);assert.ok(response?.ok(),'Home document must return a successful response');
  // Readiness is the actual rendered contract. Media/background connections can
  // outlive a usable page; network-idle is not an application readiness signal.
  await expect(page.locator('#home-robot-title')).toHaveText('Onesa AI Robot');
@@ -29,7 +39,8 @@ export async function visitDronePresentation(page,origin,locale){
  page.on('request',track);
  try{
   const response=await page.goto(`${origin}/${locale}/products/onesa-drone`,{waitUntil:'domcontentloaded'});
-  assert.ok(response?.ok(),'Drone document must return a successful response');
+  assertExactOrigin(page.url(),origin);assert.ok(response?.ok(),'Drone document must return a successful response');
+  assert.equal(await page.getByRole('link',{name:locale==='en'?'Explore the platform':'Plattform entdecken',exact:true}).getAttribute('href'),'https://drone.onesa.eu');
   await expect(page.locator('#drone-title')).toHaveText('Onesa Drone');
   await expect(page.locator('#drone-title')).toBeVisible();
   await expect(page.locator('main')).toContainText(locale==='en'?'simulation only':'ausschließlich für Simulation');
@@ -45,10 +56,11 @@ export async function visitDronePresentation(page,origin,locale){
   await play.focus();await expect(play).toBeFocused();await play.press('Enter');
   await page.waitForFunction(()=>{const video=document.querySelector('video');return video?.readyState>=2&&!video.paused;},null,{timeout:10000});
   assert.ok(requested.length>0);assert.equal(await video.evaluate(node=>node.controls),true);assert.equal(await video.evaluate(node=>node.duration),12);await video.evaluate(node=>node.pause());
+  await page.locator('main details summary').click();const slider=page.getByRole('slider');const angle=Number(await slider.inputValue());await slider.focus();await slider.press('ArrowRight');await expect(slider).toHaveValue(String(angle+1));
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   const audit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze();assert.deepEqual(audit.violations.map(row=>row.id),[]);
   await expect(page.locator(`a[href="/${locale}/contact?topic=drone"]`).first()).toBeVisible();
-  return {presentation:'PASS',deferred_media:'PASS',keyboard_playback:'PASS',accessibility_violations:audit.violations.length,horizontal_overflow:false};
+  return {presentation:'PASS',interactive_concept:'PASS',platform_link:'PASS',deferred_media:'PASS',keyboard_playback:'PASS',accessibility_violations:audit.violations.length,horizontal_overflow:false};
  }catch(error){
   // Public fixed-field transport/render state only. Never page HTML, text,
   // headers, cookies, credentials or arbitrary request/response bodies.
@@ -62,7 +74,7 @@ export async function visitDronePresentation(page,origin,locale){
 export async function checkDroneRoutes(page,origin,locale){
  const legacy=await page.request.get(`${origin}/${locale}/products/onesa-ai-drone`,{maxRedirects:0});assert.equal(legacy.status(),308);
  assert.equal(new URL(legacy.headers().location,origin).href,`${origin}/${locale}/products/onesa-drone`);
- const contact=await page.goto(`${origin}/${locale}/contact?topic=drone`,{waitUntil:'domcontentloaded'});assert.ok(contact?.ok());
+ const contact=await page.goto(`${origin}/${locale}/contact?topic=drone`,{waitUntil:'domcontentloaded'});assertExactOrigin(page.url(),origin);assert.ok(contact?.ok());
  await expect(page.locator('select[name="topic"]')).toHaveValue('drone');
 }
 async function observeUI(request,directory,engines,status){
@@ -74,7 +86,8 @@ async function observeUI(request,directory,engines,status){
  for(const [name,type]of Object.entries(engines)){
   const browser=await type.launch({headless:true});
   try{
-   const context=await browser.newContext({viewport:{width:390,height:900},colorScheme:'dark',reducedMotion:'reduce',extraHTTPHeaders:request.bypass?{'x-vercel-protection-bypass':request.bypass}:{}});
+   const context=await browser.newContext({viewport:{width:390,height:900},colorScheme:'dark',reducedMotion:'reduce'});
+   await establishPreviewSession(context,request.origin,request.bypass);
    const page=await context.newPage();
    page.on('pageerror',()=>errors++);
    page.on('request',r=>{const u=new URL(r.url());if(u.origin===request.origin&&r.headers()['next-router-prefetch']==='1')speculativePrefetches++;if(u.origin===request.origin&&!['GET','HEAD'].includes(r.method()))mutations++;});

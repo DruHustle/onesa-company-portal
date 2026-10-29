@@ -123,8 +123,8 @@ jobs:
       run: |
         portal_readiness_fixture=$(mktemp -d "$RUNNER_TEMP/portal-readiness.XXXXXX")
         ln -s "$GITHUB_WORKSPACE/onesa-company-portal-frontend/node_modules" "$portal_readiness_fixture/node_modules"
-        cp scripts/release/oracle_portal_browser.mjs scripts/release/oracle_portal_browser_readiness.test.mjs scripts/release/oracle_portal_browser_products.test.mjs "$portal_readiness_fixture/"
-        ONESA_SOURCE_ROOT="$GITHUB_WORKSPACE" node --test "$portal_readiness_fixture/oracle_portal_browser_readiness.test.mjs" "$portal_readiness_fixture/oracle_portal_browser_products.test.mjs"
+        cp scripts/release/oracle_portal_browser.mjs scripts/release/oracle_portal_browser_readiness.test.mjs scripts/release/oracle_portal_browser_products.test.mjs scripts/release/oracle_portal_browser_session.test.mjs "$portal_readiness_fixture/"
+        ONESA_SOURCE_ROOT="$GITHUB_WORKSPACE" node --test "$portal_readiness_fixture/oracle_portal_browser_readiness.test.mjs" "$portal_readiness_fixture/oracle_portal_browser_products.test.mjs" "$portal_readiness_fixture/oracle_portal_browser_session.test.mjs"
     - name: Verify static-first hero media with isolated synthetic controls
       run: npm run test:hero-motion
       working-directory: onesa-company-portal-frontend
