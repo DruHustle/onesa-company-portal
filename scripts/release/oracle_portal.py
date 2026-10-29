@@ -914,7 +914,6 @@ def configuration_value(binding, plan, env):
             canonical(plan["builds"])
         ).hexdigest(),
         "processing_scope": plan["processing_scope"],
-        "publication_scope": publication_scope(plan),
         "privacy_decision": plan["privacy_decision"],
         "publication_controls_unchanged": plan["publication_controls_unchanged"],
         "physical_hardware_authorized": plan["physical_hardware_authorized"],
@@ -937,33 +936,6 @@ def configuration_path(binding, env):
         / binding["candidate_commit"]
         / ("portal-frontend-" + env + ".json")
     )
-
-
-def publication_scope(plan):
-    scope = plan.get("publication_scope", "existing-copy")
-    require(scope in {"existing-copy", "drone-product"}, "UNKNOWN_PUBLICATION_SCOPE")
-    return scope
-
-
-DRONE_PRODUCT_FILES = {
-    "src/app/[locale]/products/onesa-drone/page.tsx",
-    "src/app/[locale]/products/onesa-ai-drone/page.tsx",
-    "src/components/drone-product.tsx",
-    "src/components/drone-product.module.css",
-    "src/components/drone-visual.tsx",
-    "src/components/drone-image.tsx",
-    "src/components/drone-film.tsx",
-    "src/config/enquiry-topics.ts",
-    "src/components/site-footer.tsx",
-    "public/brand/sources.json",
-    "public/images/drone-flight-640.webp",
-    "public/images/drone-flight-1280.webp",
-    "public/images/drone-cargo-640.webp",
-    "public/images/drone-cargo-1280.webp",
-    "public/media/onesa-drone-concept.mp4",
-    "scripts/test-drone-product.mjs",
-    "scripts/test-owner-drone.mjs",
-}
 
 
 def source_equivalence(folder, binding, plan):
@@ -993,14 +965,55 @@ def source_equivalence(folder, binding, plan):
             "src/config/products.ts",
             "src/components/product-overview.tsx",
             "src/components/responsive-link.tsx",
+            "package.json",
+            "public/brand/sources.json",
+            "public/images/drone-cargo-1280.webp",
+            "public/images/drone-cargo-640.webp",
+            "public/images/drone-flight-1280.webp",
+            "public/images/drone-flight-640.webp",
+            "public/media/onesa-drone-concept.mp4",
+            "scripts/test-drone-product.mjs",
+            "src/app/[locale]/products/onesa-ai-drone/page.tsx",
+            "src/app/[locale]/products/onesa-drone/page.tsx",
+            "src/components/drone-film.tsx",
+            "src/components/drone-image.tsx",
+            "src/components/drone-product.module.css",
+            "src/components/drone-product.tsx",
+            "src/components/drone-visual.tsx",
+            "src/components/site-footer.tsx",
+            "src/config/enquiry-topics.ts",
+            "src/lib/company-sitemap.ts",
         ]
     }
-    scope = publication_scope(plan)
-    if scope == "drone-product":
-        product = {prefix + name for name in DRONE_PRODUCT_FILES}
-        require(product <= set(new), "COMPLETE_DRONE_PRODUCT_SOURCE_REQUIRED")
-        require(changed & product, "DRONE_PRODUCT_CHANGE_REQUIRED")
-        permitted |= product
+    package = prefix + "package.json"
+    if package in changed:
+        with (
+            tarfile.open(archive, "r:") as before,
+            tarfile.open(folder / "source.tar", "r:") as after,
+        ):
+            previous = json.load(before.extractfile(package))
+            current = json.load(after.extractfile(package))
+        expected = json.loads(json.dumps(previous))
+        expected["scripts"]["test:drone-product"] = (
+            "node scripts/test-drone-product.mjs"
+        )
+        require(
+            current == expected, "PRODUCT_TEST_SCRIPT_ONLY_NO_RUNTIME_PACKAGE_CHANGE"
+        )
+    with tarfile.open(folder / "source.tar", "r:") as source:
+        for name in changed & permitted:
+            limit = (
+                2 * 1024 * 1024
+                if name.endswith(".mp4")
+                else 256 * 1024
+                if name.endswith(".webp")
+                else None
+            )
+            if limit:
+                require(
+                    name in new and source.getmember(name).size <= limit,
+                    "BOUNDED_LOCAL_PRODUCT_MEDIA_REQUIRED",
+                )
     navigation = prefix + "src/components/responsive-link.tsx"
     if navigation in changed:
         with tarfile.open(archive, "r:") as baseline_source:
@@ -1020,7 +1033,6 @@ def source_equivalence(folder, binding, plan):
         "PUBLIC_COPY_SCOPE_CHANGED_REQUIRES_FULL_REQUALIFICATION",
     )
     return {
-        "publication_scope": scope,
         "baseline_source": baseline["source"],
         "changed_frontend_paths": sorted(changed),
         "authentication_and_hero_source_unchanged": True,
@@ -1028,55 +1040,59 @@ def source_equivalence(folder, binding, plan):
         if navigation in changed
         else "unchanged",
         "new_full_business_acceptance_claimed": False,
+        "product_presentation_requires_current_hosted_acceptance": True,
     }
 
 
-def verify_browser_receipt(browser, binding, env, plan):
-    scope = publication_scope(plan)
-    surfaces = {"robot", "drone"} if scope == "drone-product" else {"robot"}
+def verify_browser_receipt(browser, binding, env):
     expected = {
-        (engine, locale, width, mode, surface)
+        (engine, locale, width, mode)
         for engine in ["chromium", "firefox", "webkit"]
         for locale in ["en", "de"]
         for width, mode in [(390, "dark"), (1440, "light"), (320, "light")]
-        for surface in surfaces
     }
-    views = browser.get("views", [])
-    require(
-        isinstance(views, list) and all(isinstance(v, dict) for v in views),
-        "BROWSER_VIEW_SCHEMA",
-    )
-    observed = {
-        tuple(view.get(k) for k in ["engine", "locale", "width", "mode", "surface"])
-        for view in views
-    }
+    for field in ["views", "drone_views"]:
+        rows = browser.get(field, [])
+        require(
+            isinstance(rows, list) and all(isinstance(row, dict) for row in rows),
+            "BROWSER_VIEW_SCHEMA",
+        )
+        observed = {
+            tuple(row.get(key) for key in ["engine", "locale", "width", "mode"])
+            for row in rows
+        }
+        require(
+            len(rows) == len(expected) and observed == expected,
+            "COMPLETE_UNIQUE_BROWSER_MATRIX_REQUIRED",
+        )
     require(
         browser.get("status") == "PASS"
         and browser.get("binding") == binding
         and browser.get("environment") == env
-        and browser.get("publication_scope") == scope
         and browser.get("engines") == ["chromium", "firefox", "webkit"]
-        and len(views) == len(expected)
-        and observed == expected
-        and all(view.get("horizontal_overflow") is False for view in views)
+        and all(
+            row.get("robot_copy") == row.get("product_navigation") == "PASS"
+            and row.get("horizontal_overflow") is False
+            for row in browser["views"]
+        )
         and all(
             all(
-                view.get(key) == "PASS"
+                row.get(key) == "PASS"
                 for key in [
-                    "product_page",
+                    "presentation",
+                    "deferred_media",
+                    "keyboard_playback",
                     "interactive_concept",
-                    "existing_enquiry_link",
-                    "simulation_only",
-                    "on_demand_media",
                     "platform_link",
                 ]
             )
-            for view in views
-            if view.get("surface") == "drone"
+            and row.get("accessibility_violations") == 0
+            and row.get("horizontal_overflow") is False
+            for row in browser["drone_views"]
         )
         and all(
-            browser.get(k) == 0
-            for k in [
+            browser.get(key) == 0
+            for key in [
                 "operational_mutations",
                 "javascript_errors",
                 "accessibility_violations",
@@ -1265,7 +1281,6 @@ def probe(binding, env, operation, folder, plan):
             "origin": observation["origin"],
             "bypass": observation["bypass"],
             "provider_token_included": False,
-            "publication_scope": publication_scope(plan),
         },
     )
     try:
@@ -1285,6 +1300,8 @@ def probe(binding, env, operation, folder, plan):
                     "/tmp:rw,size=512m",
                     "--tmpfs",
                     "/root:rw,mode=700,size=64m",
+                    "--tmpfs",
+                    "/var/tmp:rw,noexec,nosuid,nodev,mode=1777,size=32m",
                     "--memory",
                     "1400m",
                     "--cpus",
@@ -1313,7 +1330,7 @@ def probe(binding, env, operation, folder, plan):
         request.unlink(missing_ok=True)
     require(result.returncode == 0, "HOSTED_BROWSER_FAILED_INSPECT_PRIVATE_EVIDENCE")
     browser = read(output / "browser-receipt.json")
-    verify_browser_receipt(browser, binding, env, plan)
+    verify_browser_receipt(browser, binding, env)
     retained_services(plan)
     unchanged(before, inventory())
     value = {

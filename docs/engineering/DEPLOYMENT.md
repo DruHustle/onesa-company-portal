@@ -49,15 +49,17 @@ This implementation statement grants no deployment authority or hosted acceptanc
 
 The Portal-specific frontend extension is new source, not a commissioned service.
 It binds public presentation artifacts and existing provider configuration while
-retaining the independently deployed API, workers and scanner. The existing-copy
-scope keeps its narrow file set and exact default-prefetch transformation. A new,
-explicit `drone-product` scope binds the dedicated product routes, original concept
-assets, product components and existing enquiry-topic configuration. Authentication,
-shared home hero, headers, dependency manifests and unrelated routes remain excluded.
-The scope is part of both signed environment configurations. It requires all 36
-unique Robot/Drone, browser, language and viewport observations; duplicate or missing
-views, failed checks and mutations cannot qualify. Preview access exchanges the
-existing scoped credential for an exact-host cookie without following redirects.
-Separate source verification, installation, owner commissioning, actual hosted
-observations and exact-source authorization remain required before release. This
-public presentation scope makes no new owner-session or business-data acceptance claim.
+retaining the independently deployed API, workers and scanner. Its limited copy scope additionally accepts only the exact default-prefetch
+change that prevents speculative page requests. It rejects authentication, hero
+or other navigation changes requiring broader qualification. Separate installation, owner commissioning, genuine hosted evidence
+and exact-source authorization remain required before release.
+
+The extended frontend presentation profile additionally covers the reviewed Drone public routes, images, film, footer, sitemap and enquiry topic. It requires current hosted product/media observations and preserves the existing authentication, Home hero, dependency, privacy and independent-component boundaries. This source change does not extend an older commissioned installation or qualify an existing artifact.
+
+
+Preview automation uses a no-redirect provider-session request followed by an
+exact-host cookie. The complete Robot and Drone browser matrix is validated by
+identity as well as count. Failed/skipped/duplicated interactions, foreign origins
+or operational mutations cannot qualify. These changes require a new reviewed
+source, immutable installation and owner commissioning; the existing failed
+reservations and current production operation must never be reset or resubmitted.
