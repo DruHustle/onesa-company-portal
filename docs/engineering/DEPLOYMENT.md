@@ -53,3 +53,5 @@ retaining the independently deployed API, workers and scanner. Its limited copy 
 change that prevents speculative page requests. It rejects authentication, hero
 or other navigation changes requiring broader qualification. Separate installation, owner commissioning, genuine hosted evidence
 and exact-source authorization remain required before release.
+
+The new API runtime adapter is a separate component profile in the existing owner verifier. It binds a reviewed existing-business-code baseline, exact current artifacts and retained configuration, and requires genuine idle-connection recovery in isolated staging. Its single API-only request is durable; production observation is read-only. This implementation statement does not establish installation, commissioning, qualification or deployment.

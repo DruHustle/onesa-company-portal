@@ -1,4 +1,4 @@
-"""Scoped scanner/worker observations; never an authorization issuer."""
+"""Scoped scanner/worker/API observations; never an authorization issuer."""
 
 import datetime as dt
 import json
@@ -19,6 +19,7 @@ NODE_FILES = (
 TOOL_FILES = (*NODE_FILES, "oracle_portal_scanner_workflow.py")
 STAGE = "onesa-portal-oracle-api-staging-1"
 PRODUCTION_WORKER = "onesa-portal-oracle-production-worker-1"
+PRODUCTION_API = "onesa-portal-oracle-api-production-1"
 PRODUCTION_SCANNER = "onesa-portal-oracle-staging-scanner-1"
 S3_KEYS = {
     "S3_ENDPOINT",
@@ -31,7 +32,9 @@ S3_KEYS = {
 
 
 def validate_plan(binding, plan):
-    r.require(binding["component"] in {"scanner", "worker"}, "WORKFLOW_COMPONENT_SCOPE")
+    r.require(
+        binding["component"] in {"scanner", "worker", "api"}, "WORKFLOW_COMPONENT_SCOPE"
+    )
     profile = plan["workflow"]
     r.require(
         isinstance(profile, dict)
@@ -52,7 +55,8 @@ def validate_plan(binding, plan):
     r.require(
         isinstance(application, dict)
         and set(application) == set(binding)
-        and application["component"] == "worker"
+        and application["component"]
+        == ("api" if binding["component"] == "api" else "worker")
         and all(
             application[key] == binding[key]
             for key in [
@@ -73,7 +77,7 @@ def validate_plan(binding, plan):
                 application[key] == binding[key]
                 for key in ["artifact_digest", "build_sha256"]
             )
-            if binding["component"] == "worker"
+            if binding["component"] in {"worker", "api"}
             else all(
                 application[key] != binding[key]
                 for key in ["artifact_digest", "build_sha256"]
@@ -128,6 +132,8 @@ def verify_application(binding, plan, folder):
     names = list(TOOL_FILES)
     if binding["component"] == "worker":
         names += ["oracle_portal_scanner.py", "oracle_portal_worker_production.mjs"]
+    elif binding["component"] == "api":
+        names += ["oracle_portal_scanner.py", "oracle_portal_api_production.mjs"]
     expected = {
         "scripts/release/" + name: files["scripts/release/" + name] for name in names
     }
@@ -138,9 +144,13 @@ def verify_application(binding, plan, folder):
         r.pinned_public_file(
             Path(__file__).with_name(name), expected["scripts/release/" + name]
         )
-    build = r.read(folder / "worker-build.json")
+    build_name = (
+        "api-build.json" if binding["component"] == "api" else "worker-build.json"
+    )
+    scan_name = "api-scan.json" if binding["component"] == "api" else "worker-scan.json"
+    build = r.read(folder / build_name)
     r.require(
-        r.sha(folder / "worker-build.json") == application["build_sha256"]
+        r.sha(folder / build_name) == application["build_sha256"]
         and all(
             build.get(key) == application[key]
             for key in [
@@ -190,12 +200,10 @@ def verify_application(binding, plan, folder):
         "SCANNER_WORKFLOW_APPLICATION_TRUST_CONFIGURATION",
     )
     r.require(
-        r.sha(folder / "worker-scan.json") == profile["application_scan_sha256"],
+        r.sha(folder / scan_name) == profile["application_scan_sha256"],
         "SCANNER_WORKFLOW_APPLICATION_SCAN_CHANGED",
     )
-    r.image_security(
-        r.read(folder / "worker-scan.json"), application["artifact_digest"]
-    )
+    r.image_security(r.read(folder / scan_name), application["artifact_digest"])
     prefix = "onesa-company-portal-backend/"
     names = [
         name[len(prefix) :]
@@ -342,7 +350,15 @@ def private_input(binding, plan, folder, context_id, records):
     )
     application = profile["application_binding"]
     r.require(
-        r.sha(r.private(Path("/etc/onesa/portal-production.env")))
+        r.sha(
+            r.private(
+                Path(
+                    "/etc/onesa/backends/portal-production.env"
+                    if binding["component"] == "api"
+                    else "/etc/onesa/portal-production.env"
+                )
+            )
+        )
         == application["configuration_sha256"]["production"],
         "RETAINED_WORKER_CONFIGURATION_CHANGED",
     )
@@ -361,7 +377,9 @@ def private_input(binding, plan, folder, context_id, records):
         and all(type(row.get("run_id")) is int and row["run_id"] > 0 for row in runs),
         "SCANNER_WORKFLOW_GENUINE_CI_REQUIRED",
     )
-    rollback = plan["baseline"].get(PRODUCTION_WORKER)
+    rollback = plan["baseline"].get(
+        PRODUCTION_API if binding["component"] == "api" else PRODUCTION_WORKER
+    )
     r.require(
         isinstance(rollback, dict)
         and re.fullmatch(r"[a-f0-9]{40}", rollback.get("source", ""))
@@ -391,7 +409,11 @@ def private_input(binding, plan, folder, context_id, records):
             "artifact_digest": rollback["image"],
         },
     }
-    key = "scanner_binding" if binding["component"] == "scanner" else "worker_binding"
+    key = {
+        "scanner": "scanner_binding",
+        "worker": "worker_binding",
+        "api": "api_binding",
+    }[binding["component"]]
     return {key: binding, "fixture": fixture, "worker_probe": probe}
 
 
@@ -434,19 +456,15 @@ def observe(
 ):
     application = verify_application(binding, plan, folder)
     request = private_input(binding, plan, folder, context_id, records)
-    worker = binding["component"] == "worker"
-    label = (
-        "org.onesa.worker-qualification"
-        if worker
-        else "org.onesa.scanner-qualification"
-    )
-    binding_key = "worker_binding" if worker else "scanner_binding"
-    expected_state = (
-        "WORKER_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION"
-        if worker
-        else "SCANNER_DEPENDENCY_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION"
-    )
-    if worker:
+    worker, api = binding["component"] == "worker", binding["component"] == "api"
+    label = "org.onesa." + binding["component"] + "-qualification"
+    binding_key = binding["component"] + "_binding"
+    expected_state = {
+        "api": "API_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION",
+        "worker": "WORKER_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION",
+        "scanner": "SCANNER_DEPENDENCY_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION",
+    }[binding["component"]]
+    if worker or api:
         r.require(
             socket_volume == "onesa-portal-oracle-staging_scanner_socket",
             "WORKER_RETAINED_SCANNER_SOCKET_SCOPE",
@@ -504,9 +522,7 @@ def observe(
             "/private/runtime.env" if name == "runtime.env" else "/private/tls/" + name
         )
         mounts += ["-v", str(destination) + ":" + dest + ":ro"]
-    name = (
-        "onesa-worker-workflows-" if worker else "onesa-scanner-workflows-"
-    ) + context_id
+    name = "onesa-" + binding["component"] + "-workflows-" + context_id
     r.write(
         observations / "workflow-request-started.json",
         {
@@ -571,7 +587,14 @@ def observe(
             and value["application_binding"] == application
             and value["ci_run_id"] == request["worker_probe"]["ci_run_id"]
             and isinstance(value["checks"], dict)
-            and len(value["checks"]) == 19
+            and len(value["checks"]) == (20 if api else 19)
+            and (
+                not api
+                or value["checks"].get(
+                    "api_idle_connection_recovery_with_saved_sessions"
+                )
+                is True
+            )
             and all(
                 type(passed) is bool and passed for passed in value["checks"].values()
             )

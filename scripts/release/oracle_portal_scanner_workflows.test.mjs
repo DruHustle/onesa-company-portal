@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {digest} from './oracle_portal_worker_probe.mjs';
-import {observe,validate,requiredChecks} from './oracle_portal_scanner_workflows.mjs';
+import {observe,validate,requiredChecks,apiRequiredChecks} from './oracle_portal_scanner_workflows.mjs';
 
 function input(){
  const fixture='01234567-89ab-4cde-8123-456789abcdef',operation='11234567-89ab-4cde-8123-456789abcdef';
@@ -141,4 +141,19 @@ test('The stdin command never exports private input or an arbitrary exception',a
  assert.deepEqual(await ended,{code:1,signal:null});assert.equal(stderr,'');
  assert.deepEqual(JSON.parse(stdout),{state:'SCANNER_DEPENDENCY_WORKFLOWS_FAILED_NOT_QUALIFIED'});
  assert.equal(stdout.includes('synthetic-private-sentinel'),false);
+});
+
+function apiInput(){const value=workerInput();value.request.worker_probe.binding.component='api';value.request.api_binding={...value.request.worker_binding,component:'api'};delete value.request.worker_binding;return value;}
+function apiResult(){return {...result(),state:'OWNED_STAGING_API_OBSERVATIONS_NOT_AUTHORIZATION',checks:Object.fromEntries(apiRequiredChecks.map(key=>[key,true]))};}
+test('API source is observed under its own component and requires actual idle recovery',async()=>{
+ const value=apiInput(),ops=operations(apiResult());const observed=await observe(value.request,value.raw,value.values,ops);assert.equal(observed.state,'API_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION');assert.deepEqual(observed.api_binding,value.request.api_binding);assert.equal(Object.hasOwn(observed,'worker_binding'),false);assert.equal(observed.checks.api_idle_connection_recovery_with_saved_sessions,true);assert.deepEqual(ops.calls.map(row=>row.action),['provision','probe','cleanup']);assert.equal(observed.release_records_issued,0);
+});
+test('Worker/scanner observations cannot be converted into API evidence',async()=>{
+ for(const modify of [v=>{v.request.worker_probe.binding.component='worker';},v=>{v.request.api_binding.component='worker';},v=>{v.request.api_binding.candidate_commit='f'.repeat(40);},v=>{v.request.api_binding.artifact_digest='sha256:'+'f'.repeat(64);},v=>{v.request.worker_binding={...v.request.api_binding,component:'worker'};}]){
+  const value=apiInput(),ops=operations(apiResult());modify(value);await assert.rejects(observe(value.request,value.raw,value.values,ops));assert.equal(ops.calls.length,0);
+ }
+ const value=apiInput(),ops=operations(result());await assert.rejects(observe(value.request,value.raw,value.values,ops));assert.equal(ops.calls.at(-1).action,'cleanup');
+});
+test('Missing failed or skipped idle-recovery check cannot qualify the API',async()=>{
+ for(const value of [undefined,false,'SKIP']){const request=apiInput(),observed=apiResult();if(value===undefined)delete observed.checks.api_idle_connection_recovery_with_saved_sessions;else observed.checks.api_idle_connection_recovery_with_saved_sessions=value;const ops=operations(observed);await assert.rejects(observe(request.request,request.raw,request.values,ops));assert.equal(ops.calls.at(-1).action,'cleanup');}
 });
