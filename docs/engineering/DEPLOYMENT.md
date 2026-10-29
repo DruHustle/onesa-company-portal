@@ -2,6 +2,11 @@
 
 <!-- onesa-protected-source: portal-deployment -->
 
+Frontend staging explicitly selects the provider's preview target before dispatch.
+The observed deployment must still match the source, project, region and expected
+target before its staging alias is assigned. This source correction requires new
+checked source, immutable installation and commissioning; it changes no live runner.
+
 Hosted browser observations check the existing Company and Portal access boundaries
 independently. Staging retains its protected preview boundary.
 

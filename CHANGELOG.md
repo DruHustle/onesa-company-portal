@@ -2,6 +2,7 @@
 
 ## Unreleased — Drone public product qualification
 
+- Select preview explicitly before the staging CLI dispatch. Synthetic default-target and unexpected-provider-target regressions retain the one-create intent and refuse a crossed staging alias; no live runner is changed by this source update.
 - Add a source-bound public product scope with unique cross-browser/language/viewport evidence and exact-host preview sessions. Existing copy, authentication, data and physical-control boundaries remain restricted.
 - Link the product CTA to the independently accepted simulation platform; retain development, illustrative-assets and no-flight-service statements. Portal publication still requires its own hosted release evidence.
 
