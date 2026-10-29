@@ -75,3 +75,8 @@ identity as well as count. Failed/skipped/duplicated interactions, foreign origi
 or operational mutations cannot qualify. These changes require a new reviewed
 source, immutable installation and owner commissioning; the existing failed
 reservations and current production operation must never be reset or resubmitted.
+
+The API and worker adapters explicitly select each retained service's existing
+Compose profile for rendering and deployment. Identity-file pins and independent
+service targeting remain mandatory. New source still requires its own checks,
+commissioned installation and hosted qualification.
