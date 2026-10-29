@@ -713,6 +713,12 @@ The worker adapter keeps the retained production worker recipe and resource prof
 
 The same credential-free backend image job also selects `worker_fixture_smoke.py --worker-workflows --synthetic-scanner --worker-production`. This adds an actual production-adapter process test using a second hostname alias on the fresh internal PostgreSQL fixture, synthetic TLS/object storage and the least-privilege runtime role. It checks conditional object ownership, real outbox execution by the worker process, collision preservation, duplicate refusal and inspection without writes. The alias never selects the real production database; no published port, provider credential or hosted release record is used. This test is mandatory in the backend image job and must pass before owner commissioning.
 
+## Independent API runtime owner adapter
+
+The new API adapter retains the existing runtime recipe, loopback ingress, storage volume, resource limits and effective configuration. Its source comparison is anchored to an owner-commissioned baseline and rejects business/authentication/migration changes. Disposable staging exercises the existing password/MFA, authorization, quarantine/download, persistence and worker workflows plus a real interruption of an owned idle database connection; authenticated sessions and schema readiness must recover without a test-added error listener. The read-only production observer checks actual TLS, application role/schema and retained public/anonymous boundaries; it cannot create accounts, publish, mutate business records or repeat deployment.
+
+Run the complete release Python tests and `node --test scripts/release/oracle_portal_api_production.test.mjs scripts/release/oracle_portal_scanner_workflows.test.mjs`. The mandatory backend image fixture adds `worker_fixture_smoke.py --worker-workflows --synthetic-scanner --api-runtime` using an isolated internal PostgreSQL alias and synthetic TLS only. Local parser tests confer no hosted acceptance. Source-specific external installation, explicit commissioning and fresh source-bound qualification/authorization are still required.
+
 
 ## Preview session and distinct product views
 

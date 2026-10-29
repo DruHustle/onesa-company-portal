@@ -54,6 +54,8 @@ change that prevents speculative page requests. It rejects authentication, hero
 or other navigation changes requiring broader qualification. Separate installation, owner commissioning, genuine hosted evidence
 and exact-source authorization remain required before release.
 
+The new API runtime adapter is a separate component profile in the existing owner verifier. It binds a reviewed existing-business-code baseline, exact current artifacts and retained configuration, and requires genuine idle-connection recovery in isolated staging. Its single API-only request is durable; production observation is read-only. This implementation statement does not establish installation, commissioning, qualification or deployment.
+
 The extended frontend presentation profile additionally covers the reviewed Drone public routes, images, film, footer, sitemap and enquiry topic. It requires current hosted product/media observations and preserves the existing authentication, Home hero, dependency, privacy and independent-component boundaries. This source change does not extend an older commissioned installation or qualify an existing artifact.
 
 

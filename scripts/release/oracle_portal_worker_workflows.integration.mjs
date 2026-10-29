@@ -46,6 +46,7 @@ async function main(){
  assert.equal(input.scope,'LOCAL_DISPOSABLE_WORKER_WORKFLOWS_ONLY');
  assert.ok(input.synthetic_scanner===undefined||typeof input.synthetic_scanner==='boolean');
  assert.ok(input.production_adapter===undefined||typeof input.production_adapter==='boolean');
+ assert.ok(input.api_runtime===undefined||typeof input.api_runtime==='boolean');assert.ok(!input.api_runtime||input.synthetic_scanner&&!input.production_adapter);
  const uri=new URL(input.owner_uri);
  assert.equal(uri.hostname,stagingHost);assert.equal(uri.username,'neondb_owner');
  assert.match(uri.password,/^onesa_local_test_[a-f0-9]{48}$/);
@@ -90,7 +91,7 @@ async function main(){
   const values={NODE_ENV:'production',PUBLISH_ENABLED:'false',SESSION_KEY:randomBytes(48).toString('hex'),PROXY_SHARED_KEY:randomBytes(32).toString('hex'),PUBLIC_ORIGIN:'https://portal-worker-fixture.invalid',DATABASE_URL:database.href,S3_ENDPOINT:'https://fixture-storage.invalid:'+server.address().port+'/',S3_REGION:'us-east-1',S3_BUCKET:'onesa-worker-fixture-test',AWS_ACCESS_KEY_ID:access,AWS_SECRET_ACCESS_KEY:randomBytes(32).toString('hex'),CLAMAV_SOCKET:'/run/onesa-scanner/clamd.sock',WORKER_PROFILE:'staging',WORKER_IDLE_MAX_MS:'600000',MAIL_PROVIDER:'smtp',SMTP_HOST:'127.0.0.1',SMTP_PORT:'2525',MAIL_FROM:'qualification@example.invalid',NODE_EXTRA_CA_CERTS:'/private/tls/cert.pem'};
   const raw=Object.entries(values).map(([name,value])=>name+'='+value+'\n').join('');await writeFile('/private/runtime.env',raw,{mode:0o600,flag:'wx'});
   const digest=value=>createHash('sha256').update(value).digest('hex');
-  const operation={binding:{repository:'DruHustle/onesa-company-portal',component:'worker',candidate_commit:request.source,source_tree:'b'.repeat(40),source_sha256:'c'.repeat(64),build_sha256:'d'.repeat(64),artifact_digest:'sha256:'+'e'.repeat(64),configuration_sha256:{staging:digest(raw),production:'f'.repeat(64)},target_environment:'production'},operation_id:request.context_id,fixture_id:request.fixture_id,environment:'staging',ci_run_id:1,expires_at:request.expires_at,runtime_sha256:digest(raw),certificate_sha256:digest(cert),rollback:{source:'f'.repeat(40),artifact_digest:'sha256:'+'f'.repeat(64)}};
+  const operation={binding:{repository:'DruHustle/onesa-company-portal',component:input.api_runtime?'api':'worker',candidate_commit:request.source,source_tree:'b'.repeat(40),source_sha256:'c'.repeat(64),build_sha256:'d'.repeat(64),artifact_digest:'sha256:'+'e'.repeat(64),configuration_sha256:{staging:digest(raw),production:'f'.repeat(64)},target_environment:'production'},operation_id:request.context_id,fixture_id:request.fixture_id,environment:'staging',ci_run_id:1,expires_at:request.expires_at,runtime_sha256:digest(raw),certificate_sha256:digest(cert),rollback:{source:'f'.repeat(40),artifact_digest:'sha256:'+'f'.repeat(64)}};
   // Deliberately synthetic binding and CI number above are parser-test inputs,
   // never a fabricated Actions run, signed context or release receipt.
   const command=fileURLToPath(new URL('./oracle_portal_worker_probe.mjs',import.meta.url));
@@ -109,9 +110,9 @@ async function main(){
     if(/^[0-9]{2}[0-9A-Z]{3}$/.test(value.database_code||''))databaseCode=value.database_code;
    }catch{/* no raw private diagnostics */}
   }
-  assert.equal(ended.code,0);assert.equal(ended.signal,null);assert.equal(err,'');
+  assert.equal(ended.code,0);assert.equal(ended.signal,null);assert.equal(err,input.api_runtime?JSON.stringify({event:'database_idle_connection_failed'})+'\n':'');
   phase='check_observed_results';
-  const observed=JSON.parse(out);assert.equal(observed.state,'OWNED_STAGING_WORKER_OBSERVATIONS_NOT_AUTHORIZATION');
+  const observed=JSON.parse(out);assert.equal(observed.state,input.api_runtime?'OWNED_STAGING_API_OBSERVATIONS_NOT_AUTHORIZATION':'OWNED_STAGING_WORKER_OBSERVATIONS_NOT_AUTHORIZATION');
   assert.ok(Object.keys(observed.checks).length>=17);assert.ok(Object.values(observed.checks).every(value=>value===true));
   assert.equal(observed.existing_application_databases_changed,false);assert.equal(observed.global_tick_imported,false);assert.equal(observed.inbox_delivery_verified,false);
   assert.equal(objects.size,0);assert.equal(counts.put,3);assert.ok(counts.get>=7);assert.ok(counts.delete>=3);
@@ -124,7 +125,11 @@ async function main(){
    assert.ok(Object.values(productionChecks).every(value=>value===true));
    assert.equal(objects.size,0);
   }
-  console.log(JSON.stringify({state:'LOCAL_WORKER_PROCESS_WORKFLOWS_PASS_NOT_HOSTED_QUALIFICATION',checks:observed.checks,production_adapter_checks:productionChecks,object_protocol_requests:counts,postgres_tls_verified:true,smtp_tls_acceptance_verified:true,inbox_delivery_verified:false,external_storage_provider_verified:false,synthetic_scanner_protocol:input.synthetic_scanner===true,hosted_scanner_qualification_claimed:false,production_access:false,synthetic_binding_only:true,release_records_issued:0}));
+  let apiRuntimeChecks;
+  if(input.api_runtime){
+   phase='api_runtime_internal_process_fixture';const {runLocal}=await import('./oracle_portal_api_production.integration.mjs');apiRuntimeChecks=await runLocal({owner_uri:uri.href,values});assert.ok(Object.values(apiRuntimeChecks).every(value=>value===true));
+  }
+  console.log(JSON.stringify({state:'LOCAL_WORKER_PROCESS_WORKFLOWS_PASS_NOT_HOSTED_QUALIFICATION',checks:observed.checks,production_adapter_checks:productionChecks,api_runtime_checks:apiRuntimeChecks,object_protocol_requests:counts,postgres_tls_verified:true,smtp_tls_acceptance_verified:true,inbox_delivery_verified:false,external_storage_provider_verified:false,synthetic_scanner_protocol:input.synthetic_scanner===true,hosted_scanner_qualification_claimed:false,production_access:false,synthetic_binding_only:true,release_records_issued:0}));
  }finally{
   if(server)await new Promise(resolve=>server.close(resolve));
   if(scanner)await scanner.close();
