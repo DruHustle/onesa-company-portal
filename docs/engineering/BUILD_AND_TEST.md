@@ -690,3 +690,9 @@ read-only isolation with the signed source profile before and after restart.
 Resource drift remains a failed check. Existing host-capacity, security, signature,
 authenticated-workflow and rollback gates are still required. The synthetic
 contract tests do not establish genuine hosted memory headroom or acceptance.
+
+## Owner frontend product-presentation coverage
+
+The frontend owner probe now exercises the source-reviewed Drone product routes and local media alongside every existing Robot copy, navigation, anonymous-denial, accessibility, preservation and recovery check. Both languages, all three browser engines, light/dark and narrow/desktop layouts must render decoded images without overflow; the concept film must remain unloaded until keyboard activation and then actually play. The legacy URL must redirect to the canonical product and the existing contact form must retain its topic without submitting. Runtime dependencies, build scripts, authentication and Home hero changes remain outside this presentation profile. Product media has explicit local size bounds. New source, pinned tool installation, commissioning and genuine hosted evidence are required; local tests cannot issue release authority.
+
+WebKit's media buffer requires a bounded writable `/var/tmp` in the read-only owner browser container. The probe adds only a 32 MiB memory-backed, non-executable temporary mount; all existing filesystem, memory, CPU, capability and credential boundaries remain. The three-engine production-build regression exercises real film playback, so an unavailable media buffer stays a failure. Image decoding waits for actual loaded image state before requesting decode, preserving a failed/missing image as an error.

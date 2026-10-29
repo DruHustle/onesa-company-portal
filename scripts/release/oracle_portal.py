@@ -965,8 +965,55 @@ def source_equivalence(folder, binding, plan):
             "src/config/products.ts",
             "src/components/product-overview.tsx",
             "src/components/responsive-link.tsx",
+            "package.json",
+            "public/brand/sources.json",
+            "public/images/drone-cargo-1280.webp",
+            "public/images/drone-cargo-640.webp",
+            "public/images/drone-flight-1280.webp",
+            "public/images/drone-flight-640.webp",
+            "public/media/onesa-drone-concept.mp4",
+            "scripts/test-drone-product.mjs",
+            "src/app/[locale]/products/onesa-ai-drone/page.tsx",
+            "src/app/[locale]/products/onesa-drone/page.tsx",
+            "src/components/drone-film.tsx",
+            "src/components/drone-image.tsx",
+            "src/components/drone-product.module.css",
+            "src/components/drone-product.tsx",
+            "src/components/drone-visual.tsx",
+            "src/components/site-footer.tsx",
+            "src/config/enquiry-topics.ts",
+            "src/lib/company-sitemap.ts",
         ]
     }
+    package = prefix + "package.json"
+    if package in changed:
+        with (
+            tarfile.open(archive, "r:") as before,
+            tarfile.open(folder / "source.tar", "r:") as after,
+        ):
+            previous = json.load(before.extractfile(package))
+            current = json.load(after.extractfile(package))
+        expected = json.loads(json.dumps(previous))
+        expected["scripts"]["test:drone-product"] = (
+            "node scripts/test-drone-product.mjs"
+        )
+        require(
+            current == expected, "PRODUCT_TEST_SCRIPT_ONLY_NO_RUNTIME_PACKAGE_CHANGE"
+        )
+    with tarfile.open(folder / "source.tar", "r:") as source:
+        for name in changed & permitted:
+            limit = (
+                2 * 1024 * 1024
+                if name.endswith(".mp4")
+                else 256 * 1024
+                if name.endswith(".webp")
+                else None
+            )
+            if limit:
+                require(
+                    name in new and source.getmember(name).size <= limit,
+                    "BOUNDED_LOCAL_PRODUCT_MEDIA_REQUIRED",
+                )
     navigation = prefix + "src/components/responsive-link.tsx"
     if navigation in changed:
         with tarfile.open(archive, "r:") as baseline_source:
@@ -993,6 +1040,7 @@ def source_equivalence(folder, binding, plan):
         if navigation in changed
         else "unchanged",
         "new_full_business_acceptance_claimed": False,
+        "product_presentation_requires_current_hosted_acceptance": True,
     }
 
 
@@ -1193,6 +1241,8 @@ def probe(binding, env, operation, folder, plan):
                     "/tmp:rw,size=512m",
                     "--tmpfs",
                     "/root:rw,mode=700,size=64m",
+                    "--tmpfs",
+                    "/var/tmp:rw,noexec,nosuid,nodev,mode=1777,size=32m",
                     "--memory",
                     "1400m",
                     "--cpus",
@@ -1227,6 +1277,15 @@ def probe(binding, env, operation, folder, plan):
         and browser["environment"] == env
         and browser["engines"] == ["chromium", "firefox", "webkit"]
         and len(browser["views"]) == 18
+        and len(browser["drone_views"]) == 18
+        and all(
+            row["presentation"] == "PASS"
+            and row["deferred_media"] == "PASS"
+            and row["keyboard_playback"] == "PASS"
+            and row["accessibility_violations"] == 0
+            and row["horizontal_overflow"] is False
+            for row in browser["drone_views"]
+        )
         and browser["operational_mutations"] == 0
         and browser["javascript_errors"] == 0
         and browser["accessibility_violations"] == 0
