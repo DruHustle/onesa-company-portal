@@ -20,11 +20,11 @@ export function validate(request,raw,actual){
  for(const line of raw.split('\n').filter(Boolean)){
   const i=line.indexOf('=');need(i>0&&!line.includes('\r')&&/^[A-Z][A-Z0-9_]*$/.test(line.slice(0,i)));const key=line.slice(0,i);need(!Object.hasOwn(values,key));values[key]=line.slice(i+1);
  }
- need(actual&&Object.entries(values).every(([key,value])=>actual[key]===value));
+ need(actual&&actual.PUBLISH_ENABLED===values.PUBLISH_ENABLED&&Object.entries(values).every(([key,value])=>actual[key]===value));
  // Preserve the existing API publication setting through its exact effective
  // configuration hash. This read-only observer never publishes or starts a
  // worker; the retained Company's prelaunch decision is observed over HTTPS.
- need(values.NODE_ENV==='production'&&values.PORT==='8300'&&['true','false'].includes(values.PUBLISH_ENABLED)&&values.WORKER_PROFILE!=='staging'&&(!values.WORKER_IDLE_MAX_MS||values.WORKER_IDLE_MAX_MS==='5000'));
+ need(values.NODE_ENV==='production'&&values.PORT==='8300'&&(values.PUBLISH_ENABLED===undefined||['true','false'].includes(values.PUBLISH_ENABLED))&&values.WORKER_PROFILE!=='staging'&&(!values.WORKER_IDLE_MAX_MS||values.WORKER_IDLE_MAX_MS==='5000'));
  need(values.SESSION_KEY?.length>=48&&values.PROXY_SHARED_KEY?.length>=32&&values.PUBLIC_ORIGIN==='https://portal.onesa.eu');
  need(!values.NODE_TLS_REJECT_UNAUTHORIZED||values.NODE_TLS_REJECT_UNAUTHORIZED==='1');
  let database;try{database=new URL(values.DATABASE_URL);}catch{need(false);}

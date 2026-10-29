@@ -596,11 +596,16 @@ def previous_operations():
         )
 
 
-def production_probe(binding, plan, context, records, target):
-    tool = Path(__file__).with_name(PRODUCTION_TOOL)
-    expected = r.trusted_toolchain(plan)["workflow_files"][
-        "scripts/release/" + PRODUCTION_TOOL
-    ]
+def production_probe(binding, plan, context, records, target, observer_tool=None):
+    if observer_tool is None:
+        tool = Path(__file__).with_name(PRODUCTION_TOOL)
+        expected = r.trusted_toolchain(plan)["workflow_files"][
+            "scripts/release/" + PRODUCTION_TOOL
+        ]
+    else:
+        # Only the separately owner-commissioned recovery command supplies this
+        # installed-file pin. Normal qualification/deployment cannot select it.
+        tool, expected = observer_tool
     r.pinned_public_file(tool, expected)
     contexts = [record for record in records if record["kind"] == "context"]
     r.require(len(contexts) == 1, "API_PRODUCTION_SIGNED_CONTEXT_REQUIRED")
@@ -659,7 +664,7 @@ def production_probe(binding, plan, context, records, target):
     return {**value, "public_ingress": api}
 
 
-def production(binding, plan, context, records):
+def production(binding, plan, context, records, observer_tool=None):
     target = deployment_folder(context["operation_id"])
     request = r.read(target / "request.json")
     r.require(
@@ -684,7 +689,9 @@ def production(binding, plan, context, records):
     )
     effective_environment(binding, plan)
     r.require(r.healthy(row), "API_ACTUAL_RUNNING_READINESS_REQUIRED")
-    observation = production_probe(binding, plan, context, records, target)
+    observation = production_probe(
+        binding, plan, context, records, target, observer_tool
+    )
     retained(plan, replacement=True)
     return {
         "operation_id": context["operation_id"],
@@ -795,8 +802,12 @@ def deploy(binding, plan, context, folder, records):
         return value
 
 
-def runner(phase, binding, context):
+def runner(phase, binding, context, *, observer_tool=None):
     r.require(phase in CHECKS, "API_PHASE_SCOPE")
+    r.require(
+        observer_tool is None or phase == "production",
+        "OBSERVER_CORRECTION_IS_READ_ONLY_PRODUCTION_ONLY",
+    )
     plan = r.read(PLAN)
     folder = validate_plan(binding, plan)
     source_equivalence(folder, binding, plan)
@@ -808,7 +819,7 @@ def runner(phase, binding, context):
     elif phase == "deploy":
         details = deploy(binding, plan, context, folder, records)
     else:
-        details = production(binding, plan, context, records)
+        details = production(binding, plan, context, records, observer_tool)
     return {
         **details,
         "binding": binding,
