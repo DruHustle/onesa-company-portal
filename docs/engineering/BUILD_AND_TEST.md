@@ -62,6 +62,17 @@ keeps its actual current deployment separate from the hash-checked source compar
 baseline and explicitly retained rollback artifact; none of these substitutes for
 fresh qualification and authorization of a corrected candidate.
 
+The read-only API observer preserves an omitted publication variable's existing
+application default of false; invalid explicit values and runtime drift still fail.
+The new operation-scoped observer recovery command requires explicit external owner
+commissioning of its complete reviewed source before observing an existing intent.
+It retains the original signed qualification, authorization and successful provider
+command, checks revocation and fresh observation, and sends no deployment request.
+Disposable signature/ledger tests cover modified or expired commissions, original
+failed/skipped checks, wrong identities, interrupted reads and simultaneous observers.
+This recovery cannot qualify changed application source or accept an uncertain
+provider command. Operational commands remain in the protected canonical procedure.
+
 The browser verification job uses supported Ubuntu24.04 explicitly, retaining all
 three engines, the bounded signed dependency installer and every existing deadline.
 
