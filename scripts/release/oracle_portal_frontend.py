@@ -618,7 +618,7 @@ def create(binding, env, operation, folder, plan):
         "githubCommitSha=" + binding["candidate_commit"],
         "--meta",
         "onesaOracleOperation=" + operation,
-        *(["--prod"] if env == "production" else []),
+        *(["--prod"] if env == "production" else ["--target=preview"]),
     ]
     try:
         with (
