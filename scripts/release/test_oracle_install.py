@@ -357,6 +357,14 @@ class APIInstallTests(InstallTests):
     script = "oracle_portal_api.py"
     prefix = "portal-api-"
 
+    def test_api_conditional_probe_is_pinned_and_cannot_be_omitted(self):
+        name = "runners/oracle_portal_worker_production.mjs"
+        self.assertIn(name, self.manifest["files"])
+        self.manifest["files"].pop(name)
+        self.seal()
+        with self.assertRaises(verifier.Rejected):
+            self.validate()
+
     def test_api_profile_cannot_install_or_authorize_worker(self):
         profile = self.policy["components"].pop("DruHustle/onesa-company-portal:api")
         self.policy["components"]["DruHustle/onesa-company-portal:worker"] = profile

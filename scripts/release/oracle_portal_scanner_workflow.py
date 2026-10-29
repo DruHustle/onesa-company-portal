@@ -133,7 +133,11 @@ def verify_application(binding, plan, folder):
     if binding["component"] == "worker":
         names += ["oracle_portal_scanner.py", "oracle_portal_worker_production.mjs"]
     elif binding["component"] == "api":
-        names += ["oracle_portal_scanner.py", "oracle_portal_api_production.mjs"]
+        names += [
+            "oracle_portal_scanner.py",
+            "oracle_portal_api_production.mjs",
+            "oracle_portal_worker_production.mjs",
+        ]
     expected = {
         "scripts/release/" + name: files["scripts/release/" + name] for name in names
     }
@@ -501,7 +505,7 @@ def observe(
     mounts = []
     tool = r.trusted_toolchain(plan)
     node_files = [*NODE_FILES]
-    if worker:
+    if worker or api:
         node_files.append("oracle_portal_worker_production.mjs")
     for name in node_files:
         source = r.pinned_public_file(
