@@ -689,6 +689,7 @@ def runner(phase, binding, context):
 
 
 def main():
+    request = None
     try:
         r.require(
             os.geteuid() == 0
@@ -707,7 +708,13 @@ def main():
                 sort_keys=True,
             )
         )
-    except Exception:  # noqa: BLE001 -- private configuration never leaves the CLI
+    except Exception as error:  # noqa: BLE001 -- private configuration never leaves CLI
+        common.record_failure(
+            sys.argv[1] if len(sys.argv) == 2 else None,
+            request,
+            error,
+            component="worker",
+        )
         print(json.dumps({"state": "WORKER_OBSERVATION_FAILED_INSPECT_WITHOUT_RETRY"}))
         raise SystemExit(1) from None
 

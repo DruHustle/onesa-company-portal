@@ -514,7 +514,7 @@ def access_probe(image_id, directory):
     return {"authorized_group_ping": "PASS", "unrelated_group_denied": "PASS"}
 
 
-def public_definitions(row, destination, uid, gid):
+def public_definition_files(row):
     mounts = [v for v in row["Mounts"] if v["Destination"] == "/var/lib/clamav"]
     r.require(
         len(mounts) == 1 and mounts[0]["Type"] == "volume", "SCANNER_DEFINITIONS_VOLUME"
@@ -536,8 +536,22 @@ def public_definitions(row, destination, uid, gid):
     )
     size = sum(p.stat().st_size for p in entries)
     r.require(0 < size < 512 * 1024**2, "PUBLIC_SIGNATURE_SIZE_BOUND")
+    return entries
+
+
+def definition_reserve(entries, *, copies):
+    r.require(type(copies) is int and copies in {1, 2}, "SIGNATURE_COPY_COUNT")
+    size = sum(p.stat().st_size for p in entries)
     fs = os.statvfs("/")
-    r.require(fs.f_bavail * fs.f_frsize - size > 12 * 1024**3, "SCANNER_DISK_RESERVE")
+    r.require(
+        fs.f_bavail * fs.f_frsize - copies * size > 12 * 1024**3,
+        "SCANNER_DISK_RESERVE",
+    )
+
+
+def public_definitions(row, destination, uid, gid):
+    entries = public_definition_files(row)
+    definition_reserve(entries, copies=1)
     destination.mkdir(mode=0o700)
     os.chown(destination, uid, gid)
     values = {}
@@ -730,13 +744,23 @@ def capacity(*, staging=False):
     return metrics
 
 
+def staging_capacity():
+    metrics = capacity(staging=True)
+    # Only scanner qualification copies signatures. Keep independent API/worker
+    # callers of capacity free of this scanner-specific disk requirement.
+    current = json.loads(r.docker("inspect", TARGET))
+    r.require(len(current) == 1, "SCANNER_CURRENT_DEFINITION_SOURCE_REQUIRED")
+    definition_reserve(public_definition_files(current[0]), copies=2)
+    return metrics
+
+
 def staging(binding, plan, context, folder, records):
     with component_lock():
         return staging_once(binding, plan, context, folder, records)
 
 
 def staging_once(binding, plan, context, folder, records):
-    capacity(staging=True)
+    staging_capacity()
     before = retained(plan)
     observations = ROOT / "observations"
     observations.mkdir(mode=0o700, exist_ok=True)
@@ -1129,7 +1153,57 @@ def runner(phase, binding, context):
     }
 
 
+def record_failure(phase, request, error, *, component="scanner"):
+    """Private diagnostics only; never success, authority or permission to retry."""
+    try:
+        if not isinstance(request, dict) or not isinstance(
+            request.get("context"), dict
+        ):
+            return
+        binding = request["binding"]
+        r.require(
+            component in {"scanner", "api", "worker"}
+            and phase in CHECKS
+            and binding["repository"] == REPOSITORY
+            and binding["component"] == component
+            and re.fullmatch(r"[a-f0-9]{40}", binding["candidate_commit"]),
+            "SCANNER_DIAGNOSTIC_SCOPE",
+        )
+        ids = {
+            key: identifier(value)
+            for key, value in request["context"].items()
+            if key
+            in {"context_id", "operation_id", "authorization_id", "qualification_id"}
+        }
+        code = (
+            str(error)
+            if isinstance(error, r.Refused)
+            and re.fullmatch(r"[A-Z0-9_]{1,120}", str(error))
+            else type(error).__name__
+        )
+        component_root = r.private(ROOT.parent / component, directory=True)
+        folder = component_root / "failures"
+        folder.mkdir(mode=0o700, exist_ok=True)
+        r.private(folder, directory=True)
+        r.write(
+            folder / (phase + "-" + str(time.time_ns()) + ".json"),
+            {
+                "candidate_commit": binding["candidate_commit"],
+                "component": component,
+                "phase": phase,
+                "record_ids": ids,
+                "failure_code": code,
+                "observed_at": r.now().isoformat(),
+                "provider_retry_allowed": False,
+                "diagnostic_only_not_authorization": True,
+            },
+        )
+    except (r.Refused, KeyError, ValueError, TypeError, OSError):
+        pass
+
+
 def main():
+    request = None
     try:
         r.require(
             os.geteuid() == 0
@@ -1144,8 +1218,9 @@ def main():
         exact(request, ["binding", "context"], "SCANNER_REQUEST_SCHEMA")
         value = runner(sys.argv[1], request["binding"], request["context"])
         print(json.dumps(value, sort_keys=True))
-    except Exception:  # noqa: BLE001 -- redact all private input at the CLI boundary
+    except Exception as error:  # noqa: BLE001 -- redact private input at the CLI boundary
         # Arbitrary Docker/JSON/configuration errors must never export a secret.
+        record_failure(sys.argv[1] if len(sys.argv) == 2 else None, request, error)
         print(json.dumps({"state": "SCANNER_OBSERVATION_FAILED_INSPECT_WITHOUT_RETRY"}))
         raise SystemExit(1) from None
 

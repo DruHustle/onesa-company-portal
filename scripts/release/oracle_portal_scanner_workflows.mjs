@@ -50,7 +50,7 @@ export async function observe(input,raw,actual=process.env,operations={fixture:f
   need(keys(observed.checks,checked.api?apiRequiredChecks:requiredChecks)&&Object.values(observed.checks).every(value=>value===true));
   need(observed.existing_application_databases_changed===false&&observed.global_tick_imported===false&&observed.inbox_delivery_verified===false);
   let conditional;
-  if(checked.worker){
+  if(checked.worker||checked.api){
    const runConditional=operations.conditional||(await import('./oracle_portal_worker_production.mjs')).runStageConditional;
    conditional=await runConditional(input.worker_probe,raw,actual);
    need(keys(conditional,['conditional_object_ownership','synthetic_object_cleanup'])&&Object.values(conditional).every(value=>value===true));
@@ -58,7 +58,7 @@ export async function observe(input,raw,actual=process.env,operations={fixture:f
   return {
    state:checked.api?'API_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION':checked.worker?'WORKER_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION':'SCANNER_DEPENDENCY_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION',
    [checked.key]:checked.binding,application_binding:input.worker_probe.binding,
-   ...(checked.worker?{provider_conditional_ownership:conditional}:{}),
+   ...(checked.worker||checked.api?{provider_conditional_ownership:conditional}:{}),
    ci_run_id:input.worker_probe.ci_run_id,checks:observed.checks,
    disposable_fixture_migrations:ready.applied_migrations,production_schema_migrations:0,
    existing_application_databases_changed:false,global_tick_imported:false,
