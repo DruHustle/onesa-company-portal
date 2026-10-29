@@ -1,5 +1,5 @@
 // Observations only. The pinned Python runner must verify its commissioned,
-// atomically reserved scanner context before supplying this private input.
+// atomically reserved component context before supplying this private input.
 import {readFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {validate as fixturePlan,run as fixtureRun} from './oracle_portal_worker_fixture.mjs';
@@ -20,20 +20,21 @@ export const requiredChecks=Object.freeze([
 ]);
 
 export function validate(input,raw,actual,now=Date.now()){
- need(keys(input,['scanner_binding','fixture','worker_probe']));
- const binding=input.scanner_binding,probe=input.worker_probe;
- need(keys(binding,fields)&&binding.repository==='DruHustle/onesa-company-portal'&&binding.component==='scanner'&&binding.target_environment==='production');
+ const key=Object.hasOwn(input||{},'scanner_binding')?'scanner_binding':'worker_binding';
+ need(keys(input,[key,'fixture','worker_probe']));
+ const binding=input[key],probe=input.worker_probe,worker=key==='worker_binding';
+ need(keys(binding,fields)&&binding.repository==='DruHustle/onesa-company-portal'&&binding.component===(worker?'worker':'scanner')&&binding.target_environment==='production');
  const checked=workerPlan(probe,raw,actual,now),fixture=fixturePlan(input.fixture,now);
  need(probe.environment==='staging'&&input.fixture.action==='provision');
  // The dependent worker image has its own real build/image identity. No scanner
  // approval is changed into a worker approval, and no dummy CI ID is generated.
  for(const field of ['repository','candidate_commit','source_tree','source_sha256','target_environment'])need(binding[field]===probe.binding[field]);
- need(/^[a-f0-9]{64}$/.test(binding.build_sha256)&&binding.build_sha256!==probe.binding.build_sha256);
- need(/^sha256:[a-f0-9]{64}$/.test(binding.artifact_digest)&&binding.artifact_digest!==probe.binding.artifact_digest);
+ need(/^[a-f0-9]{64}$/.test(binding.build_sha256)&&(worker?binding.build_sha256===probe.binding.build_sha256:binding.build_sha256!==probe.binding.build_sha256));
+ need(/^sha256:[a-f0-9]{64}$/.test(binding.artifact_digest)&&(worker?binding.artifact_digest===probe.binding.artifact_digest:binding.artifact_digest!==probe.binding.artifact_digest));
  need(keys(binding.configuration_sha256,['staging','production'])&&Object.values(binding.configuration_sha256).every(value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value)));
  need(input.fixture.source===binding.candidate_commit&&input.fixture.context_id===probe.operation_id&&input.fixture.fixture_id===probe.fixture_id&&input.fixture.expires_at===probe.expires_at);
  need(checked.database.username===fixture.runtime&&checked.database.pathname==='/'+fixture.database&&decodeURIComponent(checked.database.password)===input.fixture.runtime_password);
- return {binding,fixture,checked};
+ return {binding,fixture,checked,key,worker};
 }
 
 export async function observe(input,raw,actual=process.env,operations={fixture:fixtureRun,probe:runStaging}){
@@ -46,9 +47,16 @@ export async function observe(input,raw,actual=process.env,operations={fixture:f
   need(observed.state==='OWNED_STAGING_WORKER_OBSERVATIONS_NOT_AUTHORIZATION');
   need(keys(observed.checks,requiredChecks)&&Object.values(observed.checks).every(value=>value===true));
   need(observed.existing_application_databases_changed===false&&observed.global_tick_imported===false&&observed.inbox_delivery_verified===false);
+  let conditional;
+  if(checked.worker){
+   const runConditional=operations.conditional||(await import('./oracle_portal_worker_production.mjs')).runStageConditional;
+   conditional=await runConditional(input.worker_probe,raw,actual);
+   need(keys(conditional,['conditional_object_ownership','synthetic_object_cleanup'])&&Object.values(conditional).every(value=>value===true));
+  }
   return {
-   state:'SCANNER_DEPENDENCY_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION',
-   scanner_binding:checked.binding,application_binding:input.worker_probe.binding,
+   state:checked.worker?'WORKER_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION':'SCANNER_DEPENDENCY_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION',
+   [checked.key]:checked.binding,application_binding:input.worker_probe.binding,
+   ...(checked.worker?{provider_conditional_ownership:conditional}:{}),
    ci_run_id:input.worker_probe.ci_run_id,checks:observed.checks,
    disposable_fixture_migrations:ready.applied_migrations,production_schema_migrations:0,
    existing_application_databases_changed:false,global_tick_imported:false,

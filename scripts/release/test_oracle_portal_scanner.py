@@ -263,6 +263,8 @@ class PlanTests(unittest.TestCase):
 
 
 class SignedScannerContextTests(unittest.TestCase):
+    component = "scanner"
+
     @classmethod
     def setUpClass(cls):
         fixtures.OwnerStoreTests.setUpClass()
@@ -274,9 +276,9 @@ class SignedScannerContextTests(unittest.TestCase):
         self.owner.setUp()
         self.addCleanup(self.owner.doCleanups)
         self.owner.store.db.close()
-        self.owner.binding["component"] = "scanner"
+        self.owner.binding["component"] = self.component
         policy = self.owner.policy
-        policy["components"][scanner.REPOSITORY + ":scanner"] = policy[
+        policy["components"][scanner.REPOSITORY + ":" + self.component] = policy[
             "components"
         ].pop(scanner.REPOSITORY + ":api")
         (self.owner.root / "policy.json").write_bytes(r.canonical(policy))
@@ -349,14 +351,14 @@ class SignedScannerContextTests(unittest.TestCase):
         context = self.reserve()
         with self.assertRaisesRegex(r.Refused, "EXPIRED"):
             self.verify(context)
-        self.assertEqual(envelope["binding"]["component"], "scanner")
+        self.assertEqual(envelope["binding"]["component"], self.component)
 
     def test_wrong_source_component_environment_or_artifact_never_transfers_authority(
         self,
     ):
         context = self.reserve()
         for key, value in [
-            ("component", "worker"),
+            ("component", "worker" if self.component == "scanner" else "scanner"),
             ("candidate_commit", "f" * 40),
             ("artifact_digest", "sha256:" + "f" * 64),
             ("target_environment", "staging"),
