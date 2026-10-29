@@ -155,7 +155,7 @@ class InstallTests(unittest.TestCase):
                     for phase in verifier.PHASES
                 },
             }
-        if self.component == "scanner":
+        if self.component in {"scanner", "worker"}:
             tool = self.policy["toolchain"]
             self.policy["toolchain"] = {
                 **{
@@ -170,9 +170,9 @@ class InstallTests(unittest.TestCase):
                 "transport_image": "sha256:" + "4" * 64,
                 "workflow_files": {
                     upstream: hashlib.sha256(files[upstream]).hexdigest()
-                    for local, upstream in installer.SCANNER_ALLOWED.items()
+                    for local, upstream in self.allowed.items()
                     if local not in installer.ALLOWED
-                    and local != "runners/oracle_portal_scanner.py"
+                    and local != "runners/" + self.script
                 },
             }
         self.seal()
@@ -282,6 +282,35 @@ class ScannerInstallTests(InstallTests):
             "DruHustle/onesa-company-portal:scanner"
         )
         self.policy["components"]["DruHustle/onesa-company-portal:frontend"] = profile
+        self.seal()
+        with self.assertRaises(verifier.Rejected):
+            self.validate()
+
+
+class WorkerInstallTests(InstallTests):
+    allowed = installer.WORKER_ALLOWED
+    component = "worker"
+    script = "oracle_portal_worker.py"
+    prefix = "portal-worker-"
+
+    def test_worker_installation_cannot_authorize_scanner(self):
+        profile = self.policy["components"].pop("DruHustle/onesa-company-portal:worker")
+        self.policy["components"]["DruHustle/onesa-company-portal:scanner"] = profile
+        self.seal()
+        with self.assertRaises(verifier.Rejected):
+            self.validate()
+
+    def test_missing_production_tool_refuses_incomplete_installation(self):
+        name = "runners/oracle_portal_worker_production.mjs"
+        self.manifest["files"].pop(name)
+        self.seal()
+        with self.assertRaises(verifier.Rejected):
+            self.validate()
+
+    def test_shared_scanner_code_pin_is_required_for_worker_installation(self):
+        self.policy["toolchain"]["workflow_files"][
+            "scripts/release/oracle_portal_scanner.py"
+        ] = "f" * 64
         self.seal()
         with self.assertRaises(verifier.Rejected):
             self.validate()

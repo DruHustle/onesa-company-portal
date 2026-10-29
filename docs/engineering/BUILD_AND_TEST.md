@@ -1,5 +1,11 @@
 # Separate application builds and tests
 
+Release-unit fixtures pin a disposable commissioning registry and keep its keys,
+policy and database inside their temporary directory. Root test execution uses a
+private home-directory parent and never reads the host's production trust registry.
+Scanner fixtures that deliberately replace their policy explicitly update their
+synthetic commissioning record. Production trust checks and release authority are unchanged.
+
 The scanner release regressions run in the existing Python release suite. They
 exercise real Ed25519 signatures in a disposable issuer fixture, source/artifact
 and environment mismatches, revoked/expired or consumed contexts, unsafe rendered
@@ -639,6 +645,10 @@ the exact named existing provider value; it never changes Access, accounts or MF
 
 ## Drone product introduction
 
+EN/DE product copy distinguishes the implemented simulation development candidate
+from public hosted acceptance. Neither its concept media nor a Company publication
+qualifies the Drone service, physical flight or an operational delivery offering.
+
 After building the frontend, run `npm run test:drone-product` from
 `onesa-company-portal-frontend`. The production-renderer fixture refuses private frontend
 env files, uses a synthetic loopback content service and checks EN/DE, 390/1440px,
@@ -684,3 +694,11 @@ contract tests do not establish genuine hosted memory headroom or acceptance.
 ## Scanner image metadata variants
 
 `python3 -m unittest discover -s scripts/release -p 'test_oracle_scanner_image_metadata.py'` checks the observed Docker image metadata shape that omits an unset default command. Omitted and explicit-null `Cmd` both retain the prescribed scanner entrypoint without extra arguments. An actual command, an empty command array or altered required identity/user/entrypoint/environment fields remain refused. The complete source, shipped-file and image-security checks still run. This parser regression does not qualify a hosted scanner or transfer any prior approval.
+
+## Independent worker owner adapter checks
+
+Run `python3 -m unittest discover -s scripts/release -p 'test_oracle_portal_worker.py'` and `node --test scripts/release/oracle_portal_scanner_workflows.test.mjs scripts/release/oracle_portal_worker_production.test.mjs`. The complete release suite also checks the worker installer profile, component boundaries and real signature-chain rejection. These local synthetic tests establish no hosted qualification or deployment.
+
+The worker adapter keeps the retained production worker recipe and resource profile. Staging uses a fresh marked database and a read-only retained scanner socket. Its production canary owns a fresh conditional object and a reserved outbox entry; the entry stays unprocessable until object ownership and integrity are established. Interrupted inspection cannot create objects, enqueue work or repeat deployment. Neither the probe nor inspection imports the production worker loop. Source-specific installation, separate owner commissioning, mandatory native checks and genuine hosted evidence remain required.
+
+The same credential-free backend image job also selects `worker_fixture_smoke.py --worker-workflows --synthetic-scanner --worker-production`. This adds an actual production-adapter process test using a second hostname alias on the fresh internal PostgreSQL fixture, synthetic TLS/object storage and the least-privilege runtime role. It checks conditional object ownership, real outbox execution by the worker process, collision preservation, duplicate refusal and inspection without writes. The alias never selects the real production database; no published port, provider credential or hosted release record is used. This test is mandatory in the backend image job and must pass before owner commissioning.

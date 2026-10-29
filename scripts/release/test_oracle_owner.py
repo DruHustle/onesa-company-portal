@@ -54,7 +54,11 @@ class OwnerStoreTests(unittest.TestCase):
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(
-            dir="/private/tmp" if Path("/private/tmp").exists() else None
+            dir=Path.home()
+            if os.getuid() == 0
+            else "/private/tmp"
+            if Path("/private/tmp").exists()
+            else None
         )
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
@@ -121,6 +125,11 @@ print(json.dumps(v))
             "runner_root": str(self.root),
         }
         (self.root / "trust.json").write_bytes(o.canonical(trust))
+        # Never consult the host's production commissioning registry, including
+        # when these disposable fixtures run as root inside a test container.
+        self.anchor = self.root / "fixture-anchor.json"
+        self.commission_fixture()
+        self.enterContext(patch.object(o, "ANCHOR", self.anchor))
         db = sqlite3.connect(self.root / "records.sqlite")
         db.executescript(SCHEMA)
         db.close()
@@ -132,6 +141,18 @@ print(json.dumps(v))
 
     def open(self):
         return o.Store(self.root, self.ci, uid=os.getuid())
+
+    def commission_fixture(self):
+        trust = json.loads((self.root / "trust.json").read_bytes())
+        self.anchor.write_bytes(
+            o.canonical(
+                {
+                    "schema_version": 1,
+                    "installations": {str(self.root): {**trust, "active": True}},
+                }
+            )
+        )
+        self.anchor.chmod(0o600)
 
     def settings(self, value):
         (self.root / "settings.json").write_bytes(o.canonical(value))
