@@ -43,6 +43,16 @@ SCANNER_ALLOWED = {
         ]
     },
 }
+WORKER_ALLOWED = {
+    **SCANNER_ALLOWED,
+    "runners/oracle_portal_worker.py": "scripts/release/oracle_portal_worker.py",
+    "runners/oracle_portal_worker_production.mjs": "scripts/release/oracle_portal_worker_production.mjs",
+}
+API_ALLOWED = {
+    **SCANNER_ALLOWED,
+    "runners/oracle_portal_api.py": "scripts/release/oracle_portal_api.py",
+    "runners/oracle_portal_api_production.mjs": "scripts/release/oracle_portal_api_production.mjs",
+}
 
 MAX_BYTES = 2 * 1024 * 1024
 
@@ -106,6 +116,20 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "scanner",
             "oracle_portal_scanner.py",
             "portal-scanner-",
+        )
+    elif set(m["files"]) == set(WORKER_ALLOWED):
+        allowed, component, script, prefix = (
+            WORKER_ALLOWED,
+            "worker",
+            "oracle_portal_worker.py",
+            "portal-worker-",
+        )
+    elif set(m["files"]) == set(API_ALLOWED):
+        allowed, component, script, prefix = (
+            API_ALLOWED,
+            "api",
+            "oracle_portal_api.py",
+            "portal-api-",
         )
     else:
         raise verifier.Rejected(
@@ -190,6 +214,8 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         if component == "frontend"
         else {"transport_image", "workflow_files"}
     )
+    if component == "api":
+        tool_fields.add("accepted_api_baseline")
     require(
         set(tool) == tool_fields
         and tool["source_commit"] == m["candidate_commit"]
@@ -197,6 +223,28 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         and tool["source_sha256"] == m["tool_source_sha256"],
         "Commissioned tool source differs from reviewed main",
     )
+    if component == "api":
+        baseline = tool["accepted_api_baseline"]
+        require(
+            isinstance(baseline, dict)
+            and set(baseline)
+            == {"candidate_commit", "source_tree", "source_sha256", "artifact_digest"}
+            and re.fullmatch("[a-f0-9]{40}", baseline.get("candidate_commit", ""))
+            and re.fullmatch("[a-f0-9]{40}", baseline.get("source_tree", ""))
+            and verifier.HEX.fullmatch(baseline.get("source_sha256", ""))
+            and re.fullmatch(
+                "sha256:[a-f0-9]{64}", baseline.get("artifact_digest", "")
+            ),
+            "API comparison baseline must be separately pinned",
+        )
+        observed = github.api(
+            "repos/" + m["repository"] + "/git/commits/" + baseline["candidate_commit"]
+        )
+        require(
+            observed["sha"] == baseline["candidate_commit"]
+            and observed["tree"]["sha"] == baseline["source_tree"],
+            "API baseline commit/tree differs from authoritative Git source",
+        )
     if component == "frontend":
         require(
             tool["probe_files"] == module.probe_source_files(files)
@@ -209,8 +257,8 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     else:
         workflow_files = {
             upstream: files[upstream]
-            for name, upstream in SCANNER_ALLOWED.items()
-            if name not in ALLOWED and name != "runners/oracle_portal_scanner.py"
+            for name, upstream in allowed.items()
+            if name not in ALLOWED and name != "runners/" + script
         }
         require(
             tool["workflow_files"] == workflow_files,

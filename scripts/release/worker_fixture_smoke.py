@@ -21,6 +21,7 @@ POSTGRES = (
     "postgres@sha256:2ad58d61b036d41f2613302e8c0fee03f6fe51e94d68087327ac45d1cebd4b5e"
 )
 HOST = "ep-morning-shadow-b9jkzgsz.c-7.eu-central-1.aws.neon.tech"
+PRODUCTION_ALIAS = "ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech"
 FILES = [
     "oracle_portal_worker_fixture.mjs",
     "oracle_portal_worker_fixture.integration.mjs",
@@ -38,6 +39,8 @@ def main():
     )
     parser.add_argument("--worker-workflows", action="store_true")
     parser.add_argument("--synthetic-scanner", action="store_true")
+    parser.add_argument("--worker-production", action="store_true")
+    parser.add_argument("--api-runtime", action="store_true")
     parser.add_argument(
         "--scanner-socket-volume",
         help="Existing scanner socket volume, mounted read-only for synthetic bytes",
@@ -51,6 +54,12 @@ def main():
         args.scanner_socket_volume or args.synthetic_scanner
     )
     assert not (args.scanner_socket_volume and args.synthetic_scanner)
+    assert not args.worker_production or (
+        args.worker_workflows and args.synthetic_scanner
+    ), "Production-adapter tests require the entirely synthetic internal fixture"
+    assert not args.api_runtime or (
+        args.worker_workflows and args.synthetic_scanner and not args.worker_production
+    ), "API runtime tests require their own entirely synthetic fixture"
     if args.scanner_socket_volume:
         assert re.fullmatch(
             r"[a-z0-9][a-z0-9_-]{0,127}_scanner_socket", args.scanner_socket_volume
@@ -66,6 +75,16 @@ def main():
             "oracle_portal_worker_probe.mjs",
             "oracle_portal_worker_smtp.mjs",
             "oracle_portal_worker_workflows.integration.mjs",
+        ]
+    if args.worker_production:
+        files += [
+            "oracle_portal_worker_production.mjs",
+            "oracle_portal_worker_production.integration.mjs",
+        ]
+    if args.api_runtime:
+        files += [
+            "oracle_portal_api_production.mjs",
+            "oracle_portal_api_production.integration.mjs",
         ]
     pins = {n: hashlib.sha256((source / n).read_bytes()).hexdigest() for n in files}
     postgres_id = json.loads(execute([docker, "image", "inspect", POSTGRES]).stdout)[0][
@@ -103,6 +122,8 @@ def main():
                 "-addext",
                 "subjectAltName=DNS:"
                 + HOST
+                + ",DNS:"
+                + PRODUCTION_ALIAS
                 + ",DNS:fixture-storage.invalid,IP:127.0.0.1",
                 "-keyout",
                 str(root / "server.key"),
@@ -157,6 +178,8 @@ def main():
                     network,
                     "--network-alias",
                     HOST,
+                    "--network-alias",
+                    PRODUCTION_ALIAS,
                     "--memory",
                     "256m",
                     "--cpus",
@@ -338,7 +361,11 @@ def main():
                         + HOST
                         + "/neondb?sslmode=verify-full&channel_binding=require",
                         **(
-                            {"synthetic_scanner": args.synthetic_scanner}
+                            {
+                                "synthetic_scanner": args.synthetic_scanner,
+                                "production_adapter": args.worker_production,
+                                "api_runtime": args.api_runtime,
+                            }
                             if args.worker_workflows
                             else {}
                         ),
@@ -361,6 +388,23 @@ def main():
                 if args.worker_workflows
                 else len(observed["checks"]) == 7
             )
+            if args.worker_production:
+                checks = observed["production_adapter_checks"]
+                assert isinstance(checks, dict) and len(checks) >= 10
+                assert all(value is True for value in checks.values())
+            if args.api_runtime:
+                assert (
+                    observed["checks"].get(
+                        "api_idle_connection_recovery_with_saved_sessions"
+                    )
+                    is True
+                )
+                checks = observed["api_runtime_checks"]
+                assert (
+                    isinstance(checks, dict)
+                    and len(checks) == 5
+                    and all(value is True for value in checks.values())
+                )
             assert not result.stderr
             assert pins == {
                 n: hashlib.sha256((source / n).read_bytes()).hexdigest() for n in files

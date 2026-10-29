@@ -3,10 +3,20 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {chromium,firefox,webkit,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+export function assertExactOrigin(url,origin){assert.equal(new URL(url).origin,origin,'Foreign origin refused');}
+export async function establishPreviewSession(context,origin,secret){
+ if(!secret)return;
+ const response=await context.request.get(origin,{headers:{'x-vercel-protection-bypass':secret,'x-vercel-set-bypass-cookie':'true'},maxRedirects:0});
+ assert.ok([200,302,303,307,308].includes(response.status()),'Preview access refused');
+ const location=response.headers().location;if(location)assertExactOrigin(new URL(location,origin).href,origin);
+ const cookie=(await context.cookies()).find(c=>c.name==='_vercel_jwt'&&c.secure);
+ await context.clearCookies();assert.ok(cookie,'Preview session not established');
+ await context.addCookies([{name:cookie.name,value:cookie.value,url:origin,secure:true,httpOnly:true,sameSite:'Lax'}]);
+}
 export async function visitHome(page,origin,locale){
  assert.ok(['en','de'].includes(locale));
  const response=await page.goto(origin+(locale==='en'?'/':'/de'),{waitUntil:'domcontentloaded'});
- assert.ok(response?.ok(),'Home document must return a successful response');
+ assertExactOrigin(page.url(),origin);assert.ok(response?.ok(),'Home document must return a successful response');
  // Readiness is the actual rendered contract. Media/background connections can
  // outlive a usable page; network-idle is not an application readiness signal.
  await expect(page.locator('#home-robot-title')).toHaveText('Onesa AI Robot');
@@ -22,16 +32,62 @@ export async function checkAnonymousBoundaries(request,client){
   }
  }
 }
+export async function visitDronePresentation(page,origin,locale){
+ assert.ok(['en','de'].includes(locale));
+ const requested=[];
+ const track=request=>{const url=new URL(request.url());if(url.origin===origin&&url.pathname==='/media/onesa-drone-concept.mp4')requested.push(url.pathname);};
+ page.on('request',track);
+ try{
+  const response=await page.goto(`${origin}/${locale}/products/onesa-drone`,{waitUntil:'domcontentloaded'});
+  assertExactOrigin(page.url(),origin);assert.ok(response?.ok(),'Drone document must return a successful response');
+  assert.equal(await page.getByRole('link',{name:locale==='en'?'Explore the platform':'Plattform entdecken',exact:true}).getAttribute('href'),'https://drone.onesa.eu');
+  await expect(page.locator('#drone-title')).toHaveText('Onesa Drone');
+  await expect(page.locator('#drone-title')).toBeVisible();
+  await expect(page.locator('main')).toContainText(locale==='en'?'simulation only':'ausschließlich für Simulation');
+  for(const image of await page.locator('img[src*="/images/drone-"]').all()){
+   await image.scrollIntoViewIfNeeded();
+   await expect.poll(()=>image.evaluate(node=>node.complete&&node.naturalWidth>0)).toBe(true);
+   await image.evaluate(node=>node.decode());assert.ok(await image.evaluate(node=>node.naturalWidth>0));
+  }
+  assert.equal(await page.locator('img[src*="/images/drone-"]').count(),2);
+  const video=page.locator('video');await video.scrollIntoViewIfNeeded();
+  assert.equal(await video.getAttribute('src'),null);assert.equal(await video.getAttribute('autoplay'),null);assert.equal(await video.getAttribute('preload'),'none');assert.deepEqual(requested,[],'Film must remain unloaded before explicit play');
+  const play=page.getByRole('button',{name:locale==='en'?/Play concept film/:/Konzeptfilm abspielen/});
+  await play.focus();await expect(play).toBeFocused();await play.press('Enter');
+  await page.waitForFunction(()=>{const video=document.querySelector('video');return video?.readyState>=2&&!video.paused;},null,{timeout:10000});
+  assert.ok(requested.length>0);assert.equal(await video.evaluate(node=>node.controls),true);assert.equal(await video.evaluate(node=>node.duration),12);await video.evaluate(node=>node.pause());
+  await page.locator('main details summary').click();const slider=page.getByRole('slider');const angle=Number(await slider.inputValue());await slider.focus();await slider.press('ArrowRight');await expect(slider).toHaveValue(String(angle+1));
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  const audit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze();assert.deepEqual(audit.violations.map(row=>row.id),[]);
+  await expect(page.locator(`a[href="/${locale}/contact?topic=drone"]`).first()).toBeVisible();
+  return {presentation:'PASS',interactive_concept:'PASS',platform_link:'PASS',deferred_media:'PASS',keyboard_playback:'PASS',accessibility_violations:audit.violations.length,horizontal_overflow:false};
+ }catch(error){
+  // Public fixed-field transport/render state only. Never page HTML, text,
+  // headers, cookies, credentials or arbitrary request/response bodies.
+  const state=await page.evaluate(()=>{
+   const video=document.querySelector('video');
+   return {images:[...document.querySelectorAll('img[src*="/images/drone-"]')].map(node=>({complete:node.complete,width:node.naturalWidth})),video:video?{ready:video.readyState,network:video.networkState,error_code:video.error?.code??null,paused:video.paused,controls:video.controls,mp4_support:video.canPlayType('video/mp4; codecs="avc1.42E01E"')}:null};
+  }).catch(()=>({observation_unavailable:true}));
+  console.error(JSON.stringify({state:'PUBLIC_PRODUCT_OBSERVATION_FAILED',requested_media:requested.length,render:state}));throw error;
+ }finally{page.off('request',track);}
+}
+export async function checkDroneRoutes(page,origin,locale){
+ const legacy=await page.request.get(`${origin}/${locale}/products/onesa-ai-drone`,{maxRedirects:0});assert.equal(legacy.status(),308);
+ assert.equal(new URL(legacy.headers().location,origin).href,`${origin}/${locale}/products/onesa-drone`);
+ const contact=await page.goto(`${origin}/${locale}/contact?topic=drone`,{waitUntil:'domcontentloaded'});assertExactOrigin(page.url(),origin);assert.ok(contact?.ok());
+ await expect(page.locator('select[name="topic"]')).toHaveValue('drone');
+}
 async function observeUI(request,directory,engines,status){
  assert.equal(request.binding.repository,'DruHustle/onesa-company-portal');
  assert.equal(request.binding.component,'frontend');
  assert.equal(request.provider_token_included,false);
  assert.ok(['staging','production'].includes(request.environment));
- let errors=0,mutations=0,violations=0,speculativePrefetches=0;const views=[];
+ let errors=0,mutations=0,violations=0,speculativePrefetches=0;const views=[],droneViews=[];
  for(const [name,type]of Object.entries(engines)){
   const browser=await type.launch({headless:true});
   try{
-   const context=await browser.newContext({viewport:{width:390,height:900},colorScheme:'dark',reducedMotion:'reduce',extraHTTPHeaders:request.bypass?{'x-vercel-protection-bypass':request.bypass}:{}});
+   const context=await browser.newContext({viewport:{width:390,height:900},colorScheme:'dark',reducedMotion:'reduce'});
+   await establishPreviewSession(context,request.origin,request.bypass);
    const page=await context.newPage();
    page.on('pageerror',()=>errors++);
    page.on('request',r=>{const u=new URL(r.url());if(u.origin===request.origin&&r.headers()['next-router-prefetch']==='1')speculativePrefetches++;if(u.origin===request.origin&&!['GET','HEAD'].includes(r.method()))mutations++;});
@@ -57,7 +113,11 @@ async function observeUI(request,directory,engines,status){
     assert.equal(audit.violations.length,0);
     await page.screenshot({path:`${directory}/${name}-${locale}-${width}-${mode}.png`,fullPage:width===390});
     views.push({engine:name,locale,width,mode,robot_copy:'PASS',product_navigation:'PASS',horizontal_overflow:false});
+    const drone=await visitDronePresentation(page,request.origin,locale);
+    await page.screenshot({path:`${directory}/${name}-${locale}-${width}-${mode}-drone.png`,fullPage:width===390});
+    droneViews.push({engine:name,locale,width,mode,...drone});
    }
+   for(const locale of ['en','de'])await checkDroneRoutes(page,request.origin,locale);
    const contact=await page.goto(request.origin+'/en/contact?topic=robot',{waitUntil:'domcontentloaded'});assert.ok(contact?.ok(),'Contact document must return a successful response');
    await expect(page.getByRole('heading',{level:1})).toBeVisible();
    // Inspect only: this probe submits no enquiry, sign-in, publication or file.
@@ -66,7 +126,7 @@ async function observeUI(request,directory,engines,status){
   }finally{await browser.close();}
  }
  assert.equal(errors,0);assert.equal(mutations,0);assert.equal(violations,0);assert.equal(speculativePrefetches,0);
- const receipt={status,binding:request.binding,environment:request.environment,engines:Object.keys(engines),views,speculative_prefetches:speculativePrefetches,operational_mutations:mutations,javascript_errors:errors,accessibility_violations:violations,observed_at:new Date().toISOString(),scope:'public-copy-and-unchanged-private-boundaries-no-owner-session-claim'};
+ const receipt={status,binding:request.binding,environment:request.environment,engines:Object.keys(engines),views,drone_views:droneViews,speculative_prefetches:speculativePrefetches,operational_mutations:mutations,javascript_errors:errors,accessibility_violations:violations,observed_at:new Date().toISOString(),scope:'public-product-presentation-and-unchanged-private-boundaries-no-owner-session-claim'};
  fs.writeFileSync(directory+'/browser-receipt.json',JSON.stringify(receipt),{flag:'wx',mode:0o600});return receipt;
 }
 export async function checkUI(request,directory,engines={chromium,firefox,webkit}){
