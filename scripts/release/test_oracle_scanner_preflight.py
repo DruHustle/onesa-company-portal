@@ -13,6 +13,21 @@ import oracle_portal_scanner as s
 
 
 class SignatureReserveTests(unittest.TestCase):
+    def test_scanner_preflight_reserves_both_copies_and_preserves_other_components(
+        self,
+    ):
+        metrics = {"synthetic": True}
+        with (
+            patch.object(s, "capacity", return_value=metrics) as capacity,
+            patch.object(r, "docker", return_value=b"[{}]"),
+            patch.object(s, "public_definition_files", return_value=[]) as definitions,
+            patch.object(s, "definition_reserve") as reserve,
+        ):
+            self.assertEqual(s.staging_capacity(), metrics)
+            capacity.assert_called_once_with(staging=True)
+            definitions.assert_called_once_with({})
+            reserve.assert_called_once_with([], copies=2)
+
     def test_two_copies_are_reserved_before_any_signature_copy(self):
         entry = SimpleNamespace(stat=lambda: SimpleNamespace(st_size=175576705))
         reserve = 12 * 1024**3

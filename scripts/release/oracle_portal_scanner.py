@@ -741,12 +741,16 @@ def capacity(*, staging=False):
         and values["disk_used_percent"] < 80,
         "SCANNER_OPERATIONS_CAPACITY",
     )
-    if staging:
-        # Candidate and rollback retain distinct public signature copies. Check
-        # both before a qualification intent, while retaining each copy's guard.
-        current = json.loads(r.docker("inspect", TARGET))
-        r.require(len(current) == 1, "SCANNER_CURRENT_DEFINITION_SOURCE_REQUIRED")
-        definition_reserve(public_definition_files(current[0]), copies=2)
+    return metrics
+
+
+def staging_capacity():
+    metrics = capacity(staging=True)
+    # Only scanner qualification copies signatures. Keep independent API/worker
+    # callers of capacity free of this scanner-specific disk requirement.
+    current = json.loads(r.docker("inspect", TARGET))
+    r.require(len(current) == 1, "SCANNER_CURRENT_DEFINITION_SOURCE_REQUIRED")
+    definition_reserve(public_definition_files(current[0]), copies=2)
     return metrics
 
 
@@ -756,7 +760,7 @@ def staging(binding, plan, context, folder, records):
 
 
 def staging_once(binding, plan, context, folder, records):
-    capacity(staging=True)
+    staging_capacity()
     before = retained(plan)
     observations = ROOT / "observations"
     observations.mkdir(mode=0o700, exist_ok=True)

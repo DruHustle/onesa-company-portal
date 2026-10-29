@@ -767,14 +767,8 @@ class CapacityTests(unittest.TestCase):
                 "disk_used_percent": 70,
             },
         }
-        with (
-            patch.object(r, "read", return_value=valid),
-            patch.object(r, "docker", return_value=b"[{}]"),
-            patch.object(scanner, "public_definition_files", return_value=[]),
-            patch.object(scanner, "definition_reserve") as reserve,
-        ):
+        with patch.object(r, "read", return_value=valid):
             scanner.capacity(staging=True)
-            reserve.assert_called_once_with([], copies=2)
         for change in [
             lambda v: v.update(simulation=True),
             lambda v: v.update(alerts=["failure"]),
