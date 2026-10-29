@@ -9,8 +9,10 @@ before commissioning. Merely copying a file or supplying JSON grants no trust.
 import argparse
 import base64
 import datetime as dt
+import importlib.util
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -21,6 +23,200 @@ sys.path[:0] = [
 import oracle_install as installer
 import oracle_owner as owner
 import oracle_portal_api as api
+
+PEER_STORES = Path("/var/lib/onesa/release-verification")
+PEER_PINS = {
+    "robot": "ce023133291cda61ddbc483ccdb46df5e8735bf71c32701e2074c95b5fdcf575",
+    "ai": "7d4eb927bde7af6872372b4298a058ee21adb6577260878fa2a82b3b5a25db66",
+    "portal-scanner": "8e1bb7fe738a65e25ce5d8ed95621f9c9f8a788dd6aecb9e9b37c440dbacbf66",
+}
+PEER_REPOSITORIES = {
+    "robot": "DruHustle/onesa-robot",
+    "ai": "DruHustle/onesa-ai-platform",
+    "portal-scanner": "DruHustle/onesa-company-portal",
+}
+PEER_TARGETS = {
+    ("DruHustle/onesa-robot", "api"): {
+        "staging": "onesa-robot-oracle-api-staging-1",
+        "production": "onesa-robot-oracle-api-production-1",
+    },
+    ("DruHustle/onesa-ai-platform", "api"): {
+        "staging": "onesa-ai-oracle-api-staging-1",
+        "production": "onesa-ai-oracle-api-production-1",
+    },
+    ("DruHustle/onesa-company-portal", "scanner"): {
+        # This legacy name serves the production consumer; its name is not
+        # evidence of isolation. Only an accepted production record may match.
+        "production": "onesa-portal-oracle-staging-scanner-1",
+    },
+}
+for _feature in ["twins-api", "cybersecurity-api"]:
+    PEER_TARGETS[("DruHustle/onesa-ai-platform", _feature)] = PEER_TARGETS[
+        ("DruHustle/onesa-ai-platform", "api")
+    ]
+
+
+def peer_store(store, path):
+    """Load only an existing externally commissioned, independently pinned issuer."""
+    path = Path(path)
+    match = re.fullmatch(r"(robot|ai|portal-scanner)-owner-([a-f0-9]{40})", path.name)
+    owner.require(
+        path.parent == PEER_STORES and match, "REGISTERED_PEER_STORE_REQUIRED"
+    )
+    owner.private(path, directory=True)
+    owner.private(path / "trust.json")
+    owner.private(owner.ANCHOR)
+    trust = json.loads((path / "trust.json").read_bytes())
+    registry = json.loads(Path(owner.ANCHOR).read_bytes())
+    anchor = registry["installations"].get(str(path), {})
+    owner.require(
+        anchor.get("active") is True
+        and all(
+            anchor.get(k) == trust[k]
+            for k in ["installation_id", "key_id", "verifier_sha256", "policy_sha256"]
+        ),
+        "PEER_COMMISSION_REQUIRED",
+    )
+    core = installer.INSTALL_PARENT / (match[1] + "-" + match[2]) / "oracle_owner.py"
+    owner.private(core)
+    owner.require(
+        owner.file_digest(core) == trust["verifier_sha256"] == PEER_PINS[match[1]],
+        "INDEPENDENT_PEER_VERIFIER_PIN_REQUIRED",
+    )
+    spec = importlib.util.spec_from_file_location(
+        "commissioned_independent_owner", core
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    # Both issuers consult the same external owner-controlled registry.
+    module.ANCHOR = owner.ANCHOR
+    peer = module.Store(path, module.GitHub(store.github.token))
+    peer.expected_repository = PEER_REPOSITORIES[match[1]]
+    return peer
+
+
+def independent_receipts(store, references):
+    """Recognize existing releases, never authorize or alter another component.
+
+    A staging qualification proves its actual isolated container; production
+    additionally requires the existing accepted deployment and verification chain.
+    Historical inspection does not renew either release or its one-use context.
+    """
+    owner.require(
+        isinstance(references, list) and len(references) <= 5,
+        "BOUNDED_INDEPENDENT_RECEIPTS_REQUIRED",
+    )
+    actual = api.r.inventory() if references else {}
+    expected, provenance = {}, []
+    for reference in references:
+        owner.require(
+            isinstance(reference, dict)
+            and set(reference) == {"store", "record", "environment"}
+            and reference["environment"] in {"staging", "production"}
+            and isinstance(reference["record"], str)
+            and re.fullmatch(r"[a-f0-9-]{36}", reference["record"]),
+            "EXACT_INDEPENDENT_RECEIPT_REFERENCE_REQUIRED",
+        )
+        peer = peer_store(store, reference["store"])
+        try:
+            environment = reference["environment"]
+            kind = (
+                "qualification"
+                if environment == "staging"
+                else "production-verification"
+            )
+            record = signed_unrevoked(peer, reference["record"], kind)["record"]
+            binding = record["binding"]
+            owner.require(
+                binding["repository"] == peer.expected_repository,
+                "INDEPENDENT_ISSUER_REPOSITORY_MISMATCH",
+            )
+            targets = PEER_TARGETS.get((binding["repository"], binding["component"]))
+            owner.require(
+                targets is not None
+                and environment in targets
+                and binding["target_environment"] == "production",
+                "INDEPENDENT_COMPONENT_SCOPE_REQUIRED",
+            )
+            name = targets[environment]
+            owner.require(
+                name not in expected and name in actual,
+                "EXACT_UNIQUE_PEER_RUNTIME_REQUIRED",
+            )
+            # The peer issuer verifies its own repository-bound signed chain;
+            # this Portal issuer must not reinterpret it as a Portal binding.
+            profile = peer.policy["components"].get(
+                binding["repository"] + ":" + binding["component"]
+            )
+            owner.require(profile is not None, "INDEPENDENT_PEER_POLICY_SCOPE_REQUIRED")
+            if environment == "staging":
+                observation = record["details"]["staging"]["observations"]
+                for phase in ["staging", "operations"]:
+                    checks = record["details"][phase]["observations"]["checks"]
+                    owner.require(
+                        all(
+                            checks.get(k) == "PASS"
+                            for k in profile["required_checks"][phase]
+                        ),
+                        "COMPLETE_INDEPENDENT_QUALIFICATION_REQUIRED",
+                    )
+            else:
+                intent = signed_unrevoked(
+                    peer, record["parent"], "deployment-intent", binding
+                )["record"]
+                state = peer.db.execute(
+                    "SELECT state FROM deployments WHERE id=?", (intent["id"],)
+                ).fetchone()
+                owner.require(
+                    state and state[0] == "accepted",
+                    "ACCEPTED_INDEPENDENT_PRODUCTION_REQUIRED",
+                )
+                observation = record["details"]["observations"]
+                owner.require(
+                    all(
+                        observation["checks"].get(k) == "PASS"
+                        for k in profile["required_checks"]["production"]
+                    ),
+                    "COMPLETE_PEER_PRODUCTION_REQUIRED",
+                )
+            runtime = api.r.summary(actual[name])
+            labels = actual[name]["Config"].get("Labels", {})
+            owner.require(
+                api.r.healthy(actual[name])
+                and observation["binding"] == binding
+                and observation["environment"] == environment
+                and observation["workflow_run_id"] == 0
+                and observation["deployment_id"] == runtime["container_id"]
+                and runtime["source"] == binding["candidate_commit"]
+                and runtime["image"] == binding["artifact_digest"]
+                and labels.get("org.onesa.source-archive-sha256")
+                == binding["source_sha256"],
+                "ACTUAL_INDEPENDENT_IDENTITY_REQUIRED",
+            )
+            owner.require(
+                observation.get("actual_runtime") == runtime,
+                "SIGNED_COMPLETE_INDEPENDENT_RUNTIME_REQUIRED",
+            )
+            if binding["repository"] == "DruHustle/onesa-robot":
+                owner.require(
+                    observation.get("physical_hardware_authorized") is False,
+                    "INDEPENDENT_SOFTWARE_SCOPE_REQUIRED",
+                )
+            expected[name] = runtime
+            provenance.append(
+                {
+                    "store": str(peer.root),
+                    "record": record["id"],
+                    "kind": kind,
+                    "environment": environment,
+                    "key_id": peer.trust["key_id"],
+                    "record_sha256": owner.digest(record),
+                    "runtime": name,
+                }
+            )
+        finally:
+            peer.db.close()
+    return expected, provenance
 
 
 def signed_unrevoked(store, identity, kind=None, binding=None):
@@ -127,7 +323,7 @@ def reviewed_source(github, source, root):
     return pins, ci
 
 
-def commission(store, operation, source, root):
+def commission(store, operation, source, root, independent=None):
     owner.require(
         os.geteuid() == 0
         and os.getenv("SUDO_USER") == "ubuntu"
@@ -136,6 +332,8 @@ def commission(store, operation, source, root):
         "EXPLICIT_EXTERNAL_ROOT_OWNER_COMMISSION_REQUIRED",
     )
     pins, ci = reviewed_source(store.github, source, root)
+    references = [] if independent is None else independent
+    baselines, provenance = independent_receipts(store, references)
     owner.require(
         owner.file_digest(root / "oracle_owner.py") == store.trust["verifier_sha256"],
         "HISTORICAL_ISSUER_IMPLEMENTATION_MUST_REMAIN_PINNED",
@@ -162,6 +360,9 @@ def commission(store, operation, source, root):
                 "deployment_requests": 0,
                 "qualification_reissued": False,
                 "authorization_reissued": False,
+                "independent_receipt_references": references,
+                "independent_runtime_baselines": baselines,
+                "independent_receipt_provenance": provenance,
             },
             parent=operation,
         )
@@ -218,6 +419,14 @@ def observe(store, commission_id, root):
                 "provider_write": False,
                 "duplicate_observation": False,
             }
+        independent, provenance = independent_receipts(
+            store, details.get("independent_receipt_references", [])
+        )
+        owner.require(
+            independent == details.get("independent_runtime_baselines", {})
+            and provenance == details.get("independent_receipt_provenance", []),
+            "COMMISSIONED_INDEPENDENT_RECEIPTS_CHANGED",
+        )
         owner.require(
             state[0] in {"request-recorded", "deployed-unverified"},
             "OPERATION_STATE_REFUSED",
@@ -237,6 +446,14 @@ def observe(store, commission_id, root):
                 tool,
                 details["file_pins"]["runners/" + api.PRODUCTION_TOOL],
             ),
+            **({"independent": independent} if independent else {}),
+        )
+        owner.require(
+            independent_receipts(
+                store, details.get("independent_receipt_references", [])
+            )
+            == (independent, provenance),
+            "INDEPENDENT_RUNTIME_CHANGED_DURING_OBSERVATION",
         )
         profile = owner.binding_valid(intent["binding"], store.policy)
         owner.require(
@@ -276,6 +493,7 @@ def observe(store, commission_id, root):
                 "observer_source": details["observer_source"],
                 "observations": actual,
                 "provider_request_repeated": False,
+                "independent_receipt_provenance": provenance,
             },
             parent=operation,
         )
@@ -290,6 +508,7 @@ def main():
     p.add_argument("action", choices=["commission", "observe"])
     p.add_argument("--store", type=Path, required=True)
     p.add_argument("--record", required=True)
+    p.add_argument("--independent-receipts", type=Path)
     args = p.parse_args()
     owner.require(
         os.geteuid() == 0
@@ -298,6 +517,15 @@ def main():
         "EXTERNAL_ROOT_OWNER_ONLY",
     )
     request = json.load(sys.stdin)
+    owner.require(
+        args.action == "commission" or args.independent_receipts is None,
+        "RECONCILIATION_REQUIRES_EXPLICIT_COMMISSION",
+    )
+    references = None
+    if args.independent_receipts is not None:
+        # References contain IDs only; they cannot supply observations or PASS.
+        owner.private(args.independent_receipts)
+        references = json.loads(args.independent_receipts.read_bytes())
     owner.require(
         set(request)
         == (
@@ -311,7 +539,7 @@ def main():
     store = owner.Store(args.store, owner.GitHub(request["owner_token"]))
     try:
         result = (
-            commission(store, args.record, request["observer_source"], root)
+            commission(store, args.record, request["observer_source"], root, references)
             if args.action == "commission"
             else observe(store, args.record, root)
         )

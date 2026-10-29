@@ -93,7 +93,9 @@ class RecoveryTests(unittest.TestCase):
             patch.object(recovery.api, "runner", side_effect=self.actual_observation)
         )
 
-    def actual_observation(self, phase, binding, context, *, observer_tool):
+    def actual_observation(
+        self, phase, binding, context, *, observer_tool, independent=None
+    ):
         self.assertEqual(phase, "production")
         self.assertEqual(binding, self.binding)
         self.assertEqual(context, {"operation_id": self.operation, "read_only": True})
@@ -107,7 +109,7 @@ class RecoveryTests(unittest.TestCase):
         self.calls.append(phase)
         return copy.deepcopy(self.observation)
 
-    def commission(self):
+    def commission(self, independent=None):
         with self.store.transaction():
             return self.store.put(
                 "production-observer-commission",
@@ -122,6 +124,23 @@ class RecoveryTests(unittest.TestCase):
                     "deployment_requests": 0,
                     "qualification_reissued": False,
                     "authorization_reissued": False,
+                    **(
+                        {
+                            "independent_receipt_references": [
+                                {
+                                    "store": "fixture-only",
+                                    "record": "fixture-only",
+                                    "environment": "staging",
+                                }
+                            ],
+                            "independent_runtime_baselines": independent,
+                            "independent_receipt_provenance": [
+                                {"record": "fixture-only"}
+                            ],
+                        }
+                        if independent
+                        else {}
+                    ),
                 },
                 parent=self.operation,
             )["record"]["id"]
@@ -146,6 +165,54 @@ class RecoveryTests(unittest.TestCase):
                 "SELECT count(*) FROM records WHERE kind IN ('context','qualification','authorization','deployment-intent')"
             ).fetchone()[0],
             count,
+        )
+
+    def test_commissioned_independent_baseline_is_revalidated_before_and_after_observation(
+        self,
+    ):
+        baseline = {
+            "onesa-robot-oracle-api-staging-1": {"source": "synthetic-peer-only"}
+        }
+        expected = (baseline, [{"record": "fixture-only"}])
+        commission = self.commission(baseline)
+        with (
+            patch.object(
+                recovery, "independent_receipts", return_value=expected
+            ) as peer,
+            patch.object(
+                recovery.api, "runner", return_value=self.observation
+            ) as runner,
+        ):
+            result = recovery.observe(self.store, commission, self.code_root)
+        self.assertEqual(peer.call_count, 2)
+        self.assertEqual(runner.call_args.kwargs["independent"], baseline)
+        self.assertEqual(
+            result["record"]["details"]["independent_receipt_provenance"], expected[1]
+        )
+
+    def test_peer_revocation_or_runtime_drift_during_observation_never_accepts(self):
+        baseline = {
+            "onesa-robot-oracle-api-staging-1": {"source": "synthetic-peer-only"}
+        }
+        expected = (baseline, [{"record": "fixture-only"}])
+        commission = self.commission(baseline)
+        for terminal in [owner.Rejected("peer revoked during observation"), ({}, [])]:
+            with (
+                patch.object(
+                    recovery, "independent_receipts", side_effect=[expected, terminal]
+                ),
+                self.assertRaises(owner.Rejected),
+            ):
+                recovery.observe(self.store, commission, self.code_root)
+            self.assertEqual(
+                self.store.db.execute("SELECT state FROM deployments").fetchone()[0],
+                "request-recorded",
+            )
+        self.assertEqual(
+            self.store.db.execute(
+                "SELECT count(*) FROM records WHERE kind='production-verification'"
+            ).fetchone()[0],
+            0,
         )
 
     def test_expired_original_qualification_is_historical_but_new_commission_is_fresh(
