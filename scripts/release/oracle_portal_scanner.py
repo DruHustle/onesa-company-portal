@@ -318,7 +318,7 @@ def image(binding, folder):
         and row["Architecture"] == "arm64"
         and row["Config"]["User"] == "clamav"
         and row["Config"]["Entrypoint"] == ["/usr/local/bin/onesa-clamav"]
-        and row["Config"]["Cmd"] is None
+        and row["Config"].get("Cmd") is None
         and row["Config"]["Env"]
         == ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"]
         and labels.get("org.opencontainers.image.revision")
