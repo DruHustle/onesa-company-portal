@@ -83,7 +83,7 @@ jobs:
     - name: Verify bounded owner deployment transport
       run: node --test scripts/release/oracle_vercel_transport_guard.test.cjs
     - name: 'Release requirement: owned worker fixture and TLS mail guards'
-      run: node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs scripts/release/oracle_portal_worker_probe.test.mjs scripts/release/oracle_portal_scanner_workflows.test.mjs
+      run: node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs scripts/release/oracle_portal_worker_probe.test.mjs scripts/release/oracle_portal_scanner_workflows.test.mjs scripts/release/oracle_portal_worker_production.test.mjs
     - run: npm ci
       working-directory: onesa-company-portal-backend
     - run: npm ci
@@ -210,7 +210,7 @@ jobs:
         APPLICATION: ${{ matrix.application }}
       run: |
         image=$(docker image inspect "onesa-security-candidate:$APPLICATION-$GITHUB_RUN_ID" --format '{{.Id}}')
-        sudo -n python3 scripts/release/worker_fixture_smoke.py "$image" --worker-workflows --synthetic-scanner
+        sudo -n python3 scripts/release/worker_fixture_smoke.py "$image" --worker-workflows --synthetic-scanner --worker-production
     - name: Scan full runtime, including unfixed vendor advisories
       run: 'mkdir -p data/security
 

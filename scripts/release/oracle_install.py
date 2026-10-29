@@ -43,6 +43,11 @@ SCANNER_ALLOWED = {
         ]
     },
 }
+WORKER_ALLOWED = {
+    **SCANNER_ALLOWED,
+    "runners/oracle_portal_worker.py": "scripts/release/oracle_portal_worker.py",
+    "runners/oracle_portal_worker_production.mjs": "scripts/release/oracle_portal_worker_production.mjs",
+}
 
 MAX_BYTES = 2 * 1024 * 1024
 
@@ -106,6 +111,13 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "scanner",
             "oracle_portal_scanner.py",
             "portal-scanner-",
+        )
+    elif set(m["files"]) == set(WORKER_ALLOWED):
+        allowed, component, script, prefix = (
+            WORKER_ALLOWED,
+            "worker",
+            "oracle_portal_worker.py",
+            "portal-worker-",
         )
     else:
         raise verifier.Rejected(
@@ -209,8 +221,8 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     else:
         workflow_files = {
             upstream: files[upstream]
-            for name, upstream in SCANNER_ALLOWED.items()
-            if name not in ALLOWED and name != "runners/oracle_portal_scanner.py"
+            for name, upstream in allowed.items()
+            if name not in ALLOWED and name != "runners/" + script
         }
         require(
             tool["workflow_files"] == workflow_files,
