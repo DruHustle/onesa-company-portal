@@ -34,7 +34,7 @@ export function validate(request,raw,actual,now=Date.now()){
  need(exact(request,['binding','operation_id','environment','ci_run_id','fixture_id','expires_at','runtime_sha256','certificate_sha256','rollback']),'WORKER_PROBE_SCHEMA');
  const b=request.binding;
  need(exact(b,['repository','component','candidate_commit','source_tree','source_sha256','build_sha256','artifact_digest','configuration_sha256','target_environment']),'WORKER_PROBE_BINDING_SCHEMA');
- need(b.repository==='DruHustle/onesa-company-portal'&&b.component==='worker'&&b.target_environment==='production','WORKER_PROBE_COMPONENT_SCOPE');
+ need(b.repository==='DruHustle/onesa-company-portal'&&(b.component==='worker'||b.component==='api'&&request.environment==='staging')&&b.target_environment==='production','WORKER_PROBE_COMPONENT_SCOPE');
  need(matches(hex40,b.candidate_commit)&&matches(hex40,b.source_tree)&&matches(hex64,b.source_sha256)&&matches(hex64,b.build_sha256)&&matches(/^sha256:[a-f0-9]{64}$/,b.artifact_digest),'WORKER_PROBE_ARTIFACT_SCOPE');
  need(exact(b.configuration_sha256,['staging','production'])&&Object.values(b.configuration_sha256).every(value=>typeof value==='string'&&hex64.test(value)),'WORKER_PROBE_CONFIGURATION_BINDING');
  need(['staging','production'].includes(request.environment)&&matches(uuid,request.operation_id)&&matches(uuid,request.fixture_id),'WORKER_PROBE_OPERATION_SCOPE');
@@ -231,7 +231,29 @@ export async function runStaging(request,raw){
   record('sigterm_interrupts_idle_wait',stoppedMs<3000);
   for(const cookie of sessions)need((await app.inject({method:'GET',url:'/api/v1/auth/me',headers:{cookie}})).statusCode===200,'WORKER_RESTART_LOST_AUTHENTICATED_SESSION');
   record('real_login_sessions_survive_worker_restarts',true);
-  return {state:'OWNED_STAGING_WORKER_OBSERVATIONS_NOT_AUTHORIZATION',checks,fixture_id:request.fixture_id,operation_id:request.operation_id,binding:request.binding,ci_run_id:request.ci_run_id,mail_provider_acceptance_verified:true,inbox_delivery_verified:false,existing_application_databases_changed:false,global_tick_imported:false,retry_fault:'owned-child-loopback-endpoint-refusal',observed_idle_interval_ms:idle.nextPollAt-idle.successAt,graceful_stop_ms:stoppedMs};
+  if(request.binding.component==='api'){
+   observedPhase='api_idle_connection_recovery';
+   // Derive the PID from this probe's own live connection. A separate client
+   // with the same disposable role may interrupt only that idle connection in
+   // the same marked test DB. No owner privilege or production target is used.
+   const victim=await db.connect();let pid;
+   try{pid=(await victim.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;}
+   finally{victim.release();}
+   need(Number.isSafeInteger(pid)&&pid>0,'WORKER_API_OWNED_IDLE_PID');
+   const {default:pg}=await import('/app/node_modules/pg/lib/index.js');
+   const killer=new pg.Client({connectionString:checked.values.DATABASE_URL,connectionTimeoutMillis:5000,statement_timeout:5000});
+   try{
+    await killer.connect();
+    const interrupted=await killer.query("SELECT pg_terminate_backend(pid) AS terminated FROM pg_stat_activity WHERE pid=$1 AND pid<>pg_backend_pid() AND datname=current_database() AND usename=current_user AND state='idle'",[pid]);
+    need(interrupted.rowCount===1&&interrupted.rows[0].terminated===true,'WORKER_API_OWNED_IDLE_CONNECTION_NOT_INTERRUPTED');
+    // Do not add an error listener here: doing so would mask the application
+    // defect and let an unhandled pool error appear to have recovered.
+    await waitFor(()=>victim.connection.stream.destroyed,'WORKER_API_IDLE_DISCONNECT_NOT_OBSERVED',5000);
+    for(const cookie of sessions)need((await app.inject({method:'GET',url:'/api/v1/auth/me',headers:{cookie}})).statusCode===200,'WORKER_API_AUTHENTICATED_RECONNECT_FAILED');
+    await databaseReady(db,true);record('api_idle_connection_recovery_with_saved_sessions',true);
+   }finally{await killer.end();}
+  }
+  return {state:request.binding.component==='api'?'OWNED_STAGING_API_OBSERVATIONS_NOT_AUTHORIZATION':'OWNED_STAGING_WORKER_OBSERVATIONS_NOT_AUTHORIZATION',checks,fixture_id:request.fixture_id,operation_id:request.operation_id,binding:request.binding,ci_run_id:request.ci_run_id,mail_provider_acceptance_verified:true,inbox_delivery_verified:false,existing_application_databases_changed:false,global_tick_imported:false,retry_fault:'owned-child-loopback-endpoint-refusal',observed_idle_interval_ms:idle.nextPollAt-idle.successAt,graceful_stop_ms:stoppedMs};
  }finally{
   // Close only this probe's child and own UUID objects. The pinned outer runner
   // removes the entire marked disposable DB after all clients are closed.

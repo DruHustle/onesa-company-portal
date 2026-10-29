@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {digest} from './oracle_portal_worker_probe.mjs';
-import {observe,validate,requiredChecks} from './oracle_portal_scanner_workflows.mjs';
+import {observe,validate,requiredChecks,apiRequiredChecks} from './oracle_portal_scanner_workflows.mjs';
 
 function input(){
  const fixture='01234567-89ab-4cde-8123-456789abcdef',operation='11234567-89ab-4cde-8123-456789abcdef';
@@ -18,7 +18,7 @@ function input(){
 function result(){return {state:'OWNED_STAGING_WORKER_OBSERVATIONS_NOT_AUTHORIZATION',checks:Object.fromEntries(requiredChecks.map(key=>[key,true])),existing_application_databases_changed:false,global_tick_imported:false,inbox_delivery_verified:false};}
 function operations(observed=result()){
  const calls=[];
- return {calls,fixture:async request=>{calls.push(request);return {state:request.action==='provision'?'OWNED_STAGING_FIXTURE_PROVISIONED_NOT_AUTHORIZATION':'OWNED_STAGING_FIXTURE_REMOVED',applied_migrations:3};},probe:async request=>{calls.push({action:'probe',request});return observed;}};
+ return {calls,fixture:async request=>{calls.push(request);return {state:request.action==='provision'?'OWNED_STAGING_FIXTURE_PROVISIONED_NOT_AUTHORIZATION':'OWNED_STAGING_FIXTURE_REMOVED',applied_migrations:3};},probe:async request=>{calls.push({action:'probe',request});return observed;},conditional:async()=>{calls.push({action:'conditional'});return {conditional_object_ownership:true,synthetic_object_cleanup:true};}};
 }
 
 test('The scanner and observed application retain separate actual artifact bindings and a genuine CI reference',async()=>{
@@ -31,6 +31,67 @@ test('The scanner and observed application retain separate actual artifact bindi
  assert.equal(observed.ci_run_id,123);assert.equal(observed.worker_deployed,false);assert.equal(observed.release_records_issued,0);
  assert.deepEqual(ops.calls.map(value=>value.action),['provision','probe','cleanup']);
  assert.equal(ops.calls[2].context_id,value.request.fixture.context_id);
+});
+
+function workerInput(){
+ const value=input();
+ const {scanner_binding,...request}=value.request;
+ value.request={...request,worker_binding:{...request.worker_probe.binding,configuration_sha256:{staging:'4'.repeat(64),production:'5'.repeat(64)}}};
+ return value;
+}
+
+test('A worker observation binds the exact worker image without borrowing scanner authority',async()=>{
+ const value=workerInput(),ops=operations();
+ const observed=await observe(value.request,value.raw,value.values,ops);
+ assert.equal(observed.state,'WORKER_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION');
+ assert.deepEqual(observed.worker_binding,value.request.worker_binding);
+ assert.deepEqual(observed.application_binding,value.request.worker_probe.binding);
+ assert.equal(Object.hasOwn(observed,'scanner_binding'),false);
+ assert.deepEqual(observed.provider_conditional_ownership,{conditional_object_ownership:true,synthetic_object_cleanup:true});
+ assert.equal(observed.ci_run_id,123);
+ assert.equal(observed.release_records_issued,0);
+ assert.equal(observed.worker_deployed,false);
+ assert.deepEqual(ops.calls.map(value=>value.action),['provision','probe','conditional','cleanup']);
+});
+
+test('Worker source, image, build and component confusion fail before any fixture operation',async()=>{
+ for(const change of [
+  v=>{v.request.worker_binding.component='scanner';},
+  v=>{v.request.worker_binding.candidate_commit='f'.repeat(40);},
+  v=>{v.request.worker_binding.source_tree='f'.repeat(40);},
+  v=>{v.request.worker_binding.source_sha256='f'.repeat(64);},
+  v=>{v.request.worker_binding.artifact_digest='sha256:'+'f'.repeat(64);},
+  v=>{v.request.worker_binding.build_sha256='f'.repeat(64);},
+  v=>{v.request.worker_binding.target_environment='staging';},
+  v=>{v.request.scanner_binding={...v.request.worker_binding,component:'scanner'};},
+  v=>{v.request.worker_probe.ci_run_id=0;},
+  v=>{v.request.owner_approved=true;},
+ ]){
+  const value=workerInput(),ops=operations();change(value);
+  await assert.rejects(observe(value.request,value.raw,value.values,ops));
+  assert.equal(ops.calls.length,0);
+ }
+});
+
+test('Worker observations require every check and exact cleanup after interruption',async()=>{
+ for(const change of [v=>{delete v.checks.clean_download_integrity;},v=>{v.checks.real_worker_clean_and_infected_scan=false;},v=>{v.checks.clean_download_integrity='SKIP';}]){
+  const value=workerInput(),observed=result();change(observed);const ops=operations(observed);
+  await assert.rejects(observe(value.request,value.raw,value.values,ops));
+  assert.equal(ops.calls.at(-1).action,'cleanup');
+ }
+ const value=workerInput(),ops=operations();
+ ops.probe=async()=>{throw Error('SYNTHETIC_INTERRUPTION');};
+ await assert.rejects(observe(value.request,value.raw,value.values,ops),/SYNTHETIC_INTERRUPTION/);
+ assert.deepEqual(ops.calls.map(value=>value.action),['provision','cleanup']);
+ assert.equal(ops.calls[1].context_id,value.request.fixture.context_id);
+});
+
+test('Missing or failed provider conditional-write proof cannot qualify the worker',async()=>{
+ for(const proof of [undefined,{conditional_object_ownership:false,synthetic_object_cleanup:true},{conditional_object_ownership:'SKIP',synthetic_object_cleanup:true},{conditional_object_ownership:true}]){
+  const value=workerInput(),ops=operations();ops.conditional=async()=>proof;
+  await assert.rejects(observe(value.request,value.raw,value.values,ops));
+  assert.equal(ops.calls.at(-1).action,'cleanup');
+ }
 });
 
 test('Wrong source, component, environment, artifacts or fixture ownership refuse before I/O',async()=>{
@@ -80,4 +141,19 @@ test('The stdin command never exports private input or an arbitrary exception',a
  assert.deepEqual(await ended,{code:1,signal:null});assert.equal(stderr,'');
  assert.deepEqual(JSON.parse(stdout),{state:'SCANNER_DEPENDENCY_WORKFLOWS_FAILED_NOT_QUALIFIED'});
  assert.equal(stdout.includes('synthetic-private-sentinel'),false);
+});
+
+function apiInput(){const value=workerInput();value.request.worker_probe.binding.component='api';value.request.api_binding={...value.request.worker_binding,component:'api'};delete value.request.worker_binding;return value;}
+function apiResult(){return {...result(),state:'OWNED_STAGING_API_OBSERVATIONS_NOT_AUTHORIZATION',checks:Object.fromEntries(apiRequiredChecks.map(key=>[key,true]))};}
+test('API source is observed under its own component and requires actual idle recovery',async()=>{
+ const value=apiInput(),ops=operations(apiResult());const observed=await observe(value.request,value.raw,value.values,ops);assert.equal(observed.state,'API_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION');assert.deepEqual(observed.api_binding,value.request.api_binding);assert.equal(Object.hasOwn(observed,'worker_binding'),false);assert.equal(observed.checks.api_idle_connection_recovery_with_saved_sessions,true);assert.deepEqual(ops.calls.map(row=>row.action),['provision','probe','cleanup']);assert.equal(observed.release_records_issued,0);
+});
+test('Worker/scanner observations cannot be converted into API evidence',async()=>{
+ for(const modify of [v=>{v.request.worker_probe.binding.component='worker';},v=>{v.request.api_binding.component='worker';},v=>{v.request.api_binding.candidate_commit='f'.repeat(40);},v=>{v.request.api_binding.artifact_digest='sha256:'+'f'.repeat(64);},v=>{v.request.worker_binding={...v.request.api_binding,component:'worker'};}]){
+  const value=apiInput(),ops=operations(apiResult());modify(value);await assert.rejects(observe(value.request,value.raw,value.values,ops));assert.equal(ops.calls.length,0);
+ }
+ const value=apiInput(),ops=operations(result());await assert.rejects(observe(value.request,value.raw,value.values,ops));assert.equal(ops.calls.at(-1).action,'cleanup');
+});
+test('Missing failed or skipped idle-recovery check cannot qualify the API',async()=>{
+ for(const value of [undefined,false,'SKIP']){const request=apiInput(),observed=apiResult();if(value===undefined)delete observed.checks.api_idle_connection_recovery_with_saved_sessions;else observed.checks.api_idle_connection_recovery_with_saved_sessions=value;const ops=operations(observed);await assert.rejects(observe(request.request,request.raw,request.values,ops));assert.equal(ops.calls.at(-1).action,'cleanup');}
 });

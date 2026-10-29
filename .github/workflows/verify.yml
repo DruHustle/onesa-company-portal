@@ -83,7 +83,7 @@ jobs:
     - name: Verify bounded owner deployment transport
       run: node --test scripts/release/oracle_vercel_transport_guard.test.cjs
     - name: 'Release requirement: owned worker fixture and TLS mail guards'
-      run: node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs scripts/release/oracle_portal_worker_probe.test.mjs scripts/release/oracle_portal_scanner_workflows.test.mjs
+      run: node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs scripts/release/oracle_portal_worker_probe.test.mjs scripts/release/oracle_portal_scanner_workflows.test.mjs scripts/release/oracle_portal_worker_production.test.mjs scripts/release/oracle_portal_api_production.test.mjs
     - run: npm ci
       working-directory: onesa-company-portal-backend
     - run: npm ci
@@ -123,8 +123,8 @@ jobs:
       run: |
         portal_readiness_fixture=$(mktemp -d "$RUNNER_TEMP/portal-readiness.XXXXXX")
         ln -s "$GITHUB_WORKSPACE/onesa-company-portal-frontend/node_modules" "$portal_readiness_fixture/node_modules"
-        cp scripts/release/oracle_portal_browser.mjs scripts/release/oracle_portal_browser_readiness.test.mjs "$portal_readiness_fixture/"
-        node --test "$portal_readiness_fixture/oracle_portal_browser_readiness.test.mjs"
+        cp scripts/release/oracle_portal_browser.mjs scripts/release/oracle_portal_browser_readiness.test.mjs scripts/release/oracle_portal_browser_products.test.mjs scripts/release/oracle_portal_browser_session.test.mjs "$portal_readiness_fixture/"
+        ONESA_SOURCE_ROOT="$GITHUB_WORKSPACE" node --test "$portal_readiness_fixture/oracle_portal_browser_readiness.test.mjs" "$portal_readiness_fixture/oracle_portal_browser_products.test.mjs" "$portal_readiness_fixture/oracle_portal_browser_session.test.mjs"
     - name: Verify static-first hero media with isolated synthetic controls
       run: npm run test:hero-motion
       working-directory: onesa-company-portal-frontend
@@ -210,7 +210,8 @@ jobs:
         APPLICATION: ${{ matrix.application }}
       run: |
         image=$(docker image inspect "onesa-security-candidate:$APPLICATION-$GITHUB_RUN_ID" --format '{{.Id}}')
-        sudo -n python3 scripts/release/worker_fixture_smoke.py "$image" --worker-workflows --synthetic-scanner
+        sudo -n python3 scripts/release/worker_fixture_smoke.py "$image" --worker-workflows --synthetic-scanner --worker-production
+        sudo -n python3 scripts/release/worker_fixture_smoke.py "$image" --worker-workflows --synthetic-scanner --api-runtime
     - name: Scan full runtime, including unfixed vendor advisories
       run: 'mkdir -p data/security
 

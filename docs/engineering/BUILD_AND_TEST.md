@@ -1,5 +1,15 @@
 # Separate application builds and tests
 
+Installer fixtures also place disposable custody under the private home directory
+when executed as root. The explicit writable-parent regression still requires the
+production verifier to reject shared writable ancestors; no custody guard changes.
+
+Release-unit fixtures pin a disposable commissioning registry and keep its keys,
+policy and database inside their temporary directory. Root test execution uses a
+private home-directory parent and never reads the host's production trust registry.
+Scanner fixtures that deliberately replace their policy explicitly update their
+synthetic commissioning record. Production trust checks and release authority are unchanged.
+
 The scanner release regressions run in the existing Python release suite. They
 exercise real Ed25519 signatures in a disposable issuer fixture, source/artifact
 and environment mismatches, revoked/expired or consumed contexts, unsafe rendered
@@ -639,6 +649,10 @@ the exact named existing provider value; it never changes Access, accounts or MF
 
 ## Drone product introduction
 
+EN/DE product copy distinguishes the implemented simulation development candidate
+from public hosted acceptance. Neither its concept media nor a Company publication
+qualifies the Drone service, physical flight or an operational delivery offering.
+
 After building the frontend, run `npm run test:drone-product` from
 `onesa-company-portal-frontend`. The production-renderer fixture refuses private frontend
 env files, uses a synthetic loopback content service and checks EN/DE, 390/1440px,
@@ -680,3 +694,46 @@ read-only isolation with the signed source profile before and after restart.
 Resource drift remains a failed check. Existing host-capacity, security, signature,
 authenticated-workflow and rollback gates are still required. The synthetic
 contract tests do not establish genuine hosted memory headroom or acceptance.
+
+## Owner frontend product-presentation coverage
+
+The frontend owner probe now exercises the source-reviewed Drone product routes and local media alongside every existing Robot copy, navigation, anonymous-denial, accessibility, preservation and recovery check. Both languages, all three browser engines, light/dark and narrow/desktop layouts must render decoded images without overflow; the concept film must remain unloaded until keyboard activation and then actually play. The legacy URL must redirect to the canonical product and the existing contact form must retain its topic without submitting. Runtime dependencies, build scripts, authentication and Home hero changes remain outside this presentation profile. Product media has explicit local size bounds. New source, pinned tool installation, commissioning and genuine hosted evidence are required; local tests cannot issue release authority.
+
+WebKit's media buffer requires a bounded writable `/var/tmp` in the read-only owner browser container. The probe adds only a 32 MiB memory-backed, non-executable temporary mount; all existing filesystem, memory, CPU, capability and credential boundaries remain. The three-engine production-build regression exercises real film playback, so an unavailable media buffer stays a failure. Image decoding waits for actual loaded image state before requesting decode, preserving a failed/missing image as an error.
+
+## Scanner image metadata variants
+
+`python3 -m unittest discover -s scripts/release -p 'test_oracle_scanner_image_metadata.py'` checks the observed Docker image metadata shape that omits an unset default command. Omitted and explicit-null `Cmd` both retain the prescribed scanner entrypoint without extra arguments. An actual command, an empty command array or altered required identity/user/entrypoint/environment fields remain refused. The complete source, shipped-file and image-security checks still run. This parser regression does not qualify a hosted scanner or transfer any prior approval.
+
+## Independent worker owner adapter checks
+
+Run `python3 -m unittest discover -s scripts/release -p 'test_oracle_portal_worker.py'` and `node --test scripts/release/oracle_portal_scanner_workflows.test.mjs scripts/release/oracle_portal_worker_production.test.mjs`. The complete release suite also checks the worker installer profile, component boundaries and real signature-chain rejection. These local synthetic tests establish no hosted qualification or deployment.
+
+The worker adapter keeps the retained production worker recipe and resource profile. Staging uses a fresh marked database and a read-only retained scanner socket. Its production canary owns a fresh conditional object and a reserved outbox entry; the entry stays unprocessable until object ownership and integrity are established. Interrupted inspection cannot create objects, enqueue work or repeat deployment. Neither the probe nor inspection imports the production worker loop. Source-specific installation, separate owner commissioning, mandatory native checks and genuine hosted evidence remain required.
+
+The same credential-free backend image job also selects `worker_fixture_smoke.py --worker-workflows --synthetic-scanner --worker-production`. This adds an actual production-adapter process test using a second hostname alias on the fresh internal PostgreSQL fixture, synthetic TLS/object storage and the least-privilege runtime role. It checks conditional object ownership, real outbox execution by the worker process, collision preservation, duplicate refusal and inspection without writes. The alias never selects the real production database; no published port, provider credential or hosted release record is used. This test is mandatory in the backend image job and must pass before owner commissioning.
+
+## Independent API runtime owner adapter
+
+The new API adapter retains the existing runtime recipe, loopback ingress, storage volume, resource limits and effective configuration. Its source comparison is anchored to an owner-commissioned baseline and rejects business/authentication/migration changes. Disposable staging exercises the existing password/MFA, authorization, quarantine/download, persistence and worker workflows plus a real interruption of an owned idle database connection; authenticated sessions and schema readiness must recover without a test-added error listener. The read-only production observer checks actual TLS, application role/schema and retained public/anonymous boundaries; it cannot create accounts, publish, mutate business records or repeat deployment.
+
+Run the complete release Python tests and `node --test scripts/release/oracle_portal_api_production.test.mjs scripts/release/oracle_portal_scanner_workflows.test.mjs`. The mandatory backend image fixture adds `worker_fixture_smoke.py --worker-workflows --synthetic-scanner --api-runtime` using an isolated internal PostgreSQL alias and synthetic TLS only. Local parser tests confer no hosted acceptance. Source-specific external installation, explicit commissioning and fresh source-bound qualification/authorization are still required.
+
+
+## Preview session and distinct product views
+
+The follow-up to the public-product adapter exchanges the existing scoped preview
+credential for a provider cookie with redirects disabled and rebinds it to the
+exact host. Global credential-bearing browser headers are absent. Two real
+localhost/session regressions cover foreign redirects and cookie scope; they do
+not access a provider. All original Robot/Drone views and bounded media mounts
+remain required. Receipt validation checks each browser/language/width/theme
+identity once, so duplicated counts or skipped interactions fail. The hosted
+product observer additionally checks the actual simulation URL and keyboard
+concept rotation without leaving the Portal origin or submitting an enquiry.
+
+The simulation application at `https://drone.onesa.eu` passed its independent
+release verification from Drone source `ff493035`. The Portal CTA reflects that
+available simulation release while retaining development and no-flight-service
+statements. This documentation does not claim the Portal is published; fresh
+main checks and source-bound hosted release evidence remain mandatory.

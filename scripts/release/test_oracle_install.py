@@ -30,6 +30,16 @@ class Source:
         return [{"run_id": 123, "run_attempt": 1}]
 
     def api(self, path):
+        if "/git/commits/" in path:
+            verifier.require(
+                hasattr(self, "baseline_expected")
+                and path.endswith(self.baseline_expected[0]),
+                "Unknown baseline commit",
+            )
+            return {
+                "sha": self.baseline_expected[0],
+                "tree": {"sha": self.baseline_expected[1]},
+            }
         if "/git/trees/" in path:
             return {
                 "truncated": self.truncated,
@@ -59,7 +69,11 @@ class InstallTests(unittest.TestCase):
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(
-            dir="/private/tmp" if Path("/private/tmp").exists() else None
+            dir=Path.home()
+            if os.getuid() == 0
+            else "/private/tmp"
+            if Path("/private/tmp").exists()
+            else None
         )
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
@@ -155,7 +169,7 @@ class InstallTests(unittest.TestCase):
                     for phase in verifier.PHASES
                 },
             }
-        if self.component == "scanner":
+        if self.component in {"scanner", "worker", "api"}:
             tool = self.policy["toolchain"]
             self.policy["toolchain"] = {
                 **{
@@ -170,11 +184,19 @@ class InstallTests(unittest.TestCase):
                 "transport_image": "sha256:" + "4" * 64,
                 "workflow_files": {
                     upstream: hashlib.sha256(files[upstream]).hexdigest()
-                    for local, upstream in installer.SCANNER_ALLOWED.items()
+                    for local, upstream in self.allowed.items()
                     if local not in installer.ALLOWED
-                    and local != "runners/oracle_portal_scanner.py"
+                    and local != "runners/" + self.script
                 },
             }
+        if self.component == "api":
+            self.policy["toolchain"]["accepted_api_baseline"] = {
+                "candidate_commit": "b" * 40,
+                "source_tree": "c" * 40,
+                "source_sha256": "d" * 64,
+                "artifact_digest": "sha256:" + "e" * 64,
+            }
+            self.github.baseline_expected = ("b" * 40, "c" * 40)
         self.seal()
 
     def put(self, name, data):
@@ -193,6 +215,16 @@ class InstallTests(unittest.TestCase):
 
     def validate(self):
         return installer.validate(self.root, self.pin, self.github, uid=os.getuid())
+
+    @unittest.skipUnless(os.getuid() == 0, "Root custody ancestor policy")
+    def test_shared_writable_parent_still_refused(self):
+        shared = self.root / "shared-parent"
+        shared.mkdir(mode=0o700)
+        shared.chmod(0o777)
+        child = shared / "custody"
+        child.mkdir(mode=0o700)
+        with self.assertRaisesRegex(verifier.Rejected, "ancestors"):
+            verifier.private(child, directory=True, uid=0)
 
     def test_exact_main_bytes_and_complete_policy(self):
         m, _target, files, ci = self.validate()
@@ -227,13 +259,16 @@ class InstallTests(unittest.TestCase):
         with self.assertRaises(verifier.Rejected):
             self.validate()
 
-    def test_extra_api_component_cannot_be_commissioned(self):
+    def test_extra_component_cannot_be_commissioned(self):
         import copy
 
-        self.policy["components"]["DruHustle/onesa-company-portal:api"] = copy.deepcopy(
-            self.policy["components"][
-                "DruHustle/onesa-company-portal:" + self.component
-            ]
+        extra = "frontend" if self.component == "api" else "api"
+        self.policy["components"]["DruHustle/onesa-company-portal:" + extra] = (
+            copy.deepcopy(
+                self.policy["components"][
+                    "DruHustle/onesa-company-portal:" + self.component
+                ]
+            )
         )
         self.seal()
         with self.assertRaises(verifier.Rejected):
@@ -282,6 +317,67 @@ class ScannerInstallTests(InstallTests):
             "DruHustle/onesa-company-portal:scanner"
         )
         self.policy["components"]["DruHustle/onesa-company-portal:frontend"] = profile
+        self.seal()
+        with self.assertRaises(verifier.Rejected):
+            self.validate()
+
+
+class WorkerInstallTests(InstallTests):
+    allowed = installer.WORKER_ALLOWED
+    component = "worker"
+    script = "oracle_portal_worker.py"
+    prefix = "portal-worker-"
+
+    def test_worker_installation_cannot_authorize_scanner(self):
+        profile = self.policy["components"].pop("DruHustle/onesa-company-portal:worker")
+        self.policy["components"]["DruHustle/onesa-company-portal:scanner"] = profile
+        self.seal()
+        with self.assertRaises(verifier.Rejected):
+            self.validate()
+
+    def test_missing_production_tool_refuses_incomplete_installation(self):
+        name = "runners/oracle_portal_worker_production.mjs"
+        self.manifest["files"].pop(name)
+        self.seal()
+        with self.assertRaises(verifier.Rejected):
+            self.validate()
+
+    def test_shared_scanner_code_pin_is_required_for_worker_installation(self):
+        self.policy["toolchain"]["workflow_files"][
+            "scripts/release/oracle_portal_scanner.py"
+        ] = "f" * 64
+        self.seal()
+        with self.assertRaises(verifier.Rejected):
+            self.validate()
+
+
+class APIInstallTests(InstallTests):
+    allowed = installer.API_ALLOWED
+    component = "api"
+    script = "oracle_portal_api.py"
+    prefix = "portal-api-"
+
+    def test_api_profile_cannot_install_or_authorize_worker(self):
+        profile = self.policy["components"].pop("DruHustle/onesa-company-portal:api")
+        self.policy["components"]["DruHustle/onesa-company-portal:worker"] = profile
+        self.seal()
+        with self.assertRaises(verifier.Rejected):
+            self.validate()
+
+    def test_missing_or_foreign_baseline_and_incomplete_tool_refuse_installation(self):
+        for change in [
+            lambda: self.policy["toolchain"]["accepted_api_baseline"].update(
+                source_tree="f" * 40
+            ),
+            lambda: self.policy["toolchain"].pop("accepted_api_baseline"),
+        ]:
+            self.setUp()
+            change()
+            self.seal()
+            with self.assertRaises(verifier.Rejected):
+                self.validate()
+        self.setUp()
+        self.manifest["files"].pop("runners/oracle_portal_api_production.mjs")
         self.seal()
         with self.assertRaises(verifier.Rejected):
             self.validate()

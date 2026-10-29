@@ -348,6 +348,15 @@ class FrontendScopeTests(unittest.TestCase):
             put("src/components/home-products.tsx", "original home products")
             put("src/auth.ts", "unchanged auth boundary")
             put(
+                "package.json",
+                json.dumps(
+                    {
+                        "scripts": {"build": "next build"},
+                        "dependencies": {"next": "pinned"},
+                    }
+                ),
+            )
+            put(
                 "src/components/responsive-link.tsx",
                 "return <Link {...props}>{children}</Link>;",
             )
@@ -413,6 +422,51 @@ class FrontendScopeTests(unittest.TestCase):
                     "src/components/responsive-link.tsx",
                     "return <Link prefetch={false} {...props}>{children}</Link>;",
                 )
+                put(
+                    "src/components/drone-product.tsx",
+                    "reviewed simulation-only presentation",
+                )
+                package = {
+                    "scripts": {
+                        "build": "next build",
+                        "test:drone-product": "node scripts/test-drone-product.mjs",
+                    },
+                    "dependencies": {"next": "pinned"},
+                }
+                put("package.json", json.dumps(package))
+                products = snapshot("source.tar")
+                product_result = r.source_equivalence(
+                    folder, {"source_tree": products}, plan
+                )
+                self.assertTrue(
+                    product_result[
+                        "product_presentation_requires_current_hosted_acceptance"
+                    ]
+                )
+                # A presentation extension must never admit a runtime dependency,
+                # changed build script or removed source merely by matching a path.
+                for altered in [
+                    {**package, "dependencies": {"next": "unreviewed"}},
+                    {
+                        **package,
+                        "scripts": {**package["scripts"], "build": "unreviewed"},
+                    },
+                    {**package, "private": False},
+                ]:
+                    put("package.json", json.dumps(altered))
+                    altered_tree = snapshot("source.tar")
+                    with self.assertRaisesRegex(r.Refused, "NO_RUNTIME_PACKAGE_CHANGE"):
+                        r.source_equivalence(
+                            folder, {"source_tree": altered_tree}, plan
+                        )
+                put("package.json", json.dumps(package))
+                put("public/media/onesa-drone-concept.mp4", "x" * (2 * 1024 * 1024 + 1))
+                oversized = snapshot("source.tar")
+                with self.assertRaisesRegex(
+                    r.Refused, "BOUNDED_LOCAL_PRODUCT_MEDIA_REQUIRED"
+                ):
+                    r.source_equivalence(folder, {"source_tree": oversized}, plan)
+                (source / prefix / "public/media/onesa-drone-concept.mp4").unlink()
                 for name in ["src/auth.ts", "src/components/home-hero.tsx"]:
                     put(name, "changed security or hero source")
                     changed = snapshot("source.tar")
@@ -491,7 +545,7 @@ class FrontendScopeTests(unittest.TestCase):
                     r.subprocess,
                     "run",
                     side_effect=subprocess.TimeoutExpired("probe", 1),
-                ),
+                ) as execute,
                 self.assertRaises(subprocess.TimeoutExpired),
             ):
                 r.probe(
@@ -501,6 +555,12 @@ class FrontendScopeTests(unittest.TestCase):
                     folder,
                     {"probe_image": "sha256:" + "a" * 64},
                 )
+            arguments = execute.call_args.args[0]
+            self.assertIn("--read-only", arguments)
+            self.assertIn(
+                "/var/tmp:rw,noexec,nosuid,nodev,mode=1777,size=32m", arguments
+            )
+            self.assertEqual(arguments[arguments.index("--memory") + 1], "1400m")
             output = folder / "observations/owned-operation"
             self.assertFalse((output / "browser-request.json").exists())
             self.assertTrue((output / "browser.stderr").exists())
