@@ -39,8 +39,18 @@ class RecipeIdentityTests(unittest.TestCase):
                 env.write_text("PORTAL_IDENTITY_IMAGE=" + identity + "\n")
                 env.chmod(0o600)
                 recipe = directory / "compose.yaml"
+                service, profile = (
+                    ("production", "production")
+                    if module is api
+                    else ("worker", "jobs")
+                )
                 recipe.write_text(
-                    'services:\n  fixture:\n    image: "${PORTAL_IDENTITY_IMAGE:?identity required}"\n'
+                    "services:\n  "
+                    + service
+                    + ':\n    profiles: ["'
+                    + profile
+                    + '"]\n    image: "${PORTAL_IDENTITY_IMAGE:?identity required}"\n'
+                    '  unrelated:\n    profiles: ["staging"]\n    image: "synthetic-unrelated:not-run"\n'
                 )
                 plan = {
                     "recipe": {
@@ -95,8 +105,28 @@ class RecipeIdentityTests(unittest.TestCase):
                         result.returncode, 0, "Explicit identity did not render"
                     )
                     self.assertEqual(
-                        json.loads(result.stdout)["services"]["fixture"]["image"],
+                        set(json.loads(result.stdout)["services"]),
+                        {service},
+                        "Only the actual retained service profile may be enabled",
+                    )
+                    self.assertEqual(
+                        json.loads(result.stdout)["services"][service]["image"],
                         identity,
+                    )
+                    profile_index = command.index("--profile")
+                    self.assertEqual(command[profile_index + 1], profile)
+                    missing_profile = subprocess.run(
+                        command[:profile_index]
+                        + command[profile_index + 2 :]
+                        + ["config", "--format", "json"],
+                        env=clean_env,
+                        capture_output=True,
+                        timeout=15,
+                        check=False,
+                    )
+                    self.assertEqual(missing_profile.returncode, 0)
+                    self.assertNotIn(
+                        service, json.loads(missing_profile.stdout)["services"]
                     )
                     negative = subprocess.run(
                         command[:2] + command[4:] + ["config", "--format", "json"],

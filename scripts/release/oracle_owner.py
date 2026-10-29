@@ -114,6 +114,18 @@ def require(value, reason):
         raise Rejected(reason)
 
 
+def runner_environment():
+    """Retain the existing sudo principal without forwarding ambient credentials."""
+    environment = {"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"}
+    if (
+        os.geteuid() == 0
+        and os.getenv("SUDO_USER") == "ubuntu"
+        and not os.getenv("GITHUB_ACTIONS")
+    ):
+        environment["SUDO_USER"] = "ubuntu"
+    return environment
+
+
 def canonical(value):
     return json.dumps(
         value, sort_keys=True, separators=(",", ":"), allow_nan=False
@@ -639,7 +651,7 @@ class Store:
             input=canonical({"binding": binding, "context": context}),
             capture_output=True,
             timeout=runner["timeout_seconds"],
-            env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"},
+            env=runner_environment(),
             check=False,
         )
         require(
