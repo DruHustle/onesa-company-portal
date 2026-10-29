@@ -321,6 +321,8 @@ def recipe_command(plan, override=None):
         recipe["directory"],
         "--project-name",
         recipe["project"],
+        "--profile",
+        "production",
     ]
     environment = identity_file(recipe)
     r.require(

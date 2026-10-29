@@ -65,10 +65,14 @@ class OwnerStoreTests(unittest.TestCase):
         self.root.chmod(0o700)
         self.runner = self.root / "runner.py"
         self.runner.write_text(
-            """import datetime,json,pathlib,sys
+            """import datetime,json,os,pathlib,sys
 p=pathlib.Path(__file__).parent
 x=json.load(sys.stdin);phase=sys.argv[1]
 s=json.loads((p/'settings.json').read_text())
+if s.get('require_owner'):
+ assert os.getenv('SUDO_USER')=='ubuntu'
+ assert not os.getenv('GITHUB_ACTIONS')
+ assert os.getenv('DO_NOT_FORWARD_CREDENTIAL') is None
 if phase=='deploy':
  c=p/'provider-count';c.write_text(str(int(c.read_text())+1)if c.exists()else'1')
  if s.get('interrupt'):raise SystemExit(3)
@@ -181,6 +185,40 @@ print(json.dumps(v))
             "actual-provider-fixture-1",
         )
         self.assertFalse(auth["record"]["details"]["physical_hardware_authorized"])
+
+    def test_pinned_runner_retains_existing_owner_without_ambient_credentials(self):
+        self.settings({"require_owner": True})
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "SUDO_USER": "ubuntu",
+                    "GITHUB_ACTIONS": "",
+                    "DO_NOT_FORWARD_CREDENTIAL": "disposable-fixture",
+                },
+            ),
+            patch.object(o.os, "geteuid", return_value=0),
+        ):
+            self.assertEqual(
+                self.store.get(self.qualified())["record"]["kind"], "qualification"
+            )
+
+    def test_pinned_runner_cannot_manufacture_owner_provenance(self):
+        self.settings({"require_owner": True})
+        for uid, principal, actions in [
+            (0, "other", ""),
+            (1000, "ubuntu", ""),
+            (0, "ubuntu", "true"),
+        ]:
+            with (
+                self.subTest(uid=uid, principal=principal, actions=actions),
+                patch.dict(
+                    os.environ, {"SUDO_USER": principal, "GITHUB_ACTIONS": actions}
+                ),
+                patch.object(o.os, "geteuid", return_value=uid),
+                self.assertRaises(o.Rejected),
+            ):
+                self.qualified()
 
     def test_signature_tampering_and_foreign_key_refused(self):
         id_ = self.context()
