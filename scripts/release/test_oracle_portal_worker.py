@@ -58,6 +58,7 @@ def inputs():
         "project": "onesa-portal-oracle-production",
         "directory": directory,
         "files": [{"path": directory + "/compose.yaml", "sha256": "0" * 64}],
+        "environment_file": {"path": directory + "/release.env", "sha256": "6" * 64},
     }
     plan["production_probe"] = {
         "runtime_path": str(worker.RUNTIME),
