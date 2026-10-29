@@ -116,7 +116,12 @@ def validate_plan(binding, plan):
         "EXISTING_PRODUCTION_WORKER_PROFILE_REQUIRED",
     )
     recipe = plan["recipe"]
-    common.exact(recipe, ["project", "directory", "files"], "WORKER_RECIPE_SCHEMA")
+    common.exact(
+        recipe,
+        ["project", "directory", "files", "environment_file"],
+        "WORKER_RECIPE_SCHEMA",
+    )
+    identity_file(recipe)
     prefix = "/opt/onesa/portal-production/releases/"
     r.require(
         recipe["project"] == "onesa-portal-oracle-production"
@@ -164,16 +169,34 @@ def validate_plan(binding, plan):
     return ROOT / "artifacts" / binding["source_tree"]
 
 
+def identity_file(recipe):
+    environment = recipe["environment_file"]
+    common.exact(environment, ["path", "sha256"], "COMPOSE_IDENTITY_FILE_SCHEMA")
+    r.require(
+        environment["path"] == recipe["directory"] + "/release.env"
+        and re.fullmatch(r"[a-f0-9]{64}", environment["sha256"]),
+        "EXISTING_COMPOSE_IDENTITY_FILE_REQUIRED",
+    )
+    return environment
+
+
 def recipe_command(plan, override=None):
     recipe = plan["recipe"]
     args = [
         "/usr/bin/docker",
         "compose",
+        "--env-file",
+        recipe["environment_file"]["path"],
         "--project-directory",
         recipe["directory"],
         "--project-name",
         recipe["project"],
     ]
+    environment = identity_file(recipe)
+    r.require(
+        r.sha(r.private(Path(environment["path"]))) == environment["sha256"],
+        "COMPOSE_IDENTITY_FILE_CHANGED",
+    )
     for item in recipe["files"]:
         r.pinned_public_file(Path(item["path"]), item["sha256"])
         args += ["-f", item["path"]]
