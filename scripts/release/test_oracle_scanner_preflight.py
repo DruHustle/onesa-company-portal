@@ -80,14 +80,16 @@ class FailureDiagnosticTests(unittest.TestCase):
             "context": {"context_id": self.context},
             "password": "PRIVATE_SENTINEL",
         }
-        self.enterContext(patch.object(s, "ROOT", self.root))
+        self.component_root = self.root / "scanner"
+        self.component_root.mkdir(mode=0o700)
+        self.enterContext(patch.object(s, "ROOT", self.component_root))
         self.enterContext(
             patch.object(r, "private", side_effect=lambda path, **_: Path(path))
         )
 
     def test_refusal_is_preserved_without_input_values_or_retry_authority(self):
         s.record_failure("staging", self.request, r.Refused("SCANNER_DISK_RESERVE"))
-        files = list((self.root / "failures").glob("*.json"))
+        files = list((self.component_root / "failures").glob("*.json"))
         self.assertEqual(len(files), 1)
         text = files[0].read_text()
         record = json.loads(text)
@@ -99,7 +101,7 @@ class FailureDiagnosticTests(unittest.TestCase):
 
     def test_arbitrary_exception_text_is_not_recorded(self):
         s.record_failure("staging", self.request, ValueError("PRIVATE_SENTINEL"))
-        text = next((self.root / "failures").glob("*.json")).read_text()
+        text = next((self.component_root / "failures").glob("*.json")).read_text()
         self.assertEqual(json.loads(text)["failure_code"], "ValueError")
         self.assertNotIn("PRIVATE_SENTINEL", text)
 
@@ -113,7 +115,32 @@ class FailureDiagnosticTests(unittest.TestCase):
             },
         ]:
             s.record_failure("staging", request, ValueError("PRIVATE_SENTINEL"))
-        self.assertFalse((self.root / "failures").exists())
+        self.assertFalse((self.component_root / "failures").exists())
+
+    def test_api_and_worker_diagnostics_cannot_write_another_components_record(self):
+        for component in ["api", "worker"]:
+            root = self.root / component
+            root.mkdir(mode=0o700)
+            request = {
+                **self.request,
+                "binding": {**self.request["binding"], "component": component},
+            }
+            s.record_failure(
+                "staging", request, KeyError("PRIVATE_SENTINEL"), component=component
+            )
+            record = json.loads(next((root / "failures").glob("*.json")).read_bytes())
+            self.assertEqual(record["component"], component)
+            self.assertEqual(record["failure_code"], "KeyError")
+            self.assertFalse(record["provider_retry_allowed"])
+        self.assertFalse((self.component_root / "failures").exists())
+
+    def test_caller_component_cannot_expand_the_module_scope(self):
+        request = {
+            **self.request,
+            "binding": {**self.request["binding"], "component": "api"},
+        }
+        s.record_failure("staging", request, ValueError("PRIVATE_SENTINEL"))
+        self.assertFalse((self.root / "api").exists())
 
 
 if __name__ == "__main__":

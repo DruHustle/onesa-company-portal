@@ -1153,7 +1153,7 @@ def runner(phase, binding, context):
     }
 
 
-def record_failure(phase, request, error):
+def record_failure(phase, request, error, *, component="scanner"):
     """Private diagnostics only; never success, authority or permission to retry."""
     try:
         if not isinstance(request, dict) or not isinstance(
@@ -1162,9 +1162,10 @@ def record_failure(phase, request, error):
             return
         binding = request["binding"]
         r.require(
-            phase in CHECKS
+            component in {"scanner", "api", "worker"}
+            and phase in CHECKS
             and binding["repository"] == REPOSITORY
-            and binding["component"] == "scanner"
+            and binding["component"] == component
             and re.fullmatch(r"[a-f0-9]{40}", binding["candidate_commit"]),
             "SCANNER_DIAGNOSTIC_SCOPE",
         )
@@ -1180,14 +1181,15 @@ def record_failure(phase, request, error):
             and re.fullmatch(r"[A-Z0-9_]{1,120}", str(error))
             else type(error).__name__
         )
-        folder = ROOT / "failures"
+        component_root = r.private(ROOT.parent / component, directory=True)
+        folder = component_root / "failures"
         folder.mkdir(mode=0o700, exist_ok=True)
         r.private(folder, directory=True)
         r.write(
             folder / (phase + "-" + str(time.time_ns()) + ".json"),
             {
                 "candidate_commit": binding["candidate_commit"],
-                "component": "scanner",
+                "component": component,
                 "phase": phase,
                 "record_ids": ids,
                 "failure_code": code,

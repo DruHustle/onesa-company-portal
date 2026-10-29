@@ -146,7 +146,17 @@ test('The stdin command never exports private input or an arbitrary exception',a
 function apiInput(){const value=workerInput();value.request.worker_probe.binding.component='api';value.request.api_binding={...value.request.worker_binding,component:'api'};delete value.request.worker_binding;return value;}
 function apiResult(){return {...result(),state:'OWNED_STAGING_API_OBSERVATIONS_NOT_AUTHORIZATION',checks:Object.fromEntries(apiRequiredChecks.map(key=>[key,true]))};}
 test('API source is observed under its own component and requires actual idle recovery',async()=>{
- const value=apiInput(),ops=operations(apiResult());const observed=await observe(value.request,value.raw,value.values,ops);assert.equal(observed.state,'API_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION');assert.deepEqual(observed.api_binding,value.request.api_binding);assert.equal(Object.hasOwn(observed,'worker_binding'),false);assert.equal(observed.checks.api_idle_connection_recovery_with_saved_sessions,true);assert.deepEqual(ops.calls.map(row=>row.action),['provision','probe','cleanup']);assert.equal(observed.release_records_issued,0);
+ const value=apiInput(),ops=operations(apiResult());const observed=await observe(value.request,value.raw,value.values,ops);assert.equal(observed.state,'API_WORKFLOWS_OBSERVED_NOT_AUTHORIZATION');assert.deepEqual(observed.api_binding,value.request.api_binding);assert.equal(Object.hasOwn(observed,'worker_binding'),false);assert.equal(observed.checks.api_idle_connection_recovery_with_saved_sessions,true);assert.deepEqual(observed.provider_conditional_ownership,{conditional_object_ownership:true,synthetic_object_cleanup:true});assert.deepEqual(ops.calls.map(row=>row.action),['provision','probe','conditional','cleanup']);assert.equal(observed.release_records_issued,0);
+});
+test('API qualification requires actual conditional ownership and exact synthetic cleanup',async()=>{
+ for(const proof of [undefined,{conditional_object_ownership:false,synthetic_object_cleanup:true},{conditional_object_ownership:true,synthetic_object_cleanup:false},{conditional_object_ownership:'SKIP',synthetic_object_cleanup:true},{conditional_object_ownership:true},{conditional_object_ownership:true,synthetic_object_cleanup:true,caller_approved:true}]){
+  const value=apiInput(),ops=operations(apiResult());ops.conditional=async()=>{ops.calls.push({action:'conditional'});return proof;};
+  await assert.rejects(observe(value.request,value.raw,value.values,ops));
+  assert.deepEqual(ops.calls.map(row=>row.action),['provision','probe','conditional','cleanup']);
+ }
+ const value=apiInput(),ops=operations(apiResult());ops.conditional=async()=>{throw Error('SYNTHETIC_CONDITIONAL_INTERRUPTION');};
+ await assert.rejects(observe(value.request,value.raw,value.values,ops),/SYNTHETIC_CONDITIONAL_INTERRUPTION/);
+ assert.equal(ops.calls.at(-1).action,'cleanup');
 });
 test('Worker/scanner observations cannot be converted into API evidence',async()=>{
  for(const modify of [v=>{v.request.worker_probe.binding.component='worker';},v=>{v.request.api_binding.component='worker';},v=>{v.request.api_binding.candidate_commit='f'.repeat(40);},v=>{v.request.api_binding.artifact_digest='sha256:'+'f'.repeat(64);},v=>{v.request.worker_binding={...v.request.api_binding,component:'worker'};}]){

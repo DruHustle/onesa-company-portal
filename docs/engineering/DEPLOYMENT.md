@@ -6,6 +6,10 @@ Scanner preflight checks the existing disk reserve for both isolated signature
 copies before qualification starts. Each copy keeps its own reserve check. Failed
 runners retain bounded private diagnostics; those records never authorize retries.
 
+Independent API qualification also requires the existing real conditional-object
+ownership and synthetic-cleanup probe. Its transitive module is pinned and mounted
+explicitly; missing or failed observations cannot qualify the API.
+
 The external verifier preserves the existing root owner sudo principal when
 launching a pinned runner, while excluding ambient credentials. Other principals,
 non-root callers and Actions cannot gain that provenance through this handoff.
