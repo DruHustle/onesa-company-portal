@@ -14,6 +14,7 @@ import json
 import os
 import re
 import sys
+import tarfile
 from pathlib import Path
 
 sys.path[:0] = [
@@ -95,6 +96,232 @@ def peer_store(store, path):
     return peer
 
 
+def robot_source_tools(peer, profile):
+    """Use the original separately commissioned Robot parser, not candidate code."""
+    path = Path(profile["runners"]["production"]["path"])
+    expected = (
+        installer.INSTALL_PARENT
+        / ("robot-" + peer.root.name.removeprefix("robot-owner-"))
+        / "runners"
+        / "oracle_robot.py"
+    )
+    owner.require(
+        path == expected and path.parent == Path(peer.trust["runner_root"]),
+        "ORIGINAL_EXTERNAL_ROBOT_RUNNER_REQUIRED",
+    )
+    owner.private(path)
+    owner.require(
+        owner.file_digest(path) == profile["runners"]["production"]["sha256"],
+        "PINNED_ROBOT_SOURCE_INSPECTOR_CHANGED",
+    )
+    spec = importlib.util.spec_from_file_location(
+        "commissioned_robot_source_inspector", path
+    )
+    module = importlib.util.module_from_spec(spec)
+    previous = list(sys.path)
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.path[:] = previous
+    return module
+
+
+def frozen_robot_runtime(tools, runtime, environment):
+    """Read only: prove container code cannot overlay the inspected immutable image."""
+    image = json.loads(tools.docker("image", "inspect", runtime["Image"]))[0]
+    configured = tools.runtime_values(tools.ENV[environment])
+    values = dict(row.split("=", 1) for row in runtime["Config"]["Env"])
+    defaults = dict(row.split("=", 1) for row in image["Config"].get("Env", []))
+    code = (
+        "/app/robot_api",
+        "/app/start.sh",
+        "/usr/local/lib",
+        "/usr/local/bin",
+        "/usr/lib",
+        "/lib",
+        "/bin",
+        "/sbin",
+    )
+    mounts = [row["Destination"].rstrip("/") or "/" for row in runtime["Mounts"]]
+    owner.require(
+        image["Id"] == runtime["Image"]
+        and len(values) == len(runtime["Config"]["Env"])
+        and len(defaults) == len(image["Config"].get("Env", []))
+        and runtime["HostConfig"]["ReadonlyRootfs"] is True
+        and all(
+            runtime["Config"].get(key) == image["Config"].get(key)
+            for key in ["Entrypoint", "Cmd", "WorkingDir", "User"]
+        )
+        and all(
+            not (
+                path == mount
+                or path.startswith(mount + "/")
+                or mount.startswith(path + "/")
+                or mount == "/"
+            )
+            for path in code
+            for mount in mounts
+        )
+        and values == {**defaults, **configured}
+        and all(
+            values.get(key) == defaults.get(key)
+            for key in [
+                "PYTHONPATH",
+                "PYTHONHOME",
+                "PYTHONSTARTUP",
+                "LD_PRELOAD",
+                "LD_LIBRARY_PATH",
+            ]
+        )
+        and configured["ROBOT_DEPLOYMENT_ENVIRONMENT"] == environment
+        and configured["ROBOT_ACTUATION_ENABLED"] == "false"
+        and configured.get("ROBOT_CONTEXT_IMPORT_ENABLED", "false") == "false"
+        and configured["ROBOT_STORAGE_MODE"] == "turso",
+        "EXACT_FROZEN_SOFTWARE_ONLY_ROBOT_DEPENDENCY_REQUIRED",
+    )
+
+
+def equivalent_robot_stage(peer, record, actual, security=None):
+    """Preserve an existing equivalent stage; never qualify or authorize that stage.
+
+    The only authority reference is the original accepted production API. Its
+    exact source, artifact and runtime remain mandatory. Stage code/configuration
+    is independently inspected as a non-mutating preservation baseline, without
+    accepting, renewing or reusing any revoked staging qualification.
+    """
+    binding = record["binding"]
+    owner.require(
+        binding["repository"] == "DruHustle/onesa-robot"
+        and binding["component"] == "api"
+        and binding["target_environment"] == "production",
+        "DIRECT_ACCEPTED_ROBOT_API_ONLY",
+    )
+    intent = signed_unrevoked(peer, record["parent"], "deployment-intent", binding)[
+        "record"
+    ]
+    state = peer.db.execute(
+        "SELECT state FROM deployments WHERE id=?", (intent["id"],)
+    ).fetchone()
+    profile = peer.policy["components"]["DruHustle/onesa-robot:api"]
+    observed = record["details"]["observations"]
+    targets = PEER_TARGETS[("DruHustle/onesa-robot", "api")]
+    production, staging = actual[targets["production"]], actual[targets["staging"]]
+    runtime = api.r.summary(production)
+    owner.require(
+        state
+        and state[0] == "accepted"
+        and intent["details"]["provider_request_budget"] == 1
+        and intent["details"]["automatic_retry"] is False
+        and api.r.healthy(production)
+        and api.r.healthy(staging)
+        and observed["binding"] == binding
+        and observed["environment"] == "production"
+        and type(observed["workflow_run_id"]) is int
+        and observed["workflow_run_id"] == 0
+        and observed["deployment_id"] == runtime["container_id"]
+        and observed.get("actual_runtime") == runtime
+        and observed.get("physical_hardware_authorized") is False
+        and runtime["source"] == binding["candidate_commit"]
+        and runtime["image"] == binding["artifact_digest"]
+        and production["Config"]["Labels"].get("org.onesa.source-archive-sha256")
+        == binding["source_sha256"]
+        and all(
+            observed["checks"].get(key) == "PASS"
+            for key in profile["required_checks"]["production"]
+        ),
+        "GENUINE_UNCHANGED_ACCEPTED_ROBOT_API_REQUIRED",
+    )
+    tools = robot_source_tools(peer, profile)
+    frozen_robot_runtime(tools, production, "production")
+    frozen_robot_runtime(tools, staging, "staging")
+    stage_runtime = api.r.summary(staging)
+    owner.require(
+        re.fullmatch("[a-f0-9]{40}", stage_runtime["source"]),
+        "EXACT_STAGE_SOURCE_REQUIRED",
+    )
+    commit = peer.github.api(
+        "repos/DruHustle/onesa-robot/git/commits/" + stage_runtime["source"]
+    )
+    owner.require(
+        commit["sha"] == stage_runtime["source"]
+        and re.fullmatch("[a-f0-9]{40}", commit["tree"]["sha"]),
+        "ACTUAL_REPOSITORY_STAGE_SOURCE_REQUIRED",
+    )
+    stage_binding = {
+        **binding,
+        "candidate_commit": stage_runtime["source"],
+        "source_tree": commit["tree"]["sha"],
+        "source_sha256": staging["Config"]["Labels"]["org.onesa.source-archive-sha256"],
+        "artifact_digest": stage_runtime["image"],
+    }
+    owner.require(
+        security is None
+        or isinstance(security, dict)
+        and set(security) == {"staging", "production"},
+        "TWO_CURRENT_IMAGE_CHECK_REFERENCES_REQUIRED",
+    )
+    maps = []
+    prefixes = ("onesa-ai-robot-backend/", "edge/", "ros2/")
+    for environment, selected in [("production", binding), ("staging", stage_binding)]:
+        folder = tools.component_folder(selected)
+        archive = folder / "source.tar"
+        owner.private(archive)
+        owner.require(
+            owner.file_digest(archive) == selected["source_sha256"],
+            "INDEPENDENT_ROBOT_SOURCE_ARCHIVE_CHANGED",
+        )
+        _app, files = tools.source_inventory(archive, selected)
+        with tarfile.open(archive, "r:") as source:
+            maps.append(
+                {
+                    member.name: {
+                        "sha256": files[member.name],
+                        "executable": bool(member.mode & 0o111),
+                    }
+                    for member in source.getmembers()
+                    if member.isfile() and member.name.startswith(prefixes)
+                }
+            )
+        scan = folder / "scan.json"
+        if security is not None:
+            reference = security[environment]
+            owner.require(
+                isinstance(reference, dict)
+                and set(reference) == {"path", "sha256"}
+                and isinstance(reference["path"], str)
+                and isinstance(reference["sha256"], str)
+                and owner.HEX.fullmatch(reference["sha256"]),
+                "IMAGE_CHECK_REFERENCES_ONLY_NO_CALLER_PASS",
+            )
+            scan = Path(reference["path"])
+            owner.require(
+                scan.is_relative_to(PEER_STORES) and ".." not in scan.parts,
+                "EXTERNAL_PRIVATE_IMAGE_CHECK_REQUIRED",
+            )
+            owner.private(scan)
+            owner.require(
+                owner.file_digest(scan) == reference["sha256"],
+                "CURRENT_IMAGE_CHECK_CHANGED",
+            )
+        tools.image_security(tools.read(scan), selected["artifact_digest"])
+        tools.verify_application_bytes(folder, selected)
+    owner.require(
+        maps[0] and maps[0] == maps[1],
+        "CHANGED_ROBOT_STAGE_REQUIRES_ITS_OWN_QUALIFICATION",
+    )
+    return stage_runtime, {
+        "purpose": "read-only-independent-equivalent-stage-preservation",
+        "original_accepted_operation": intent["id"],
+        "original_accepted_source": binding["candidate_commit"],
+        "actual_stage_source": stage_binding["candidate_commit"],
+        "unchanged_component_paths": list(prefixes),
+        "unchanged_component_files_sha256": owner.digest(maps[0]),
+        "staging_qualified": False,
+        "staging_release_authorized": False,
+        "provider_requests": 0,
+    }
+
+
 def independent_receipts(store, references):
     """Recognize existing releases, never authorize or alter another component.
 
@@ -111,7 +338,11 @@ def independent_receipts(store, references):
     for reference in references:
         owner.require(
             isinstance(reference, dict)
-            and set(reference) == {"store", "record", "environment"}
+            and set(reference)
+            in [
+                {"store", "record", "environment"},
+                {"store", "record", "environment", "preservation_image_checks"},
+            ]
             and reference["environment"] in {"staging", "production"}
             and isinstance(reference["record"], str)
             and re.fullmatch(r"[a-f0-9-]{36}", reference["record"]),
@@ -125,7 +356,38 @@ def independent_receipts(store, references):
                 if environment == "staging"
                 else "production-verification"
             )
-            record = signed_unrevoked(peer, reference["record"], kind)["record"]
+            record = signed_unrevoked(peer, reference["record"])["record"]
+            if (
+                environment == "staging"
+                and record["kind"] == "production-verification"
+                and peer.expected_repository == "DruHustle/onesa-robot"
+            ):
+                runtime, proof = equivalent_robot_stage(
+                    peer, record, actual, reference.get("preservation_image_checks")
+                )
+                name = PEER_TARGETS[("DruHustle/onesa-robot", "api")]["staging"]
+                owner.require(
+                    name not in expected, "EXACT_UNIQUE_PEER_RUNTIME_REQUIRED"
+                )
+                expected[name] = runtime
+                provenance.append(
+                    {
+                        "store": str(peer.root),
+                        "record": record["id"],
+                        "kind": record["kind"],
+                        "environment": environment,
+                        "key_id": peer.trust["key_id"],
+                        "record_sha256": owner.digest(record),
+                        "runtime": name,
+                        "preservation_only": proof,
+                    }
+                )
+                continue
+            owner.require(
+                set(reference) == {"store", "record", "environment"}
+                and record["kind"] == kind,
+                "EXACT_INDEPENDENT_RECEIPT_KIND_REQUIRED",
+            )
             binding = record["binding"]
             owner.require(
                 binding["repository"] == peer.expected_repository,
@@ -523,7 +785,7 @@ def main():
     )
     references = None
     if args.independent_receipts is not None:
-        # References contain IDs only; they cannot supply observations or PASS.
+        # IDs and immutable file references cannot supply observations or PASS.
         owner.private(args.independent_receipts)
         references = json.loads(args.independent_receipts.read_bytes())
     owner.require(
