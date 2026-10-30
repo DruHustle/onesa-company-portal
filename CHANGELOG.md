@@ -237,6 +237,11 @@
 
 ## Unreleased
 
+- Source correction: bind the independent worker's retained Compose project and
+  directory to its actual runtime profile, separately from the worker image's
+  source revision. Recipe, identity-file, configuration and runtime preservation
+  checks remain mandatory; fresh source qualification is required before release.
+
 - Source candidate: use database-free Oracle staging API liveness and worker
   liveness with explicit bounded staging idle backoff. Preserve real deployment
   readiness, durable jobs and production polling defaults. Local tests do not
