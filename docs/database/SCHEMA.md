@@ -64,6 +64,16 @@ privilege is introduced. Restore lockdown removes every restored sign-in/registr
 link while preserving approval evidence and inert password hashes. This source change
 is not a claim that migration 011 or the new login options are deployed.
 
+The existing `jobs.payload` also carries an optional, nonsecret `mailPresentation`
+version. The worker locks the job and records `branded-v1` atomically on its first
+claim, before delivery. Previously attempted unversioned jobs retain `plain-v0`;
+retries retain their selected version and existing provider idempotency key.
+Encrypted message text remains encrypted in the outbox. No column or migration is
+added. Keep a deployed renderer version immutable; future designs need a new version.
+An ambiguous delivery must be reconciled, never rekeyed or reset to obtain a new
+design. A worker rollback must account for pending versioned deliveries through the
+protected release procedure; an older renderer cannot safely rewrite those requests.
+
 ## Editorial publication snapshots (prepared migration 012)
 
 Additive migration 012 backfills each existing published row into `published_snapshot`
