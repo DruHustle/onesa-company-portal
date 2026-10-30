@@ -316,7 +316,9 @@ class SignedScannerContextTests(unittest.TestCase):
 
         # Only custody/registry location is substituted for an unprivileged test.
         # All record bytes, Ed25519 signatures, scope and ledger reads are real.
-        self.enterContext(patch.object(r, "private", side_effect=Path))
+        self.enterContext(
+            patch.object(r, "private", side_effect=lambda path, **_kwargs: Path(path))
+        )
         self.enterContext(patch.object(r, "read", side_effect=read))
 
     def reserve(self):
