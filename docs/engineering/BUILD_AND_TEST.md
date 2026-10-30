@@ -1,5 +1,12 @@
 # Separate application builds and tests
 
+Worker release regressions distinguish an independently replaced image revision
+from its retained Compose recipe directory. The actual project and working
+directory are part of the configuration-bound runtime profile. A different image
+source may retain that recipe; changed project/directory metadata, recipe paths,
+identity-file bytes and runtime settings still fail before deployment. Run the
+existing offline release suite and actual Compose identity test before promotion.
+
 Read-only API observer tests also require the original accepted Robot API chain
 before recognizing an equivalent existing staging runtime. Backend, edge and ROS
 bytes and executable modes, current image checks, immutable runtime code and

@@ -32,6 +32,11 @@ CHECKS = common.CHECKS
 
 def profile(row):
     value = common.profile(row)
+    labels = row["Config"].get("Labels") or {}
+    # Independently replaced worker images retain the existing Compose project
+    # and recipe directory. Bind that actual metadata separately from image source.
+    value["compose_project"] = labels.get("com.docker.compose.project")
+    value["compose_directory"] = labels.get("com.docker.compose.project.working_dir")
     # Image defaults are separately checked against the exact candidate image
     # and preserved rendered environment; a Node patch may change NODE_VERSION.
     value.pop("environment_sha256")
@@ -125,7 +130,10 @@ def validate_plan(binding, plan):
     prefix = "/opt/onesa/portal-production/releases/"
     r.require(
         recipe["project"] == "onesa-portal-oracle-production"
-        and recipe["directory"] == prefix + plan["baseline"][TARGET]["source"]
+        and runtime.get("compose_project") == recipe["project"]
+        and isinstance(recipe["directory"], str)
+        and re.fullmatch(re.escape(prefix) + r"[a-f0-9]{40}", recipe["directory"])
+        and runtime.get("compose_directory") == recipe["directory"]
         and len(recipe["files"]) == 1,
         "EXISTING_PRODUCTION_WORKER_RECIPE_REQUIRED",
     )
