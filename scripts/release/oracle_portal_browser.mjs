@@ -22,6 +22,13 @@ export async function visitHome(page,origin,locale){
  await expect(page.locator('#home-robot-title')).toHaveText('Onesa AI Robot');
  await expect(page.locator('#home-robot-title')).toBeVisible();
 }
+export async function verifyRobotInspectionNotice(section,locale){
+ assert.ok(['en','de'].includes(locale));
+ await expect(section).toContainText('P-101');
+ await expect(section).toContainText(locale==='en'?'Supervised synthetic Pump P-101 inspection':'überwachte synthetische Inspektion der Pumpe P-101');
+ await expect(section).toContainText(locale==='en'?'next development candidate and awaits separate release verification':'nächste Entwicklungskandidat und benötigt eine eigene Freigabe');
+ await expect(section).toContainText(locale==='en'?'physical control require their own integration and qualification':'physische Steuerung benötigen eine eigene Integration und Qualifikation');
+}
 export async function checkAnonymousBoundaries(request,client){
  const targets=request.environment==='production'
   ? [['https://onesa.eu',403],['https://portal.onesa.eu',401]]
@@ -95,8 +102,7 @@ async function observeUI(request,directory,engines,status){
     await page.setViewportSize({width,height:900});await page.emulateMedia({colorScheme:mode});
     await visitHome(page,request.origin,locale);
     const section=page.locator('section').filter({has:page.locator('#home-robot-title')});
-    await expect(section).toContainText('P-101');
-    await expect(section).toContainText(locale==='en'?'synthetic':'synthetischen');
+    await verifyRobotInspectionNotice(section,locale);
     const link=section.getByRole('link',{name:locale==='en'?'Explore robotics':'Robotik entdecken'});
     const destination=new URL(await link.getAttribute('href'),request.origin);assert.equal(destination.origin,request.origin);assert.ok([`/${locale}/products`,...(locale==='en'?['/products']:[])].includes(destination.pathname));assert.equal(destination.hash,'#product-robot');
     await Promise.all([

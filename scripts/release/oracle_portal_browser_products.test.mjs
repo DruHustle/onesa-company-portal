@@ -7,7 +7,7 @@ import path from 'node:path';
 import http from 'node:http';
 import {spawn} from 'node:child_process';
 import {chromium,firefox,webkit} from '@playwright/test';
-import {visitDronePresentation,checkDroneRoutes} from './oracle_portal_browser.mjs';
+import {visitHome,verifyRobotInspectionNotice,visitDronePresentation,checkDroneRoutes} from './oracle_portal_browser.mjs';
 
 const root=process.env.ONESA_SOURCE_ROOT;
 assert.ok(root&&path.isAbsolute(root),'Explicit source checkout required');
@@ -39,6 +39,8 @@ for(const [name,type]of Object.entries({chromium,firefox,webkit})){
     const context=await browser.newContext({viewport:{width,height:900},colorScheme,reducedMotion:'reduce'});
     try{
      const page=await context.newPage();const errors=[],mutations=[];page.on('pageerror',error=>errors.push(error.name));page.on('request',request=>{if(!['GET','HEAD'].includes(request.method()))mutations.push(request.method());});
+     await visitHome(page,origin,locale);
+     await verifyRobotInspectionNotice(page.locator('section').filter({has:page.locator('#home-robot-title')}),locale);
      const observed=await visitDronePresentation(page,origin,locale);assert.equal(observed.keyboard_playback,'PASS');await checkDroneRoutes(page,origin,locale);
      assert.deepEqual(errors,[]);assert.deepEqual(mutations,[]);views++;
     }finally{await context.close();}
@@ -47,6 +49,17 @@ for(const [name,type]of Object.entries({chromium,firefox,webkit})){
   }finally{await browser.close();}
  });
 }
+
+test('a changed synthetic-inspection claim cannot pass the hosted notice check',{timeout:30000},async()=>{
+ const browser=await chromium.launch();
+ try{
+  const page=await browser.newPage();await visitHome(page,origin,'en');
+  const section=page.locator('section').filter({has:page.locator('#home-robot-title')});
+  await verifyRobotInspectionNotice(section,'en');
+  await section.locator('p').filter({hasText:'Supervised synthetic Pump P-101 inspection'}).evaluate(node=>{node.textContent=node.textContent.replace('synthetic','real-data');});
+  await assert.rejects(verifyRobotInspectionNotice(section,'en'),/toContainText/);
+ }finally{await browser.close();}
+});
 
 test('failed documents and a foreign legacy redirect cannot qualify',{timeout:30000},async()=>{
  const browser=await chromium.launch();
