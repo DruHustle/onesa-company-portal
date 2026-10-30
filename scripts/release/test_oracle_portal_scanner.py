@@ -260,6 +260,21 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(scanner.profile(row), before)
         row["HostConfig"]["Devices"] = [{"PathOnHost": "/dev/synthetic"}]
         self.assertNotEqual(scanner.profile(row), before)
+        row["HostConfig"]["Binds"] = [
+            "synthetic-signatures:/var/lib/clamav:rw",
+            "synthetic-socket:/run/onesa-scanner:rw",
+        ]
+        ordered = scanner.profile(row)
+        row["HostConfig"]["Binds"].reverse()
+        self.assertEqual(scanner.profile(row), ordered)
+        row["HostConfig"]["Binds"][0] += ",nocopy"
+        self.assertNotEqual(scanner.profile(row), ordered)
+        row["HostConfig"]["Binds"] = [
+            "synthetic-a:/var/lib/clamav:rw",
+            "synthetic-b:/var/lib/clamav:rw",
+        ]
+        with self.assertRaisesRegex(r.Refused, "SCANNER_AMBIGUOUS_BIND_CONFIGURATION"):
+            scanner.profile(row)
 
 
 class SignedScannerContextTests(unittest.TestCase):
@@ -301,7 +316,9 @@ class SignedScannerContextTests(unittest.TestCase):
 
         # Only custody/registry location is substituted for an unprivileged test.
         # All record bytes, Ed25519 signatures, scope and ledger reads are real.
-        self.enterContext(patch.object(r, "private", side_effect=Path))
+        self.enterContext(
+            patch.object(r, "private", side_effect=lambda path, **_kwargs: Path(path))
+        )
         self.enterContext(patch.object(r, "read", side_effect=read))
 
     def reserve(self):
