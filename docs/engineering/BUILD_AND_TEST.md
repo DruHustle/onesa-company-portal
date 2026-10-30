@@ -767,6 +767,14 @@ WebKit's media buffer requires a bounded writable `/var/tmp` in the read-only ow
 
 `python3 -m unittest discover -s scripts/release -p 'test_oracle_scanner_image_metadata.py'` checks the observed Docker image metadata shape that omits an unset default command. Omitted and explicit-null `Cmd` both retain the prescribed scanner entrypoint without extra arguments. An actual command, an empty command array or altered required identity/user/entrypoint/environment fields remain refused. The complete source, shipped-file and image-security checks still run. This parser regression does not qualify a hosted scanner or transfer any prior approval.
 
+`python3 -m unittest discover -s scripts/release -p 'test_oracle_scanner_completed_revocation.py'`
+uses real disposable signatures to verify the disposition of a completed, explicitly
+revoked scanner request. Missing, failed, uncertain, forged or mismatched evidence
+remains blocking. The earlier release stays unaccepted; a different source still
+requires all normal qualification, authorization and production checks. These
+offline tests issue no hosted authority and make no deployment request. Operational
+instructions and actual outcomes remain in the protected canonical procedure.
+
 ## Independent worker owner adapter checks
 
 Run `python3 -m unittest discover -s scripts/release -p 'test_oracle_portal_worker.py'` and `node --test scripts/release/oracle_portal_scanner_workflows.test.mjs scripts/release/oracle_portal_worker_production.test.mjs`. The complete release suite also checks the worker installer profile, component boundaries and real signature-chain rejection. These local synthetic tests establish no hosted qualification or deployment.

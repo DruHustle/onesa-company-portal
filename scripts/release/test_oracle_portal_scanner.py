@@ -260,6 +260,21 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(scanner.profile(row), before)
         row["HostConfig"]["Devices"] = [{"PathOnHost": "/dev/synthetic"}]
         self.assertNotEqual(scanner.profile(row), before)
+        row["HostConfig"]["Binds"] = [
+            "synthetic-signatures:/var/lib/clamav:rw",
+            "synthetic-socket:/run/onesa-scanner:rw",
+        ]
+        ordered = scanner.profile(row)
+        row["HostConfig"]["Binds"].reverse()
+        self.assertEqual(scanner.profile(row), ordered)
+        row["HostConfig"]["Binds"][0] += ",nocopy"
+        self.assertNotEqual(scanner.profile(row), ordered)
+        row["HostConfig"]["Binds"] = [
+            "synthetic-a:/var/lib/clamav:rw",
+            "synthetic-b:/var/lib/clamav:rw",
+        ]
+        with self.assertRaisesRegex(r.Refused, "SCANNER_AMBIGUOUS_BIND_CONFIGURATION"):
+            scanner.profile(row)
 
 
 class SignedScannerContextTests(unittest.TestCase):

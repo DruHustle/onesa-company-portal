@@ -6,6 +6,7 @@ before execution; production inspection never creates or restarts a container.
 The shared scanner has no database, storage, mail or application credentials.
 """
 
+import base64
 import datetime as dt
 import fcntl
 import hashlib
@@ -14,9 +15,11 @@ import os
 import re
 import shutil
 import socket
+import sqlite3
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -109,7 +112,21 @@ def component_lock():
 
 def profile(row):
     """Only stable configuration; no environment values leave this process."""
-    config, host = row["Config"], row["HostConfig"]
+    config, host = row["Config"], dict(row["HostConfig"])
+    if host.get("Binds"):
+        binds = host["Binds"]
+        r.require(
+            isinstance(binds, list)
+            and all(
+                isinstance(value, str) and len(value.split(":")) in {2, 3}
+                for value in binds
+            )
+            and len({value.split(":")[1] for value in binds}) == len(binds),
+            "SCANNER_AMBIGUOUS_BIND_CONFIGURATION",
+        )
+        # Distinct named mount targets have no ordering semantics. Retain every
+        # source, target and mode byte; only remove Compose's list-order variance.
+        host["Binds"] = sorted(binds)
     return {
         "host_configuration_sha256": hashlib.sha256(r.canonical(host)).hexdigest(),
         "image_configuration_sha256": hashlib.sha256(
@@ -899,7 +916,126 @@ def deployment_folder(operation):
     return ROOT / "deployments" / identifier(operation)
 
 
-def previous_operations():
+def acknowledged_completed_request(path, request, next_binding):
+    """A revoked, completed request stays unaccepted and cannot be replayed.
+
+    Only a different source may proceed through its own full release gates.
+    Missing, failed and interrupted provider outcomes remain blocking.
+    """
+    binding = request["binding"]
+    result_path = path / "provider-command-result.json"
+    if (
+        not next_binding
+        or next_binding.get("repository") != REPOSITORY
+        or next_binding.get("component") != "scanner"
+        or next_binding.get("target_environment") != "production"
+        or next_binding["candidate_commit"] == binding["candidate_commit"]
+        or next_binding["source_tree"] == binding["source_tree"]
+        or not result_path.exists()
+    ):
+        return False
+    result = r.read(result_path)
+    r.require(
+        set(result) == {"operation_id", "returncode", "observed_at", "automatic_retry"}
+        and result["operation_id"] == path.name
+        and type(result["returncode"]) is int
+        and result["returncode"] == 0
+        and result["automatic_retry"] is False,
+        "PREVIOUS_SCANNER_PROVIDER_OUTCOME_UNRESOLVED",
+    )
+    records = r.verify_invocation(
+        binding,
+        {"operation_id": path.name, "read_only": True},
+        "production",
+        {"verifier_store": request["verifier_store"]},
+    )
+    intent = next(item for item in records if item["id"] == path.name)
+    r.require(
+        request["context"]
+        == {"operation_id": path.name, "authorization_id": intent["parent"]}
+        and request["request_budget"] == 1
+        and request["automatic_retry"] is False
+        and r.sha(r.private(path / "scanner-override.json"))
+        == request["override_sha256"],
+        "PREVIOUS_SCANNER_REQUEST_IDENTITY_CHANGED",
+    )
+    store = r.private(Path(request["verifier_store"]), directory=True)
+    trust = r.read(
+        store / "trust.json"
+    )  # Invocation above checked the external anchor.
+    with sqlite3.connect(
+        "file:" + str(store / "records.sqlite") + "?mode=ro", uri=True
+    ) as db:
+        state = db.execute(
+            "SELECT r.revoked,d.state FROM records r JOIN deployments d ON d.id=r.id WHERE r.id=?",
+            (path.name,),
+        ).fetchone()
+        r.require(
+            state
+            and state[0] == 1
+            and state[1] in {"request-recorded", "deployed-unverified"},
+            "EXPLICIT_UNACCEPTED_INTENT_REVOCATION_REQUIRED",
+        )
+        rows = db.execute(
+            "SELECT id,envelope FROM records WHERE kind='revocation' AND revoked=0 LIMIT 1001"
+        ).fetchall()
+    r.require(len(rows) <= 1000, "SCANNER_REVOCATION_HISTORY_BOUND")
+    for identity, encoded in rows:
+        r.require(len(encoded) <= 1024 * 1024, "SCANNER_REVOCATION_RECORD_BOUND")
+        envelope = json.loads(encoded)
+        record, signature = envelope["record"], envelope["signature"]
+        if record.get("details") != {"revoked_id": path.name}:
+            continue
+        issued = dt.datetime.fromisoformat(record["issued_at"])
+        expiry = dt.datetime.fromisoformat(record["expires_at"])
+        completed = dt.datetime.fromisoformat(result["observed_at"])
+        r.require(
+            record["schema_version"] == 1
+            and record["id"] == identifier(identity)
+            and record["kind"] == "revocation"
+            and record["parent"] is None
+            and record["binding"] == binding
+            and record["workflow_run_id"] == 0
+            and record["execution_context"] == "owner-operated-oracle-release"
+            and record["owner_provenance"] == intent["owner_provenance"]
+            and dt.timedelta(0) < expiry - issued <= dt.timedelta(hours=24)
+            and dt.datetime.fromisoformat(intent["issued_at"])
+            <= completed
+            <= issued
+            <= r.now()
+            and signature["algorithm"] == "Ed25519"
+            and signature["key_id"] == trust["key_id"],
+            "EXACT_COMPLETED_SCANNER_REVOCATION_REQUIRED",
+        )
+        with tempfile.TemporaryDirectory(
+            prefix=".scanner-revocation-", dir=store
+        ) as folder:
+            folder = Path(folder)
+            r.write_raw(folder / "record", r.canonical(record))
+            r.write_raw(
+                folder / "signature",
+                base64.b64decode(signature["value"], validate=True),
+            )
+            r.command(
+                [
+                    r.OPENSSL,
+                    "pkeyutl",
+                    "-verify",
+                    "-rawin",
+                    "-pubin",
+                    "-inkey",
+                    str(store / "public.pem"),
+                    "-sigfile",
+                    str(folder / "signature"),
+                    "-in",
+                    str(folder / "record"),
+                ]
+            )
+        return True
+    raise r.Refused("SIGNED_COMPLETED_SCANNER_REVOCATION_MISSING")
+
+
+def previous_operations(next_binding=None):
     """A new installation cannot hide an older uncertain provider request."""
     parent = ROOT / "deployments"
     if not parent.exists():
@@ -921,13 +1057,17 @@ def previous_operations():
             "SCANNER_PREVIOUS_OPERATION_SCOPE",
         )
         # Verify the signature chain, binding, revocations and accepted index.
-        r.verify_invocation(
-            binding,
-            {"operation_id": path.name, "read_only": True},
-            "production",
-            {"verifier_store": request["verifier_store"]},
-            dependency=True,
-        )
+        try:
+            r.verify_invocation(
+                binding,
+                {"operation_id": path.name, "read_only": True},
+                "production",
+                {"verifier_store": request["verifier_store"]},
+                dependency=True,
+            )
+        except r.Refused:
+            if not acknowledged_completed_request(path, request, next_binding):
+                raise
 
 
 def composed_recipe(value, binding, plan, labels):
@@ -1002,7 +1142,7 @@ def deploy(binding, plan, context, folder):
 def deploy_once(binding, plan, context, folder):
     if deployment_folder(context["operation_id"]).exists():
         raise FileExistsError("SCANNER_OPERATION_EXISTS_INSPECT_ONLY")
-    previous_operations()
+    previous_operations(binding)
     retained(plan)
     image(binding, folder)
     parent = ROOT / "deployments"
