@@ -1,5 +1,13 @@
 # Deployment and independent releases
 
+An owner-commissioned read-only API observation can recognize an independently
+retained Robot staging runtime through its original accepted production API and
+exact code equivalence. The external inspector verifies actual immutable images,
+configuration and code protection. This preserves that runtime during observation;
+it does not qualify or authorize staging, renew a revoked record, or permit any
+Robot deployment. Detailed commissioning remains in the protected guide.
+
+
 <!-- onesa-protected-source: portal-deployment -->
 
 An existing API deployment may be observed after a separately released component

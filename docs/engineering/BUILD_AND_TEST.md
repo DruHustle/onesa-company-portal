@@ -1,5 +1,14 @@
 # Separate application builds and tests
 
+Read-only API observer tests also require the original accepted Robot API chain
+before recognizing an equivalent existing staging runtime. Backend, edge and ROS
+bytes and executable modes, current image checks, immutable runtime code and
+configuration must match. A revoked stage qualification stays revoked and grants
+no authority; the derived baseline preserves an unrelated workload only. Signed
+fixtures reject missing acceptance, changed source, code mounts, interpreter
+injection, physical flags and changed inspector pins. No provider write occurs.
+
+
 The frontend release regression injects a CLI default of production. Staging must
 explicitly select preview before dispatch; an unexpected provider target still
 retains the single durable intent and refuses alias assignment. The tests use no
