@@ -784,6 +784,13 @@ Run the complete release Python tests and `node --test scripts/release/oracle_po
 
 ## Preview session and distinct product views
 
+The production-build product regression also runs the hosted Robot notice check
+against both actual homepage translations in every browser, theme and width.
+It checks synthetic P-101 inspection, its pending independent release and the
+separate hardware qualification statement. A changed synthetic claim must fail.
+The German check accepts the current grammatical phrase `synthetische Inspektion`;
+these credential-free fixtures grant no hosted acceptance or release authority.
+
 The follow-up to the public-product adapter exchanges the existing scoped preview
 credential for a provider cookie with redirects disabled and rebinds it to the
 exact host. Global credential-bearing browser headers are absent. Two real
