@@ -627,6 +627,20 @@ and mocked delivery, then verify the installed file hash and normal scheduled sa
 
 ## Credential-verified administrator onboarding and resend feedback
 
+Transactional email rendering is covered by `tests/mail.test.ts` and
+`tests/mail-presentation.test.ts` in the backend: exact plain-body compatibility,
+escaping, trusted-origin buttons, malformed-link rejection, embedded owner artwork,
+secret-free preheaders, stable Resend retry bodies and actual text/HTML/inline-image
+SMTP MIME. They send no email. `tests/mail-claim.test.ts` uses the guarded disposable
+PostgreSQL database in the full backend suite to exercise real row locks, competing
+workers, commit/rollback, interrupted claims and legacy/versioned retries. A first
+claim persists the presentation before any provider request; existing attempted jobs
+stay plain. No schema migration, remote font, image tracker or external dependency
+is needed. Browser previews establish layout only; inbox/client acceptance and the
+independently released worker need genuine hosted evidence. Retain the deployed
+renderer for versioned retries during upgrades or rollback; never reset attempts or
+change provider keys to obtain a new design.
+
 The maintained `test:engineering-sign-in` renderer suite checks that no MFA field
 appears before credential proof, enrolled accounts receive the factor step and
 unenrolled accounts receive setup. Both methods retain MFA and remembered-session
