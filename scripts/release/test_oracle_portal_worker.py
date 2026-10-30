@@ -54,6 +54,9 @@ def inputs():
         "networks": ["synthetic-private-network"],
     }
     directory = "/opt/onesa/portal-production/releases/" + "f" * 40
+    plan["runtime"].update(
+        compose_project="onesa-portal-oracle-production", compose_directory=directory
+    )
     plan["recipe"] = {
         "project": "onesa-portal-oracle-production",
         "directory": directory,
@@ -78,6 +81,58 @@ def seal(binding, plan):
 
 
 class ContractTests(unittest.TestCase):
+    def test_independent_image_source_retains_its_actual_pinned_compose_directory(self):
+        binding, plan = inputs()
+        plan["baseline"][worker.TARGET]["source"] = "9" * 40
+        seal(binding, plan)
+        self.assertEqual(
+            worker.validate_plan(binding, plan),
+            worker.ROOT / "artifacts" / binding["source_tree"],
+        )
+
+    def test_recipe_must_match_captured_project_directory_and_canonical_paths(self):
+        for change in [
+            lambda p: p["runtime"].pop("compose_directory"),
+            lambda p: p["runtime"].update(compose_project="unrelated-project"),
+            lambda p: p["runtime"].update(compose_directory="/tmp/untrusted"),
+            lambda p: p["recipe"].update(directory="/tmp/untrusted"),
+            lambda p: p["recipe"].update(
+                directory=p["recipe"]["directory"] + "/../other"
+            ),
+        ]:
+            binding, plan = inputs()
+            change(plan)
+            seal(binding, plan)
+            with self.subTest(change=change), self.assertRaises(r.Refused):
+                worker.validate_plan(binding, plan)
+
+    def test_actual_compose_metadata_is_part_of_preserved_runtime_profile(self):
+        _binding, plan = inputs()
+        row = {
+            "Config": {
+                "Labels": {
+                    "com.docker.compose.project": plan["recipe"]["project"],
+                    "com.docker.compose.project.working_dir": plan["recipe"][
+                        "directory"
+                    ],
+                }
+            }
+        }
+        base = {**plan["runtime"], "environment_sha256": "0" * 64}
+        with patch.object(
+            worker.common, "profile", side_effect=lambda row: copy.deepcopy(base)
+        ):
+            original = worker.profile(row)
+            self.assertEqual(original["compose_directory"], plan["recipe"]["directory"])
+            for key, value in [
+                ("com.docker.compose.project", "unrelated-project"),
+                ("com.docker.compose.project.working_dir", "/tmp/other"),
+            ]:
+                changed = copy.deepcopy(row)
+                changed["Config"]["Labels"][key] = value
+                with self.subTest(key=key):
+                    self.assertNotEqual(worker.profile(changed), original)
+
     def test_only_exact_worker_source_and_existing_production_recipe_are_eligible(self):
         binding, plan = inputs()
         self.assertEqual(
