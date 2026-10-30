@@ -21,7 +21,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from pathlib import Path
 from uuid import UUID
 
@@ -963,8 +963,8 @@ def acknowledged_completed_request(path, request, next_binding):
     trust = r.read(
         store / "trust.json"
     )  # Invocation above checked the external anchor.
-    with sqlite3.connect(
-        "file:" + str(store / "records.sqlite") + "?mode=ro", uri=True
+    with closing(
+        sqlite3.connect("file:" + str(store / "records.sqlite") + "?mode=ro", uri=True)
     ) as db:
         state = db.execute(
             "SELECT r.revoked,d.state FROM records r JOIN deployments d ON d.id=r.id WHERE r.id=?",
