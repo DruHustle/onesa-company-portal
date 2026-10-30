@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased — Branded transactional email
+
+- Add responsive Onesa email cards with the existing embedded logo, readable system
+  typography, dark appearance, clear sign-in/confirmation buttons and a complete
+  plain-text alternative. Sign-in codes have a readable panel; HTML inbox preheaders
+  contain no code or bearer link. No remote image, font or tracking pixel is loaded.
+- Escape message content and create buttons only for the existing validated access
+  routes on the configured Portal origin. Expiry, one-use confirmation, recipient
+  restrictions, MFA and the approved legal signature retain their existing behavior.
+- Persist the presentation version atomically on the first worker claim. Existing
+  attempted plain jobs retain their body; retries retain the same version and
+  provider idempotency key. This worker source change still requires independent
+  hosted qualification and deployment before new production emails use the design.
+
 ## Unreleased — Production and shared operations notifications
 
 - Exclude the fixed staging API targets before notification decisions and incident
