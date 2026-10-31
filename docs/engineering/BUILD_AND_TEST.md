@@ -1,5 +1,22 @@
 # Separate application builds and tests
 
+Operations notification regressions retain raw failed health samples while requiring
+three consecutive transport-only failures spanning two minutes before opening an
+email incident for a healthy API container. DNS/connect/timeout probes get one bounded
+retry; HTTP, TLS, unhealthy-container and shared-service failures remain immediate.
+Different APIs, clock rollback, rapid invocations and observation gaps cannot combine
+into a confirmed outage. Existing delivery identities, reconciliation holds, cooldowns
+and sustained recovery checks remain. Run
+`python3 -m unittest discover -s scripts -p 'test_oracle*.py'`; delivery is mocked
+throughout. Independent backend probes overlap the database/queue read. A synchronized
+regression requires both reads to start before either completes, exercises every
+probe retry, and measures the configured acquisition/delivery allowances against
+the installed-source service deadline. The configured critical path is 49 seconds
+before ordinary overhead within the unchanged 60-second service limit. Timer
+accuracy is one second, with the existing one-minute cadence. Source qualification
+does not prove live timing; verify installed unit properties and ordinary scheduled
+samples through the protected operations-component procedure.
+
 Worker release regressions distinguish an independently replaced image revision
 from its retained Compose recipe directory. The actual project and working
 directory are part of the configuration-bound runtime profile. A different image
@@ -202,6 +219,15 @@ separate strict budgets. These are lab timings; exact-source hosted acceptance r
 a separate gate.
 
 ## Backend
+
+`tests/mail-claim.test.ts` exercises actual PostgreSQL claims and worker restart
+recovery, including a delivery retry after a 25-hour outage. Attempted mail older
+than 23 hours from creation fails closed for provider reconciliation; fresh retries
+and a first attempt of previously unsent mail remain available. Future creation
+times fail closed as well. The original payload and identity are preserved, with
+no external delivery. The conservative cutoff precedes
+[Resend's 24-hour idempotency expiry](https://resend.com/docs/dashboard/emails/idempotency-keys).
+It does not establish SMTP exactly-once delivery or actual inbox receipt.
 
 ### Idle database and worker regression
 

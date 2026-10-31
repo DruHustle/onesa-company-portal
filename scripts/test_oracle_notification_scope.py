@@ -43,7 +43,9 @@ def metrics(*failed, restarted=()):
             name: {
                 "container_healthy": True,
                 "http_healthy": name not in failed,
-                "http_status": 0 if name in failed else 200,
+                # Explicit HTTP failures remain immediately notifiable. Transport
+                # failures have their own confirmation regressions below.
+                "http_status": 503 if name in failed else 200,
                 "restart_count": 2 if name in restarted else 1,
                 "restarted": name in restarted,
             }
@@ -65,6 +67,73 @@ class NotificationScopeTests(unittest.TestCase):
 
     def read(self, name="metrics.json"):
         return json.loads((self.state / name).read_bytes())
+
+    @staticmethod
+    def transport(*names):
+        value = metrics(*names)
+        for name in names:
+            value["backends"][name].update(http_status=0, http_error="timeout")
+        return value
+
+    def test_isolated_transport_failure_records_evidence_without_email_pair(self):
+        self.tick(self.transport("ai-production"))
+        self.assertFalse(self.read()["notification_state"]["incident_open"])
+        self.assertEqual(
+            self.read("last-failure.json")["alerts"], ["backend-api-unavailable"]
+        )
+        self.assertEqual(self.sent, [])
+        for _ in range(6):
+            self.tick(metrics())
+        self.assertEqual(self.sent, [])
+        self.assertEqual(
+            self.read("last-recovery.json")["cleared_alerts"],
+            ["backend-api-unavailable"],
+        )
+
+    def test_sustained_transport_outage_alerts_once_then_recovers_once(self):
+        for _ in range(2):
+            self.tick(self.transport("ai-production"))
+        self.assertEqual(self.sent, [])
+        self.tick(self.transport("ai-production"))
+        self.assertEqual([x["kind"] for x in self.sent], ["alert"])
+        self.tick(self.transport("ai-production"))
+        for _ in range(6):
+            self.tick(metrics())
+        self.assertEqual([x["kind"] for x in self.sent], ["alert", "recovery"])
+
+    def test_transport_samples_cannot_mix_targets_or_bridge_gaps(self):
+        for name in ("ai-production", "robot-production", "portal-production") * 2:
+            self.tick(self.transport(name))
+        self.assertEqual(self.sent, [])
+        self.tick(self.transport("ai-production"))
+        self.tick(self.transport("ai-production"), elapsed=121)
+        self.tick(self.transport("ai-production"))
+        self.assertEqual(self.sent, [])
+        self.tick(self.transport("ai-production"))
+        self.assertEqual(len(self.sent), 1)
+
+    def test_fast_or_backward_clock_samples_do_not_confirm_transport_failure(self):
+        for elapsed in (60, 0, 0, -60, 1, 1, 1):
+            self.tick(self.transport("ai-production"), elapsed=elapsed)
+        self.assertEqual(self.sent, [])
+
+    def test_container_tls_and_shared_failures_bypass_transport_confirmation(self):
+        for kind in ("container", "tls", "scanner"):
+            with self.subTest(kind=kind):
+                value = self.transport("ai-production")
+                if kind == "container":
+                    value["backends"]["ai-production"]["container_healthy"] = False
+                elif kind == "tls":
+                    value["backends"]["ai-production"]["http_error"] = "tls"
+                else:
+                    value["scanner_ready"] = False
+                _streaks, confirmed = monitor.transport_confirmation(
+                    [k for k, v in monitor.evaluate(value).items() if v],
+                    value,
+                    {},
+                    self.now,
+                )
+                self.assertTrue(confirmed)
 
     def write(self, name, value):
         (self.state / name).write_text(json.dumps(value))

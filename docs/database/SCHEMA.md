@@ -74,6 +74,15 @@ An ambiguous delivery must be reconciled, never rekeyed or reset to obtain a new
 design. A worker rollback must account for pending versioned deliveries through the
 protected release procedure; an older renderer cannot safely rewrite those requests.
 
+Automatic mail retries stop 23 hours after `jobs.created_at`. Creation is a
+conservative lower bound on the first possible attempt, including legacy jobs;
+the schema needs no new column. Previously attempted pending jobs outside that
+window, or with a future creation time, become failed without changing their
+identity, payload or attempt count. Provider reconciliation is required before any
+further action. Never-attempted queued mail can still receive its first attempt.
+This bounds restart recovery before Resend's 24-hour idempotency expiry; SMTP
+acceptance and Message-ID alone do not guarantee exactly-once inbox delivery.
+
 ## Editorial publication snapshots (prepared migration 012)
 
 Additive migration 012 backfills each existing published row into `published_snapshot`
