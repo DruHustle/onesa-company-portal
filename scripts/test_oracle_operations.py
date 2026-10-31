@@ -454,8 +454,9 @@ class BackendMonitoring(unittest.TestCase):
             self.assertFalse(
                 any("authorization" in v.lower() or "cookie" in v.lower() for v in args)
             )
-            self.assertEqual(request.call_args.kwargs["timeout"], 4)
-            self.assertEqual(args[args.index("--max-time") + 1], "3")
+            self.assertEqual(request.call_args.kwargs["timeout"], 6)
+            self.assertEqual(args[args.index("--max-time") + 1], "5")
+            self.assertEqual(args[args.index("--connect-timeout") + 1], "3")
 
     def test_html_redirect_invalid_json_and_oversize_are_not_health(self):
         for body, code, exit_code in [
@@ -482,15 +483,45 @@ class BackendMonitoring(unittest.TestCase):
             monitor.subprocess,
             "run",
             side_effect=subprocess.TimeoutExpired("synthetic", 4),
-        ):
+        ) as probe:
             self.assertEqual(
                 monitor.probe_backend("ai-production"),
-                {"http_healthy": False, "http_status": 0},
+                {"http_healthy": False, "http_status": 0, "http_error": "timeout"},
             )
+            self.assertEqual(probe.call_count, 2)
         with patch.object(monitor.subprocess, "run") as request:
             with self.assertRaises(KeyError):
                 monitor.probe_backend("unapproved")
             request.assert_not_called()
+
+    def test_transient_probe_retries_once_but_http_and_tls_failures_do_not(self):
+        for code in (6, 7, 28):
+            with (
+                self.subTest(code=code),
+                patch.object(
+                    monitor.subprocess,
+                    "run",
+                    side_effect=[
+                        SimpleNamespace(stdout=b"\n000", returncode=code),
+                        SimpleNamespace(stdout=b'{"status":"ok"}\n200', returncode=0),
+                    ],
+                ) as probe,
+            ):
+                self.assertTrue(monitor.probe_backend("ai-production")["http_healthy"])
+                self.assertEqual(probe.call_count, 2)
+        for code, status in ((60, b"000"), (35, b"000"), (22, b"503")):
+            with (
+                self.subTest(code=code),
+                patch.object(
+                    monitor.subprocess,
+                    "run",
+                    return_value=SimpleNamespace(
+                        stdout=b"\n" + status, returncode=code
+                    ),
+                ) as probe,
+            ):
+                self.assertFalse(monitor.probe_backend("ai-production")["http_healthy"])
+                self.assertEqual(probe.call_count, 1)
 
 
 if __name__ == "__main__":
@@ -603,9 +634,7 @@ class NotificationLifecycle(unittest.TestCase):
         self.assertIsNone(
             self.decision(previous={"alerts": [], "healthy_samples": 1})[0]
         )
-        self.assertEqual(
-            self.decision(previous={"incident_open": False})[0], "alert"
-        )
+        self.assertEqual(self.decision(previous={"incident_open": False})[0], "alert")
         self.assertIsNone(
             self.decision(previous={"incident_open": True, "healthy_samples": 2})[0]
         )
@@ -728,9 +757,7 @@ class NotificationLifecycle(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             state = Path(directory)
-            self.run_monitor(
-                state, [self.failed, *([self.metrics] * 8)], send
-            )
+            self.run_monitor(state, [self.failed, *([self.metrics] * 8)], send)
             self.assertEqual(calls, ["alert", "recovery"])
             failure = json.loads((state / "last-failure.json").read_text())
             self.assertEqual(failure["alerts"], ["backend-api-unavailable"])
@@ -837,7 +864,9 @@ class NotificationLifecycle(unittest.TestCase):
             }
 
         unavailable = {
-            **self.failed, "scanner_ready": False, "database_available": False
+            **self.failed,
+            "scanner_ready": False,
+            "database_available": False,
         }
         low_memory = {**self.metrics, "memory_available_bytes": 128 * 1024 * 1024}
         both = {**unavailable, "memory_available_bytes": 128 * 1024 * 1024}
@@ -850,8 +879,10 @@ class NotificationLifecycle(unittest.TestCase):
             self.assertEqual(
                 set(last["incident_rules"]),
                 {
-                    "backend-api-unavailable", "database-unavailable",
-                    "clamav-unavailable", "resource-exhaustion",
+                    "backend-api-unavailable",
+                    "database-unavailable",
+                    "clamav-unavailable",
+                    "resource-exhaustion",
                 },
             )
             self.assertTrue(
@@ -892,7 +923,8 @@ class NotificationLifecycle(unittest.TestCase):
 
     def test_partial_improvement_does_not_send_an_update(self):
         last = {
-            **self.last, "rules": ["backend-api-unavailable", "database-unavailable"]
+            **self.last,
+            "rules": ["backend-api-unavailable", "database-unavailable"],
         }
         self.assertIsNone(self.decision(last=last, elapsed=1800)[0])
         self.assertEqual(self.decision(last=last, elapsed=21600)[0], "reminder")
@@ -914,7 +946,10 @@ class NotificationLifecycle(unittest.TestCase):
 
     def test_clock_rollback_and_invalid_times_do_not_send_repeated_mail(self):
         for value in [
-            None, "invalid", "2026-10-23T15:40:00", "2026-10-24T15:40:00+00:00"
+            None,
+            "invalid",
+            "2026-10-23T15:40:00",
+            "2026-10-24T15:40:00+00:00",
         ]:
             last = {**self.last, "checked_at": value}
             self.assertIsNone(self.decision(last=last, elapsed=1800)[0])
@@ -923,14 +958,22 @@ class NotificationLifecycle(unittest.TestCase):
         alerts = ["backend-api-unavailable", "backup-failed"]
         self.assertEqual(
             monitor.notification_decision(
-                alerts, self.failed, {"incident_open": True}, self.last,
-                self.now + 60, cooldown_seconds=60,
+                alerts,
+                self.failed,
+                {"incident_open": True},
+                self.last,
+                self.now + 60,
+                cooldown_seconds=60,
             )[0],
             "update",
         )
         for value in [True, "1800", 0, -1, 21601]:
             with self.assertRaises(ValueError):
                 monitor.notification_decision(
-                    alerts, self.failed, {}, self.last, self.now,
+                    alerts,
+                    self.failed,
+                    {},
+                    self.last,
+                    self.now,
                     cooldown_seconds=value,
                 )

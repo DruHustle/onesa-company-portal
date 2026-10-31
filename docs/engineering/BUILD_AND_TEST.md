@@ -1,5 +1,14 @@
 # Separate application builds and tests
 
+Operations notification regressions retain raw failed health samples while requiring
+three consecutive transport-only failures spanning two minutes before opening an
+email incident for a healthy API container. DNS/connect/timeout probes get one bounded
+retry; HTTP, TLS, unhealthy-container and shared-service failures remain immediate.
+Different APIs, clock rollback, rapid invocations and observation gaps cannot combine
+into a confirmed outage. Existing delivery identities, reconciliation holds, cooldowns
+and sustained recovery checks remain. Run `scripts/test_oracle_operations.py` and
+`scripts/test_oracle_notification_scope.py`; delivery is mocked throughout.
+
 Worker release regressions distinguish an independently replaced image revision
 from its retained Compose recipe directory. The actual project and working
 directory are part of the configuration-bound runtime profile. A different image
@@ -202,6 +211,15 @@ separate strict budgets. These are lab timings; exact-source hosted acceptance r
 a separate gate.
 
 ## Backend
+
+`tests/mail-claim.test.ts` exercises actual PostgreSQL claims and worker restart
+recovery, including a delivery retry after a 25-hour outage. Attempted mail older
+than 23 hours from creation fails closed for provider reconciliation; fresh retries
+and a first attempt of previously unsent mail remain available. Future creation
+times fail closed as well. The original payload and identity are preserved, with
+no external delivery. The conservative cutoff precedes
+[Resend's 24-hour idempotency expiry](https://resend.com/docs/dashboard/emails/idempotency-keys).
+It does not establish SMTP exactly-once delivery or actual inbox receipt.
 
 ### Idle database and worker regression
 

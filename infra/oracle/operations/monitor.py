@@ -18,6 +18,8 @@ UPDATE_SECONDS = 30 * 60
 RECOVERY_SECONDS = 5 * 60
 RECOVERY_SAMPLES = 6
 MAX_SAMPLE_GAP_SECONDS = 120
+TRANSPORT_FAILURE_SECONDS = 120
+TRANSPORT_FAILURE_SAMPLES = 3
 NOTIFICATION_SCOPE = "production-and-shared-v1"
 # Provider keys last 24 hours; leave an hour before manual reconciliation is needed.
 PENDING_RETRY_SECONDS = 23 * 60 * 60
@@ -126,7 +128,7 @@ def database_backup_health(products, state, now):
     return {"database_backup_failed": failed, "database_backup_age_seconds": ages}
 
 
-def probe_backend(name):
+def probe_backend_attempt(name):
     target = BACKENDS[name]
     result = {"http_healthy": False, "http_status": 0}
     try:
@@ -140,9 +142,9 @@ def probe_backend(name):
                 "--show-error",
                 "--fail",
                 "--connect-timeout",
-                "1",
-                "--max-time",
                 "3",
+                "--max-time",
+                "5",
                 "--max-filesize",
                 "512",
                 "--user-agent",
@@ -154,11 +156,19 @@ def probe_backend(name):
                 target["url"],
             ],
             capture_output=True,
-            timeout=4,
+            timeout=6,
             check=False,
         )
         body, status = response.stdout.rsplit(b"\n", 1)
         result["http_status"] = int(status)
+        if response.returncode:
+            result["http_error"] = {
+                6: "dns",
+                7: "connect",
+                28: "timeout",
+                35: "tls",
+                60: "tls",
+            }.get(response.returncode, "http" if result["http_status"] else "transport")
         if (
             response.returncode == 0
             and result["http_status"] == 200
@@ -173,8 +183,19 @@ def probe_backend(name):
                     value.get("mode") == "simulation"
                     and value.get("physical_actuation") is False
                 )
+    except subprocess.TimeoutExpired:
+        result["http_error"] = "timeout"
     except (OSError, ValueError, TypeError, subprocess.SubprocessError):
-        pass
+        result["http_error"] = "invalid_probe"
+    return result
+
+
+def probe_backend(name):
+    result = probe_backend_attempt(name)
+    # Retry only an unauthenticated, read-only transport failure, once. HTTP,
+    # certificate and response validation failures remain visible immediately.
+    if result.get("http_error") in {"dns", "connect", "timeout"}:
+        result = probe_backend_attempt(name)
     return result
 
 
@@ -519,8 +540,65 @@ def continuous_health(previous, now):
     )
 
 
+def transport_confirmation(alerts, metrics, previous, now):
+    """Keep raw failures; confirm only transport-only email incidents per API.
+
+    A single missed public probe must not create an alert/recovery email pair.
+    Explicit HTTP/TLS failures, unhealthy containers and shared-service failures
+    bypass this hold. Counts cannot combine different services, rapid invocations,
+    clock rollback or missing observations into a confirmed outage.
+    """
+    failed = failed_backends(metrics)
+    details = metrics.get("backends", {})
+    transient = {
+        name
+        for name, value in failed.items()
+        if value["container_healthy"]
+        and value["http_status"] == 0
+        and details[name].get("http_error", "transport")
+        in {"dns", "connect", "timeout", "transport"}
+    }
+    gap = observation_age(previous.get("checked_at"), now)
+    streaks = {}
+    confirmed = False
+    for name in transient:
+        prior = previous.get("transport_failures", {}).get(name, {})
+        since = observation_age(prior.get("since"), now)
+        continuous = (
+            gap is not None and 0 < gap <= MAX_SAMPLE_GAP_SECONDS and since is not None
+        )
+        count = prior.get("samples", 0) if continuous else 0
+        if type(count) is not int or not 0 <= count <= TRANSPORT_FAILURE_SAMPLES:
+            count = 0
+        streaks[name] = {
+            "samples": min(TRANSPORT_FAILURE_SAMPLES, count + 1),
+            "since": prior["since"]
+            if count
+            else datetime.datetime.fromtimestamp(
+                now, datetime.timezone.utc
+            ).isoformat(),
+        }
+        confirmed |= (
+            count + 1 >= TRANSPORT_FAILURE_SAMPLES
+            and (since or 0) >= TRANSPORT_FAILURE_SECONDS
+        )
+    return streaks, (
+        alerts != ["backend-api-unavailable"]
+        or not failed
+        or set(failed) != transient
+        or confirmed
+    )
+
+
 def notification_decision(
-    alerts, metrics, previous, last, now, *, cooldown_seconds=UPDATE_SECONDS
+    alerts,
+    metrics,
+    previous,
+    last,
+    now,
+    *,
+    cooldown_seconds=UPDATE_SECONDS,
+    transport_confirmed=True,
 ):
     """Group incident changes and require sustained health before closing one."""
     if (
@@ -550,7 +628,7 @@ def notification_decision(
         or last.get("kind") == "recovery"
         or previous.get("incident_open") is False
     ):
-        return "alert", 0
+        return ("alert" if transport_confirmed else None), 0
     added_failures = bool(
         set(alerts) - set(last.get("incident_rules", last.get("rules", [])))
         or set(failed_backends(metrics))
@@ -715,12 +793,17 @@ def main():
     scoped_metrics = notification_metrics(metrics)
     scoped_alerts = notification_alerts(alerts, scoped_metrics)
     scoped_previous = previous_notification_state(previous, last_notification)
+    transport_failures, transport_confirmed = transport_confirmation(
+        scoped_alerts, scoped_metrics, scoped_previous, now
+    )
     notification_state = {
         "scope": NOTIFICATION_SCOPE,
         "checked_at": record["checked_at"],
         "metrics": scoped_metrics,
         "alerts": scoped_alerts,
-        "incident_open": bool(scoped_alerts) or incident_open(scoped_previous),
+        "incident_open": (bool(scoped_alerts) and transport_confirmed)
+        or incident_open(scoped_previous),
+        "transport_failures": transport_failures,
     }
     if not scoped_alerts:
         since = (
@@ -739,6 +822,7 @@ def main():
         last_notification,
         now,
         cooldown_seconds=config.get("notification_cooldown_seconds", UPDATE_SECONDS),
+        transport_confirmed=transport_confirmed,
     )
     record["notification_state"] = notification_state
     # Compatibility mirrors describe notification health; raw metrics/alerts above
