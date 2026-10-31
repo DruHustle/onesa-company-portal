@@ -39,6 +39,15 @@ A `LOCAL_NVIDIA_CHROMIUM_EXECUTABLE` run is explicitly reported
 as supplemental local evidence and does not satisfy the pinned-engine or hosted
 release requirements. No provider request or production data is used by these tests.
 
+Browser dependency preparation runs only on the expected disposable GitHub-hosted
+runner and validates all existing APT sources before writing. An unexpected
+mirror URI fails closed with bounded scheme/hostname/port diagnostics, a recognized
+Ubuntu-path label or redacted path length, and credential/query/fragment presence
+flags. Credentials, arbitrary paths and query/fragment values are never logged.
+Explicit ports, including zero, and empty user information are rejected; malformed
+URI parser errors are redacted. The existing mirror allowlist, archive signing and
+canonical HTTPS requirement remain.
+
 Operations notification regressions retain raw failed health samples while requiring
 three consecutive transport-only failures spanning two minutes before opening an
 email incident for a healthy API container. DNS/connect/timeout probes get one bounded
