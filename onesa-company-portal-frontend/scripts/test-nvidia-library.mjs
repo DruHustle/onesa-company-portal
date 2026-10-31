@@ -13,6 +13,7 @@ const origin = 'http://127.0.0.1:3353';
 const child = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '-p', '3353'], {env: {...process.env, PUBLIC_RELEASE_ENABLED: 'false', BACKEND_URL: `http://127.0.0.1:${api.address().port}`, SITE_URL: origin}, stdio: 'ignore'});
 const supplemental = process.env.LOCAL_NVIDIA_CHROMIUM_EXECUTABLE;
 const engines = supplemental ? {chromium} : {chromium, firefox, webkit};
+const firefoxHeaded = process.env.NVIDIA_FIREFOX_HEADED === 'true';
 const evidence = process.env.NVIDIA_SCREENSHOT_DIR;
 if (evidence) await mkdir(evidence, {recursive: true});
 const results = [];
@@ -31,19 +32,25 @@ try {
   }
   assert.ok(ready, 'production build starts');
   for (const [engine, launcher] of Object.entries(engines)) {
-    browser = await launcher.launch(supplemental ? {executablePath: supplemental, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']} : undefined);
+    const headless = engine !== 'firefox' || !firefoxHeaded;
+    console.log(JSON.stringify({phase: 'start-engine', engine, headless}));
+    browser = await launcher.launch(supplemental
+      ? {executablePath: supplemental, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']}
+      : {headless});
     for (const locale of ['en', 'de']) for (const width of [320, 1440]) for (const colorScheme of ['light', 'dark']) {
+      const scenario = `${engine}/${locale}/${width}/${colorScheme}`;
+      console.log(JSON.stringify({phase: 'gallery-view', engine, locale, width, colorScheme}));
       const context = await browser.newContext({viewport: {width, height: 950}, colorScheme, reducedMotion: 'reduce'});
       const page = await context.newPage(); const errors = []; const requests = [];
       page.on('pageerror', error => errors.push(error.message));
       page.on('request', request => {if (request.url().endsWith('.glb')) requests.push(request);});
       await page.goto(`${origin}/${locale}/products/onesa-drone`);
       const section = page.locator('#nvidia-environments'); await section.scrollIntoViewIfNeeded();
-      await expect(section).toHaveAttribute('data-state', 'ready', {timeout: 30000});
+      await expect(section, `initial 3D rendering: ${scenario}`).toHaveAttribute('data-state', 'ready', {timeout: 30000});
       const choices = section.getByRole('group').getByRole('button');
       for (let i = 0; i < 3; i++) {
         await choices.nth(i).click(); await expect(choices.nth(i)).toHaveAttribute('aria-pressed', 'true');
-        await expect(section).toHaveAttribute('data-state', 'ready', {timeout: 30000});
+        await expect(section, `model ${i + 1}: ${scenario}`).toHaveAttribute('data-state', 'ready', {timeout: 30000});
         assert.equal(await section.locator('canvas').count(), 1);
         const slider = section.getByRole('slider'); await slider.focus(); await slider.press('ArrowRight');
         assert.equal(await slider.inputValue(), '1');

@@ -88,6 +88,9 @@ jobs:
       working-directory: onesa-company-portal-backend
     - run: npm ci
       working-directory: onesa-company-portal-frontend
+    - name: 'Release requirement: locked development dependency compatibility'
+      run: npm run test:dependency-security
+      working-directory: onesa-company-portal-frontend
     - name: 'Release requirement: NVIDIA asset integrity and parser safety'
       run: npm run test:nvidia-assets
       working-directory: onesa-company-portal-frontend
@@ -123,10 +126,11 @@ jobs:
         npx playwright install --with-deps chromium firefox webkit
       working-directory: onesa-company-portal-frontend
     - name: 'Release requirement: NVIDIA reference gallery browser journeys'
-      run: npm run test:nvidia-browser
+      run: xvfb-run -a --server-args='-screen 0 1920x1080x24' npm run test:nvidia-browser
       working-directory: onesa-company-portal-frontend
       env:
         NVIDIA_SCREENSHOT_DIR: ${{ runner.temp }}/portal-nvidia-gallery
+        NVIDIA_FIREFOX_HEADED: 'true'
     - name: Verify owner probe readiness with real isolated browsers
       run: |
         portal_readiness_fixture=$(mktemp -d "$RUNNER_TEMP/portal-readiness.XXXXXX")
