@@ -585,6 +585,33 @@ to test cleanup.
 
 ## Operations notification regression
 
+`scripts/test_oracle_metrics.py` runs the actual metrics JavaScript with disposable
+database and scanner modules using Node 24. It performs no provider request or real
+database query. Database import/query/cleanup failures must preserve an independent
+scanner result, scanner failures must preserve valid queue aggregates, and the
+scanner-only mode must never import the database module. Counts are nonnegative safe
+integers; queue/deletion ages are finite numbers and may be negative when a deletion
+is scheduled in the future. Unknown output fields and invalid metric types are refused.
+
+The normal client retains its existing image, credentials, permissions and read-only
+scanner marker mount. Only a failed, malformed or timed-out combined client permits
+one scanner-only fallback, bounded to four seconds. It calls the same consumer
+readiness function; it does not execute the scanner health script or substitute
+Docker health for marker access. An unavailable fallback remains a failed readiness
+observation. The exercised worst-case I/O path includes both client failures,
+retried public probes and notification delivery: 53 seconds against the unchanged
+60-second service deadline, leaving seven seconds of nominal overhead allowance.
+This budget test is not a hosted latency guarantee or a reason to extend the service
+deadline. The healthy path adds no container or database query.
+
+New worker metrics include typed running/health status. The stable `worker-stopped`
+rule also covers unhealthy workers, so new email payloads explain the observed state.
+Both fields must be present and valid in the stored pending metrics before adding
+that detail. Existing pending payloads without them follow the byte-identical legacy
+format; retries never replace their observation with a new sample. Regressions compare
+the complete serialized provider payload and idempotency key and retain all existing
+incident, cooldown, reconciliation and recovery behavior. No test email is sent.
+
 `scripts/test_oracle_notification_scope.py` exercises staging-only, production-only
 and mixed incidents with delivery and external commands mocked. All staging API
 initial alerts, updates, reminders, restarts and recoveries are excluded before
