@@ -513,6 +513,39 @@ class NotificationScopeTests(unittest.TestCase):
             set(monitor.failed_backends(self.sent[0]["metrics"])), {"robot-production"}
         )
 
+    def test_new_worker_observation_remains_frozen_after_ambiguous_delivery(self):
+        calls = []
+
+        def sender(alerts, simulation, **kwargs):
+            calls.append(copy.deepcopy((alerts, simulation, kwargs)))
+            if len(calls) == 1:
+                raise TimeoutError("Mock ambiguous acceptance")
+            return self.receipt(alerts, simulation, **kwargs)
+
+        value = metrics()
+        value.update(worker_healthy=False, worker_running=True, worker_health_status="unhealthy")
+        with self.assertRaises(TimeoutError):
+            self.tick(value, sender=sender)
+        pending = self.read()["notification_pending"]
+        changed = {**value, "worker_running": False, "worker_health_status": "unknown"}
+        self.tick(changed, sender=sender)
+        self.assertEqual(calls[0], calls[1])
+        self.assertEqual(self.sent[0]["reference"], pending["reference"])
+        self.assertEqual(self.sent[0]["metrics"]["worker_running"], True)
+        self.assertEqual(self.sent[0]["metrics"]["worker_health_status"], "unhealthy")
+        self.assertEqual(self.sent[0]["alerts"], ["worker-stopped"])
+
+    def test_legacy_worker_pending_does_not_acquire_new_current_fields(self):
+        value = metrics()
+        value["worker_healthy"] = False
+        pending = self.pending(value)
+        self.tick({**value, "worker_running": True, "worker_health_status": "unhealthy"})
+        self.assertEqual(self.sent[0]["metrics"], pending["metrics"])
+        self.assertEqual(self.sent[0]["reference"], pending["reference"])
+        self.assertNotIn("worker_running", self.sent[0]["metrics"])
+        self.assertEqual(monitor.worker_notification_detail(self.sent[0]["alerts"],
+                                                          self.sent[0]["metrics"]), "")
+
     def test_existing_provider_hold_is_not_released_by_recent_timestamp(self):
         pending = self.pending(metrics("robot-production"), held=True)
         self.tick(metrics())

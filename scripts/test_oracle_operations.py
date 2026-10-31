@@ -22,6 +22,10 @@ SPEC = importlib.util.spec_from_file_location(
 )
 monitor = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(monitor)
+DEPENDENCY_SUCCESS = {
+    "database_available": True, "scanner_ready": True, "failed_jobs": 0,
+    "queue_age_seconds": 0, "deletion_age_seconds": -30,
+}
 
 
 class OperationsGuards(unittest.TestCase):
@@ -224,6 +228,55 @@ class OperationsGuards(unittest.TestCase):
         self.assertNotIn("unapproved-host", str(result) + str(requests))
         self.assertEqual(list(result["affected_backends"]), ["robot-production"])
 
+    def test_worker_detail_preserves_legacy_payload_bytes_and_rejects_unknown_values(self):
+        values = {
+            "MAIL_PROVIDER": "resend", "NOTIFY_EMAIL": "andrew@onesa.eu",
+            "MAIL_FROM": "synthetic@example.invalid", "RESEND_API_KEY": "synthetic-only",
+        }
+        reference = "11111111-1111-4111-8111-111111111111"
+        checked = "2026-10-31T16:00:00+00:00"
+        requests = []
+
+        def opened(request, timeout):
+            requests.append(request)
+            return io.BytesIO(b'{"id":"synthetic-receipt"}')
+
+        legacy = {
+            "from": values["MAIL_FROM"], "to": [values["NOTIFY_EMAIL"]],
+            "reply_to": "info@onesa.eu", "subject": "ONESA service operations alert",
+            "text": "State: alert\nworker-stopped\nObserved at (UTC): " + checked
+            + "\nReference: " + reference,
+        }
+        cases = [
+            ({}, ""),
+            ({"worker_running": True}, ""),
+            ({"worker_health_status": "unhealthy"}, ""),
+            ({"worker_running": "true", "worker_health_status": "unhealthy"}, ""),
+            ({"worker_running": True, "worker_health_status": "private-provider-detail"}, ""),
+            ({"worker_running": True, "worker_health_status": "unhealthy"},
+             "\nWorker is running; health status: unhealthy."),
+            ({"worker_running": False, "worker_health_status": "unhealthy"},
+             "\nWorker is not running; last health status: unhealthy."),
+            ({"worker_running": True, "worker_health_status": "unknown"},
+             "\nWorker is running; health status: unknown."),
+        ]
+        with (
+            patch.dict("sys.modules", {"backup": SimpleNamespace(checked_env=lambda: (values, None))}),
+            patch.object(monitor.urllib.request, "build_opener", return_value=SimpleNamespace(open=opened)),
+        ):
+            for worker_fields, detail in cases:
+                with self.subTest(fields=worker_fields):
+                    for _ in range(2):
+                        monitor.notify(["worker-stopped"], metrics=worker_fields,
+                                       checked_at=checked, reference=reference)
+                    expected = {**legacy, "text": legacy["text"].replace(
+                        "worker-stopped\n", "worker-stopped" + detail + "\n")}
+                    self.assertEqual(requests[-1].data, json.dumps(expected).encode())
+                    self.assertEqual(requests[-1].data, requests[-2].data)
+                    self.assertEqual(requests[-1].get_header("Idempotency-key"),
+                                     "onesa-operations/" + reference)
+                    self.assertEqual(requests[-1].headers, requests[-2].headers)
+
     def test_failure_and_recovery_preserve_distinct_observations(self):
         with tempfile.TemporaryDirectory() as directory:
             state = Path(directory)
@@ -299,6 +352,67 @@ class OperationsGuards(unittest.TestCase):
                 )
 
 
+class DependencyMonitoring(unittest.TestCase):
+    def test_independent_results_need_no_fallback(self):
+        for value in (
+            DEPENDENCY_SUCCESS,
+            {**DEPENDENCY_SUCCESS, "scanner_ready": False},
+            {"database_available": False, "scanner_ready": True},
+            {"database_available": False, "scanner_ready": False},
+        ):
+            with self.subTest(value=value), patch.object(
+                monitor, "run", return_value=json.dumps(value).encode()
+            ) as acquire:
+                self.assertEqual(monitor.sample_dependencies({"image": "synthetic-image"}), value)
+                self.assertEqual(acquire.call_count, 1)
+                self.assertEqual(acquire.call_args.kwargs["timeout"], 20)
+                self.assertNotIn("--scanner-only", acquire.call_args.args[0])
+
+    def test_invalid_combined_metrics_get_one_typed_scanner_only_fallback(self):
+        invalid = [
+            b"not-json", b"null", b"[]",
+            b'{"database_available":false,"scanner_ready":false,"scanner_ready":true}',
+            json.dumps({**DEPENDENCY_SUCCESS, "database_available": 1}).encode(),
+            json.dumps({**DEPENDENCY_SUCCESS, "scanner_ready": "true"}).encode(),
+            json.dumps({**DEPENDENCY_SUCCESS, "failed_jobs": True}).encode(),
+            json.dumps({**DEPENDENCY_SUCCESS, "failed_jobs": -1}).encode(),
+            json.dumps({**DEPENDENCY_SUCCESS, "failed_jobs": 2**53}).encode(),
+            json.dumps({**DEPENDENCY_SUCCESS, "queue_age_seconds": False}).encode(),
+            json.dumps({**DEPENDENCY_SUCCESS, "deletion_age_seconds": float("inf")}).encode(),
+            json.dumps({**DEPENDENCY_SUCCESS, "queue_age_seconds": float("nan")}).encode(),
+            json.dumps({**DEPENDENCY_SUCCESS, "provider_detail": "private-provider-detail"}).encode(),
+            b'{"database_available":true,"scanner_ready":true}',
+        ]
+        for raw in invalid:
+            with self.subTest(raw=raw), patch.object(monitor, "run", side_effect=[
+                raw, b'{"scanner_ready":true}'
+            ]) as acquire:
+                self.assertEqual(monitor.sample_dependencies({"image": "synthetic-image"}),
+                                 {"database_available": False, "scanner_ready": True})
+                self.assertEqual(acquire.call_count, 2)
+                first, second = acquire.call_args_list
+                self.assertEqual(second.args[0], first.args[0] + ["--scanner-only"])
+                self.assertEqual(second.kwargs["timeout"], 4)
+                self.assertIn("onesa-portal-oracle-staging_scanner_socket:/run/onesa-scanner:ro", second.args[0])
+                self.assertIn("CLAMAV_SOCKET=/run/onesa-scanner/clamd.sock", second.args[0])
+                self.assertNotIn("health.sh", " ".join(second.args[0]))
+
+    def test_failed_or_invalid_fallback_remains_unavailable_without_retry(self):
+        for fallback in (
+            subprocess.TimeoutExpired(["synthetic-client"], 4),
+            OSError("private-provider-detail"),
+            b'{"scanner_ready":false}', b'{"scanner_ready":"true"}',
+            b'{"scanner_ready":1}', b'{"scanner_ready":true,"database_available":true}',
+        ):
+            with self.subTest(fallback=type(fallback).__name__), patch.object(monitor, "run", side_effect=[
+                subprocess.TimeoutExpired(["synthetic-client"], 20), fallback,
+            ]) as acquire:
+                self.assertEqual(monitor.sample_dependencies({"image": "synthetic-image"}),
+                                 {"database_available": False, "scanner_ready": False})
+                self.assertEqual(acquire.call_count, 2)
+                self.assertEqual([call.kwargs["timeout"] for call in acquire.call_args_list], [20, 4])
+
+
 class BackendMonitoring(unittest.TestCase):
     def test_optional_monitor_only_samples_backends_when_enabled(self):
         original_read = Path.read_text
@@ -315,7 +429,7 @@ class BackendMonitoring(unittest.TestCase):
                 ).encode()
             if command[1] == "exec":
                 return b""
-            return b'{"database_available":true,"scanner_ready":true}'
+            return json.dumps(DEPENDENCY_SUCCESS).encode()
 
         with (
             tempfile.TemporaryDirectory() as directory,
@@ -343,13 +457,14 @@ class BackendMonitoring(unittest.TestCase):
             backends.assert_called_once_with({})
 
     def test_retried_probes_overlap_database_read_and_fit_delivery_deadline(self):
-        for database_failure in (False, True):
-            with self.subTest(database_failure=database_failure):
+        for database_failure, scanner_fallback in ((False, None), (True, True), (True, False), (True, None)):
+            with self.subTest(database_failure=database_failure, scanner_fallback=scanner_fallback):
                 database_started = threading.Event()
                 probe_started = threading.Event()
                 probes_started = threading.Barrier(len(monitor.BACKENDS))
                 serial_timeouts = []
                 database_timeouts = []
+                fallback_timeouts = []
                 inspect_timeouts = []
                 probe_timeouts = {
                     value["url"]: [] for value in monitor.BACKENDS.values()
@@ -364,6 +479,11 @@ class BackendMonitoring(unittest.TestCase):
 
                 def acquire(command, timeout):
                     if command[1] == "run":
+                        if command[-1] == "--scanner-only":
+                            fallback_timeouts.append(timeout)
+                            if scanner_fallback is None:
+                                raise subprocess.TimeoutExpired(command, timeout)
+                            return json.dumps({"scanner_ready": scanner_fallback}).encode()
                         database_timeouts.append(timeout)
                         database_started.set()
                         self.assertTrue(
@@ -372,7 +492,7 @@ class BackendMonitoring(unittest.TestCase):
                         )
                         if database_failure:
                             raise subprocess.TimeoutExpired(command, timeout)
-                        return b'{"database_available":true,"scanner_ready":true}'
+                        return json.dumps(DEPENDENCY_SUCCESS).encode()
                     serial_timeouts.append(timeout)
                     if command[1] == "inspect":
                         return json.dumps(
@@ -456,13 +576,14 @@ class BackendMonitoring(unittest.TestCase):
                     monitor.notify(["backup-failed"], metrics=metrics)
 
                 self.assertEqual(metrics["database_available"], not database_failure)
-                self.assertEqual(metrics["scanner_ready"], not database_failure)
+                self.assertEqual(metrics["scanner_ready"], not database_failure or scanner_fallback is True)
                 self.assertTrue(metrics["backend_api_healthy"])
                 self.assertEqual(set(metrics["backends"]), set(monitor.BACKENDS))
                 for attempts in probe_timeouts.values():
                     self.assertEqual(len(attempts), 2)
                 self.assertEqual(len(inspect_timeouts), 1)
                 self.assertEqual(len(database_timeouts), 1)
+                self.assertEqual(fallback_timeouts, [4] if database_failure else [])
                 self.assertEqual(len(delivery_timeouts), 1)
 
                 # Derive the critical path from exercised I/O boundaries, including
@@ -471,7 +592,7 @@ class BackendMonitoring(unittest.TestCase):
                     sum(attempts) for attempts in probe_timeouts.values()
                 )
                 sampling_budget = sum(serial_timeouts) + max(
-                    sum(database_timeouts), backend_budget
+                    sum(database_timeouts) + sum(fallback_timeouts), backend_budget
                 )
                 units = Path(monitor.__file__).parent
                 service = configparser.ConfigParser()
@@ -479,6 +600,7 @@ class BackendMonitoring(unittest.TestCase):
                 deadline = service.getfloat("Service", "TimeoutStartSec")
                 self.assertEqual(deadline, 60)
                 self.assertLess(sampling_budget + sum(delivery_timeouts), deadline)
+                self.assertGreaterEqual(deadline - sampling_budget - sum(delivery_timeouts), 7)
 
                 timer = configparser.ConfigParser()
                 timer.read(units / "onesa-portal-monitor.timer")
