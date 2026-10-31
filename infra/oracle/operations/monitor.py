@@ -3,6 +3,7 @@
 import argparse
 import datetime
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -20,6 +21,7 @@ RECOVERY_SAMPLES = 6
 MAX_SAMPLE_GAP_SECONDS = 120
 TRANSPORT_FAILURE_SECONDS = 120
 TRANSPORT_FAILURE_SAMPLES = 3
+SCANNER_FALLBACK_SECONDS = 4
 NOTIFICATION_SCOPE = "production-and-shared-v1"
 # Provider keys last 24 hours; leave an hour before manual reconciliation is needed.
 PENDING_RETRY_SECONDS = 23 * 60 * 60
@@ -258,6 +260,68 @@ def sample_backends(previous):
     }
 
 
+def dependency_metrics(raw, *, scanner_only=False):
+    """Accept only this collector's fields; failed acquisition is not zero queue age."""
+    def unique_object(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError("Duplicate dependency metric")
+            value[key] = item
+        return value
+
+    value = json.loads(raw, object_pairs_hook=unique_object)
+    if not isinstance(value, dict) or type(value.get("scanner_ready")) is not bool:
+        raise ValueError("Invalid scanner metric")
+    if scanner_only:
+        if set(value) != {"scanner_ready"}:
+            raise ValueError("Unexpected scanner-only metrics")
+        return value
+    if type(value.get("database_available")) is not bool:
+        raise ValueError("Invalid database metric")
+    expected = {"database_available", "scanner_ready"}
+    if value["database_available"]:
+        expected.update({"failed_jobs", "queue_age_seconds", "deletion_age_seconds"})
+        count = value.get("failed_jobs")
+        if type(count) is not int or not 0 <= count <= 2**53 - 1:
+            raise ValueError("Invalid failed-job count")
+        for key in ("queue_age_seconds", "deletion_age_seconds"):
+            age = value.get(key)
+            if type(age) not in (int, float) or not math.isfinite(age):
+                raise ValueError("Invalid queue age")
+    if set(value) != expected:
+        raise ValueError("Unexpected dependency metrics")
+    return value
+
+
+def sample_dependencies(config):
+    command = [
+        "docker", "run", "--rm", "-i", "--read-only", "--tmpfs", "/tmp",
+        "--memory", "128m", "--cpus", "0.1", "--cap-drop", "ALL",
+        "--security-opt", "no-new-privileges", "--env-file",
+        "/etc/onesa/portal-production.env", "-e",
+        "CLAMAV_SOCKET=/run/onesa-scanner/clamd.sock", "--group-add", "3000",
+        "-v", "onesa-portal-oracle-staging_scanner_socket:/run/onesa-scanner:ro",
+        "-v", str(Path(__file__).parents[3] / "scripts/oracle_metrics.mjs")
+        + ":/app/metrics.mjs:ro", "--entrypoint", "node", config["image"], "metrics.mjs",
+    ]
+    try:
+        return dependency_metrics(run(command, timeout=20))
+    except (ValueError, TypeError, OverflowError, OSError, subprocess.SubprocessError):
+        # A whole-client failure says nothing about the scanner. One short,
+        # database-free attempt uses the same image, consumer permissions and
+        # read-only marker mount. No extra client runs on the normal path.
+        result = {"database_available": False, "scanner_ready": False}
+        try:
+            result.update(dependency_metrics(
+                run(command + ["--scanner-only"], timeout=SCANNER_FALLBACK_SECONDS),
+                scanner_only=True,
+            ))
+        except (ValueError, TypeError, OverflowError, OSError, subprocess.SubprocessError):
+            pass
+        return result
+
+
 def sample(config):
     def inspect(name):
         try:
@@ -267,6 +331,8 @@ def sample(config):
 
     worker = inspect("onesa-portal-oracle-production-worker-1")
     scanner = inspect("onesa-portal-oracle-staging-scanner-1")
+    worker_running = worker.get("State", {}).get("Running")
+    worker_health = worker.get("State", {}).get("Health", {}).get("Status")
     mem = {
         l.split(":", 1)[0]: int(l.split()[1]) * 1024
         for l in Path("/proc/meminfo").read_text().splitlines()
@@ -279,8 +345,11 @@ def sample(config):
     )
     metrics = {
         "worker_required": config["worker_required"],
-        "worker_healthy": worker.get("State", {}).get("Health", {}).get("Status")
-        == "healthy",
+        "worker_healthy": worker_health == "healthy",
+        "worker_running": worker_running if type(worker_running) is bool else None,
+        "worker_health_status": worker_health
+        if isinstance(worker_health, str) and worker_health
+        in {"healthy", "unhealthy", "starting"} else "unknown",
         "worker_restart_count": worker.get("RestartCount", 0),
         "previous_restart_count": previous.get(
             "worker_restart_count", worker.get("RestartCount", 0)
@@ -329,46 +398,7 @@ def sample(config):
             if config.get("backend_monitoring_enabled") is True
             else None
         )
-        try:
-            raw = run(
-                [
-                    "docker",
-                    "run",
-                    "--rm",
-                    "-i",
-                    "--read-only",
-                    "--tmpfs",
-                    "/tmp",
-                    "--memory",
-                    "128m",
-                    "--cpus",
-                    "0.1",
-                    "--cap-drop",
-                    "ALL",
-                    "--security-opt",
-                    "no-new-privileges",
-                    "--env-file",
-                    "/etc/onesa/portal-production.env",
-                    "-e",
-                    "CLAMAV_SOCKET=/run/onesa-scanner/clamd.sock",
-                    "--group-add",
-                    "3000",
-                    "-v",
-                    "onesa-portal-oracle-staging_scanner_socket:/run/onesa-scanner:ro",
-                    "-v",
-                    str(Path(__file__).parents[3] / "scripts/oracle_metrics.mjs")
-                    + ":/app/metrics.mjs:ro",
-                    "--entrypoint",
-                    "node",
-                    config["image"],
-                    "metrics.mjs",
-                ],
-                timeout=20,
-            )
-            metrics.update(json.loads(raw))
-        except (ValueError, subprocess.SubprocessError):
-            metrics["database_available"] = False
-            metrics["scanner_ready"] = False
+        metrics.update(sample_dependencies(config))
         if backends is not None:
             metrics.update(backends.result())
     return metrics
@@ -650,6 +680,21 @@ def notification_decision(
     return ("reminder" if age >= REMINDER_SECONDS else None), 0
 
 
+def worker_notification_detail(alerts, metrics):
+    """Old pending payloads lack these fields and keep their exact original body."""
+    if "worker-stopped" not in alerts or not isinstance(metrics, dict):
+        return ""
+    running, health = metrics.get("worker_running"), metrics.get("worker_health_status")
+    if type(running) is not bool or not isinstance(health, str) or health not in {
+        "healthy", "unhealthy", "starting", "unknown"
+    }:
+        return ""
+    return (
+        "\nWorker is running; health status: " if running
+        else "\nWorker is not running; last health status: "
+    ) + health + "."
+
+
 def notify(
     alerts,
     simulation=False,
@@ -700,6 +745,7 @@ def notify(
             else "State: " + kind + "\n"
         )
         + "\n".join(alerts)
+        + worker_notification_detail(alerts, metrics)
         + ("\nObserved at (UTC): " + checked_at if checked_at else "")
         + "".join(
             "\nAffected API: "

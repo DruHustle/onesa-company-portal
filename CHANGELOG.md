@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased — Independent scanner observations and worker status
+
+- Check the production consumer's scanner readiness independently of database
+  acquisition. A database import, query or cleanup failure no longer erases a
+  completed scanner observation; failed queue acquisition does not become a zero
+  backlog. Aggregate fields retain strict types and finite signed ages.
+- After a failed or malformed combined metrics client, attempt the same read-only
+  scanner check once without importing a database client, with a four-second
+  deadline. The healthy path adds no client or database query. Unknown readiness
+  remains a failure; the monitor's 60-second service limit is unchanged.
+- Retain the `worker-stopped` incident identity while new observations explain
+  whether the worker is running and report its health status. Older pending email
+  payloads retain their exact body and idempotency key; incident grouping and
+  notification/recovery timing are unchanged.
+- Synthetic CLI and mocked operations regressions cover independent failures,
+  invalid values, bounded fallback, pending retries and the existing service
+  deadline. Source promotion and qualified operations-component installation remain
+  separate requirements; this correction does not restore database capacity.
+
 ## Unreleased — Confirm transient probe failures before notifying
 
 - Retry an unauthenticated DNS/connect/timeout health probe once with bounded
