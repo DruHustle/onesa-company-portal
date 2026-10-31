@@ -1,0 +1,5 @@
+# Pinned vendor artifacts retain their original bytes on every checkout.
+onesa-company-portal-frontend/public/models/nvidia/** -text
+onesa-company-portal-frontend/public/licenses/three.txt -text
+# The upstream CC BY licence ends with a blank line; its exact hash is verified.
+onesa-company-portal-frontend/public/models/nvidia/*/LICENSE.txt whitespace=-blank-at-eof

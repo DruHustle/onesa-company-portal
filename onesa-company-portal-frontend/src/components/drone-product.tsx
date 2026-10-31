@@ -3,6 +3,7 @@ import type {Locale} from '@/config/copy';
 import {DroneVisual} from './drone-visual';
 import {DroneImage} from './drone-image';
 import {DroneFilm} from './drone-film';
+import {NvidiaReferenceLibrary} from './nvidia-reference-library';
 import styles from './drone-product.module.css';
 
 export function DronePortfolio({locale}:{locale:Locale}) {
@@ -53,6 +54,7 @@ export function DroneProduct({locale}:{locale:Locale}) {
    <div className={styles.sectionHead}><div><p className="eyebrow">{de?'DIE VISION IN BEWEGUNG':'THE VISION IN MOTION'}</p><h2 id="drone-film-title">{de?'Eine neue Perspektive auf Lieferung.':'A new perspective on delivery.'}</h2></div><p>{de?'Ein kurzer visueller Einblick in unsere Produktidee. Originale Konzeptbilder, als ruhiger Film inszeniert.':'A short visual introduction to the product vision. Original concept imagery, brought together in a quiet cinematic sequence.'}</p></div>
    <DroneFilm locale={locale}/>
   </section>
+  <div className="section"><NvidiaReferenceLibrary locale={locale}/></div>
   <div className={`section ${styles.sections}`}><p className="eyebrow">{de?'SOFTWAREUMFANG UND ENTWICKLUNGSPLAN':'SOFTWARE SCOPE AND DEVELOPMENT ROADMAP'}</p>{sections[locale].map(([title,body],i)=><section key={title}><span className={styles.number}>0{i+1}</span><div><h2>{title}</h2><p>{body}</p></div></section>)}
    <details className={styles.explorer}><summary>{de?'Illustrative Fluggeräteansicht erkunden':'Explore an illustrative aircraft view'}</summary><DroneVisual locale={locale}/></details>
   </div>

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "node --env-file-if-exists=../.env node_modules/next/dist/bin/next dev --hostname 127.0.0.1 -p ${FRONTEND_PORT:-3300}",
-    "build": "next build --webpack",
+    "build": "node scripts/validate-nvidia-assets.mjs && next build --webpack",
     "start": "node --env-file-if-exists=../.env ../scripts/start-frontend.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
@@ -24,7 +24,9 @@
     "test:engineering-sign-in": "node scripts/test-engineering-sign-in.mjs && ONESA_TEST_ACCESS_MODE=disabled node scripts/test-engineering-sign-in.mjs",
     "test:workspace-drafts": "node --test unit/draft-history.test.ts",
     "test:hero-motion": "node --test unit/hero-motion.test.ts && node scripts/test-hero-motion.mjs",
-    "test:drone-product": "node scripts/test-drone-product.mjs"
+    "test:drone-product": "node scripts/test-drone-product.mjs",
+    "test:nvidia-assets": "node scripts/validate-nvidia-assets.mjs && node --test unit/nvidia-assets.test.mjs",
+    "test:nvidia-browser": "node scripts/test-nvidia-library.mjs"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.17",
@@ -32,7 +34,8 @@
     "openapi-fetch": "^0.17.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tailwindcss": "^4.1.17"
+    "tailwindcss": "^4.1.17",
+    "three": "0.186.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.0",
@@ -40,6 +43,7 @@
     "@types/node": "^22.19.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@types/three": "0.186.0",
     "eslint": "^9.39.0",
     "openapi-typescript": "^7.13.0",
     "typescript": "^5.9.3",

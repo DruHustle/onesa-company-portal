@@ -9,6 +9,7 @@ import styles from './product-overview.module.css';
 import {Fragment} from 'react';
 import {DronePortfolio} from './drone-product';
 import {IndustrialAI} from './industrial-ai';
+import {NvidiaReferenceLibrary} from './nvidia-reference-library';
 
 const applicationDirections = {
   en: {
@@ -96,5 +97,5 @@ export function ProductOverview({locale}:{locale:Locale}) {
       {product.id==='ai'&&<section className={styles.workspace} aria-labelledby="ai-workspace-title"><div><p className="eyebrow">{locale==='de'?'IM PRODUKT':'INSIDE THE PRODUCT'}</p><h3 id="ai-workspace-title">{locale==='de'?'Ein Arbeitsbereich für Wissen und nächste Schritte.':'A workspace for knowledge and next steps.'}</h3><p>{locale==='de'?'Chat, Knowledge, Agents und Travel verbinden Gespräche mit eigenem Wissen und geführten Aufgaben. Die Produktdokumentation erklärt die verfügbaren Funktionen und ihre Grenzen.':'Chat, Knowledge, Agents and Travel connect conversations with your knowledge and guided tasks. The product documentation explains the available features and their boundaries.'}</p></div><ProductProof product="ai" locale={locale}/></section>}
       {product.id==='robot'&&<section className={styles.workspace} aria-label={locale==='de'?'Die Simulator-Oberfläche':'Inside the simulator'}><div><p className="eyebrow">{locale==='de'?'SOFTWARE-SIMULATION':'SOFTWARE SIMULATION'}</p><h3>{locale==='de'?'Vorschlagen. Prüfen. Den Zustand verstehen.':'Propose. Review. Understand the state.'}</h3><p>{locale==='de'?'Die geschützte Oberfläche trennt Vorschlag, Bestätigung, simulierten Zustand und Stop. Eine Administratorberechtigung ist keine verbundene oder qualifizierte Hardware.':'The protected interface separates proposals, confirmation, simulated state and Stop. Administrator permission is distinct from connected or qualified hardware.'}</p></div><ProductProof product="robot" locale={locale}/></section>}
     </article>{product.id==='ai'&&<><ApplicationDirections locale={locale}/><IndustrialAI locale={locale}/></>}</Fragment>)}
-  </section><DronePortfolio locale={locale}/></>;
+  </section><DronePortfolio locale={locale}/><NvidiaReferenceLibrary locale={locale}/></>;
 }

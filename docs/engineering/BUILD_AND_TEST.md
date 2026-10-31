@@ -1,5 +1,44 @@
 # Separate application builds and tests
 
+## NVIDIA reference asset gallery
+
+The product index and Drone product page contain three browser derivatives from
+NVIDIA's `nvidia/simready-assets` dataset, pinned to revision
+`4763fbfaa4f8e97658e68b57d01b4c86659e08b5`. The local catalog binds each GLB,
+rendered preview, original license and source record by SHA-256 and byte length.
+The CC BY 4.0 source credit and Onesa geometry/material modifications remain
+visible beside the viewer. Three.js `0.186.1` and its type definitions are pinned
+in the frontend lockfile; this gallery does not change backend contracts or
+grant simulation, sensor or physical-control authority.
+The renderer's complete MIT notice ships at `/licenses/three.txt`; the build
+compares it with the installed pinned package's license before emitting assets.
+
+Run these from `onesa-company-portal-frontend` after a locked install:
+
+```sh
+npm run test:nvidia-assets
+npm run build
+npm run test:nvidia-browser
+```
+
+The asset tests validate actual bytes, immutable provenance, license text and
+static geometry budgets, then parse all three files with the real GLTF loader
+while forbidding external resource requests. Corrupt hashes, mutable revision
+names, traversal paths, duplicate identities and malformed files must fail.
+The production build also validates that the compiled and public catalogs agree.
+
+The browser suite starts an isolated production frontend and loopback synthetic
+API. Its default run uses the locked Chromium, Firefox and WebKit engines to
+check both languages, light/dark appearance, desktop/mobile widths, all three
+models, keyboard controls, accessibility, download failure/retry, graphics-context
+loss, no-WebGL and no-JavaScript previews. Both scripts are mandatory named
+`Release requirement:` steps in `verify.yml`; skipped or failed steps cannot
+qualify a release. CI captures temporary per-model screenshots before the theme
+and accessibility checks to retain their scrolling and theme-transition regression.
+A `LOCAL_NVIDIA_CHROMIUM_EXECUTABLE` run is explicitly reported
+as supplemental local evidence and does not satisfy the pinned-engine or hosted
+release requirements. No provider request or production data is used by these tests.
+
 Operations notification regressions retain raw failed health samples while requiring
 three consecutive transport-only failures spanning two minutes before opening an
 email incident for a healthy API container. DNS/connect/timeout probes get one bounded
