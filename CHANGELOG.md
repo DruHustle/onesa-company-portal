@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased — Confirm transient probe failures before notifying
+
+- Retry an unauthenticated DNS/connect/timeout health probe once with bounded
+  deadlines. Record fixed error categories without provider bodies or diagnostics.
+- Preserve every raw failed sample; open a transport-only email incident for a
+  healthy container after three consecutive failed samples over at least two minutes.
+  Explicit HTTP/TLS failures, unhealthy containers and shared-service failures remain
+  immediate. Recovery emails still require a previously notified incident and sustained
+  health. A single missed probe no longer generates an alert/recovery email pair.
+- Stop ambiguous transactional-mail retries outside a conservative 23-hour window
+  for provider reconciliation, retaining the original payload and delivery identity.
+  Previously unattempted mail can still receive its first attempt.
+- Overlap independent backend probes with database/queue sampling so bounded retries
+  leave room for delivery within the existing 60-second monitor service deadline.
+  Limit timer coalescing to one second while retaining the one-minute cadence.
+- These source changes require separate monitor/worker installation; tests use
+  synthetic records and mocked mail delivery.
+
 ## Unreleased — Branded transactional email
 
 - Add responsive Onesa email cards with the existing embedded logo, readable system

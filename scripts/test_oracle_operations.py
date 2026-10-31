@@ -1,11 +1,13 @@
 """Failure and isolation tests; never hosted qualification evidence."""
 
+import configparser
 import datetime
 import importlib.util
 import io
 import json
 import subprocess
 import tempfile
+import threading
 import unittest
 import uuid
 from pathlib import Path
@@ -298,7 +300,7 @@ class OperationsGuards(unittest.TestCase):
 
 
 class BackendMonitoring(unittest.TestCase):
-    def test_optional_monitor_and_acquisition_budget_preserve_existing_timer(self):
+    def test_optional_monitor_only_samples_backends_when_enabled(self):
         original_read = Path.read_text
 
         def read(path, *args, **kwargs):
@@ -324,7 +326,7 @@ class BackendMonitoring(unittest.TestCase):
                 "disk_usage",
                 return_value=SimpleNamespace(used=20, total=100),
             ),
-            patch.object(monitor, "run", side_effect=acquire) as commands,
+            patch.object(monitor, "run", side_effect=acquire),
             patch.object(
                 monitor, "sample_backends", return_value={"backend_api_healthy": True}
             ) as backends,
@@ -339,18 +341,155 @@ class BackendMonitoring(unittest.TestCase):
                 }
             )
             backends.assert_called_once_with({})
-        # Two3s inspect reads,3s scanner read,20s aggregate DB read, up to7s
-        # backend sampling and20s notification leave4s in the60s service budget.
-        self.assertEqual(
-            [call.kwargs["timeout"] for call in commands.call_args_list[:4]],
-            [3, 3, 3, 20],
-        )
-        self.assertLess(
-            sum(call.kwargs["timeout"] for call in commands.call_args_list[:4])
-            + 7
-            + 20,
-            60,
-        )
+
+    def test_retried_probes_overlap_database_read_and_fit_delivery_deadline(self):
+        for database_failure in (False, True):
+            with self.subTest(database_failure=database_failure):
+                database_started = threading.Event()
+                probe_started = threading.Event()
+                probes_started = threading.Barrier(len(monitor.BACKENDS))
+                serial_timeouts = []
+                database_timeouts = []
+                inspect_timeouts = []
+                probe_timeouts = {
+                    value["url"]: [] for value in monitor.BACKENDS.values()
+                }
+                delivery_timeouts = []
+                original_read = Path.read_text
+
+                def read(path, *args, **kwargs):
+                    if str(path) == "/proc/meminfo":
+                        return "MemAvailable: 1048576 kB\n"
+                    return original_read(path, *args, **kwargs)
+
+                def acquire(command, timeout):
+                    if command[1] == "run":
+                        database_timeouts.append(timeout)
+                        database_started.set()
+                        self.assertTrue(
+                            probe_started.wait(2),
+                            "Public probing must start while database acquisition waits",
+                        )
+                        if database_failure:
+                            raise subprocess.TimeoutExpired(command, timeout)
+                        return b'{"database_available":true,"scanner_ready":true}'
+                    serial_timeouts.append(timeout)
+                    if command[1] == "inspect":
+                        return json.dumps(
+                            [{"Name": "/synthetic-scanner", "RestartCount": 0}]
+                        ).encode()
+                    self.assertEqual(command[1], "exec")
+                    return b""
+
+                def probe(command, *, timeout, **kwargs):
+                    if command[:2] == ["docker", "inspect"]:
+                        inspect_timeouts.append(timeout)
+                        return SimpleNamespace(
+                            stdout=json.dumps(self.containers()).encode(), returncode=0
+                        )
+                    self.assertEqual(command[0], "/usr/bin/curl")
+                    attempts = probe_timeouts[command[-1]]
+                    attempts.append(timeout)
+                    probe_started.set()
+                    self.assertTrue(
+                        database_started.wait(2),
+                        "Database acquisition must start while public probing waits",
+                    )
+                    if len(attempts) == 1:
+                        probes_started.wait(timeout=2)
+                        raise subprocess.TimeoutExpired(command, timeout)
+                    target = next(
+                        value
+                        for value in monitor.BACKENDS.values()
+                        if value["url"] == command[-1]
+                    )
+                    return SimpleNamespace(
+                        stdout=json.dumps(
+                            {
+                                "status": target["status"],
+                                "mode": "simulation",
+                                "physical_actuation": False,
+                            }
+                        ).encode()
+                        + b"\n200",
+                        returncode=0,
+                    )
+
+                def opened(request, timeout):
+                    delivery_timeouts.append(timeout)
+                    return io.BytesIO(b'{"id":"synthetic-receipt"}')
+
+                values = {
+                    "MAIL_PROVIDER": "resend",
+                    "NOTIFY_EMAIL": "andrew@onesa.eu",
+                    "MAIL_FROM": "synthetic@example.invalid",
+                    "RESEND_API_KEY": "synthetic-only",
+                }
+                with (
+                    tempfile.TemporaryDirectory() as directory,
+                    patch.object(monitor, "STATE", Path(directory)),
+                    patch.object(monitor.Path, "read_text", read),
+                    patch.object(
+                        monitor.shutil,
+                        "disk_usage",
+                        return_value=SimpleNamespace(used=20, total=100),
+                    ),
+                    patch.object(monitor, "run", side_effect=acquire),
+                    patch.object(monitor.subprocess, "run", side_effect=probe),
+                    patch.dict(
+                        "sys.modules",
+                        {"backup": SimpleNamespace(checked_env=lambda: (values, None))},
+                    ),
+                    patch.object(
+                        monitor.urllib.request,
+                        "build_opener",
+                        return_value=SimpleNamespace(open=opened),
+                    ),
+                ):
+                    metrics = monitor.sample(
+                        {
+                            "worker_required": True,
+                            "image": "synthetic-image",
+                            "backend_monitoring_enabled": True,
+                        }
+                    )
+                    monitor.notify(["backup-failed"], metrics=metrics)
+
+                self.assertEqual(metrics["database_available"], not database_failure)
+                self.assertEqual(metrics["scanner_ready"], not database_failure)
+                self.assertTrue(metrics["backend_api_healthy"])
+                self.assertEqual(set(metrics["backends"]), set(monitor.BACKENDS))
+                for attempts in probe_timeouts.values():
+                    self.assertEqual(len(attempts), 2)
+                self.assertEqual(len(inspect_timeouts), 1)
+                self.assertEqual(len(database_timeouts), 1)
+                self.assertEqual(len(delivery_timeouts), 1)
+
+                # Derive the critical path from exercised I/O boundaries, including
+                # both probe attempts; do not substitute an assumed probe budget.
+                backend_budget = sum(inspect_timeouts) + max(
+                    sum(attempts) for attempts in probe_timeouts.values()
+                )
+                sampling_budget = sum(serial_timeouts) + max(
+                    sum(database_timeouts), backend_budget
+                )
+                units = Path(monitor.__file__).parent
+                service = configparser.ConfigParser()
+                service.read(units / "onesa-portal-monitor.service")
+                deadline = service.getfloat("Service", "TimeoutStartSec")
+                self.assertEqual(deadline, 60)
+                self.assertLess(sampling_budget + sum(delivery_timeouts), deadline)
+
+                timer = configparser.ConfigParser()
+                timer.read(units / "onesa-portal-monitor.timer")
+                cadence = timer.getfloat("Timer", "OnUnitActiveSec")
+                accuracy = float(timer.get("Timer", "AccuracySec").removesuffix("s"))
+                self.assertEqual(cadence, 60)
+                self.assertEqual(accuracy, 1)
+                self.assertLess(
+                    cadence + accuracy + sampling_budget,
+                    monitor.MAX_SAMPLE_GAP_SECONDS,
+                )
 
     def containers(self):
         return [
@@ -454,8 +593,9 @@ class BackendMonitoring(unittest.TestCase):
             self.assertFalse(
                 any("authorization" in v.lower() or "cookie" in v.lower() for v in args)
             )
-            self.assertEqual(request.call_args.kwargs["timeout"], 4)
-            self.assertEqual(args[args.index("--max-time") + 1], "3")
+            self.assertEqual(request.call_args.kwargs["timeout"], 6)
+            self.assertEqual(args[args.index("--max-time") + 1], "5")
+            self.assertEqual(args[args.index("--connect-timeout") + 1], "3")
 
     def test_html_redirect_invalid_json_and_oversize_are_not_health(self):
         for body, code, exit_code in [
@@ -482,15 +622,45 @@ class BackendMonitoring(unittest.TestCase):
             monitor.subprocess,
             "run",
             side_effect=subprocess.TimeoutExpired("synthetic", 4),
-        ):
+        ) as probe:
             self.assertEqual(
                 monitor.probe_backend("ai-production"),
-                {"http_healthy": False, "http_status": 0},
+                {"http_healthy": False, "http_status": 0, "http_error": "timeout"},
             )
+            self.assertEqual(probe.call_count, 2)
         with patch.object(monitor.subprocess, "run") as request:
             with self.assertRaises(KeyError):
                 monitor.probe_backend("unapproved")
             request.assert_not_called()
+
+    def test_transient_probe_retries_once_but_http_and_tls_failures_do_not(self):
+        for code in (6, 7, 28):
+            with (
+                self.subTest(code=code),
+                patch.object(
+                    monitor.subprocess,
+                    "run",
+                    side_effect=[
+                        SimpleNamespace(stdout=b"\n000", returncode=code),
+                        SimpleNamespace(stdout=b'{"status":"ok"}\n200', returncode=0),
+                    ],
+                ) as probe,
+            ):
+                self.assertTrue(monitor.probe_backend("ai-production")["http_healthy"])
+                self.assertEqual(probe.call_count, 2)
+        for code, status in ((60, b"000"), (35, b"000"), (22, b"503")):
+            with (
+                self.subTest(code=code),
+                patch.object(
+                    monitor.subprocess,
+                    "run",
+                    return_value=SimpleNamespace(
+                        stdout=b"\n" + status, returncode=code
+                    ),
+                ) as probe,
+            ):
+                self.assertFalse(monitor.probe_backend("ai-production")["http_healthy"])
+                self.assertEqual(probe.call_count, 1)
 
 
 if __name__ == "__main__":
@@ -603,9 +773,7 @@ class NotificationLifecycle(unittest.TestCase):
         self.assertIsNone(
             self.decision(previous={"alerts": [], "healthy_samples": 1})[0]
         )
-        self.assertEqual(
-            self.decision(previous={"incident_open": False})[0], "alert"
-        )
+        self.assertEqual(self.decision(previous={"incident_open": False})[0], "alert")
         self.assertIsNone(
             self.decision(previous={"incident_open": True, "healthy_samples": 2})[0]
         )
@@ -728,9 +896,7 @@ class NotificationLifecycle(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             state = Path(directory)
-            self.run_monitor(
-                state, [self.failed, *([self.metrics] * 8)], send
-            )
+            self.run_monitor(state, [self.failed, *([self.metrics] * 8)], send)
             self.assertEqual(calls, ["alert", "recovery"])
             failure = json.loads((state / "last-failure.json").read_text())
             self.assertEqual(failure["alerts"], ["backend-api-unavailable"])
@@ -837,7 +1003,9 @@ class NotificationLifecycle(unittest.TestCase):
             }
 
         unavailable = {
-            **self.failed, "scanner_ready": False, "database_available": False
+            **self.failed,
+            "scanner_ready": False,
+            "database_available": False,
         }
         low_memory = {**self.metrics, "memory_available_bytes": 128 * 1024 * 1024}
         both = {**unavailable, "memory_available_bytes": 128 * 1024 * 1024}
@@ -850,8 +1018,10 @@ class NotificationLifecycle(unittest.TestCase):
             self.assertEqual(
                 set(last["incident_rules"]),
                 {
-                    "backend-api-unavailable", "database-unavailable",
-                    "clamav-unavailable", "resource-exhaustion",
+                    "backend-api-unavailable",
+                    "database-unavailable",
+                    "clamav-unavailable",
+                    "resource-exhaustion",
                 },
             )
             self.assertTrue(
@@ -892,7 +1062,8 @@ class NotificationLifecycle(unittest.TestCase):
 
     def test_partial_improvement_does_not_send_an_update(self):
         last = {
-            **self.last, "rules": ["backend-api-unavailable", "database-unavailable"]
+            **self.last,
+            "rules": ["backend-api-unavailable", "database-unavailable"],
         }
         self.assertIsNone(self.decision(last=last, elapsed=1800)[0])
         self.assertEqual(self.decision(last=last, elapsed=21600)[0], "reminder")
@@ -914,7 +1085,10 @@ class NotificationLifecycle(unittest.TestCase):
 
     def test_clock_rollback_and_invalid_times_do_not_send_repeated_mail(self):
         for value in [
-            None, "invalid", "2026-10-23T15:40:00", "2026-10-24T15:40:00+00:00"
+            None,
+            "invalid",
+            "2026-10-23T15:40:00",
+            "2026-10-24T15:40:00+00:00",
         ]:
             last = {**self.last, "checked_at": value}
             self.assertIsNone(self.decision(last=last, elapsed=1800)[0])
@@ -923,14 +1097,22 @@ class NotificationLifecycle(unittest.TestCase):
         alerts = ["backend-api-unavailable", "backup-failed"]
         self.assertEqual(
             monitor.notification_decision(
-                alerts, self.failed, {"incident_open": True}, self.last,
-                self.now + 60, cooldown_seconds=60,
+                alerts,
+                self.failed,
+                {"incident_open": True},
+                self.last,
+                self.now + 60,
+                cooldown_seconds=60,
             )[0],
             "update",
         )
         for value in [True, "1800", 0, -1, 21601]:
             with self.assertRaises(ValueError):
                 monitor.notification_decision(
-                    alerts, self.failed, {}, self.last, self.now,
+                    alerts,
+                    self.failed,
+                    {},
+                    self.last,
+                    self.now,
                     cooldown_seconds=value,
                 )
