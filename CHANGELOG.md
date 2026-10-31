@@ -12,6 +12,9 @@
 - Stop ambiguous transactional-mail retries outside a conservative 23-hour window
   for provider reconciliation, retaining the original payload and delivery identity.
   Previously unattempted mail can still receive its first attempt.
+- Overlap independent backend probes with database/queue sampling so bounded retries
+  leave room for delivery within the existing 60-second monitor service deadline.
+  Limit timer coalescing to one second while retaining the one-minute cadence.
 - These source changes require separate monitor/worker installation; tests use
   synthetic records and mocked mail delivery.
 

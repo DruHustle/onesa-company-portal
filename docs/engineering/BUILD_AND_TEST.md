@@ -6,8 +6,16 @@ email incident for a healthy API container. DNS/connect/timeout probes get one b
 retry; HTTP, TLS, unhealthy-container and shared-service failures remain immediate.
 Different APIs, clock rollback, rapid invocations and observation gaps cannot combine
 into a confirmed outage. Existing delivery identities, reconciliation holds, cooldowns
-and sustained recovery checks remain. Run `scripts/test_oracle_operations.py` and
-`scripts/test_oracle_notification_scope.py`; delivery is mocked throughout.
+and sustained recovery checks remain. Run
+`python3 -m unittest discover -s scripts -p 'test_oracle*.py'`; delivery is mocked
+throughout. Independent backend probes overlap the database/queue read. A synchronized
+regression requires both reads to start before either completes, exercises every
+probe retry, and measures the configured acquisition/delivery allowances against
+the installed-source service deadline. The configured critical path is 49 seconds
+before ordinary overhead within the unchanged 60-second service limit. Timer
+accuracy is one second, with the existing one-minute cadence. Source qualification
+does not prove live timing; verify installed unit properties and ordinary scheduled
+samples through the protected operations-component procedure.
 
 Worker release regressions distinguish an independently replaced image revision
 from its retained Compose recipe directory. The actual project and working

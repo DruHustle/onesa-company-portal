@@ -1,11 +1,13 @@
 """Failure and isolation tests; never hosted qualification evidence."""
 
+import configparser
 import datetime
 import importlib.util
 import io
 import json
 import subprocess
 import tempfile
+import threading
 import unittest
 import uuid
 from pathlib import Path
@@ -298,7 +300,7 @@ class OperationsGuards(unittest.TestCase):
 
 
 class BackendMonitoring(unittest.TestCase):
-    def test_optional_monitor_and_acquisition_budget_preserve_existing_timer(self):
+    def test_optional_monitor_only_samples_backends_when_enabled(self):
         original_read = Path.read_text
 
         def read(path, *args, **kwargs):
@@ -324,7 +326,7 @@ class BackendMonitoring(unittest.TestCase):
                 "disk_usage",
                 return_value=SimpleNamespace(used=20, total=100),
             ),
-            patch.object(monitor, "run", side_effect=acquire) as commands,
+            patch.object(monitor, "run", side_effect=acquire),
             patch.object(
                 monitor, "sample_backends", return_value={"backend_api_healthy": True}
             ) as backends,
@@ -339,18 +341,155 @@ class BackendMonitoring(unittest.TestCase):
                 }
             )
             backends.assert_called_once_with({})
-        # Two3s inspect reads,3s scanner read,20s aggregate DB read, up to7s
-        # backend sampling and20s notification leave4s in the60s service budget.
-        self.assertEqual(
-            [call.kwargs["timeout"] for call in commands.call_args_list[:4]],
-            [3, 3, 3, 20],
-        )
-        self.assertLess(
-            sum(call.kwargs["timeout"] for call in commands.call_args_list[:4])
-            + 7
-            + 20,
-            60,
-        )
+
+    def test_retried_probes_overlap_database_read_and_fit_delivery_deadline(self):
+        for database_failure in (False, True):
+            with self.subTest(database_failure=database_failure):
+                database_started = threading.Event()
+                probe_started = threading.Event()
+                probes_started = threading.Barrier(len(monitor.BACKENDS))
+                serial_timeouts = []
+                database_timeouts = []
+                inspect_timeouts = []
+                probe_timeouts = {
+                    value["url"]: [] for value in monitor.BACKENDS.values()
+                }
+                delivery_timeouts = []
+                original_read = Path.read_text
+
+                def read(path, *args, **kwargs):
+                    if str(path) == "/proc/meminfo":
+                        return "MemAvailable: 1048576 kB\n"
+                    return original_read(path, *args, **kwargs)
+
+                def acquire(command, timeout):
+                    if command[1] == "run":
+                        database_timeouts.append(timeout)
+                        database_started.set()
+                        self.assertTrue(
+                            probe_started.wait(2),
+                            "Public probing must start while database acquisition waits",
+                        )
+                        if database_failure:
+                            raise subprocess.TimeoutExpired(command, timeout)
+                        return b'{"database_available":true,"scanner_ready":true}'
+                    serial_timeouts.append(timeout)
+                    if command[1] == "inspect":
+                        return json.dumps(
+                            [{"Name": "/synthetic-scanner", "RestartCount": 0}]
+                        ).encode()
+                    self.assertEqual(command[1], "exec")
+                    return b""
+
+                def probe(command, *, timeout, **kwargs):
+                    if command[:2] == ["docker", "inspect"]:
+                        inspect_timeouts.append(timeout)
+                        return SimpleNamespace(
+                            stdout=json.dumps(self.containers()).encode(), returncode=0
+                        )
+                    self.assertEqual(command[0], "/usr/bin/curl")
+                    attempts = probe_timeouts[command[-1]]
+                    attempts.append(timeout)
+                    probe_started.set()
+                    self.assertTrue(
+                        database_started.wait(2),
+                        "Database acquisition must start while public probing waits",
+                    )
+                    if len(attempts) == 1:
+                        probes_started.wait(timeout=2)
+                        raise subprocess.TimeoutExpired(command, timeout)
+                    target = next(
+                        value
+                        for value in monitor.BACKENDS.values()
+                        if value["url"] == command[-1]
+                    )
+                    return SimpleNamespace(
+                        stdout=json.dumps(
+                            {
+                                "status": target["status"],
+                                "mode": "simulation",
+                                "physical_actuation": False,
+                            }
+                        ).encode()
+                        + b"\n200",
+                        returncode=0,
+                    )
+
+                def opened(request, timeout):
+                    delivery_timeouts.append(timeout)
+                    return io.BytesIO(b'{"id":"synthetic-receipt"}')
+
+                values = {
+                    "MAIL_PROVIDER": "resend",
+                    "NOTIFY_EMAIL": "andrew@onesa.eu",
+                    "MAIL_FROM": "synthetic@example.invalid",
+                    "RESEND_API_KEY": "synthetic-only",
+                }
+                with (
+                    tempfile.TemporaryDirectory() as directory,
+                    patch.object(monitor, "STATE", Path(directory)),
+                    patch.object(monitor.Path, "read_text", read),
+                    patch.object(
+                        monitor.shutil,
+                        "disk_usage",
+                        return_value=SimpleNamespace(used=20, total=100),
+                    ),
+                    patch.object(monitor, "run", side_effect=acquire),
+                    patch.object(monitor.subprocess, "run", side_effect=probe),
+                    patch.dict(
+                        "sys.modules",
+                        {"backup": SimpleNamespace(checked_env=lambda: (values, None))},
+                    ),
+                    patch.object(
+                        monitor.urllib.request,
+                        "build_opener",
+                        return_value=SimpleNamespace(open=opened),
+                    ),
+                ):
+                    metrics = monitor.sample(
+                        {
+                            "worker_required": True,
+                            "image": "synthetic-image",
+                            "backend_monitoring_enabled": True,
+                        }
+                    )
+                    monitor.notify(["backup-failed"], metrics=metrics)
+
+                self.assertEqual(metrics["database_available"], not database_failure)
+                self.assertEqual(metrics["scanner_ready"], not database_failure)
+                self.assertTrue(metrics["backend_api_healthy"])
+                self.assertEqual(set(metrics["backends"]), set(monitor.BACKENDS))
+                for attempts in probe_timeouts.values():
+                    self.assertEqual(len(attempts), 2)
+                self.assertEqual(len(inspect_timeouts), 1)
+                self.assertEqual(len(database_timeouts), 1)
+                self.assertEqual(len(delivery_timeouts), 1)
+
+                # Derive the critical path from exercised I/O boundaries, including
+                # both probe attempts; do not substitute an assumed probe budget.
+                backend_budget = sum(inspect_timeouts) + max(
+                    sum(attempts) for attempts in probe_timeouts.values()
+                )
+                sampling_budget = sum(serial_timeouts) + max(
+                    sum(database_timeouts), backend_budget
+                )
+                units = Path(monitor.__file__).parent
+                service = configparser.ConfigParser()
+                service.read(units / "onesa-portal-monitor.service")
+                deadline = service.getfloat("Service", "TimeoutStartSec")
+                self.assertEqual(deadline, 60)
+                self.assertLess(sampling_budget + sum(delivery_timeouts), deadline)
+
+                timer = configparser.ConfigParser()
+                timer.read(units / "onesa-portal-monitor.timer")
+                cadence = timer.getfloat("Timer", "OnUnitActiveSec")
+                accuracy = float(timer.get("Timer", "AccuracySec").removesuffix("s"))
+                self.assertEqual(cadence, 60)
+                self.assertEqual(accuracy, 1)
+                self.assertLess(
+                    cadence + accuracy + sampling_budget,
+                    monitor.MAX_SAMPLE_GAP_SECONDS,
+                )
 
     def containers(self):
         return [

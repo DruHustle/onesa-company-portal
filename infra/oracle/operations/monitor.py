@@ -320,48 +320,57 @@ def sample(config):
         metrics["signature_current"] = True
     except (KeyError, ValueError, subprocess.SubprocessError):
         pass
-    try:
-        raw = run(
-            [
-                "docker",
-                "run",
-                "--rm",
-                "-i",
-                "--read-only",
-                "--tmpfs",
-                "/tmp",
-                "--memory",
-                "128m",
-                "--cpus",
-                "0.1",
-                "--cap-drop",
-                "ALL",
-                "--security-opt",
-                "no-new-privileges",
-                "--env-file",
-                "/etc/onesa/portal-production.env",
-                "-e",
-                "CLAMAV_SOCKET=/run/onesa-scanner/clamd.sock",
-                "--group-add",
-                "3000",
-                "-v",
-                "onesa-portal-oracle-staging_scanner_socket:/run/onesa-scanner:ro",
-                "-v",
-                str(Path(__file__).parents[3] / "scripts/oracle_metrics.mjs")
-                + ":/app/metrics.mjs:ro",
-                "--entrypoint",
-                "node",
-                config["image"],
-                "metrics.mjs",
-            ],
-            timeout=20,
+    # These independent reads overlap so a retried public probe still leaves
+    # room for notification delivery within the existing 60-second service limit.
+    # Join before returning; incident state and delivery remain on the main thread.
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        backends = (
+            pool.submit(sample_backends, previous.get("backend_restart_counts", {}))
+            if config.get("backend_monitoring_enabled") is True
+            else None
         )
-        metrics.update(json.loads(raw))
-    except (ValueError, subprocess.SubprocessError):
-        metrics["database_available"] = False
-        metrics["scanner_ready"] = False
-    if config.get("backend_monitoring_enabled") is True:
-        metrics.update(sample_backends(previous.get("backend_restart_counts", {})))
+        try:
+            raw = run(
+                [
+                    "docker",
+                    "run",
+                    "--rm",
+                    "-i",
+                    "--read-only",
+                    "--tmpfs",
+                    "/tmp",
+                    "--memory",
+                    "128m",
+                    "--cpus",
+                    "0.1",
+                    "--cap-drop",
+                    "ALL",
+                    "--security-opt",
+                    "no-new-privileges",
+                    "--env-file",
+                    "/etc/onesa/portal-production.env",
+                    "-e",
+                    "CLAMAV_SOCKET=/run/onesa-scanner/clamd.sock",
+                    "--group-add",
+                    "3000",
+                    "-v",
+                    "onesa-portal-oracle-staging_scanner_socket:/run/onesa-scanner:ro",
+                    "-v",
+                    str(Path(__file__).parents[3] / "scripts/oracle_metrics.mjs")
+                    + ":/app/metrics.mjs:ro",
+                    "--entrypoint",
+                    "node",
+                    config["image"],
+                    "metrics.mjs",
+                ],
+                timeout=20,
+            )
+            metrics.update(json.loads(raw))
+        except (ValueError, subprocess.SubprocessError):
+            metrics["database_available"] = False
+            metrics["scanner_ready"] = False
+        if backends is not None:
+            metrics.update(backends.result())
     return metrics
 
 
