@@ -36,7 +36,7 @@ for(const [name,type]of Object.entries({chromium,firefox,webkit})){
   await fixture(type,t,(request,response)=>{
    if(request.url==='/held-open'){response.writeHead(200,{'Content-Type':'text/plain'});response.write('pending');return;}
    response.writeHead(200,{'Content-Type':'text/html'});
-   response.end('<!doctype html><html lang="en"><body><h1 id="home-robot-title">Onesa AI Robot</h1><script>fetch("/held-open")</script></body></html>');
+   response.end('<!doctype html><html lang="en"><body><h1 id="home-robot-title">Onesa Robot</h1><script>fetch("/held-open")</script></body></html>');
   },async(page,origin)=>{
    const pending=page.waitForRequest(r=>new URL(r.url()).pathname==='/held-open',{timeout:5000});
    // Attach the rejection handler immediately while visitHome is pending.
