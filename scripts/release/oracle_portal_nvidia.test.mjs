@@ -43,6 +43,27 @@ test('the hosted receipt entry refuses the actual loopback fixture before browse
  await assert.rejects(checkUI(request(),directory),assert.AssertionError);
  assert.equal(fs.existsSync(path.join(directory,'browser-receipt.json')),false);
 });
+test('only canonical catalog model GET and HEAD responses allow private revalidation',async()=>{
+ const catalog=JSON.parse(fs.readFileSync(new URL('../../onesa-company-portal-frontend/public/models/nvidia/manifest.json',import.meta.url)));
+ const paths=catalog.assets.map(asset=>'/models/nvidia/'+asset.glb.path);
+ for(const asset of catalog.assets)for(const method of ['GET','HEAD']){
+  const response=await fetch(origin+'/models/nvidia/'+asset.glb.path,{method,redirect:'manual'});
+  assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'private, no-cache');
+  assert.match(response.headers.get('content-security-policy'),/script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/);
+  const body=Buffer.from(await response.arrayBuffer());
+  assert.equal(body.length,method==='HEAD'?0:asset.glb.byteLength);
+  if(method==='GET')assert.equal(digest(body),asset.glb.sha256);
+ }
+ for(const path of [paths[0]+'?variant=synthetic',paths[0].replace('nvidia-transfer','%6evidia-transfer'),paths[0]+'/',paths[0].replace('.glb','.GLB'),'/models/nvidia/unknown/reference.glb','/models/nvidia/manifest.json','/licenses/three.txt','/en/products/onesa-drone','/admin','/engineering/sign-in/synthetic','/docs','/api/v1/auth/me','/api/v1/admin/content']){
+  const response=await fetch(origin+path,{redirect:'manual'}),policy=response.headers.get('cache-control')??'';
+  assert.notEqual(policy,'private, no-cache',path);assert.doesNotMatch(policy,/(?:^|,)\s*(?:public|s-maxage\s*=)/i,path);
+  if(path===paths[0]+'/'){assert.equal(response.status,308);assert.equal(response.headers.get('location'),paths[0]);}
+  else if(!path.startsWith('/api/'))assert.match(policy,/(?:^|,)\s*no-store(?:,|$)/i,path);
+  await response.body?.cancel();
+ }
+ const method=await fetch(origin+paths[0],{method:'POST',redirect:'manual'});
+ assert.notEqual(method.headers.get('cache-control'),'private, no-cache');assert.match(method.headers.get('cache-control')??'',/(?:^|,)\s*no-store(?:,|$)/i);await method.body?.cancel();
+});
 for(const [engine,type]of Object.entries({chromium,firefox,webkit})){
  test(`${engine}: LOCAL_SYNTHETIC_NOT_HOSTED full NVIDIA observer`,{timeout:240000},async t=>{
   const browser=await type.launch({headless:engine!=='firefox'});

@@ -62,6 +62,11 @@ class NvidiaScopeTests(unittest.TestCase):
             old["devDependencies"].pop(key)
         old["devDependencies"]["eslint"] = "^9.39.0"
         old.pop("overrides")
+        current_proxy = (ROOT / PREFIX / "src/proxy.ts").read_bytes()
+        previous_proxy = current_proxy
+        for original, replacement in r.NVIDIA_PROXY_CHANGES:
+            self.assertEqual(previous_proxy.count(replacement), 1)
+            previous_proxy = previous_proxy.replace(replacement, original)
         self.files = {
             PREFIX + "src/config/products.ts": b"// unchanged fixture product data\n",
             PREFIX + "src/components/home-products.tsx": b"// unchanged fixture presentation\n",
@@ -69,12 +74,14 @@ class NvidiaScopeTests(unittest.TestCase):
             PREFIX + "src/components/home-hero.tsx": b"// retained hero\n",
             PREFIX + "src/components/responsive-link.tsx": b"<Link {...props}>children</Link>",
             PREFIX + "src/components/company-story.tsx": b"Onesa AI Robot / ONESA AI ROBOT\n",
+            PREFIX + "src/proxy.ts": previous_proxy,
             PREFIX + "package.json": json.dumps(old).encode(),
         }
         tree = snapshot(self.source, self.folder / "baseline-source.tar", self.files)
         self.baseline = {"source": "a" * 40, "source_tree": tree, "source_sha256": r.sha(self.folder / "baseline-source.tar")}
         self.plan = {"qualification_profile": r.NVIDIA_PROFILE, "retained_frontend": self.baseline.copy()}
         self.files.update(public_files())
+        self.files[PREFIX + "src/proxy.ts"] = current_proxy
         for name in set(installer.NVIDIA_ALLOWED.values()) | {
             "scripts/check_tls_bundle.mjs", PREFIX + "package.json", PREFIX + "package-lock.json",
             PREFIX + "vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
@@ -152,6 +159,27 @@ class NvidiaScopeTests(unittest.TestCase):
         self.refresh()
         with self.assertRaisesRegex(r.Refused, "BRAND_TEXT_SUBSTITUTION_ONLY"):
             self.scope()
+
+    def test_exact_model_cache_exception_rejects_auth_csp_and_scope_changes(self):
+        path = PREFIX + "src/proxy.ts"
+        original = self.files[path]
+        self.scope()
+        changes = [
+            (b"if(current==='unknown')", b"if(false)"),
+            (b'"default-src \'self\'"', b'"default-src *"'),
+            (b'nvidiaModelPaths.has(request.nextUrl.pathname)', b'request.nextUrl.pathname.startsWith("/models/")'),
+            (b'"private, no-cache"', b'"public, max-age=86400"'),
+            (b'["GET", "HEAD"]', b'["GET", "HEAD", "POST"]'),
+            (b'!request.url.includes("?")', b'true'),
+        ]
+        for before, after in changes:
+            self.assertEqual(original.count(before), 1)
+            self.files[path] = original.replace(before, after)
+            self.refresh()
+            with self.subTest(change=before), self.assertRaisesRegex(r.Refused, "NVIDIA_PUBLIC_MODEL_CACHE_CHANGE_ONLY"):
+                self.scope()
+        self.files[path] = original
+        self.refresh()
 
     def test_changed_asset_bytes_fail_even_if_candidate_and_tool_source_are_repinned(self):
         catalog = json.loads(self.files[r.NVIDIA_CATALOG])

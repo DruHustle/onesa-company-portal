@@ -6,12 +6,29 @@ import fs from 'node:fs';
 import {expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {assertExactOrigin,establishPreviewSession} from './oracle_portal_browser_session.mjs';
-import {CONTRACT,pinnedCatalog,publicReferences,assertDeliveredAsset} from './oracle_portal_nvidia_contract.mjs';
+import {CONTRACT,pinnedCatalog,publicReferences,assertDeliveredAsset,readDeliveredModelResponse} from './oracle_portal_nvidia_contract.mjs';
 
 const catalogPath=new URL('../../onesa-company-portal-frontend/public/models/nvidia/manifest.json',import.meta.url);
 const licensePath=new URL('../../onesa-company-portal-frontend/public/licenses/three.txt',import.meta.url);
 const tags=['wcag2a','wcag2aa','wcag21aa','wcag22aa'];
 const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+
+async function layoutDiagnostic(page){
+ return page.evaluate(()=>{
+  const bounded=value=>Number.isFinite(value)?Math.round(Math.max(-1e6,Math.min(1e6,value))*100)/100:null;
+  const elements=[];
+  for(const node of document.querySelectorAll('body *')){
+   if(!(node instanceof HTMLElement))continue;
+   const box=node.getBoundingClientRect(),style=getComputedStyle(node);
+   if(box.width<=0||box.height<=0||style.display==='none'||style.visibility==='hidden')continue;
+   if(box.left>=-1&&box.right<=innerWidth+1&&node.scrollWidth<=node.clientWidth+1)continue;
+   const role=node.getAttribute('role');
+   elements.push({tag:node.tagName.toLowerCase(),classes:[...node.classList].slice(0,4).map(value=>/^[a-zA-Z0-9_-]{1,100}$/.test(value)?value:'other'),role:role===null?null:['button','group','img','slider','status','navigation','main'].includes(role)?role:'other',left:bounded(box.left),right:bounded(box.right),width:bounded(box.width),client_width:bounded(node.clientWidth),scroll_width:bounded(node.scrollWidth),overflow_x:['visible','hidden','clip','auto','scroll'].includes(style.overflowX)?style.overflowX:'other'});
+   if(elements.length===20)break;
+  }
+  return {viewport_width:bounded(innerWidth),document_width:bounded(document.documentElement.scrollWidth),root_font_px:bounded(parseFloat(getComputedStyle(document.documentElement).fontSize)),elements};
+ }).catch(()=>({observation_unavailable:true}));
+}
 
 async function visit(page,origin,locale,index=false){
  const response=await page.goto(`${origin}/${locale}/products${index?'':'/onesa-drone'}`,{waitUntil:'domcontentloaded'});
@@ -75,45 +92,64 @@ export async function observeNvidia(browser,engine,request,directory){
 
  for(const locale of CONTRACT.locales)for(const width of CONTRACT.widths)for(const mode of CONTRACT.modes){
   const value=await context({viewport:{width,height:950},colorScheme:mode});
+  const pending=[],failures=[],modelStates=[],requestStates=new WeakMap();let page,phase='navigation';
   try{
-   const page=await pageFor(value),received=new Map(),pending=[],failures=[];let modelRequests=0;
-   page.on('request',r=>{if(new URL(r.url()).pathname.endsWith('.glb'))modelRequests++;});
+   page=await pageFor(value);const received=new Map();let modelRequests=0;
+   const drain=async()=>{let count=0;while(count<pending.length){const added=pending.slice(count);count=pending.length;await Promise.all(added);}assert.deepEqual(failures,[]);};
+   page.on('request',r=>{
+    const path=new URL(r.url()).pathname;if(!path.endsWith('.glb'))return;
+    modelRequests++;
+    const asset=catalog.assets.find(item=>path==='/models/nvidia/'+item.glb.path);
+    const state={asset_id:asset?.id??'uncatalogued',terminal:'pending',body:'pending'};requestStates.set(r,state);
+    if(modelStates.length<12)modelStates.push(state);
+   });
+   page.on('requestfinished',r=>{const state=requestStates.get(r);if(state)state.terminal='finished';});
+   page.on('requestfailed',r=>{const state=requestStates.get(r);if(state){state.terminal='failed';const code=r.failure()?.errorText;state.failure_code=['net::ERR_ABORTED','net::ERR_CONTENT_LENGTH_MISMATCH','NS_BINDING_ABORTED'].includes(code)?code:'other';}});
    page.on('response',response=>{
     const url=new URL(response.url());if(!url.pathname.endsWith('.glb'))return;
+    const state=requestStates.get(response.request());
+    if(state){const policy=(response.headers()['cache-control']??'').toLowerCase().split(',').map(value=>value.trim());state.status=response.status();state.cache_no_store=policy.includes('no-store');state.cache_no_cache=policy.includes('no-cache');state.cache_private=policy.includes('private');}
     const task=(async()=>{
      assertExactOrigin(response.url(),request.origin);assert.ok(references.has(url.pathname),'Uncatalogued model refused');
-     const source=response.request();assert.equal(source.headers().authorization,undefined);
-     const row=assertDeliveredAsset({origin:request.origin,path:url.pathname,status:response.status(),url:response.url(),redirects:source.redirectedFrom()?1:0,method:source.method(),body:await response.body()},references.get(url.pathname));
+     const row=await readDeliveredModelResponse(response,request.origin,url.pathname,references.get(url.pathname));
+     if(state)state.body='verified';
      received.set(url.pathname,row);
-    })().catch(error=>{failures.push(error);});pending.push(task);
+    })().catch(error=>{if(state)state.body='failed';failures.push(error);});pending.push(task);
    });
    const section=await visit(page,request.origin,locale),choices=section.getByRole('group').getByRole('button'),assets=[];
    await expect(choices).toHaveCount(3);
    for(const [index,asset]of catalog.assets.entries()){
+    phase='model';await drain();
     await choices.nth(index).click();await expect(choices.nth(index)).toHaveAttribute('aria-pressed','true');
     const graphics=await readyCanvas(section);await frames(page);
     const path='/models/nvidia/'+asset.glb.path;
-    await expect.poll(()=>received.has(path)||failures.length>0).toBe(true);assert.deepEqual(failures,[]);
+    await expect.poll(()=>received.has(path)||failures.length>0).toBe(true);await drain();
+    phase='controls';
     const slider=section.getByRole('slider');await slider.focus();await slider.press('ArrowRight');await expect(slider).toHaveValue('1');
     const keyboard=Number(await slider.inputValue());await section.getByRole('button',{name:locale==='de'?'Ansicht zurücksetzen':'Fit view',exact:true}).click();await expect(slider).toHaveValue('0');
     await expect(section.locator('figcaption a').filter({hasText:'NVIDIA SimReady'})).toHaveAttribute('href',asset.sourceUrl);
     await expect(section.getByRole('link',{name:'CC BY 4.0',exact:true})).toHaveAttribute('href','/models/nvidia/'+asset.licenseFile.path);
     assets.push({id:asset.id,...received.get(path),...graphics,keyboard_rotation:keyboard,fit_rotation:Number(await slider.inputValue())});
    }
-   await Promise.all(pending);assert.deepEqual(failures,[]);assert.equal(received.size,3);
+   await drain();assert.equal(received.size,3);phase='attribution';
    await section.locator('summary').click();await expect(section.getByRole('link',{name:locale==='de'?'Renderer-Lizenz':'Renderer license',exact:true})).toHaveAttribute('href','/licenses/three.txt');
-   const before=modelRequests;await page.emulateMedia({colorScheme:mode==='light'?'dark':'light'});await frames(page);await readyCanvas(section);
+   phase='appearance';const before=modelRequests;await page.emulateMedia({colorScheme:mode==='light'?'dark':'light'});await frames(page);await readyCanvas(section);
    await page.emulateMedia({colorScheme:mode});await frames(page);assert.equal(modelRequests,before,'Appearance changes must retain the model');
-   assert.equal(await choices.locator('span').evaluateAll(nodes=>nodes.every(node=>node.scrollWidth<=node.clientWidth)),true);
+   phase='normal-layout';assert.equal(await choices.locator('span').evaluateAll(nodes=>nodes.every(node=>node.scrollWidth<=node.clientWidth)),true);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-   const audit=await new AxeBuilder({page}).include('#nvidia-environments').withTags(tags).analyze();counts.accessibility_violations+=audit.violations.length;assert.deepEqual(audit.violations.map(v=>v.id),[]);
+   phase='accessibility';const audit=await new AxeBuilder({page}).include('#nvidia-environments').withTags(tags).analyze();counts.accessibility_violations+=audit.violations.length;assert.deepEqual(audit.violations.map(v=>v.id),[]);
+   phase='enlarged-text';
    await page.evaluate(()=>{document.documentElement.style.fontSize='200%';});await frames(page);
    const overflow=await section.locator('p,h2').evaluateAll(nodes=>nodes.some(node=>{const box=node.getBoundingClientRect();return box.left<0||box.right>innerWidth+1||node.scrollWidth>node.clientWidth+1;}));
    assert.equal(overflow,false,'Enlarged text must reflow');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
    await page.evaluate(()=>{document.documentElement.style.fontSize='';});await frames(page);
-   await section.screenshot({path:`${directory}/${engine}-${locale}-${width}-${mode}-nvidia.png`});
+   phase='screenshot';await section.screenshot({path:`${directory}/${engine}-${locale}-${width}-${mode}-nvidia.png`});await drain();
    views.push({engine,locale,width,mode,assets,theme_model_reload_count:modelRequests-before,accessibility_violations:audit.violations.length,horizontal_overflow:false,enlarged_text_overflow:overflow});
-  }finally{await value.close();}
+  }catch(error){
+   // Fixed public metadata/dimensions only: never HTML, text, URLs, arbitrary
+   // headers, cookies, tokens or response bodies. Every original check remains.
+   console.error(JSON.stringify({state:'NVIDIA_OBSERVATION_FAILED',engine,locale,width,mode,phase,models:modelStates,layout:page?await layoutDiagnostic(page):{observation_unavailable:true}}));throw error;
+  }finally{await Promise.all(pending);await value.close();}
  }
 
  for(const locale of CONTRACT.locales){

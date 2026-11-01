@@ -1,5 +1,6 @@
-// Pure assertions shared by the hosted observer and disposable tests. No network,
-// receipt writer, browser substitute, environment override or success callback.
+// Assertions and bounded original-response collection shared by the hosted
+// observer and disposable tests. No request creation, receipt writer, browser
+// substitute, environment override or success callback.
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 
@@ -52,4 +53,21 @@ export function assertDeliveredAsset({origin,path,status,url,redirects,method,bo
  assert.equal(body.length,expected.byteLength,'Exact bounded public asset length required');
  assert.equal(digest(body),expected.sha256,'Exact public asset digest required');
  return {path,status,redirects,sha256:digest(body),byte_length:body.length};
+}
+
+export async function readDeliveredModelResponse(response,origin,path,expected,{timeoutMs=20000}={}){
+ assert.ok(Number.isSafeInteger(timeoutMs)&&timeoutMs>0&&timeoutMs<=20000);
+ let deadline;
+ try{
+  return await Promise.race([
+   (async()=>{
+    const source=response.request();
+    assert.equal(source.headers().authorization,undefined);
+    assert.equal(await response.finished(),null,'Original model response must finish');
+    assert.equal(source.failure(),null,'Original model transport must succeed');
+    return assertDeliveredAsset({origin,path,status:response.status(),url:response.url(),redirects:source.redirectedFrom()?1:0,method:source.method(),body:await response.body()},expected);
+   })(),
+   new Promise((_,reject)=>{deadline=setTimeout(()=>reject(Error('Original model evidence deadline exceeded')),timeoutMs);}),
+  ]);
+ }finally{clearTimeout(deadline);}
 }

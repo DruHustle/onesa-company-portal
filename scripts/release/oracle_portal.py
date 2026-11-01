@@ -881,6 +881,19 @@ NVIDIA_PROFILE = "frontend-nvidia-v1"
 NVIDIA_PREFIX = "onesa-company-portal-frontend/"
 NVIDIA_CATALOG = NVIDIA_PREFIX + "public/models/nvidia/manifest.json"
 NVIDIA_LICENSE = NVIDIA_PREFIX + "public/licenses/three.txt"
+NVIDIA_PROXY_CHANGES = (
+    (
+        b'import {surface,routeDestination,applicationOrigin} from "./lib/domains";\n',
+        b'import {surface,routeDestination,applicationOrigin} from "./lib/domains";\n'
+        b'import nvidiaCatalog from "./config/nvidia-reference-assets.json";\n'
+        b'const nvidiaModelPaths = new Set(nvidiaCatalog.assets.map(asset => `/models/nvidia/${asset.glb.path}`));\n',
+    ),
+    (
+        b'  response.headers.set("Cache-Control", "private, no-store");\n',
+        b'  const revalidateNvidiaModel = ["GET", "HEAD"].includes(request.method) && request.nextUrl.search === "" && !request.url.includes("?") && nvidiaModelPaths.has(request.nextUrl.pathname);\n'
+        b'  response.headers.set("Cache-Control", revalidateNvidiaModel ? "private, no-cache" : "private, no-store");\n',
+    ),
+)
 NVIDIA_DEPENDENCY_PINS = {
     NVIDIA_PREFIX + "package-lock.json": "a14df9606964f633c89d4237cb99b182767f6dbd47adfde92835f2b0d96bd4f1",
     NVIDIA_PREFIX + "vendor/onesa-portal-minimatch-callable-1.0.0.tgz": "c532a6f7105c1934d4b0852881a59b981dd68217663debdee1a919a9a9de493c",
@@ -1269,7 +1282,7 @@ def source_scope(folder, binding, plan):
             "security/minimatch-callable/UPSTREAM_LICENSE.md", "security/minimatch-callable/index.cjs",
             "security/minimatch-callable/package.json", "vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
             "src/components/company-story.tsx", "src/components/product-illustration.tsx",
-            "src/config/onesa-applications.json",
+            "src/config/onesa-applications.json", "src/proxy.ts",
             "scripts/public-shell-ready.mjs", "scripts/test-public-loading.mjs",
             "public/brand/icons/v1/onesa-robot.svg", "public/brand/icons/v1/sources.json",
         ]
@@ -1316,6 +1329,17 @@ def source_scope(folder, binding, plan):
                 and after.extractfile(navigation).read()
                 == previous_link.replace(b"<Link {...props}>", b"<Link prefetch={false} {...props}>"),
                 "NAVIGATION_PREFETCH_CHANGE_ONLY",
+            )
+        proxy = NVIDIA_PREFIX + "src/proxy.ts"
+        if proxy in changed:
+            require(proxy in old, "NVIDIA_PUBLIC_MODEL_CACHE_CHANGE_ONLY")
+            expected_proxy = before.extractfile(proxy).read()
+            for original, replacement in NVIDIA_PROXY_CHANGES:
+                require(expected_proxy.count(original) == 1, "NVIDIA_PUBLIC_MODEL_CACHE_CHANGE_ONLY")
+                expected_proxy = expected_proxy.replace(original, replacement)
+            require(
+                after.extractfile(proxy).read() == expected_proxy,
+                "NVIDIA_PUBLIC_MODEL_CACHE_CHANGE_ONLY",
             )
         for name in ["src/components/company-story.tsx", "src/components/product-illustration.tsx", "src/config/onesa-applications.json", "scripts/public-shell-ready.mjs", "scripts/test-public-loading.mjs", "public/brand/icons/v1/onesa-robot.svg"]:
             branded = NVIDIA_PREFIX + name

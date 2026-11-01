@@ -14,6 +14,18 @@ The renderer's complete MIT notice ships at `/licenses/three.txt`; the build
 compares it with the installed pinned package's license before emitting assets.
 Fixed same-origin model requests retain origin-scoped preview cookies and reject
 redirects; the application adds no credential headers or provider token.
+Only canonical GET/HEAD requests without a query for the three catalog GLBs use
+`Cache-Control: private, no-cache`. These public, pinned reference models may be
+stored by the individual browser but must be revalidated; shared caches receive
+no permission. Other resources and private pages retain their existing policies,
+including `private, no-store` in the application proxy. Host routing, preview
+protection, CSP and per-response nonces are unchanged. This narrow correction
+addresses the [upstream Chromium streamed no-store response defect](https://github.com/microsoft/playwright/issues/42742),
+which can report an aborted transport and make the original response body
+unavailable after a byte-counted reader reaches EOF. The bounded streaming reader,
+asset hashes and pinned browser versions remain unchanged. Qualification still
+requires successful completion and exact bytes from the original browser response;
+an API refetch or rendered state alone cannot replace that evidence.
 
 Run these from `onesa-company-portal-frontend` after a locked install:
 
@@ -106,6 +118,15 @@ Run the release Python suite and the mandatory
 `Release requirement: owner probe readiness and NVIDIA observations` CI step.
 The latter mirrors the probe's helper/data layout in a disposable directory and
 uses a credential-free loopback production build for the real observer regression.
+It checks actual model GET/HEAD cache headers and byte hashes, and rejects the
+model-only policy on queries, noncanonical/unknown model paths, other public
+files, private/Docs/API routes and POST. Source-scope tests require the exact
+proxy import, catalog path set and header-selection delta; simultaneous host,
+CSP, method, query or broad cache-scope changes are refused. Original model
+response collection has a 20-second deadline and is drained before selecting
+another model or closing its context. Failed observations retain only bounded
+engine/view identifiers, catalog IDs, transport/cache-policy states and visible
+element tags/classes/roles/dimensions; they log no HTML, text, cookies or bodies.
 The shared origin/preview-session helper is pinned in both profiles. A separate
 regression starts the actual CLI in a fresh Node process and requires malformed
 synthetic input to fail after the NVIDIA observer import, before browser or
