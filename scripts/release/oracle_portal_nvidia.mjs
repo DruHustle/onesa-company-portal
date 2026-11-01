@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import {expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {assertExactOrigin,establishPreviewSession} from './oracle_portal_browser_session.mjs';
-import {CONTRACT,pinnedCatalog,publicReferences,assertDeliveredAsset,readDeliveredModelResponse} from './oracle_portal_nvidia_contract.mjs';
+import {CONTRACT,pinnedCatalog,publicReferences,assertDeliveredAsset,readDeliveredModelResponse,TEXT_DIAGNOSTIC_LIMITS,boundedPublicDiagnostic,boundedPublicTextClip,publicTextImage,validatePublicTextRecord,writePublicTextDiagnostics} from './oracle_portal_nvidia_contract.mjs';
 
 const catalogPath=new URL('../../onesa-company-portal-frontend/public/models/nvidia/manifest.json',import.meta.url);
 const licensePath=new URL('../../onesa-company-portal-frontend/public/licenses/three.txt',import.meta.url);
@@ -31,29 +31,65 @@ async function layoutDiagnostic(page){
  }).catch(()=>({observation_unavailable:true}));
 }
 
-async function assertProductTextReflow(page){
- const rows=await page.evaluate(()=>{
+const textGroups=[
+ ['portfolio','#platform > div, #platform p, #platform h2'],
+ ['software','main > div.section:has(> p.eyebrow) > section > div, main > div.section:has(> p.eyebrow) > section h2, main > div.section:has(> p.eyebrow) > section p, main > div.section > p.eyebrow'],
+ ['film','#concept-film button, #concept-film button > span:last-child'],
+];
+async function capturePublicTextFailure(page,directory,origin,caseInfo,targets){
+ const record={schema_version:1,state:'NVIDIA_TEXT_REFLOW_FAILED',...caseInfo,targets,image:null};
+ console.error(validatePublicTextRecord(record,caseInfo.engine).toString());
+ let png=null;
+ try{
+  png=await boundedPublicDiagnostic(async()=>{
+   assert.equal(page.url(),`${origin}/${caseInfo.locale}/products/onesa-drone`,'Known public product page required for diagnostic image');
+   const target=targets[0],selector=textGroups.find(([area])=>area===target.area)?.[1];assert.ok(selector);
+   const node=page.locator(selector).nth(target.index);await node.scrollIntoViewIfNeeded({timeout:500});
+   const box=await node.boundingBox({timeout:500}),parent=await node.locator('..').boundingBox({timeout:500});assert.ok(box&&parent);
+   // Keep a small amount of the same public copy container around the text:
+   // cropping at the text box itself could falsely suggest CSS clipped it.
+   const x=Math.max(parent.x,box.x-12),y=Math.max(parent.y,box.y-12);
+   const focus={x,y,width:Math.min(parent.x+parent.width,box.x+box.width+12)-x,height:Math.min(parent.y+parent.height,box.y+box.height+12)-y};
+   const clip=boundedPublicTextClip(focus,page.viewportSize());
+   return page.screenshot({clip,scale:'css',timeout:1000});
+  });
+  record.image=publicTextImage(png);
+ }catch{png=null;record.image=null;}
+ writePublicTextDiagnostics(directory,record,png);
+}
+async function assertProductTextReflow(page,directory,origin,caseInfo){
+ const result=await page.evaluate(({groups,maximum})=>{
   // These are the block/flex copy containers measured in native DE/320px
   // failures. Inline spans/anchors can have clientWidth=0 in Firefox.
-  const groups=[
-   ['portfolio','#platform > div, #platform p, #platform h2'],
-   ['software','main > div.section:has(> p.eyebrow) > section > div, main > div.section:has(> p.eyebrow) > section h2, main > div.section:has(> p.eyebrow) > section p, main > div.section > p.eyebrow'],
-   ['film','#concept-film button, #concept-film button > span:last-child'],
-  ];
-  const overflow=node=>{
-   const box=node.getBoundingClientRect(),style=getComputedStyle(node);
-   if(box.width<=0||box.height<=0||style.visibility!=='visible'||box.left<0||box.right>innerWidth+1||node.scrollWidth>node.clientWidth+1||node.scrollHeight>node.clientHeight+1)return true;
+  const targets=[],bounded=value=>Number.isFinite(value)?Math.round(Math.max(-1e6,Math.min(1e6,value))*100)/100:0;
+  const dimensions=box=>Object.fromEntries(['left','top','right','bottom','width','height'].map(key=>[key,bounded(box[key])]));
+  const mode=value=>['visible','hidden','clip','auto','scroll'].includes(value)?value:'other';
+  const overflow=(node,area,index)=>{
+   const box=node.getBoundingClientRect(),style=getComputedStyle(node),reasons=[];let clipping=null,depth=0;
+   if(box.width<=0||box.height<=0||style.visibility!=='visible')reasons.push('empty_or_hidden');
+   if(box.left<0||box.right>innerWidth+1)reasons.push('viewport_x');
+   if(node.scrollWidth>node.clientWidth+1)reasons.push('own_scroll_x');
+   if(node.scrollHeight>node.clientHeight+1)reasons.push('own_scroll_y');
    // A clipped ancestor must not make a text-overflow fix appear successful.
    for(let parent=node.parentElement;parent;parent=parent.parentElement){
+    depth++;
     const bounds=parent.getBoundingClientRect(),parentStyle=getComputedStyle(parent);
-    if(['hidden','clip'].includes(parentStyle.overflowX)&&(box.left<bounds.left-1||box.right>bounds.right+1))return true;
-    if(['hidden','clip'].includes(parentStyle.overflowY)&&(box.top<bounds.top-1||box.bottom>bounds.bottom+1))return true;
+    const clipX=['hidden','clip'].includes(parentStyle.overflowX),clipY=['hidden','clip'].includes(parentStyle.overflowY);
+    if(!clipping&&(clipX||clipY))clipping={tag:parent.tagName.toLowerCase(),depth:Math.min(depth,64),box:dimensions(bounds),overflow_x:mode(parentStyle.overflowX),overflow_y:mode(parentStyle.overflowY)};
+    if(clipX&&(box.left<bounds.left-1||box.right>bounds.right+1))reasons.push('ancestor_clip_x');
+    if(clipY&&(box.top<bounds.top-1||box.bottom>bounds.bottom+1))reasons.push('ancestor_clip_y');
    }
-   return false;
+   if(reasons.length&&targets.length<maximum)targets.push({area,index,tag:node.tagName.toLowerCase(),box:dimensions(box),client_width:bounded(node.clientWidth),scroll_width:bounded(node.scrollWidth),client_height:bounded(node.clientHeight),scroll_height:bounded(node.scrollHeight),font_size_px:bounded(parseFloat(style.fontSize)),line_height_px:style.lineHeight==='normal'?null:bounded(parseFloat(style.lineHeight)),overflow_x:mode(style.overflowX),overflow_y:mode(style.overflowY),reasons:[...new Set(reasons)],clipping_ancestor:clipping});
+   return reasons.length>0;
   };
-  return groups.map(([area,selector])=>{const nodes=[...document.querySelectorAll(selector)];return {area,count:nodes.length,overflow:nodes.some(overflow)};});
- });
- assert.deepEqual(rows,[{area:'portfolio',count:5,overflow:false},{area:'software',count:22,overflow:false},{area:'film',count:2,overflow:false}],'Enlarged Drone copy and film control must reflow without clipping');
+  const rows=groups.map(([area,selector])=>{const nodes=[...document.querySelectorAll(selector)],results=nodes.map((node,index)=>overflow(node,area,index));return {area,count:nodes.length,overflow:results.some(Boolean)};});
+  return {rows,targets};
+ },{groups:textGroups,maximum:TEXT_DIAGNOSTIC_LIMITS.targets});
+ try{assert.deepEqual(result.rows,[{area:'portfolio',count:5,overflow:false},{area:'software',count:22,overflow:false},{area:'film',count:2,overflow:false}],'Enlarged Drone copy and film control must reflow without clipping');}
+ catch(error){
+  try{await capturePublicTextFailure(page,directory,origin,caseInfo,result.targets);}catch{console.error(JSON.stringify({state:'PUBLIC_TEXT_DIAGNOSTIC_UNAVAILABLE',...caseInfo}));}
+  throw error;
+ }
 }
 
 async function visit(page,origin,locale,index=false){
@@ -167,7 +203,7 @@ export async function observeNvidia(browser,engine,request,directory){
    phase='enlarged-text';
    await page.evaluate(()=>{document.documentElement.style.fontSize='200%';});await frames(page);
    const overflow=await section.locator('p,h2').evaluateAll(nodes=>nodes.some(node=>{const box=node.getBoundingClientRect();return box.left<0||box.right>innerWidth+1||node.scrollWidth>node.clientWidth+1;}));
-   assert.equal(overflow,false,'Enlarged text must reflow');await assertProductTextReflow(page);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+   assert.equal(overflow,false,'Enlarged text must reflow');await assertProductTextReflow(page,directory,request.origin,{engine,locale,width,mode});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
    await page.evaluate(()=>{document.documentElement.style.fontSize='';});await frames(page);
    phase='screenshot';await section.screenshot({path:`${directory}/${engine}-${locale}-${width}-${mode}-nvidia.png`});await drain();
    views.push({engine,locale,width,mode,assets,theme_model_reload_count:modelRequests-before,accessibility_violations:audit.violations.length,horizontal_overflow:false,enlarged_text_overflow:overflow});

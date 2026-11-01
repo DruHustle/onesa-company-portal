@@ -83,6 +83,7 @@ class NvidiaScopeTests(unittest.TestCase):
         self.files.update(public_files())
         self.files[PREFIX + "src/proxy.ts"] = current_proxy
         self.files[r.NVIDIA_DRONE_LAYOUT] = (ROOT / r.NVIDIA_DRONE_LAYOUT).read_bytes()
+        self.files[r.NVIDIA_DRONE_DIAGNOSTIC_TEST] = (ROOT / r.NVIDIA_DRONE_DIAGNOSTIC_TEST).read_bytes()
         for name in set(installer.NVIDIA_ALLOWED.values()) | {
             "scripts/check_tls_bundle.mjs", PREFIX + "package.json", PREFIX + "package-lock.json",
             PREFIX + "vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
@@ -208,6 +209,28 @@ class NvidiaScopeTests(unittest.TestCase):
         (self.source / path).unlink()
         self.refresh()
         with self.assertRaisesRegex(r.Refused, "NVIDIA_REVIEWED_DRONE_REFLOW_ONLY"):
+            self.scope()
+        self.files[path] = original
+        self.refresh()
+
+    def test_drone_diagnostics_cannot_force_click_or_replace_error_or_add_output(self):
+        path = r.NVIDIA_DRONE_DIAGNOSTIC_TEST
+        original = self.files[path]
+        self.scope()
+        for change in [
+            original.replace(b".locator('summary').click();", b".locator('summary').click({force:true});", 1),
+            original.replace(b"throw error;}finally", b"return;}finally", 1),
+            original + b"\nconsole.log(process.env);\n",
+        ]:
+            self.assertNotEqual(original, change)
+            self.files[path] = change
+            self.refresh()
+            with self.subTest(change=hashlib.sha256(change).hexdigest()), self.assertRaisesRegex(r.Refused, "NVIDIA_REVIEWED_DRONE_DIAGNOSTICS_ONLY"):
+                self.scope()
+        self.files.pop(path)
+        (self.source / path).unlink()
+        self.refresh()
+        with self.assertRaisesRegex(r.Refused, "NVIDIA_REVIEWED_DRONE_DIAGNOSTICS_ONLY"):
             self.scope()
         self.files[path] = original
         self.refresh()

@@ -9,7 +9,7 @@ import {spawn} from 'node:child_process';
 import {chromium,firefox,webkit} from '@playwright/test';
 import {observeNvidia} from './oracle_portal_nvidia.mjs';
 import {checkUI} from './oracle_portal_browser.mjs';
-import {PROFILE,CONTRACT,digest} from './oracle_portal_nvidia_contract.mjs';
+import {PROFILE,CONTRACT,digest,retainPublicTextDiagnostics} from './oracle_portal_nvidia_contract.mjs';
 
 const root=process.env.ONESA_SOURCE_ROOT;
 assert.ok(root&&path.isAbsolute(root),'Explicit isolated source checkout required');
@@ -30,6 +30,9 @@ before(async()=>{
  throw Error('Isolated production build did not become ready');
 });
 after(async()=>{
+ // Only fixed, validated public failure JSON/PNG files enter the existing
+ // verification artifact. Browser receipts/session files stay in the temp root.
+ if(directory){try{const retained=retainPublicTextDiagnostics(directory,path.join(cwd,'test-results','public-diagnostics'));console.log(JSON.stringify({scope:'OPTIONAL_PUBLIC_FAILURE_DIAGNOSTICS',retained}));}catch{console.error(JSON.stringify({scope:'OPTIONAL_PUBLIC_FAILURE_DIAGNOSTICS',retention:'refused'}));}}
  if(server&&server.exitCode===null){server.kill('SIGTERM');await new Promise(resolve=>server.once('exit',resolve));}
  if(backend){backend.closeAllConnections();await new Promise(resolve=>backend.close(resolve));}
 });

@@ -902,6 +902,8 @@ NVIDIA_DRONE_LAYOUT = NVIDIA_PREFIX + "src/components/drone-product.module.css"
 # Close the measured DE/320px/200%-text correction over the exact reviewed
 # stylesheet; this profile cannot accept another display change under its name.
 NVIDIA_DRONE_LAYOUT_SHA256 = "4bac1e38ccf8f481005de7143f1c1a89f21b0a5b49c34c192a348e6cb912beb7"
+NVIDIA_DRONE_DIAGNOSTIC_TEST = NVIDIA_PREFIX + "scripts/test-drone-product.mjs"
+NVIDIA_DRONE_DIAGNOSTIC_TEST_SHA256 = "3bea2bb2b51e6747df223101970218c080b10fcc3c4d1ac719a61cc164a40d3f"
 NVIDIA_ASSET_IDS = [
     "nvidia-transfer-conveyor",
     "nvidia-mobile-cart",
@@ -1254,6 +1256,10 @@ def source_scope(folder, binding, plan):
     require(
         new.get(NVIDIA_DRONE_LAYOUT) == NVIDIA_DRONE_LAYOUT_SHA256,
         "NVIDIA_REVIEWED_DRONE_REFLOW_ONLY",
+    )
+    require(
+        new.get(NVIDIA_DRONE_DIAGNOSTIC_TEST) == NVIDIA_DRONE_DIAGNOSTIC_TEST_SHA256,
+        "NVIDIA_REVIEWED_DRONE_DIAGNOSTICS_ONLY",
     )
     metadata = nvidia_source_metadata(folder / "source.tar", new)
     require(

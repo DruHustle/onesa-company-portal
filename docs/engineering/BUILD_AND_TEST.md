@@ -38,6 +38,25 @@ scroll dimensions and clipping ancestors. The qualification profile pins this
 exact reviewed stylesheet; hiding overflow or adding unrelated CSS fails closed.
 Actual rendering and reflow still require the pinned three-engine native run.
 
+On a targeted reflow failure, the observer keeps the original assertion and logs
+at most eight public target records: geometry, own scroll/client dimensions,
+font size, line height, overflow modes and the first clipping ancestor. A capture
+attempt has a two-second total deadline and can retain one cropped, at most
+480×320 CSS-pixel PNG per failed engine. The crop includes a small amount of the
+same public copy container around the text so the crop itself does not imply CSS
+clipping. No text, HTML, request URLs, cookies or arbitrary error strings enter
+the diagnostic metadata. Capture failure never replaces the original error.
+The native fixture copies only explicit engine-named JSON/PNG files into
+`test-results/public-diagnostics`, which is already covered by the verification
+artifact. Retention validates exact metadata shape, file type, checksums,
+compressed/decoded image bounds and canonical non-symlink paths; browser receipts,
+session files and other temporary files are excluded. The standalone Drone
+journey also writes one bounded failure-only JSON record with case/phase,
+liveness, error/crash counts, known model states and a short optional summary
+geometry read. Its original click, timeouts, assertions and error are preserved,
+and its exact reviewed script is source-pinned. These optional failure files do
+not supply a PASS receipt or replace any qualification observation.
+
 Run these from `onesa-company-portal-frontend` after a locked install:
 
 ```sh
