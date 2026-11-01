@@ -46,6 +46,16 @@ software demonstration uses synthetic data; ordinary AI production keeps Industr
 disabled. Wider factory integrations and physical robotics remain development
 directions, distinct from demonstrated functionality.
 
+The current source adds an English/German NVIDIA reference gallery to the product
+index and Drone product page. Three locally served SimReady derivatives—a conveyor,
+mobile cart and warehouse rack—load automatically when the gallery enters view.
+Selection, orbit, keyboard rotation and Fit view explore their geometry; the same
+models' preview images remain available when 3D cannot load. Source revision,
+CC BY 4.0 attribution and documented modifications accompany each model. The
+gallery is a visual reference and supplies no physical simulation or device control.
+This source addition is not a recorded production acceptance; it requires the
+normal independent frontend release and hosted checks.
+
 The Company Portal is Onesa UG’s corporate website and protected business workspace.
 It combines an English/German public site with a custom CMS, enquiries, recruitment,
 private documents, background processing and database-backed privacy governance.
