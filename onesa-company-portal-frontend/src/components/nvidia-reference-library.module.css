@@ -1,7 +1,7 @@
 .library{padding-block:clamp(36px,6vw,80px);margin-block:24px;min-width:0;border-top:1px solid var(--line);color:var(--ink);background:var(--onesa-canvas)}
 /* Theme colors change together, including under the global reduced-motion rule. */
 .library,.library *{transition-property:none}
-.heading{max-width:68ch;margin-bottom:32px}.heading h2{max-width:24ch;font-size:clamp(1.8rem,3.4vw,3.4rem);letter-spacing:-.04em}.heading p{color:var(--muted);line-height:1.65}
+.heading{min-width:0;overflow-wrap:anywhere;max-width:68ch;margin-bottom:32px}.heading h2{max-width:24ch;font-size:clamp(1.8rem,3.4vw,3.4rem);letter-spacing:-.04em}.heading p{color:var(--muted);line-height:1.65}
 .layout{display:grid;grid-template-columns:minmax(180px,1fr) minmax(0,3fr);gap:24px;align-items:start}
 .choices{display:grid;gap:12px}.choices button{display:flex;align-items:center;gap:12px;text-align:left;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink);min-height:80px;cursor:pointer}
 .choices button[aria-pressed=true]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}.choices button img{width:80px;height:60px;object-fit:contain;border-radius:6px;background:#eef1f5}.choices button span{font-weight:600;font-size:.85rem;min-width:0;overflow-wrap:anywhere}.choices small{display:block;font-size:.68rem;font-weight:400;color:var(--muted);margin-top:8px}
