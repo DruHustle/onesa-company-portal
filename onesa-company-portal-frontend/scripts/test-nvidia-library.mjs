@@ -24,28 +24,64 @@ async function applyTheme(page, colorScheme) {
 }
 async function verifyProtectedModels(browser, engine) {
   const context = await browser.newContext({viewport: {width: 390, height: 844}});
-  let denied = 0, authorized = 0, foreignRequests = 0, redirect = false;
-  try {
-    const page = await context.newPage();
-    page.on('request', request => {if (request.url() === 'https://foreign.invalid/blocked.glb') foreignRequests++;});
-    await page.route('https://foreign.invalid/blocked.glb', route => route.fulfill({status: 403, body: 'Synthetic foreign denial'}));
-    await page.route(`${origin}/models/nvidia/**/*.glb`, async route => {
-      const request = route.request(), headers = await request.allHeaders();
-      assert.equal(new URL(request.url()).origin, origin); assert.equal(request.method(), 'GET');
-      assert.equal(headers.authorization, undefined);
-      if (headers.cookie !== '_vercel_jwt=synthetic-only') {
+  let denied = 0, authorized = 0, foreignRequests = 0, foreignWireRequests = 0, sameOriginRequests = 0, sameOriginWireRequests = 0, unexpected = 0, redirect = '', foreignOrigin;
+  const foreign = http.createServer((_request, response) => {
+    foreignWireRequests++;
+    response.writeHead(403, {'cache-control': 'no-store'}).end('Synthetic foreign denial');
+  });
+  // Cookie attachment and redirect handling belong to the browser network stack,
+  // after Playwright route interception. Observe real loopback HTTP instead.
+  const gateway = http.createServer((request, response) => {
+    const target = new URL(request.url ?? '/', origin);
+    if (target.origin !== origin || !['GET', 'HEAD'].includes(request.method)) {
+      unexpected++;
+      response.writeHead(400).end('Unexpected fixture request'); return;
+    }
+    if (target.pathname === '/fixture-model-redirect.glb') {
+      sameOriginWireRequests++;
+      response.writeHead(403, {'cache-control': 'no-store'}).end('Synthetic same-origin redirect target'); return;
+    }
+    const model = target.pathname.startsWith('/models/nvidia/') && target.pathname.endsWith('.glb');
+    if (model) {
+      if (request.method !== 'GET' || request.headers.authorization !== undefined) {
+        unexpected++;
+        response.writeHead(400).end('Unexpected model request'); return;
+      }
+      if (request.headers.cookie !== '_vercel_jwt=synthetic-only') {
         denied++;
-        return route.fulfill({status: 403, headers: {'cache-control': 'no-store'}, body: 'Synthetic preview cookie required'});
+        response.writeHead(403, {'cache-control': 'no-store'}).end('Synthetic preview cookie required'); return;
       }
       authorized++;
-      if (redirect) return route.fulfill({status: 307, headers: {location: 'https://foreign.invalid/blocked.glb', 'cache-control': 'no-store'}});
-      return route.continue();
+      if (redirect) {
+        const location = redirect === 'same-origin' ? '/fixture-model-redirect.glb' : `${foreignOrigin}/blocked.glb`;
+        response.writeHead(307, {location, 'cache-control': 'no-store'}).end(); return;
+      }
+    }
+    const upstream = http.request(target, {method: request.method, headers: {...request.headers, host: target.host}}, incoming => {
+      response.writeHead(incoming.statusCode ?? 502, {...incoming.headers, ...(model ? {'cache-control': 'no-store'} : {})});
+      incoming.pipe(response);
     });
-    await page.goto(`${origin}/en/products/onesa-drone`);
+    upstream.on('error', () => {if (!response.headersSent) response.writeHead(502); response.end();});
+    response.on('close', () => upstream.destroy());
+    request.pipe(upstream);
+  });
+  try {
+    await new Promise(resolve => foreign.listen(0, '127.0.0.1', resolve));
+    foreignOrigin = `http://127.0.0.1:${foreign.address().port}`;
+    await new Promise(resolve => gateway.listen(0, '127.0.0.1', resolve));
+    const protectedOrigin = `http://127.0.0.1:${gateway.address().port}`;
+    const page = await context.newPage();
+    page.on('request', request => {
+      if (new URL(request.url()).origin === foreignOrigin) foreignRequests++;
+      if (request.url() === `${protectedOrigin}/fixture-model-redirect.glb`) sameOriginRequests++;
+    });
+    await page.goto(`${protectedOrigin}/en/products/onesa-drone`);
     const section = page.locator('#nvidia-environments'); await section.scrollIntoViewIfNeeded();
     await expect(section).toHaveAttribute('data-state', 'failed', {timeout: 30000});
     assert.equal(denied, 1); assert.equal(authorized, 0);
-    await context.addCookies([{name: '_vercel_jwt', value: 'synthetic-only', url: origin, httpOnly: true, sameSite: 'Lax'}]);
+    await context.addCookies([{name: '_vercel_jwt', value: 'synthetic-only', url: protectedOrigin, httpOnly: true, sameSite: 'Lax'}]);
+    const cookie = (await context.cookies(protectedOrigin)).find(cookie => cookie.name === '_vercel_jwt');
+    assert.equal(cookie?.value, 'synthetic-only'); assert.equal(cookie?.httpOnly, true);
     assert.equal(await page.evaluate(() => document.cookie.includes('_vercel_jwt')), false);
     await section.getByRole('button', {name: 'Retry 3D view'}).click();
     await expect(section, `cookie-gated actual 3D rendering: ${engine}`).toHaveAttribute('data-state', 'ready', {timeout: 30000});
@@ -55,13 +91,27 @@ async function verifyProtectedModels(browser, engine) {
       await expect(section).toHaveAttribute('data-state', 'ready', {timeout: 30000});
     }
     assert.equal(denied, 1); assert.equal(authorized, 3);
-    redirect = true; await choices.nth(0).click();
+    redirect = 'same-origin'; await choices.nth(0).click();
     await expect(section).toHaveAttribute('data-state', 'failed', {timeout: 30000});
-    assert.equal(authorized, 4); assert.equal(foreignRequests, 0, 'model redirects never reach a foreign origin');
-    results.push({engine, unauthenticatedModelDenied: 'passed', cookieGatedAllThreeModels: 'passed', foreignModelRedirectRefused: 'passed'});
+    assert.equal(authorized, 4); assert.equal(sameOriginRequests, 0, 'same-origin model redirects never reach their target');
+    assert.equal(sameOriginWireRequests, 0);
+    redirect = ''; await section.getByRole('button', {name: 'Retry 3D view'}).click();
+    await expect(section).toHaveAttribute('data-state', 'ready', {timeout: 30000});
+    assert.equal(authorized, 5);
+    redirect = 'foreign'; await choices.nth(1).click();
+    await expect(section).toHaveAttribute('data-state', 'failed', {timeout: 30000});
+    assert.equal(authorized, 6); assert.equal(foreignRequests, 0, 'model redirects never reach a foreign origin');
+    assert.equal(foreignWireRequests, 0); assert.equal(unexpected, 0);
+    redirect = ''; await section.getByRole('button', {name: 'Retry 3D view'}).click();
+    await expect(section).toHaveAttribute('data-state', 'ready', {timeout: 30000});
+    assert.equal(authorized, 7);
+    results.push({engine, unauthenticatedModelDenied: 'passed', cookieGatedAllThreeModels: 'passed', sameOriginModelRedirectRefused: 'passed', foreignModelRedirectRefused: 'passed', redirectRecovery: 'passed'});
   } finally {
-    console.log(JSON.stringify({phase: 'cookie-gate-summary', engine, denied, authorized, foreignRequests}));
+    console.log(JSON.stringify({phase: 'cookie-gate-summary', engine, denied, authorized, foreignRequests, foreignWireRequests, sameOriginRequests, sameOriginWireRequests, unexpected}));
     await context.close();
+    for (const server of [gateway, foreign]) {
+      if (server.listening) {server.closeAllConnections(); await new Promise(resolve => server.close(resolve));}
+    }
   }
 }
 let browser;

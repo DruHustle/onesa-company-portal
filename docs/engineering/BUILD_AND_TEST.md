@@ -35,7 +35,11 @@ check both languages, light/dark appearance, desktop/mobile widths, all three
 models, keyboard controls, accessibility, download failure/retry, graphics-context
 loss, no-WebGL and no-JavaScript previews. A synthetic HttpOnly cookie gate rejects
 anonymous model requests, then requires actual rendering of all three authorized
-models; a foreign redirect must fail without reaching its target.
+models. Same-origin and foreign redirects must fail without reaching their targets;
+retry must restore actual rendering after each refusal.
+This fixture uses real loopback HTTP responses and server-side cookie observation;
+[Playwright routing hooks](https://playwright.dev/docs/network#headers-owned-by-the-network-stack)
+run before network-owned headers are attached.
 Both scripts are mandatory named
 `Release requirement:` steps in `verify.yml`; skipped or failed steps cannot
 qualify a release. CI captures temporary per-model screenshots before the theme
