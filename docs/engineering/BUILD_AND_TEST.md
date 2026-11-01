@@ -231,6 +231,17 @@ If Firefox reaches its existing test deadline, the disposable observer test logs
 one bounded snapshot of pending API operations and recent outcomes. It records
 fixed phase labels only, returns the actual API promises unchanged, and does not
 record request arguments, URLs, page content, responses or credentials.
+Preview readiness uses synchronous pixel readback from the actual same-origin
+image into a detached 32×32 canvas. The image must remain visible, complete, have
+positive intrinsic dimensions, and produce nontransparent decoded pixels under
+bounded Node-side polling. This avoids awaiting a page-realm image-decoding
+Promise while Firefox has application scripting disabled, a behavior documented
+in [Mozilla issue 1942990](https://bugzilla.mozilla.org/show_bug.cgi?id=1942990)
+and reproduced with the pinned headed browser. The actual-browser regression
+requires the same document's script sentinel to execute in its enabled control
+and remain untouched with scripts disabled; malformed HTTP-200 data, truncated
+PNG data, a held unloaded response and a fully transparent decoded image must
+all be rejected. The measurement does not insert a canvas or enable page scripts.
 Existing real readiness, anonymous denials, retained data-service checks, backup
 evidence, exact hosted artifact checks and owner-controlled release remain required.
 Source implementation and local tests do not install, commission, qualify or

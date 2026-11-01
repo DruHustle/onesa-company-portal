@@ -106,10 +106,25 @@ async function visit(page,origin,locale,index=false){
  return section;
 }
 
+export function previewHasDecodedPixels(node){
+ if(!(node instanceof HTMLImageElement)||!node.complete||node.naturalWidth<=0||node.naturalHeight<=0)return false;
+ if(new URL(node.currentSrc||node.src,node.ownerDocument.baseURI).origin!==location.origin)return false;
+ // Firefox does not settle page-realm Promise reactions with scripting disabled.
+ // Synchronous readback proves actual decoded pixels without enabling scripts or
+ // adding a canvas to the page. Undecodable/transparent images cannot paint it.
+ const canvas=node.ownerDocument.createElement('canvas');canvas.width=32;canvas.height=32;
+ const graphics=canvas.getContext('2d');if(!graphics)return false;
+ try{graphics.drawImage(node,0,0,32,32);}catch(error){if(error.name==='InvalidStateError')return false;throw error;}
+ const pixels=graphics.getImageData(0,0,32,32).data;
+ for(let alpha=3;alpha<pixels.length;alpha+=4)if(pixels[alpha]>0)return true;
+ return false;
+}
+
 async function loadedPreview(section,locale){
  const preview=section.getByAltText(locale==='de'?/Gerenderte Vorschau/:/Rendered preview/);
- await expect(preview).toBeVisible();await expect.poll(()=>preview.evaluate(node=>node.complete&&node.naturalWidth>0)).toBe(true);
- await preview.evaluate(node=>node.decode());return true;
+ await expect(preview).toBeVisible();
+ await expect.poll(()=>preview.evaluate(previewHasDecodedPixels),{message:'Preview must produce decoded nontransparent pixels'}).toBe(true);
+ return true;
 }
 
 async function readyCanvas(section){

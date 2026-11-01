@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import {chromium,firefox,webkit} from '@playwright/test';
-import {measureProductTextReflow,observeNvidia} from './oracle_portal_nvidia.mjs';
+import {chromium,firefox,webkit,expect} from '@playwright/test';
+import {measureProductTextReflow,previewHasDecodedPixels,observeNvidia} from './oracle_portal_nvidia.mjs';
 import {checkUI} from './oracle_portal_browser.mjs';
 import {PROFILE,CONTRACT,digest,retainPublicTextDiagnostics} from './oracle_portal_nvidia_contract.mjs';
 import {listenFixture,closeFixtureServer,spawnFixture,fetchFixture,waitForFixtureFrontend,withFixtureResource} from './oracle_portal_test_lifecycle.mjs';
@@ -102,6 +102,45 @@ async function verifyActualTextOverflowGuards(browser,t){
  });
 }
 
+async function verifyActualPreviewPixelGuards(browser,t){
+ const catalog=JSON.parse(fs.readFileSync(new URL('../../onesa-company-portal-frontend/public/models/nvidia/manifest.json',import.meta.url)));
+ const thumbnail=catalog.assets[0].thumbnail,preview=fs.readFileSync(path.join(cwd,'public','models','nvidia',thumbnail.path));
+ assert.equal(preview.length,thumbnail.byteLength);assert.equal(digest(preview),thumbnail.sha256);
+ // A complete 1x1 RGBA PNG whose only pixel is transparent.
+ const transparent=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=','base64');
+ const document='<!doctype html><script>document.documentElement.dataset.fixtureScriptRan="yes"</script>'+['valid','malformed','truncated','unloaded','transparent'].map(id=>`<img id="${id}" src="/${id}.png" width="32" height="32" alt="${id}">`).join('');
+ let unloadedRequests=0;
+ const fixture=http.createServer((request,response)=>{
+  response.setHeader('Cache-Control','no-store');
+  if(request.url==='/'){response.writeHead(200,{'Content-Type':'text/html'}).end(document);return;}
+  if(request.url==='/unloaded.png'){unloadedRequests++;response.writeHead(200,{'Content-Type':'image/png'});response.flushHeaders();return;}
+  const body=request.url==='/valid.png'?preview:request.url==='/malformed.png'?Buffer.from('not a PNG'):request.url==='/truncated.png'?preview.subarray(0,33):request.url==='/transparent.png'?transparent:null;
+  if(body)response.writeHead(200,{'Content-Type':'image/png','Content-Length':String(body.length)}).end(body);
+  else response.writeHead(404).end();
+ });
+ t.after(()=>closeFixtureServer(fixture));
+ const port=await listenFixture(fixture);
+ for(const javaScriptEnabled of [true,false]){
+  await withFixtureResource(t,()=>browser.newContext({javaScriptEnabled}),async context=>{
+   const page=await context.newPage();await page.goto(`http://127.0.0.1:${port}`,{waitUntil:'domcontentloaded'});
+   await expect(page.locator('#valid')).toBeVisible();
+   await expect.poll(()=>page.locator('#valid').evaluate(previewHasDecodedPixels)).toBe(true);
+   await expect.poll(()=>page.evaluate(()=>['malformed','truncated','transparent'].every(id=>document.getElementById(id).complete))).toBe(true);
+   const state=await page.evaluate(()=>({scriptRan:document.documentElement.dataset.fixtureScriptRan??null,canvases:document.querySelectorAll('canvas').length,
+    images:Object.fromEntries([...document.images].map(node=>[node.id,{complete:node.complete,width:node.naturalWidth,height:node.naturalHeight}]))}));
+   assert.equal(state.scriptRan,javaScriptEnabled?'yes':null);assert.equal(state.canvases,0);
+   assert.ok(state.images.valid.complete&&state.images.valid.width>0&&state.images.valid.height>0);
+   assert.deepEqual(state.images.malformed,{complete:true,width:0,height:0});
+   assert.equal(state.images.truncated.complete,true);
+   assert.deepEqual(state.images.unloaded,{complete:false,width:0,height:0});
+   assert.deepEqual(state.images.transparent,{complete:true,width:1,height:1});
+   for(const id of ['malformed','truncated','unloaded','transparent'])assert.equal(await page.locator('#'+id).evaluate(previewHasDecodedPixels),false,id);
+   assert.equal(await page.evaluate(()=>document.querySelectorAll('canvas').length),0,'Pixel observation must not alter the page');
+  });
+ }
+ assert.equal(unloadedRequests,2,'Both scripting modes requested the actually held image response');
+}
+
 // One failure-only, bounded record for the observed native Firefox timeout.
 // These wrappers call the actual owned API immediately and return its original
 // promise/result. No arguments, URLs, page content, responses or errors are logged.
@@ -158,6 +197,7 @@ for(const [engine,type]of Object.entries({chromium,firefox,webkit})){
  test(`${engine}: LOCAL_SYNTHETIC_NOT_HOSTED full NVIDIA observer`,{timeout:240000},async t=>{
   await withFixtureResource(t,()=>type.launch({headless:engine!=='firefox'}),async browser=>{
    await t.test('actual DOM visible-font, own-overflow, ancestor-clipping and horizontal guards',{timeout:10000},async child=>verifyActualTextOverflowGuards(browser,child));
+   await t.test('actual decoded preview pixels with scripts enabled and disabled reject malformed, truncated, unloaded and transparent images',{timeout:10000},async child=>verifyActualPreviewPixelGuards(browser,child));
    const stopProgress=engine==='firefox'?observeFirefoxFixtureProgress(t,browser):()=>{};
    try{
     const observed=await observeNvidia(browser,engine,request(),directory);
