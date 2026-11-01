@@ -57,34 +57,41 @@ async function capturePublicTextFailure(page,directory,origin,caseInfo,targets){
  }catch{png=null;record.image=null;}
  writePublicTextDiagnostics(directory,record,png);
 }
-async function assertProductTextReflow(page,directory,origin,caseInfo){
- const result=await page.evaluate(({groups,maximum})=>{
+export function measureProductTextReflow({groups,maximum}){
   // These are the block/flex copy containers measured in native DE/320px
   // failures. Inline spans/anchors can have clientWidth=0 in Firefox.
   const targets=[],bounded=value=>Number.isFinite(value)?Math.round(Math.max(-1e6,Math.min(1e6,value))*100)/100:0;
   const dimensions=box=>Object.fromEntries(['left','top','right','bottom','width','height'].map(key=>[key,bounded(box[key])]));
   const mode=value=>['visible','hidden','clip','auto','scroll'].includes(value)?value:'other';
   const overflow=(node,area,index)=>{
-   const box=node.getBoundingClientRect(),style=getComputedStyle(node),reasons=[];let clipping=null,depth=0;
+   const box=node.getBoundingClientRect(),style=getComputedStyle(node),reasons=[];let clipping=null,depth=0,content;
    if(box.width<=0||box.height<=0||style.visibility!=='visible')reasons.push('empty_or_hidden');
    if(box.left<0||box.right>innerWidth+1)reasons.push('viewport_x');
    if(node.scrollWidth>node.clientWidth+1)reasons.push('own_scroll_x');
-   if(node.scrollHeight>node.clientHeight+1)reasons.push('own_scroll_y');
+   // Native enlarged headings can extend their font metrics beyond a visible
+   // line box. Reject vertical overflow only when it clips or needs scrolling.
+   if(['hidden','clip','auto','scroll'].includes(style.overflowY)&&node.scrollHeight>node.clientHeight+1)reasons.push('own_scroll_y');
    // A clipped ancestor must not make a text-overflow fix appear successful.
    for(let parent=node.parentElement;parent;parent=parent.parentElement){
     depth++;
     const bounds=parent.getBoundingClientRect(),parentStyle=getComputedStyle(parent);
     const clipX=['hidden','clip'].includes(parentStyle.overflowX),clipY=['hidden','clip'].includes(parentStyle.overflowY);
     if(!clipping&&(clipX||clipY))clipping={tag:parent.tagName.toLowerCase(),depth:Math.min(depth,64),box:dimensions(bounds),overflow_x:mode(parentStyle.overflowX),overflow_y:mode(parentStyle.overflowY)};
-    if(clipX&&(box.left<bounds.left-1||box.right>bounds.right+1))reasons.push('ancestor_clip_x');
-    if(clipY&&(box.top<bounds.top-1||box.bottom>bounds.bottom+1))reasons.push('ancestor_clip_y');
+    // A fitting block may still have visible text outside its own box. Only
+    // actual clipping ancestors constrain these content bounds; its own visible
+    // box and ordinary document scrolling do not.
+    if((clipX||clipY)&&content===undefined){const range=document.createRange();range.selectNodeContents(node);const measured=range.getBoundingClientRect();content=measured.width>0&&measured.height>0?measured:null;}
+    if(clipX&&(box.left<bounds.left-1||box.right>bounds.right+1||content&&(content.left<bounds.left-1||content.right>bounds.right+1)))reasons.push('ancestor_clip_x');
+    if(clipY&&(box.top<bounds.top-1||box.bottom>bounds.bottom+1||content&&(content.top<bounds.top-1||content.bottom>bounds.bottom+1)))reasons.push('ancestor_clip_y');
    }
    if(reasons.length&&targets.length<maximum)targets.push({area,index,tag:node.tagName.toLowerCase(),box:dimensions(box),client_width:bounded(node.clientWidth),scroll_width:bounded(node.scrollWidth),client_height:bounded(node.clientHeight),scroll_height:bounded(node.scrollHeight),font_size_px:bounded(parseFloat(style.fontSize)),line_height_px:style.lineHeight==='normal'?null:bounded(parseFloat(style.lineHeight)),overflow_x:mode(style.overflowX),overflow_y:mode(style.overflowY),reasons:[...new Set(reasons)],clipping_ancestor:clipping});
    return reasons.length>0;
   };
   const rows=groups.map(([area,selector])=>{const nodes=[...document.querySelectorAll(selector)],results=nodes.map((node,index)=>overflow(node,area,index));return {area,count:nodes.length,overflow:results.some(Boolean)};});
   return {rows,targets};
- },{groups:textGroups,maximum:TEXT_DIAGNOSTIC_LIMITS.targets});
+}
+async function assertProductTextReflow(page,directory,origin,caseInfo){
+ const result=await page.evaluate(measureProductTextReflow,{groups:textGroups,maximum:TEXT_DIAGNOSTIC_LIMITS.targets});
  try{assert.deepEqual(result.rows,[{area:'portfolio',count:5,overflow:false},{area:'software',count:22,overflow:false},{area:'film',count:2,overflow:false}],'Enlarged Drone copy and film control must reflow without clipping');}
  catch(error){
   try{await capturePublicTextFailure(page,directory,origin,caseInfo,result.targets);}catch{console.error(JSON.stringify({state:'PUBLIC_TEXT_DIAGNOSTIC_UNAVAILABLE',...caseInfo}));}

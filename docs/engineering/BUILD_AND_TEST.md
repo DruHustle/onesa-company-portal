@@ -38,6 +38,17 @@ scroll dimensions and clipping ancestors. The qualification profile pins this
 exact reviewed stylesheet; hiding overflow or adding unrelated CSS fails closed.
 Actual rendering and reflow still require the pinned three-engine native run.
 
+Follow-up native measurements and retained images showed two additional scroll
+pixels below otherwise visible headings, with no clipping ancestor. The shared
+DOM measurement therefore rejects own vertical overflow only for computed
+`hidden`, `clip`, `auto` or `scroll`; normal visible font overflow is accepted.
+Original horizontal, viewport, target-count and ancestor checks keep their
+one-pixel tolerance. Against actual `hidden` or `clip` ancestors, both the block
+and its content range must fit, so text extending from a fitting block cannot
+be hidden by a wrapper. Each real-engine fixture checks default visible text,
+actual own clipping/scrolling, both kinds of ancestor clipping, and horizontal
+overflow. These adverse DOM measurements write no failure artifacts or receipts.
+
 On a targeted reflow failure, the observer keeps the original assertion and logs
 at most eight public target records: geometry, own scroll/client dimensions,
 font size, line height, overflow modes and the first clipping ancestor. A capture
@@ -79,6 +90,11 @@ loss, no-WebGL and no-JavaScript previews. A synthetic HttpOnly cookie gate reje
 anonymous model requests, then requires actual rendering of all three authorized
 models. Same-origin and foreign redirects must fail without reaching their targets;
 retry must restore actual rendering after each refusal.
+Initial lighting applies the same system-appearance handler used for later
+changes. For each model in all three engines, the gallery regression checks
+stable same-session canvas images, a changed dark appearance, and equality of
+initial light with returned light after a dark/light cycle, without reloading
+the model. It uses no cross-engine or cross-machine image baseline.
 This fixture uses real loopback HTTP responses and server-side cookie observation;
 [Playwright routing hooks](https://playwright.dev/docs/network#headers-owned-by-the-network-stack)
 run before network-owned headers are attached.

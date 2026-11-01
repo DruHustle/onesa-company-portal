@@ -70,6 +70,7 @@ export function createReferenceViewer(options: {
   const dark = matchMedia('(prefers-color-scheme: dark)');
   const theme = () => {ambient.groundColor.set(dark.matches ? 0x43516c : 0xa7b1c1); draw();};
   dark.addEventListener('change', theme);
+  theme();
   const contextLost = (event: Event) => {event.preventDefault(); abort.abort(); if (!disposed) onState('failed');};
   renderer.domElement.addEventListener('webglcontextlost', contextLost);
   fit(); onState('loading');

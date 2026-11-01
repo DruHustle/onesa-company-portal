@@ -7,7 +7,7 @@ import path from 'node:path';
 import http from 'node:http';
 import {spawn} from 'node:child_process';
 import {chromium,firefox,webkit} from '@playwright/test';
-import {observeNvidia} from './oracle_portal_nvidia.mjs';
+import {measureProductTextReflow,observeNvidia} from './oracle_portal_nvidia.mjs';
 import {checkUI} from './oracle_portal_browser.mjs';
 import {PROFILE,CONTRACT,digest,retainPublicTextDiagnostics} from './oracle_portal_nvidia_contract.mjs';
 
@@ -67,10 +67,52 @@ test('only canonical catalog model GET and HEAD responses allow private revalida
  const method=await fetch(origin+paths[0],{method:'POST',redirect:'manual'});
  assert.notEqual(method.headers.get('cache-control'),'private, no-cache');assert.match(method.headers.get('cache-control')??'',/(?:^|,)\s*no-store(?:,|$)/i);await method.body?.cancel();
 });
+async function verifyActualTextOverflowGuards(browser){
+ const retainedBefore=fs.readdirSync(directory).sort();
+ const context=await browser.newContext({viewport:{width:320,height:950},reducedMotion:'reduce'});
+ try{
+  const page=await context.newPage();
+  // Actual engine layout in a separate synthetic document. These adverse cases
+  // call only the shared measurement, never the hosted observer or its receipts.
+  await page.setContent('<!doctype html><html><head><style>html{font-size:32px}body{margin:0}#wrapper{margin:24px;width:272px}#copy{margin:0;font:700 64px/1.06 Arial,Helvetica,sans-serif}</style></head><body><div id="wrapper"><h2 id="copy">Ag</h2></div></body></html>');
+  const measure=()=>page.evaluate(measureProductTextReflow,{groups:[['portfolio','#copy']],maximum:8});
+  const geometry=()=>page.evaluate(()=>{
+   const node=document.querySelector('#copy'),parent=node.parentElement,box=node.getBoundingClientRect(),wrapper=parent.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node);const text=range.getBoundingClientRect();
+   return {own_y:getComputedStyle(node).overflowY,parent_y:getComputedStyle(parent).overflowY,font:parseFloat(getComputedStyle(node).fontSize),client_width:node.clientWidth,scroll_width:node.scrollWidth,client_height:node.clientHeight,scroll_height:node.scrollHeight,top:box.top,bottom:box.bottom,right:box.right,parent_top:wrapper.top,parent_bottom:wrapper.bottom,text_top:text.top,text_bottom:text.bottom};
+  });
+  const accepted=async()=>{const result=await measure();assert.deepEqual(result.rows,[{area:'portfolio',count:1,overflow:false}]);assert.deepEqual(result.targets,[]);};
+  const rejected=async reason=>{const result=await measure();assert.deepEqual(result.rows,[{area:'portfolio',count:1,overflow:true}]);assert.equal(result.targets.length,1);assert.deepEqual(result.targets[0].reasons,[reason]);return result.targets[0];};
+
+  let actual=await geometry();assert.equal(actual.font,64);assert.equal(actual.own_y,'visible');await accepted();
+  await page.locator('#copy').evaluate(node=>{node.style.height='24px';});
+  actual=await geometry();assert.equal(actual.own_y,'visible');assert.ok(actual.scroll_height>actual.client_height+1,'The visible font actually extends outside its short block');await accepted();
+  for(const mode of ['hidden','clip','auto','scroll']){
+   await page.locator('#copy').evaluate((node,value)=>{node.style.overflow=value;},mode);
+   actual=await geometry();assert.equal(actual.own_y,mode);assert.ok(actual.scroll_height>actual.client_height+1,`Actual own ${mode} vertical overflow required`);
+   const target=await rejected('own_scroll_y');assert.equal(target.overflow_y,mode);
+  }
+  await page.locator('#copy').evaluate(node=>{node.style.overflow='visible';});
+  for(const mode of ['hidden','clip']){
+   await page.evaluate(value=>{const node=document.querySelector('#copy');node.style.height='96px';node.parentElement.style.height='24px';node.parentElement.style.overflow=value;},mode);
+   actual=await geometry();assert.equal(actual.own_y,'visible');assert.equal(actual.parent_y,mode);assert.ok(actual.bottom>actual.parent_bottom+1,'The actual block exceeds its clipping ancestor');
+   assert.equal((await rejected('ancestor_clip_y')).clipping_ancestor.overflow_y,mode);
+   await page.locator('#copy').evaluate(node=>{node.style.height='24px';});
+   actual=await geometry();assert.ok(actual.top>=actual.parent_top-1&&actual.bottom<=actual.parent_bottom+1,'The actual block fits its clipping ancestor');assert.ok(actual.text_bottom>actual.parent_bottom+1,'Actual text still extends beyond the clipping ancestor');
+   assert.equal((await rejected('ancestor_clip_y')).clipping_ancestor.overflow_y,mode);
+  }
+  await page.evaluate(()=>{const node=document.querySelector('#copy');node.parentElement.style.height='auto';node.parentElement.style.overflow='visible';node.style.height='auto';node.style.width='24px';node.style.whiteSpace='nowrap';});
+  actual=await geometry();assert.ok(actual.scroll_width>actual.client_width+1,'Actual horizontal text overflow required');await rejected('own_scroll_x');
+  await page.locator('#copy').evaluate(node=>{node.style.width='400px';node.style.whiteSpace='normal';});
+  actual=await geometry();assert.ok(actual.right>321,'Actual viewport overflow required');await rejected('viewport_x');
+  assert.deepEqual(fs.readdirSync(directory).sort(),retainedBefore,'Adverse measurements do not write failure artifacts or receipts');
+ }finally{await context.close();}
+}
+
 for(const [engine,type]of Object.entries({chromium,firefox,webkit})){
  test(`${engine}: LOCAL_SYNTHETIC_NOT_HOSTED full NVIDIA observer`,{timeout:240000},async t=>{
   const browser=await type.launch({headless:engine!=='firefox'});
   try{
+   await t.test('actual DOM visible-font, own-overflow, ancestor-clipping and horizontal guards',{timeout:10000},async()=>verifyActualTextOverflowGuards(browser));
    const observed=await observeNvidia(browser,engine,request(),directory);
    assert.equal(observed.views.length,8);assert.equal(observed.fallbacks.length,2);assert.equal(observed.asset_deliveries.length,14);
    for(const row of observed.views)assert.deepEqual(row.assets.map(asset=>asset.id),CONTRACT.asset_ids);

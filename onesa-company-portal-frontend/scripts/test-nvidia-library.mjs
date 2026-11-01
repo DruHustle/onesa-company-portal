@@ -17,10 +17,23 @@ const firefoxHeaded = process.env.NVIDIA_FIREFOX_HEADED === 'true';
 const evidence = process.env.NVIDIA_SCREENSHOT_DIR;
 if (evidence) await mkdir(evidence, {recursive: true});
 const results = [];
+async function afterPaint(page) {
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
 async function applyTheme(page, colorScheme) {
   await page.emulateMedia({colorScheme});
   // Apply the media-query style change and its paint before sampling contrast.
-  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await afterPaint(page);
+}
+async function stableCanvas(page, canvas, scenario) {
+  await afterPaint(page);
+  const first = await canvas.screenshot({type: 'png'});
+  await afterPaint(page);
+  const second = await canvas.screenshot({type: 'png'});
+  // Check stationary same-engine PNG determinism before using exact comparisons.
+  // No image is compared across engines, machines, or separate browser sessions.
+  assert.ok(first.equals(second), `stable rendered canvas: ${scenario}`);
+  return first;
 }
 async function verifyProtectedModels(browser, engine) {
   const context = await browser.newContext({viewport: {width: 390, height: 844}});
@@ -149,6 +162,23 @@ try {
         assert.equal(await slider.inputValue(), '1');
         await section.getByRole('button', {name: locale === 'de' ? 'Ansicht zurücksetzen' : 'Fit view'}).click();
         assert.equal(await slider.inputValue(), '0');
+        if (locale === 'en' && width === 320 && colorScheme === 'light') {
+          const modelScenario = `${scenario}/model-${i + 1}`;
+          const canvas = section.locator('canvas');
+          const beforeTheme = requests.length;
+          const initialLight = await stableCanvas(page, canvas, `${modelScenario}/initial-light`);
+          await applyTheme(page, 'dark');
+          await expect(section).toHaveAttribute('data-state', 'ready');
+          const dark = await stableCanvas(page, canvas, `${modelScenario}/dark`);
+          assert.equal(requests.length, beforeTheme, 'dark theme does not reload asset');
+          assert.ok(!initialLight.equals(dark), `dark theme changes rendered appearance: ${modelScenario}`);
+          await applyTheme(page, 'light');
+          await expect(section).toHaveAttribute('data-state', 'ready');
+          const returnedLight = await stableCanvas(page, canvas, `${modelScenario}/returned-light`);
+          assert.equal(requests.length, beforeTheme, 'returning to light does not reload asset');
+          assert.ok(initialLight.equals(returnedLight), `initial light matches returned light: ${modelScenario}`);
+          results.push({engine, locale, width, model: i + 1, stableCanvasScreenshots: 'passed', initialLightMatchesReturnedLight: 'passed', darkAppearanceChanges: 'passed', themeKeepsAsset: 'passed'});
+        }
         if (evidence && locale === 'en' && colorScheme === 'light') await section.screenshot({path: `${evidence}/${engine}-${width}-model-${i + 1}.png`});
       }
       await section.locator('summary').click();
