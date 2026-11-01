@@ -32,7 +32,7 @@ for(const locale of ['en','de'] as const)test(`${locale}: product interface exam
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
-for(const locale of ['en','de'] as const)test(`${locale}: application and industrial paragraphs stay readable at 320px with enlarged text`,async({page})=>{
+for(const locale of ['en','de'] as const)test(`${locale}: application, industrial and reference text stays readable at 320px with enlarged text`,async({page})=>{
  await page.setViewportSize({width:320,height:844});
  await page.goto(`/${locale}/products`);
  await page.evaluate(async()=>{
@@ -41,7 +41,7 @@ for(const locale of ['en','de'] as const)test(`${locale}: application and indust
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
  });
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
- const overflow=await page.evaluate(()=>[...document.querySelectorAll('#platform-applications p,#industrial-ai p')].flatMap(paragraph=>{
+ const overflow=await page.evaluate(()=>[...document.querySelectorAll('#platform-applications p,#industrial-ai p,#nvidia-environments p,#nvidia-environments h2')].flatMap(paragraph=>{
   const range=document.createRange();range.selectNodeContents(paragraph);
   return [...range.getClientRects()].filter(rect=>rect.width>0&&(rect.left< -1||rect.right>innerWidth+1)).map(rect=>({left:rect.left,right:rect.right}));
  }));
