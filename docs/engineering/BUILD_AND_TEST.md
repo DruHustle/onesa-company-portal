@@ -95,16 +95,38 @@ changes. For each model in all three engines, the gallery regression checks
 stable same-session canvas images, a changed dark appearance, and equality of
 initial light with returned light after a dark/light cycle, without reloading
 the model. It uses no cross-engine or cross-machine image baseline.
+Native run `41321003379`, artifact `13088888322` (`verification-evidence`),
+retained an initial/returned mismatch of 22 out of 64,530 decoded pixels, with
+maximum channel difference 1: 14 pixels at the badge's rounded edge and 8 at the
+stage's rounded clipping edge. All model and other pixels, and all retained
+initial/returned geometry, styles and media state, matched exactly. The specific
+Chromium rasterization mechanism was not established by that evidence.
+Renderer-comparison captures therefore use Playwright's screenshot-scoped style
+to set the unique gallery stage's border radius to zero and hide its one direct
+badge span. The full canvas crop, background, border width, overflow, opacity,
+geometry, camera and assets remain unchanged; exact PNG equality is retained.
+Mandatory bounded normal-state snapshots before and after each screenshot require
+exactly one stage, badge and canvas with their expected identities, a visible
+badge, ready rendering and no context loss. They record corner radii, overflow and
+visibility as well as the geometry and colors below. The canvas is scrolled into
+view and painted before the first snapshot to establish a stable capture position.
+Each screenshot must restore
+the exact normal state, and initial/returned normal UI state must also match.
+For the first model in each engine, real DOM adverse checks hide the badge and
+change the stage radius, require guard rejection, then verify exact restoration.
+The existing one-degree slider movement must also change the renderer capture.
+Ordinary gallery screenshots and accessibility checks retain the normal styling.
 If that unchanged initial/returned comparison fails, the journey retains exactly
 its three existing initial-light, dark and returned-light PNG buffers plus one
 fixed-schema JSON file under `test-results/public-diagnostics`. Each image is
 limited to 480×320 pixels and 512 KiB; JSON is limited to 16 KiB. Fixed engine/model
 names, canonical non-symlink directories and exclusive writes prevent traversal
-or overwrites. Optional one-second reads before and after each stable capture
+or overwrites. Required one-second reads before and after each screenshot
 record canvas/host/stage/badge geometry, foreground/background RGBA, opacity and numeric transforms,
 backing dimensions, DPR, viewport/scroll position and media/renderer state.
-The crop is the composited canvas area, including any badge or rounded-corner
-background; it is not an isolated WebGL bitmap. No text, HTML, credentials,
+The renderer capture remains the composited full canvas area with only the two
+specified screenshot decorations controlled; it is not an isolated WebGL bitmap.
+No text, HTML, credentials,
 arbitrary URLs or error bodies enter the metadata. Diagnostic failure preserves
 the original assertion. This repository-only journey imports the existing pure
 PNG validator/deadline from `scripts/release/oracle_portal_nvidia_contract.mjs`;
