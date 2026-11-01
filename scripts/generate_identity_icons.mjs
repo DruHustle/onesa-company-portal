@@ -15,28 +15,53 @@ const mark="M5.43,13.12 5.58,13.12 5.58,12.39 5.72,12.39 5.72,11.67 5.87,11.67 6
 const products=[
  {id:'company',title:'Onesa Company',accent:'#407cce',frame:'<rect x="1" y="1" width="30" height="30" rx="7"/>'},
  {id:'ai',title:'Onesa AI Platform',accent:'#9c90ed',frame:'<path d="M13 2Q16-1 19 2L30 13Q33 16 30 19L19 30Q16 33 13 30L2 19Q-1 16 2 13Z"/>'},
- {id:'robot',title:'Onesa AI Robot',accent:'#2da8a0',frame:'<circle cx="16" cy="16" r="15"/>'},
+ {id:'robot',title:'Onesa Robot',accent:'#2da8a0',frame:'<circle cx="16" cy="16" r="15"/>'},
  {id:'docs',title:'Onesa Developer Docs',accent:'#a1b0c6',frame:'<path d="M3 1H23L31 9V31H3Z"/><path d="M23 1V9H31" fill="none"/>'},
 ];
-const output=process.argv[2]?resolve(process.argv[2]):join(root,'onesa-company-portal-frontend/public/brand/icons/v1');
+const svgFor=product=>`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><title>${product.title}</title><g fill="#0a1d31" stroke="${product.accent}" stroke-width="2">${product.frame}</g><path d="${mark}" fill="#4ed6e7" fill-rule="evenodd"/></svg>
+`;
+const titlesOnly=process.argv.includes('--titles-only');
+const arguments_=process.argv.slice(2).filter(value=>value!=='--titles-only');
+if(arguments_.length>1||arguments_.some(value=>value.startsWith('--')))throw new Error('Usage: generate_identity_icons.mjs [--titles-only] [output-directory]');
+const canonicalOutput=join(root,'onesa-company-portal-frontend/public/brand/icons/v1');
+const output=arguments_[0]?resolve(arguments_[0]):canonicalOutput;
+const previousFiles=new Map();
+if(titlesOnly){
+ const previous=JSON.parse(readFileSync(join(canonicalOutput,'sources.json'),'utf8'));
+ if(previous.version!=='1.0.0'||previous.source!==source||previous.sourceSha256!==sourceSha||previous.products.length!==products.length)throw new Error('Approved identity provenance changed');
+ for(const product of products){
+  const matches=previous.products.filter(value=>value.id===product.id);
+  if(matches.length!==1||matches[0].accent!==product.accent)throw new Error('Product identity changed beyond its title');
+  const recorded=matches[0].files;
+  const names=['.svg','-16.png','-32.png','-64.png','.ico','-180.png'].map(suffix=>'onesa-'+product.id+suffix);
+  if(recorded.length!==names.length||new Set(recorded.map(file=>file.name)).size!==names.length||recorded.some(file=>!names.includes(file.name)))throw new Error('Complete known icon derivatives required');
+  for(const file of recorded){
+   const bytes=readFileSync(join(canonicalOutput,file.name));
+   if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw new Error('Existing icon differs from its approved provenance');
+   previousFiles.set(file.name,bytes);
+  }
+  const before=previousFiles.get('onesa-'+product.id+'.svg').toString('utf8');
+  const withoutTitle=value=>value.replace(/<title>[^<>]*<\/title>/,'<title/>');
+  if((before.match(/<title>/g)||[]).length!==1||!before.includes(`<title>${matches[0].title}</title>`)||withoutTitle(before)!==withoutTitle(svgFor(product)))throw new Error('Title-only generation cannot change icon geometry, styling, or unbound metadata');
+ }
+}
 mkdirSync(output,{recursive:true});
 const require=createRequire(join(root,'onesa-company-portal-frontend/package.json'));
-const {chromium}=require('playwright');const browser=await chromium.launch({headless:true});
-const page=await browser.newPage();
+const browser=titlesOnly?null:await require('playwright').chromium.launch({headless:true});
+const page=browser?await browser.newPage():null;
 const manifest={version:'1.0.0',source,sourceSha256:sourceSha,rights:'Owner-supplied Onesa artwork; technical product-icon derivatives authorized by master specification Section10.4. No new official or registered logo is asserted.',method:'Source-traced common O; distinct geometric frames and product accents; existing Chromium SVG export, no generative redraw or source-bitmap modification.',products:[]};
 try{for(const product of products){
- const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><title>${product.title}</title><g fill="#0a1d31" stroke="${product.accent}" stroke-width="2">${product.frame}</g><path d="${mark}" fill="#4ed6e7" fill-rule="evenodd"/></svg>
-`;
+ const svg=svgFor(product);
  const prefix=`onesa-${product.id}`;const files=[];
- const save=(name,bytes,width,height,mime)=>{writeFileSync(join(output,name),bytes);files.push({name,sha256:sha(bytes),bytes:bytes.length,width,height,mime});};
+ const save=(name,bytes,width,height,mime)=>{if(titlesOnly&&mime!=='image/svg+xml'&&!bytes.equals(previousFiles.get(name)))throw new Error('Title-only generation cannot change raster or ICO bytes');writeFileSync(join(output,name),bytes);files.push({name,sha256:sha(bytes),bytes:bytes.length,width,height,mime});};
  save(prefix+'.svg',Buffer.from(svg),32,32,'image/svg+xml');
- const rendered=await page.evaluate(async svg=>{const image=new Image();image.src='data:image/svg+xml;base64,'+btoa(svg);await image.decode();const images={};for(const size of [16,32,64,180]){const canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;canvas.getContext('2d').drawImage(image,0,0,size,size);images[size]=canvas.toDataURL('image/png').split(',')[1];}return images;},svg);
+ const rendered=titlesOnly?Object.fromEntries([16,32,64,180].map(size=>[size,previousFiles.get(prefix+'-'+size+'.png').toString('base64')])):await page.evaluate(async svg=>{const image=new Image();image.src='data:image/svg+xml;base64,'+btoa(svg);await image.decode();const images={};for(const size of [16,32,64,180]){const canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;canvas.getContext('2d').drawImage(image,0,0,size,size);images[size]=canvas.toDataURL('image/png').split(',')[1];}return images;},svg);
  const frames=[16,32,64].map(size=>({size,bytes:Buffer.from(rendered[size],'base64')}));
  const header=Buffer.alloc(6+16*frames.length);header.writeUInt16LE(1,2);header.writeUInt16LE(frames.length,4);let offset=header.length;
  for(let i=0;i<frames.length;i++){const {size,bytes}=frames[i];let at=6+i*16;header[at]=size;header[at+1]=size;header.writeUInt16LE(1,at+4);header.writeUInt16LE(32,at+6);header.writeUInt32LE(bytes.length,at+8);header.writeUInt32LE(offset,at+12);offset+=bytes.length;save(prefix+'-'+size+'.png',bytes,size,size,'image/png');}
- save(prefix+'.ico',Buffer.concat([header,...frames.map(x=>x.bytes)]),null,null,'image/vnd.microsoft.icon');
+ save(prefix+'.ico',titlesOnly?previousFiles.get(prefix+'.ico'):Buffer.concat([header,...frames.map(x=>x.bytes)]),null,null,'image/vnd.microsoft.icon');
  save(prefix+'-180.png',Buffer.from(rendered[180],'base64'),180,180,'image/png');
  manifest.products.push({...product,frame:undefined,files});
-}}finally{await browser.close();}
+}}finally{await browser?.close();}
 writeFileSync(join(output,'sources.json'),JSON.stringify(manifest,null,2)+'\n');
-console.log(JSON.stringify({version:manifest.version,sourceUnchanged:true,products:manifest.products.map(x=>({id:x.id,files:x.files.length,bytes:x.files.reduce((n,f)=>n+f.bytes,0)}))}));
+console.log(JSON.stringify({version:manifest.version,sourceUnchanged:true,rasterRenderingPerformed:!titlesOnly,products:manifest.products.map(x=>({id:x.id,files:x.files.length,bytes:x.files.reduce((n,f)=>n+f.bytes,0)}))}));

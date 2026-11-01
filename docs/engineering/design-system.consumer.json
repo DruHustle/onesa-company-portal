@@ -9,9 +9,9 @@
   "guide": "https://docs.engineering.onesa.eu/docs/architecture/ONESA_DESIGN_SYSTEM",
   "adoption": "Review the versioned owner artifact, verify SHA256, copy into this repository, test affected consumers, promote dev \u2192 staging \u2192 main. No sibling imports or mutable runtime dependency.",
   "applications": {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "source": "onesa-company-portal-frontend/src/config/onesa-applications.json",
-    "sha256": "bd31d9bf95eb2ef20f220a12aad5caca36d781b181477a6aa799220f89d83de1",
+    "sha256": "0eeccc055f8d6df8662f0763453932e5d55dd5be9530a45a4cd863962f01e635",
     "local_artifacts": [
       "onesa-company-portal-frontend/src/config/onesa-applications.json"
     ]

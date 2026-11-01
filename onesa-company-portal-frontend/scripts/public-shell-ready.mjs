@@ -40,7 +40,7 @@ export function publicProductShellReady({pathname, measureOnly = false}) {
     return true;
   };
   if (measureOnly) return markReady();
-  for (const [id, name] of [['product-ai', 'Onesa AI Platform'], ['product-robot', 'Onesa AI Robot']]) {
+  for (const [id, name] of [['product-ai', 'Onesa AI Platform'], ['product-robot', 'Onesa Robot']]) {
     const heading = document.getElementById(id);
     if (!headingVisible(heading) || heading.textContent.replace(/\s+/g, ' ').trim() !== name) return false;
   }

@@ -73,8 +73,52 @@ integrity, legacy pattern behavior, actual ESLint enumeration and error detectio
 Redocly header matching, estree's native exports and bounded adverse preprocessing.
 The command is a mandatory named `Release requirement:` step before the asset tests;
 dependency audits and generated-contract checks remain separate requirements.
-The Docker dependency stage copies `vendor/` before its locked installation so
-the local adapter archive is available in a clean image build.
+Both the application and Oracle probe dependency stages copy `vendor/` before
+their locked installations so the local adapter archive is available in clean
+image builds. `scripts/test_oracle_probe_dependencies.py` reconstructs the
+probe's actual COPY inputs, performs a clean offline install from the warmed CI
+cache, checks its installed consumers and verifies both commissioned source
+closures. It runs in the existing Oracle preparation suite after frontend install.
+
+The explicit Oracle `frontend-nvidia-v1` profile adds anonymous public-renderer
+qualification while retaining the original presentation-only source gate.
+Selecting it requires matching commissioned policy and target configuration,
+the exact newly installed main source, the actual retained frontend as comparison
+baseline, and the complete pinned observer/catalog/license/dependency inputs.
+Its source gate permits only the reviewed renderer integrations, dependency/build
+delta and exact Robot naming substitutions; it does not accept arbitrary frontend,
+authentication, Home hero or application-routing changes. The component remains
+`frontend`, with the existing one-context and provider-operation limits.
+
+The new observer fetches and hashes the 14 public catalog, model, preview,
+license and source-record files in each real engine. It requires all three models
+in 24 distinct Chromium/Firefox/WebKit, EN/DE, 320/1440px and light/dark cases,
+keyboard controls, retained models across system appearance changes, accessibility
+and 200% text reflow. Six engine/language cases require actual product-index
+rendering, graphics-context loss/recovery and no-WebGL/no-JavaScript previews.
+Only those adverse browser capabilities are changed; hosted HTTP responses are
+never intercepted or replaced. The 1400 MiB, bounded CPU and 900-second probe
+limits remain. Firefox uses the pinned engine in Xvfb; no executable override or
+single-engine substitute can qualify. Missing, duplicated, skipped or failed
+cases and incorrect identities/bytes reject the receipt.
+
+Run the release Python suite and the mandatory
+`Release requirement: owner probe readiness and NVIDIA observations` CI step.
+The latter mirrors the probe's helper/data layout in a disposable directory and
+uses a credential-free loopback production build for the real observer regression.
+The shared origin/preview-session helper is pinned in both profiles. A separate
+regression starts the actual CLI in a fresh Node process and requires malformed
+synthetic input to fail after the NVIDIA observer import, before browser or
+network activity; an unresolved top-level-await cycle cannot pass through the
+import-only test route.
+These tests remain `LOCAL_SYNTHETIC_NOT_HOSTED`. Network corruption/redirect
+fixtures in the existing local gallery suite also remain synthetic; they are
+not represented as injected hosted success. The new profile claims no signed-in
+business-workflow, database restore, simulation, sensor or hardware acceptance.
+Existing real readiness, anonymous denials, retained data-service checks, backup
+evidence, exact hosted artifact checks and owner-controlled release remain required.
+Source implementation and local tests do not install, commission, qualify or
+deploy this profile; current hosted receipts are still necessary.
 
 Operations notification regressions retain raw failed health samples while requiring
 three consecutive transport-only failures spanning two minutes before opening an
