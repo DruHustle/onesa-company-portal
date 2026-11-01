@@ -685,8 +685,12 @@ def verify_toolchain(plan, binding):
         "COMPONENT_NOT_COMMISSIONED_WITH_ONE_CONTEXT",
     )
     require(
+        qualification_profile(plan) == qualification_profile(profile),
+        "COMMISSIONED_FRONTEND_PROFILE_CHANGED",
+    )
+    require(
         all(
-            set(CHECKS[phase]) <= set(profile["required_checks"][phase])
+            profile_checks(plan, phase) <= set(profile["required_checks"][phase])
             for phase in CHECKS
         ),
         "MANDATORY_CHECKS_REMOVED",
@@ -757,7 +761,12 @@ def verify_probe_bytes(folder, binding, plan):
     tool = trusted_toolchain(plan)
     expected = tool["probe_files"]
     require(
-        set(expected) == set(probe_source_files({k: "" for k in expected})),
+        set(expected)
+        == set(
+            probe_source_files(
+                {k: "" for k in expected}, qualification_profile(plan)
+            )
+        ),
         "COMPLETE_PROBE_PINS_REQUIRED",
     )
     program = "import pathlib,hashlib,json,sys;root=pathlib.Path('/opt/onesa-company-portal');names=json.load(sys.stdin);print(json.dumps({n:hashlib.sha256((root/n).read_bytes()).hexdigest() for n in names}))"
@@ -867,18 +876,98 @@ def component_folder(binding):
     )
 
 
-def probe_source_files(files):
+PRESENTATION_PROFILE = "presentation-v1"
+NVIDIA_PROFILE = "frontend-nvidia-v1"
+NVIDIA_PREFIX = "onesa-company-portal-frontend/"
+NVIDIA_CATALOG = NVIDIA_PREFIX + "public/models/nvidia/manifest.json"
+NVIDIA_LICENSE = NVIDIA_PREFIX + "public/licenses/three.txt"
+NVIDIA_PROXY_CHANGES = (
+    (
+        b'import {surface,routeDestination,applicationOrigin} from "./lib/domains";\n',
+        b'import {surface,routeDestination,applicationOrigin} from "./lib/domains";\n'
+        b'import nvidiaCatalog from "./config/nvidia-reference-assets.json";\n'
+        b'const nvidiaModelPaths = new Set(nvidiaCatalog.assets.map(asset => `/models/nvidia/${asset.glb.path}`));\n',
+    ),
+    (
+        b'  response.headers.set("Cache-Control", "private, no-store");\n',
+        b'  const revalidateNvidiaModel = ["GET", "HEAD"].includes(request.method) && request.nextUrl.search === "" && !request.url.includes("?") && nvidiaModelPaths.has(request.nextUrl.pathname);\n'
+        b'  response.headers.set("Cache-Control", revalidateNvidiaModel ? "private, no-cache" : "private, no-store");\n',
+    ),
+)
+NVIDIA_DEPENDENCY_PINS = {
+    NVIDIA_PREFIX + "package-lock.json": "a14df9606964f633c89d4237cb99b182767f6dbd47adfde92835f2b0d96bd4f1",
+    NVIDIA_PREFIX + "vendor/onesa-portal-minimatch-callable-1.0.0.tgz": "c532a6f7105c1934d4b0852881a59b981dd68217663debdee1a919a9a9de493c",
+}
+NVIDIA_DRONE_LAYOUT = NVIDIA_PREFIX + "src/components/drone-product.module.css"
+# Close the measured DE/320px/200%-text correction over the exact reviewed
+# stylesheet; this profile cannot accept another display change under its name.
+NVIDIA_DRONE_LAYOUT_SHA256 = "4bac1e38ccf8f481005de7143f1c1a89f21b0a5b49c34c192a348e6cb912beb7"
+NVIDIA_DRONE_DIAGNOSTIC_TEST = NVIDIA_PREFIX + "scripts/test-drone-product.mjs"
+NVIDIA_DRONE_DIAGNOSTIC_TEST_SHA256 = "3bea2bb2b51e6747df223101970218c080b10fcc3c4d1ac719a61cc164a40d3f"
+NVIDIA_ASSET_IDS = [
+    "nvidia-transfer-conveyor",
+    "nvidia-mobile-cart",
+    "nvidia-storage-rack",
+]
+NVIDIA_CHECKS = {
+    "nvidia_asset_delivery",
+    "nvidia_renderer",
+    "nvidia_fallback_accessibility",
+}
+NVIDIA_CONTRACT = {
+    "version": 1,
+    "engines": ["chromium", "firefox", "webkit"],
+    "locales": ["en", "de"],
+    "widths": [320, 1440],
+    "modes": ["light", "dark"],
+    "asset_ids": NVIDIA_ASSET_IDS,
+    "public_renderer_only": True,
+    "business_workflow_acceptance": False,
+}
+
+
+def qualification_profile(value):
+    selected = value.get("qualification_profile", PRESENTATION_PROFILE)
+    require(
+        selected in {PRESENTATION_PROFILE, NVIDIA_PROFILE},
+        "UNKNOWN_FRONTEND_QUALIFICATION_PROFILE",
+    )
+    return selected
+
+
+def profile_checks(plan, phase):
+    extra = (
+        NVIDIA_CHECKS
+        if qualification_profile(plan) == NVIDIA_PROFILE
+        and phase in {"staging", "production"}
+        else set()
+    )
+    return CHECKS[phase] | extra
+
+
+def probe_source_files(files, selected=PRESENTATION_PROFILE):
+    qualification_profile({"qualification_profile": selected})
     names = {
         "scripts/release/oracle_portal.py",
         "scripts/release/oracle_portal_frontend.py",
         "scripts/release/oracle_portal_browser.mjs",
+        "scripts/release/oracle_portal_browser_session.mjs",
         "scripts/release/oracle_frontend_build.py",
         "scripts/release/oracle_vercel_transport_guard.cjs",
         "scripts/check_tls_bundle.mjs",
         "scripts/oracle_backup_store.mjs",
         "onesa-company-portal-frontend/package.json",
         "onesa-company-portal-frontend/package-lock.json",
+        "onesa-company-portal-frontend/vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
     }
+    if selected == NVIDIA_PROFILE:
+        names |= {
+            "scripts/release/oracle_portal_nvidia.mjs",
+            "scripts/release/oracle_portal_nvidia_contract.mjs",
+            NVIDIA_CATALOG,
+            NVIDIA_LICENSE,
+            NVIDIA_PREFIX + "src/config/nvidia-reference-assets.json",
+        }
     require(names <= set(files), "COMPLETE_COMMISSIONED_PROBE_SOURCE_REQUIRED")
     return {name: files[name] for name in sorted(names)}
 
@@ -886,6 +975,14 @@ def probe_source_files(files):
 def configuration_value(binding, plan, env):
     require(env in ENV, "FRONTEND_CONFIGURATION_SCOPE")
     return {
+        **(
+            {
+                "qualification_profile": NVIDIA_PROFILE,
+                "nvidia_observation_contract": NVIDIA_CONTRACT,
+            }
+            if qualification_profile(plan) == NVIDIA_PROFILE
+            else {}
+        ),
         "schema_version": 1,
         "repository": binding["repository"],
         "component": "frontend",
@@ -1044,7 +1141,357 @@ def source_equivalence(folder, binding, plan):
     }
 
 
-def verify_browser_receipt(browser, binding, env):
+def nvidia_source_metadata(archive, files):
+    """Read bounded public data after source_inventory verified the entire Git tree."""
+    with tarfile.open(archive, "r:") as source:
+        for name in [NVIDIA_CATALOG, NVIDIA_LICENSE, NVIDIA_PREFIX + "src/config/nvidia-reference-assets.json"]:
+            require(
+                name in files and 0 < source.getmember(name).size < 32 * 1024,
+                "BOUNDED_NVIDIA_PUBLIC_METADATA_REQUIRED",
+            )
+        catalog = json.load(source.extractfile(NVIDIA_CATALOG))
+        compiled = json.load(
+            source.extractfile(NVIDIA_PREFIX + "src/config/nvidia-reference-assets.json")
+        )
+        require(
+            catalog == compiled
+            and catalog.get("schemaVersion") == 1
+            and catalog.get("catalogId") == "onesa-nvidia-simready-reference-v1"
+            and [asset.get("id") for asset in catalog.get("assets", [])]
+            == NVIDIA_ASSET_IDS,
+            "PINNED_NVIDIA_CATALOG_REQUIRED",
+        )
+        public = {
+            "/models/nvidia/manifest.json": {
+                "sha256": files[NVIDIA_CATALOG],
+                "byte_length": source.getmember(NVIDIA_CATALOG).size,
+            },
+            "/licenses/three.txt": {
+                "sha256": files[NVIDIA_LICENSE],
+                "byte_length": source.getmember(NVIDIA_LICENSE).size,
+            },
+        }
+        for asset in catalog["assets"]:
+            require(
+                asset["author"] == "NVIDIA"
+                and asset["sourceRevision"]
+                == "4763fbfaa4f8e97658e68b57d01b4c86659e08b5"
+                and asset["license"] == "CC-BY-4.0"
+                and asset["visualOnly"] is True
+                and asset["unit"] == "m"
+                and asset["upAxis"] == "Y",
+                "NVIDIA_VISUAL_REFERENCE_SCOPE",
+            )
+            for key in ["glb", "thumbnail", "licenseFile", "sourceFile"]:
+                ref = asset[key]
+                require(
+                    re.fullmatch(
+                        re.escape(asset["id"]) + r"/[A-Za-z0-9_-][A-Za-z0-9_.-]*",
+                        ref["path"],
+                    )
+                    and type(ref["byteLength"]) is int
+                    and 0 < ref["byteLength"] <= 2_000_000
+                    and re.fullmatch("[a-f0-9]{64}", ref["sha256"]),
+                    "BOUNDED_PINNED_NVIDIA_ASSET_REQUIRED",
+                )
+                name = NVIDIA_PREFIX + "public/models/nvidia/" + ref["path"]
+                require(
+                    files.get(name) == ref["sha256"]
+                    and source.getmember(name).size == ref["byteLength"],
+                    "NVIDIA_SOURCE_ASSET_BYTES_CHANGED",
+                )
+                public["/models/nvidia/" + ref["path"]] = {
+                    "sha256": ref["sha256"],
+                    "byte_length": ref["byteLength"],
+                }
+        require(
+            0 < public["/licenses/three.txt"]["byte_length"] < 32 * 1024
+            and 0 < public["/models/nvidia/manifest.json"]["byte_length"] < 32 * 1024,
+            "BOUNDED_NVIDIA_PUBLIC_METADATA_REQUIRED",
+        )
+    return {"catalog": catalog, "public_files": public}
+
+
+def nvidia_dependency_pins(files):
+    # v1 qualifies this reviewed lock closure. A later transitive dependency
+    # change needs an explicit source/profile review, even if package.json's
+    # direct dependency ranges happen to remain the same.
+    require(
+        all(files.get(name) == digest for name, digest in NVIDIA_DEPENDENCY_PINS.items()),
+        "NVIDIA_REVIEWED_DEPENDENCY_CLOSURE_ONLY",
+    )
+
+
+def source_scope(folder, binding, plan):
+    # No fallback: absence of an explicitly commissioned new profile keeps the
+    # original presentation dependency/build/auth/hero gate exactly as before.
+    if qualification_profile(plan) == PRESENTATION_PROFILE:
+        return source_equivalence(folder, binding, plan)
+    tool = trusted_toolchain(plan)
+    require(
+        all(
+            binding[binding_key] == tool[tool_key]
+            for binding_key, tool_key in [
+                ("candidate_commit", "source_commit"),
+                ("source_tree", "source_tree"),
+                ("source_sha256", "source_sha256"),
+            ]
+        ),
+        "NVIDIA_PROFILE_REQUIRES_EXACT_INSTALLED_MAIN_SOURCE",
+    )
+    baseline = plan.get("source_comparison_baseline", plan["retained_frontend"])
+    retained = plan["retained_frontend"]
+    require(
+        {key: baseline[key] for key in ["source", "source_tree", "source_sha256"]}
+        == tool["frontend_baseline"]
+        == {key: retained[key] for key in ["source", "source_tree", "source_sha256"]},
+        "COMMISSIONED_FRONTEND_BASELINE_CHANGED",
+    )
+    archive = private(folder / "baseline-source.tar")
+    require(sha(archive) == baseline["source_sha256"], "BASELINE_SOURCE_ARCHIVE_CHANGED")
+    require(sha(private(folder / "source.tar")) == binding["source_sha256"], "SOURCE_ARCHIVE_DIGEST")
+    _, old = source_inventory(archive, {"source_tree": baseline["source_tree"]})
+    _, new = source_inventory(folder / "source.tar", binding)
+    nvidia_dependency_pins(new)
+    require(
+        new.get(NVIDIA_DRONE_LAYOUT) == NVIDIA_DRONE_LAYOUT_SHA256,
+        "NVIDIA_REVIEWED_DRONE_REFLOW_ONLY",
+    )
+    require(
+        new.get(NVIDIA_DRONE_DIAGNOSTIC_TEST) == NVIDIA_DRONE_DIAGNOSTIC_TEST_SHA256,
+        "NVIDIA_REVIEWED_DRONE_DIAGNOSTICS_ONLY",
+    )
+    metadata = nvidia_source_metadata(folder / "source.tar", new)
+    require(
+        all(new.get(name) == digest for name, digest in tool["probe_files"].items()),
+        "NVIDIA_CANDIDATE_DIFFERS_FROM_INSTALLED_PROBE_SOURCE",
+    )
+    changed = {
+        name for name in old.keys() | new.keys()
+        if name.startswith(NVIDIA_PREFIX) and old.get(name) != new.get(name)
+    }
+    # This is the reviewed renderer and its existing presentation integrations,
+    # not a general frontend or dependency-change allowlist. Every new source
+    # also requires fresh main CI, an immutable install and owner commissioning.
+    permitted = {
+        NVIDIA_PREFIX + name for name in [
+            "Dockerfile", "package.json", "package-lock.json",
+            "src/components/home-products.tsx", "src/config/products.ts",
+            "src/components/product-overview.tsx", "src/components/responsive-link.tsx",
+            "public/brand/sources.json", "public/images/drone-cargo-1280.webp",
+            "public/images/drone-cargo-640.webp", "public/images/drone-flight-1280.webp",
+            "public/images/drone-flight-640.webp", "public/media/onesa-drone-concept.mp4",
+            "scripts/test-drone-product.mjs", "src/app/[locale]/products/onesa-ai-drone/page.tsx",
+            "src/app/[locale]/products/onesa-drone/page.tsx", "src/components/drone-film.tsx",
+            "src/components/drone-image.tsx", "src/components/drone-product.module.css",
+            "src/components/drone-product.tsx", "src/components/drone-visual.tsx",
+            "src/components/site-footer.tsx", "src/config/enquiry-topics.ts",
+            "src/lib/company-sitemap.ts", "public/licenses/three.txt",
+            "public/models/nvidia/manifest.json", "scripts/test-nvidia-library.mjs",
+            "scripts/validate-nvidia-assets.mjs", "src/components/nvidia-reference-library.module.css",
+            "src/components/nvidia-reference-library.tsx", "src/components/nvidia-reference-viewer.ts",
+            "src/config/nvidia-reference-assets.json", "tests/product-evidence.spec.ts",
+            "unit/dependency-security.test.mjs", "unit/nvidia-assets.test.mjs",
+            "security/minimatch-callable/README.md", "security/minimatch-callable/UPSTREAM.json",
+            "security/minimatch-callable/UPSTREAM_LICENSE.md", "security/minimatch-callable/index.cjs",
+            "security/minimatch-callable/package.json", "vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
+            "src/components/company-story.tsx", "src/components/product-illustration.tsx",
+            "src/config/onesa-applications.json", "src/proxy.ts",
+            "scripts/public-shell-ready.mjs", "scripts/test-public-loading.mjs",
+            "public/brand/icons/v1/onesa-robot.svg", "public/brand/icons/v1/sources.json",
+        ]
+    } | {NVIDIA_PREFIX + "public" + path for path in metadata["public_files"]}
+    require(
+        changed and changed <= permitted and changed <= new.keys(),
+        "NVIDIA_PROFILE_CHANGED_SCOPE_REQUIRES_SEPARATE_QUALIFICATION",
+    )
+    with tarfile.open(archive, "r:") as before, tarfile.open(folder / "source.tar", "r:") as after:
+        previous = json.load(before.extractfile(NVIDIA_PREFIX + "package.json"))
+        current = json.load(after.extractfile(NVIDIA_PREFIX + "package.json"))
+        expected = json.loads(json.dumps(previous))
+        expected["scripts"].update({
+            "build": "node scripts/validate-nvidia-assets.mjs && next build --webpack",
+            "test:drone-product": "node scripts/test-drone-product.mjs",
+            "test:nvidia-assets": "node scripts/validate-nvidia-assets.mjs && node --test unit/nvidia-assets.test.mjs",
+            "test:nvidia-browser": "node scripts/test-nvidia-library.mjs",
+            "test:dependency-security": "node --test unit/dependency-security.test.mjs",
+        })
+        expected["dependencies"]["three"] = "0.186.1"
+        expected["devDependencies"].update({
+            "@types/three": "0.186.0", "eslint": "9.39.5",
+            "minimatch": "file:vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
+        })
+        expected["overrides"] = {
+            "eslint@9.39.5": {"minimatch": "$minimatch"},
+            "@eslint/config-array@0.21.2": {"minimatch": "$minimatch"},
+            "@eslint/eslintrc@3.3.7": {"minimatch": "$minimatch"},
+            "@redocly/openapi-core@1.34.20": {"minimatch": "$minimatch"},
+            "@typescript-eslint/typescript-estree@8.71.1": {"minimatch": "11.0.1"},
+        }
+        require(current == expected, "NVIDIA_REVIEWED_DEPENDENCY_BUILD_DELTA_ONLY")
+        lock = json.load(after.extractfile(NVIDIA_PREFIX + "package-lock.json"))
+        require(
+            lock["lockfileVersion"] == 3
+            and all(lock["packages"][""][key] == current[key] for key in ["dependencies", "devDependencies"]),
+            "NVIDIA_LOCKED_DEPENDENCY_ROOT_CHANGED",
+        )
+        navigation = NVIDIA_PREFIX + "src/components/responsive-link.tsx"
+        if navigation in changed:
+            previous_link = before.extractfile(navigation).read()
+            require(
+                previous_link.count(b"<Link {...props}>") == 1
+                and after.extractfile(navigation).read()
+                == previous_link.replace(b"<Link {...props}>", b"<Link prefetch={false} {...props}>"),
+                "NAVIGATION_PREFETCH_CHANGE_ONLY",
+            )
+        proxy = NVIDIA_PREFIX + "src/proxy.ts"
+        if proxy in changed:
+            require(proxy in old, "NVIDIA_PUBLIC_MODEL_CACHE_CHANGE_ONLY")
+            expected_proxy = before.extractfile(proxy).read()
+            for original, replacement in NVIDIA_PROXY_CHANGES:
+                require(expected_proxy.count(original) == 1, "NVIDIA_PUBLIC_MODEL_CACHE_CHANGE_ONLY")
+                expected_proxy = expected_proxy.replace(original, replacement)
+            require(
+                after.extractfile(proxy).read() == expected_proxy,
+                "NVIDIA_PUBLIC_MODEL_CACHE_CHANGE_ONLY",
+            )
+        for name in ["src/components/company-story.tsx", "src/components/product-illustration.tsx", "src/config/onesa-applications.json", "scripts/public-shell-ready.mjs", "scripts/test-public-loading.mjs", "public/brand/icons/v1/onesa-robot.svg"]:
+            branded = NVIDIA_PREFIX + name
+            if branded in changed:
+                previous_brand = before.extractfile(branded).read()
+                renamed = previous_brand.replace(b"Onesa AI Robot", b"Onesa Robot").replace(b"ONESA AI ROBOT", b"ONESA ROBOT")
+                if name == "src/config/onesa-applications.json":
+                    renamed = renamed.replace(b'"version": "1.0.0"', b'"version": "1.0.1"')
+                    require(
+                        hashlib.sha256(renamed).hexdigest() == "0eeccc055f8d6df8662f0763453932e5d55dd5be9530a45a4cd863962f01e635",
+                        "PINNED_ROBOT_APPLICATION_ARTIFACT_REQUIRED",
+                    )
+                require(
+                    after.extractfile(branded).read()
+                    == renamed,
+                    "ROBOT_BRAND_TEXT_SUBSTITUTION_ONLY",
+                )
+        icon = NVIDIA_PREFIX + "public/brand/icons/v1/onesa-robot.svg"
+        provenance = NVIDIA_PREFIX + "public/brand/icons/v1/sources.json"
+        if {icon, provenance} & changed:
+            original_icon = before.extractfile(icon).read()
+            renamed_icon = original_icon.replace(b"<title>Onesa AI Robot</title>", b"<title>Onesa Robot</title>")
+            expected_icons = json.load(before.extractfile(provenance))
+            robot = [row for row in expected_icons["products"] if row["id"] == "robot"]
+            require(len(robot) == 1 and robot[0]["title"] == "Onesa AI Robot", "RETAINED_ROBOT_ICON_IDENTITY_REQUIRED")
+            robot[0]["title"] = "Onesa Robot"
+            svg = [row for row in robot[0]["files"] if row["name"] == "onesa-robot.svg"]
+            require(
+                len(svg) == 1 and svg[0]["sha256"] == hashlib.sha256(original_icon).hexdigest()
+                and svg[0]["bytes"] == len(original_icon),
+                "RETAINED_ROBOT_ICON_BYTES_REQUIRED",
+            )
+            svg[0].update({"sha256": hashlib.sha256(renamed_icon).hexdigest(), "bytes": len(renamed_icon)})
+            require(
+                after.extractfile(icon).read() == renamed_icon
+                and json.load(after.extractfile(provenance)) == expected_icons,
+                "ROBOT_ICON_TITLE_AND_MATCHING_PROVENANCE_ONLY",
+            )
+        for name in changed:
+            limit = 2 * 1024 * 1024 if name.endswith(".mp4") else 256 * 1024 if name.endswith(".webp") else None
+            if limit:
+                require(after.getmember(name).size <= limit, "BOUNDED_LOCAL_PRODUCT_MEDIA_REQUIRED")
+    return {
+        "qualification_profile": NVIDIA_PROFILE,
+        "baseline_source": baseline["source"],
+        "changed_frontend_paths": sorted(changed),
+        "authentication_and_hero_source_unchanged": True,
+        "new_full_business_acceptance_claimed": False,
+        "product_presentation_requires_current_hosted_acceptance": True,
+        "nvidia": metadata,
+    }
+
+
+def verify_nvidia_receipt(browser, metadata):
+    require(browser.get("qualification_profile") == NVIDIA_PROFILE, "EXPLICIT_NVIDIA_OBSERVATION_REQUIRED")
+    value = browser.get("nvidia", {})
+    require(
+        value.get("contract") == NVIDIA_CONTRACT
+        and value.get("catalog_sha256") == metadata["public_files"]["/models/nvidia/manifest.json"]["sha256"]
+        and value.get("renderer_license_sha256") == metadata["public_files"]["/licenses/three.txt"]["sha256"]
+        and value.get("network_interceptions") == 0
+        and value.get("synthetic_successes") == 0,
+        "PINNED_REAL_NVIDIA_OBSERVATION_REQUIRED",
+    )
+    launches = value.get("launches", [])
+    require(
+        len(launches) == 3
+        and {row.get("engine") for row in launches} == set(NVIDIA_CONTRACT["engines"])
+        and all(
+            isinstance(row.get("version"), str) and re.fullmatch(r"[0-9][0-9.A-Za-z_-]{0,79}", row["version"])
+            and row.get("headless") is (row["engine"] != "firefox")
+            and row.get("bundled_engine") is True
+            for row in launches
+        ),
+        "THREE_PINNED_REAL_GRAPHICS_ENGINES_REQUIRED",
+    )
+    deliveries = value.get("asset_deliveries", [])
+    expected_deliveries = {(engine, path) for engine in NVIDIA_CONTRACT["engines"] for path in metadata["public_files"]}
+    require(
+        len(deliveries) == len(expected_deliveries)
+        and {(row.get("engine"), row.get("path")) for row in deliveries} == expected_deliveries
+        and all(
+            row.get("sha256") == metadata["public_files"][row["path"]]["sha256"]
+            and row.get("byte_length") == metadata["public_files"][row["path"]]["byte_length"]
+            and row.get("status") == 200 and row.get("redirects") == 0
+            for row in deliveries
+        ),
+        "EXACT_NVIDIA_HOSTED_ASSET_BYTES_REQUIRED",
+    )
+    rows = value.get("views", [])
+    expected = {(engine, locale, width, mode) for engine in NVIDIA_CONTRACT["engines"] for locale in ["en", "de"] for width in [320, 1440] for mode in ["light", "dark"]}
+    require(
+        len(rows) == len(expected)
+        and {tuple(row.get(key) for key in ["engine", "locale", "width", "mode"]) for row in rows} == expected,
+        "COMPLETE_UNIQUE_NVIDIA_BROWSER_MATRIX_REQUIRED",
+    )
+    for row in rows:
+        assets = row.get("assets", [])
+        require(
+            len(assets) == 3 and [asset.get("id") for asset in assets] == NVIDIA_ASSET_IDS
+            and all(
+                asset.get("path") == "/models/nvidia/" + expected_asset["glb"]["path"]
+                and asset.get("sha256") == expected_asset["glb"]["sha256"]
+                and asset.get("byte_length") == expected_asset["glb"]["byteLength"]
+                and asset.get("render_state") == "ready"
+                and asset.get("canvas_count") == 1
+                and asset.get("graphics_api") == "WebGL2"
+                and asset.get("context_lost") is False
+                and asset.get("keyboard_rotation") == 1
+                and asset.get("fit_rotation") == 0
+                for asset, expected_asset in zip(assets, metadata["catalog"]["assets"])
+            )
+            and row.get("theme_model_reload_count") == 0
+            and row.get("accessibility_violations") == 0
+            and row.get("horizontal_overflow") is False
+            and row.get("enlarged_text_overflow") is False,
+            "ALL_THREE_REAL_NVIDIA_RENDERS_AND_ACCESSIBILITY_REQUIRED",
+        )
+    cases = value.get("fallbacks", [])
+    expected_cases = {(engine, locale) for engine in NVIDIA_CONTRACT["engines"] for locale in ["en", "de"]}
+    require(
+        len(cases) == len(expected_cases)
+        and {(row.get("engine"), row.get("locale")) for row in cases} == expected_cases
+        and all(
+            row.get("product_index_state") == "ready"
+            and row.get("context_loss_state") == "failed"
+            and row.get("context_recovery_state") == "ready"
+            and row.get("no_graphics_state") == "unavailable"
+            and row.get("no_graphics_preview_loaded") is True
+            and row.get("no_script_preview_loaded") is True
+            and row.get("product_index_asset_ids") == NVIDIA_ASSET_IDS
+            for row in cases
+        ),
+        "COMPLETE_NVIDIA_FALLBACK_AND_RECOVERY_MATRIX_REQUIRED",
+    )
+
+
+def verify_browser_receipt(browser, binding, env, *, nvidia=None):
     expected = {
         (engine, locale, width, mode)
         for engine in ["chromium", "firefox", "webkit"]
@@ -1101,6 +1548,8 @@ def verify_browser_receipt(browser, binding, env):
         ),
         "GENUINE_HOSTED_BROWSER_RECEIPT_REQUIRED",
     )
+    if nvidia is not None:
+        verify_nvidia_receipt(browser, nvidia)
 
 
 def validate_plan(binding):
@@ -1125,7 +1574,7 @@ def validate_plan(binding):
         "SOURCE_ARCHIVE_DIGEST",
     )
     source_inventory(folder / "source.tar", binding)
-    source_equivalence(folder, binding, plan)
+    source_scope(folder, binding, plan)
     for env in ENV:
         config = private(configuration_path(binding, env))
         require(
@@ -1249,6 +1698,17 @@ def preflight(binding):
         == plan["retained_frontend"]["deployment_id"],
         "CONCURRENT_FRONTEND_PUBLICATION_PRESERVED",
     )
+    if qualification_profile(plan) == NVIDIA_PROFILE:
+        retained = plan["retained_frontend"]
+        actual = frontend.provider("/v13/deployments/" + retained["deployment_id"])
+        require(
+            actual["id"] == retained["deployment_id"]
+            and actual["projectId"] == plan["project_id"]
+            and actual.get("readyState") == "READY"
+            and actual.get("target") == "production"
+            and (actual.get("meta", {}).get("githubCommitSha") or actual.get("gitSource", {}).get("sha")) == retained["source"],
+            "NVIDIA_BASELINE_MUST_MATCH_ACTUAL_RETAINED_FRONTEND",
+        )
     for env in ENV:
         readiness_and_denials(plan, env)
     probe_cpu_limit()
@@ -1257,7 +1717,7 @@ def preflight(binding):
         "status": "PREFLIGHT_READY_NOT_QUALIFIED",
         "candidate_commit": binding["candidate_commit"],
         "component": "frontend",
-        "source_scope": source_equivalence(folder, binding, plan),
+        "source_scope": source_scope(folder, binding, plan),
         "provider_requests": 0,
         "accounts_changed": False,
     }
@@ -1272,6 +1732,11 @@ def probe(binding, env, operation, folder, plan):
     retained = retained_services(plan)
     observation = frontend.observe_provider(binding, env, plan, operation)
     api = readiness_and_denials(plan, env, observation)
+    scope = (
+        source_scope(folder, binding, plan)
+        if qualification_profile(plan) == NVIDIA_PROFILE else None
+    )
+    nvidia = scope["nvidia"] if scope is not None else None
     request = output / "browser-request.json"
     write(
         request,
@@ -1281,6 +1746,17 @@ def probe(binding, env, operation, folder, plan):
             "origin": observation["origin"],
             "bypass": observation["bypass"],
             "provider_token_included": False,
+            **(
+                {
+                    "qualification_profile": NVIDIA_PROFILE,
+                    "nvidia": {
+                        "contract": NVIDIA_CONTRACT,
+                        "catalog_sha256": nvidia["public_files"]["/models/nvidia/manifest.json"]["sha256"],
+                        "renderer_license_sha256": nvidia["public_files"]["/licenses/three.txt"]["sha256"],
+                    },
+                }
+                if nvidia is not None else {}
+            ),
         },
     )
     try:
@@ -1315,8 +1791,12 @@ def probe(binding, env, operation, folder, plan):
                     "-v",
                     str(output) + ":/private/output:rw",
                     "--entrypoint",
-                    "node",
+                    "xvfb-run" if nvidia is not None else "node",
                     plan["probe_image"],
+                    *(
+                        ["-a", "--server-args=-screen 0 1920x1080x24", "node"]
+                        if nvidia is not None else []
+                    ),
                     "/opt/onesa-company-portal/scripts/release/oracle_portal_browser.mjs",
                     "/private/request.json",
                 ],
@@ -1330,7 +1810,7 @@ def probe(binding, env, operation, folder, plan):
         request.unlink(missing_ok=True)
     require(result.returncode == 0, "HOSTED_BROWSER_FAILED_INSPECT_PRIVATE_EVIDENCE")
     browser = read(output / "browser-receipt.json")
-    verify_browser_receipt(browser, binding, env)
+    verify_browser_receipt(browser, binding, env, nvidia=nvidia)
     retained_services(plan)
     unchanged(before, inventory())
     value = {
@@ -1341,7 +1821,7 @@ def probe(binding, env, operation, folder, plan):
         "observed_at": now().isoformat(),
         "api": api,
         "browser": browser,
-        "source_scope": source_equivalence(folder, binding, plan),
+        "source_scope": scope if scope is not None else source_scope(folder, binding, plan),
         "retained_services": retained,
         "physical_hardware_authorized": False,
         "production_mutations": 0,

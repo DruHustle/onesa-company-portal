@@ -99,6 +99,7 @@ class InstallTests(unittest.TestCase):
         for name in [
             "onesa-company-portal-frontend/package.json",
             "onesa-company-portal-frontend/package-lock.json",
+            "onesa-company-portal-frontend/vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
             "scripts/check_tls_bundle.mjs",
         ]:
             files[name] = (repo / name).read_bytes()

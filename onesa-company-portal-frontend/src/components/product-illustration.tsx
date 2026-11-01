@@ -23,7 +23,7 @@ function RobotConceptIllustration({locale}:{locale:string}) {
     <img src="/images/robot-concept-1280.webp" width="1280" height="853" loading="lazy" decoding="async"
      alt={de?'Konzeptillustration eines futuristischen humanoiden Roboters mit einer leuchtenden Kugel in einer offenen Stadtlandschaft.':'Concept artwork of a futuristic humanoid robot holding a luminous sphere in an open city landscape.'}/>
    </picture>
-   <div className="robot-concept-message"><p>ONESA AI ROBOT</p><strong>{de?'Intelligenz trifft Interaktion.':'Intelligence meets interaction.'}</strong></div>
+   <div className="robot-concept-message"><p>ONESA ROBOT</p><strong>{de?'Intelligenz trifft Interaktion.':'Intelligence meets interaction.'}</strong></div>
   </div>
   <figcaption><span>{de?'Robotik · Physische KI · Mensch-Maschine-Interaktion':'Robotics · Physical AI · Human–machine interaction'}</span></figcaption>
  </figure>;

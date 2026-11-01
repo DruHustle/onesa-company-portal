@@ -11,8 +11,8 @@ export const enquiryTopics = {
     category: "enterprise",
   },
   robot: {
-    en: "Onesa AI Robot — software development",
-    de: "Onesa AI Robot — Softwareentwicklung",
+    en: "Onesa Robot — software development",
+    de: "Onesa Robot — Softwareentwicklung",
     category: "enterprise",
   },
   drone: {

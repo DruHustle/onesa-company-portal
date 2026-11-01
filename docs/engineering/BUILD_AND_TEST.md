@@ -1,5 +1,252 @@
 # Separate application builds and tests
 
+## NVIDIA reference asset gallery
+
+The product index and Drone product page contain three browser derivatives from
+NVIDIA's `nvidia/simready-assets` dataset, pinned to revision
+`4763fbfaa4f8e97658e68b57d01b4c86659e08b5`. The local catalog binds each GLB,
+rendered preview, original license and source record by SHA-256 and byte length.
+The CC BY 4.0 source credit and Onesa geometry/material modifications remain
+visible beside the viewer. Three.js `0.186.1` and its type definitions are pinned
+in the frontend lockfile; this gallery does not change backend contracts or
+grant simulation, sensor or physical-control authority.
+The renderer's complete MIT notice ships at `/licenses/three.txt`; the build
+compares it with the installed pinned package's license before emitting assets.
+Fixed same-origin model requests retain origin-scoped preview cookies and reject
+redirects; the application adds no credential headers or provider token.
+Only canonical GET/HEAD requests without a query for the three catalog GLBs use
+`Cache-Control: private, no-cache`. These public, pinned reference models may be
+stored by the individual browser but must be revalidated; shared caches receive
+no permission. Other resources and private pages retain their existing policies,
+including `private, no-store` in the application proxy. Host routing, preview
+protection, CSP and per-response nonces are unchanged. This narrow correction
+addresses the [upstream Chromium streamed no-store response defect](https://github.com/microsoft/playwright/issues/42742),
+which can report an aborted transport and make the original response body
+unavailable after a byte-counted reader reaches EOF. The bounded streaming reader,
+asset hashes and pinned browser versions remain unchanged. Qualification still
+requires successful completion and exact bytes from the original browser response;
+an API refetch or rendered state alone cannot replace that evidence.
+
+The enlarged-text observation also checks the Drone page surrounding the gallery.
+Native Chromium and Firefox exposed German copy expanding a 320px viewport to
+420px at 200% text size: the mobile portfolio grid and software rows retained
+content-based minimum widths. Their copy now wraps within shrinkable tracks;
+the narrow-screen film control flows below the poster so enlarged text can grow
+without being clipped. The observer retains the gallery and full-page overflow
+assertions, and checks the measured portfolio/software copy and film button's own
+scroll dimensions and clipping ancestors. The qualification profile pins this
+exact reviewed stylesheet; hiding overflow or adding unrelated CSS fails closed.
+Actual rendering and reflow still require the pinned three-engine native run.
+
+Follow-up native measurements and retained images showed two additional scroll
+pixels below otherwise visible headings, with no clipping ancestor. The shared
+DOM measurement therefore rejects own vertical overflow only for computed
+`hidden`, `clip`, `auto` or `scroll`; normal visible font overflow is accepted.
+Original horizontal, viewport, target-count and ancestor checks keep their
+one-pixel tolerance. Against actual `hidden` or `clip` ancestors, both the block
+and its content range must fit, so text extending from a fitting block cannot
+be hidden by a wrapper. Each real-engine fixture checks default visible text,
+actual own clipping/scrolling, both kinds of ancestor clipping, and horizontal
+overflow. These adverse DOM measurements write no failure artifacts or receipts.
+
+On a targeted reflow failure, the observer keeps the original assertion and logs
+at most eight public target records: geometry, own scroll/client dimensions,
+font size, line height, overflow modes and the first clipping ancestor. A capture
+attempt has a two-second total deadline and can retain one cropped, at most
+480×320 CSS-pixel PNG per failed engine. The crop includes a small amount of the
+same public copy container around the text so the crop itself does not imply CSS
+clipping. No text, HTML, request URLs, cookies or arbitrary error strings enter
+the diagnostic metadata. Capture failure never replaces the original error.
+The native fixture copies only explicit engine-named JSON/PNG files into
+`test-results/public-diagnostics`, which is already covered by the verification
+artifact. Retention validates exact metadata shape, file type, checksums,
+compressed/decoded image bounds and canonical non-symlink paths; browser receipts,
+session files and other temporary files are excluded. The standalone Drone
+journey also writes one bounded failure-only JSON record with case/phase,
+liveness, error/crash counts, known model states and a short optional summary
+geometry read. Its original click, timeouts, assertions and error are preserved,
+and its exact reviewed script is source-pinned. These optional failure files do
+not supply a PASS receipt or replace any qualification observation.
+
+Run these from `onesa-company-portal-frontend` after a locked install:
+
+```sh
+npm run test:nvidia-assets
+npm run build
+npm run test:nvidia-browser
+```
+
+The asset tests validate actual bytes, immutable provenance, license text and
+static geometry budgets, then parse all three files with the real GLTF loader
+while forbidding external resource requests. Corrupt hashes, mutable revision
+names, traversal paths, duplicate identities and malformed files must fail.
+The production build also validates that the compiled and public catalogs agree.
+
+The browser suite starts an isolated production frontend and loopback synthetic
+API. Its default run uses the locked Chromium, Firefox and WebKit engines to
+check both languages, light/dark appearance, desktop/mobile widths, all three
+models, keyboard controls, accessibility, download failure/retry, graphics-context
+loss, no-WebGL and no-JavaScript previews. A synthetic HttpOnly cookie gate rejects
+anonymous model requests, then requires actual rendering of all three authorized
+models. Same-origin and foreign redirects must fail without reaching their targets;
+retry must restore actual rendering after each refusal.
+Initial lighting applies the same system-appearance handler used for later
+changes. For each model in all three engines, the gallery regression checks
+stable same-session canvas images, a changed dark appearance, and equality of
+initial light with returned light after a dark/light cycle, without reloading
+the model. It uses no cross-engine or cross-machine image baseline.
+Native run `41321003379`, artifact `13088888322` (`verification-evidence`),
+retained an initial/returned mismatch of 22 out of 64,530 decoded pixels, with
+maximum channel difference 1: 14 pixels at the badge's rounded edge and 8 at the
+stage's rounded clipping edge. All model and other pixels, and all retained
+initial/returned geometry, styles and media state, matched exactly. The specific
+Chromium rasterization mechanism was not established by that evidence.
+Renderer-comparison captures therefore use Playwright's screenshot-scoped style
+to set the unique gallery stage's border radius to zero and hide its one direct
+badge span. The full canvas crop, background, border width, overflow, opacity,
+geometry, camera and assets remain unchanged; exact PNG equality is retained.
+Mandatory bounded normal-state snapshots before and after each screenshot require
+exactly one stage, badge and canvas with their expected identities, a visible
+badge, ready rendering and no context loss. They record corner radii, overflow and
+visibility as well as the geometry and colors below. The canvas is scrolled into
+view and painted before the first snapshot to establish a stable capture position.
+Each screenshot must restore
+the exact normal state, and initial/returned normal UI state must also match.
+For the first model in each engine, real DOM adverse checks hide the badge and
+change the stage radius, require guard rejection, then verify exact restoration.
+The existing one-degree slider movement must also change the renderer capture.
+Ordinary gallery screenshots and accessibility checks retain the normal styling.
+If that unchanged initial/returned comparison fails, the journey retains exactly
+its three existing initial-light, dark and returned-light PNG buffers plus one
+fixed-schema JSON file under `test-results/public-diagnostics`. Each image is
+limited to 480×320 pixels and 512 KiB; JSON is limited to 16 KiB. Fixed engine/model
+names, canonical non-symlink directories and exclusive writes prevent traversal
+or overwrites. Required one-second reads before and after each screenshot
+record canvas/host/stage/badge geometry, foreground/background RGBA, opacity and numeric transforms,
+backing dimensions, DPR, viewport/scroll position and media/renderer state.
+The renderer capture remains the composited full canvas area with only the two
+specified screenshot decorations controlled; it is not an isolated WebGL bitmap.
+No text, HTML, credentials,
+arbitrary URLs or error bodies enter the metadata. Diagnostic failure preserves
+the original assertion. This repository-only journey imports the existing pure
+PNG validator/deadline from `scripts/release/oracle_portal_nvidia_contract.mjs`;
+it requires the full source checkout and adds no production dependency.
+This fixture uses real loopback HTTP responses and server-side cookie observation;
+[Playwright routing hooks](https://playwright.dev/docs/network#headers-owned-by-the-network-stack)
+run before network-owned headers are attached.
+Both scripts are mandatory named
+`Release requirement:` steps in `verify.yml`; skipped or failed steps cannot
+qualify a release. CI captures temporary per-model screenshots before the theme
+and accessibility checks to retain their scrolling and theme-transition regression.
+The mandatory CI run uses a 1920×1080, 24-bit Xvfb display and
+`NVIDIA_FIREFOX_HEADED=true` to exercise
+Firefox's real WebGL renderer on the Linux runner; Chromium and WebKit stay
+headless. All three engines retain every rendering and recovery assertion.
+A `LOCAL_NVIDIA_CHROMIUM_EXECUTABLE` run is explicitly reported
+as supplemental local evidence and does not satisfy the pinned-engine or hosted
+release requirements. No provider request or production data is used by these tests.
+
+Browser dependency preparation runs only on the expected disposable GitHub-hosted
+runner and validates all existing APT sources before writing. An unexpected
+mirror URI fails closed with bounded scheme/hostname/port diagnostics, a recognized
+Ubuntu-path label or redacted path length, and credential/query/fragment presence
+flags. Credentials, arbitrary paths and query/fragment values are never logged.
+Explicit ports, including zero, and empty user information are rejected; malformed
+URI parser errors are redacted. The existing mirror allowlist, archive signing and
+canonical HTTPS requirement remain.
+
+The frontend's development dependency correction scopes patched minimatch to its
+reviewed consumers. ESLint, `@eslint/config-array`, `@eslint/eslintrc` and Redocly
+use the independent local callable adapter; `@typescript-eslint/typescript-estree`
+uses minimatch's native named exports. The already locked ESLint version is pinned
+in `package.json` so its exact-parent override remains reproducible. This is a
+consumer-specific change and does not replace every minimatch dependency globally.
+Run `npm --prefix onesa-company-portal-frontend run test:dependency-security` after
+a clean locked install. Its six cases check installed identities and upstream
+integrity, legacy pattern behavior, actual ESLint enumeration and error detection,
+Redocly header matching, estree's native exports and bounded adverse preprocessing.
+The command is a mandatory named `Release requirement:` step before the asset tests;
+dependency audits and generated-contract checks remain separate requirements.
+Both the application and Oracle probe dependency stages copy `vendor/` before
+their locked installations so the local adapter archive is available in clean
+image builds. `scripts/test_oracle_probe_dependencies.py` reconstructs the
+probe's actual COPY inputs, performs a clean offline install from the warmed CI
+cache, checks its installed consumers and verifies both commissioned source
+closures. It runs in the existing Oracle preparation suite after frontend install.
+
+The explicit Oracle `frontend-nvidia-v1` profile adds anonymous public-renderer
+qualification while retaining the original presentation-only source gate.
+Selecting it requires matching commissioned policy and target configuration,
+the exact newly installed main source, the actual retained frontend as comparison
+baseline, and the complete pinned observer/catalog/license/dependency inputs.
+Its source gate permits only the reviewed renderer integrations, dependency/build
+delta and exact Robot naming substitutions; it does not accept arbitrary frontend,
+authentication, Home hero or application-routing changes. The component remains
+`frontend`, with the existing one-context and provider-operation limits.
+
+The new observer fetches and hashes the 14 public catalog, model, preview,
+license and source-record files in each real engine. It requires all three models
+in 24 distinct Chromium/Firefox/WebKit, EN/DE, 320/1440px and light/dark cases,
+keyboard controls, retained models across system appearance changes, accessibility
+and 200% text reflow. Six engine/language cases require actual product-index
+rendering, graphics-context loss/recovery and no-WebGL/no-JavaScript previews.
+Only those adverse browser capabilities are changed; hosted HTTP responses are
+never intercepted or replaced. The 1400 MiB, bounded CPU and 900-second probe
+limits remain. Firefox uses the pinned engine in Xvfb; no executable override or
+single-engine substitute can qualify. Missing, duplicated, skipped or failed
+cases and incorrect identities/bytes reject the receipt.
+
+Run the release Python suite and the mandatory
+`Release requirement: owner probe readiness and NVIDIA observations` CI step.
+The latter mirrors the probe's helper/data layout in a disposable directory and
+uses a credential-free loopback production build for the real observer regression.
+It checks actual model GET/HEAD cache headers and byte hashes, and rejects the
+model-only policy on queries, noncanonical/unknown model paths, other public
+files, private/Docs/API routes and POST. Source-scope tests require the exact
+proxy import, catalog path set and header-selection delta; simultaneous host,
+CSP, method, query or broad cache-scope changes are refused. Original model
+response collection has a 20-second deadline and is drained before selecting
+another model or closing its context. Failed observations retain only bounded
+engine/view identifiers, catalog IDs, transport/cache-policy states and visible
+element tags/classes/roles/dimensions; they log no HTML, text, cookies or bodies.
+The shared origin/preview-session helper is pinned in both profiles. A separate
+regression starts the actual CLI in a fresh Node process and requires malformed
+synthetic input to fail after the NVIDIA observer import, before browser or
+network activity; an unresolved top-level-await cycle cannot pass through the
+import-only test route.
+These tests remain `LOCAL_SYNTHETIC_NOT_HOSTED`. Network corruption/redirect
+fixtures in the existing local gallery suite also remain synthetic; they are
+not represented as injected hosted success. The new profile claims no signed-in
+business-workflow, database restore, simulation, sensor or hardware acceptance.
+The disposable product/NVIDIA tests connect Node test cancellation to closing
+their owned browser or context, bound startup HTTP headers and bodies, and wait
+for only their own Next child to exit after SIGTERM, with a bounded SIGKILL
+fallback. Run `node --test scripts/release/oracle_portal_test_lifecycle.test.mjs`
+for actual cancellation, held-loopback-response and child-process regressions.
+Existing test deadlines, rendered assertions and production probe limits remain
+unchanged. Cleanup attempts have their own deadline; a noncooperative browser
+driver can still require the unchanged outer CI timeout. The helper never searches
+for or terminates unrelated processes.
+If Firefox reaches its existing test deadline, the disposable observer test logs
+one bounded snapshot of pending API operations and recent outcomes. It records
+fixed phase labels only, returns the actual API promises unchanged, and does not
+record request arguments, URLs, page content, responses or credentials.
+Preview readiness uses synchronous pixel readback from the actual same-origin
+image into a detached 32×32 canvas. The image must remain visible, complete, have
+positive intrinsic dimensions, and produce nontransparent decoded pixels under
+bounded Node-side polling. This avoids awaiting a page-realm image-decoding
+Promise while Firefox has application scripting disabled, a behavior documented
+in [Mozilla issue 1942990](https://bugzilla.mozilla.org/show_bug.cgi?id=1942990)
+and reproduced with the pinned headed browser. The actual-browser regression
+requires the same document's script sentinel to execute in its enabled control
+and remain untouched with scripts disabled; malformed HTTP-200 data, truncated
+PNG data, a held unloaded response and a fully transparent decoded image must
+all be rejected. The measurement does not insert a canvas or enable page scripts.
+Existing real readiness, anonymous denials, retained data-service checks, backup
+evidence, exact hosted artifact checks and owner-controlled release remain required.
+Source implementation and local tests do not install, commission, qualify or
+deploy this profile; current hosted receipts are still necessary.
+
 Operations notification regressions retain raw failed health samples while requiring
 three consecutive transport-only failures spanning two minutes before opening an
 email incident for a healthy API container. DNS/connect/timeout probes get one bounded

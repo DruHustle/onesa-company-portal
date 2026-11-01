@@ -3,23 +3,15 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {chromium,firefox,webkit,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-export function assertExactOrigin(url,origin){assert.equal(new URL(url).origin,origin,'Foreign origin refused');}
-export async function establishPreviewSession(context,origin,secret){
- if(!secret)return;
- const response=await context.request.get(origin,{headers:{'x-vercel-protection-bypass':secret,'x-vercel-set-bypass-cookie':'true'},maxRedirects:0});
- assert.ok([200,302,303,307,308].includes(response.status()),'Preview access refused');
- const location=response.headers().location;if(location)assertExactOrigin(new URL(location,origin).href,origin);
- const cookie=(await context.cookies()).find(c=>c.name==='_vercel_jwt'&&c.secure);
- await context.clearCookies();assert.ok(cookie,'Preview session not established');
- await context.addCookies([{name:cookie.name,value:cookie.value,url:origin,secure:true,httpOnly:true,sameSite:'Lax'}]);
-}
+import {assertExactOrigin,establishPreviewSession} from './oracle_portal_browser_session.mjs';
+export {assertExactOrigin,establishPreviewSession} from './oracle_portal_browser_session.mjs';
 export async function visitHome(page,origin,locale){
  assert.ok(['en','de'].includes(locale));
  const response=await page.goto(origin+(locale==='en'?'/':'/de'),{waitUntil:'domcontentloaded'});
  assertExactOrigin(page.url(),origin);assert.ok(response?.ok(),'Home document must return a successful response');
  // Readiness is the actual rendered contract. Media/background connections can
  // outlive a usable page; network-idle is not an application readiness signal.
- await expect(page.locator('#home-robot-title')).toHaveText('Onesa AI Robot');
+ await expect(page.locator('#home-robot-title')).toHaveText('Onesa Robot');
  await expect(page.locator('#home-robot-title')).toBeVisible();
 }
 export async function verifyRobotInspectionNotice(section,locale){
@@ -63,7 +55,8 @@ export async function visitDronePresentation(page,origin,locale){
   await play.focus();await expect(play).toBeFocused();await play.press('Enter');
   await page.waitForFunction(()=>{const video=document.querySelector('video');return video?.readyState>=2&&!video.paused;},null,{timeout:10000});
   assert.ok(requested.length>0);assert.equal(await video.evaluate(node=>node.controls),true);assert.equal(await video.evaluate(node=>node.duration),12);await video.evaluate(node=>node.pause());
-  await page.locator('main details summary').click();const slider=page.getByRole('slider');const angle=Number(await slider.inputValue());await slider.focus();await slider.press('ArrowRight');await expect(slider).toHaveValue(String(angle+1));
+  const explorer=page.locator('main details').filter({has:page.locator('svg[role="img"]')});
+  await expect(explorer).toHaveCount(1);await explorer.locator('summary').click();const slider=explorer.getByRole('slider');const angle=Number(await slider.inputValue());await slider.focus();await slider.press('ArrowRight');await expect(slider).toHaveValue(String(angle+1));
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   const audit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze();assert.deepEqual(audit.violations.map(row=>row.id),[]);
   await expect(page.locator(`a[href="/${locale}/contact?topic=drone"]`).first()).toBeVisible();
@@ -89,10 +82,21 @@ async function observeUI(request,directory,engines,status){
  assert.equal(request.binding.component,'frontend');
  assert.equal(request.provider_token_included,false);
  assert.ok(['staging','production'].includes(request.environment));
+ assert.ok([undefined,'presentation-v1','frontend-nvidia-v1'].includes(request.qualification_profile));
+ const expanded=request.qualification_profile==='frontend-nvidia-v1';
+ let nvidiaObserver,nvidia;
+ if(expanded){
+  assert.deepEqual(Object.keys(engines),['chromium','firefox','webkit']);
+  for(const [name,type]of Object.entries({chromium,firefox,webkit}))assert.equal(engines[name],type,'Pinned real browser engines required');
+  nvidiaObserver=(await import('./oracle_portal_nvidia.mjs')).observeNvidia;
+  nvidia={contract:request.nvidia.contract,catalog_sha256:request.nvidia.catalog_sha256,renderer_license_sha256:request.nvidia.renderer_license_sha256,network_interceptions:0,synthetic_successes:0,launches:[],views:[],fallbacks:[],asset_deliveries:[]};
+ }
  let errors=0,mutations=0,violations=0,speculativePrefetches=0;const views=[],droneViews=[];
  for(const [name,type]of Object.entries(engines)){
-  const browser=await type.launch({headless:true});
+  const headless=!(expanded&&name==='firefox');
+  const browser=await type.launch({headless});
   try{
+   if(expanded)nvidia.launches.push({engine:name,version:browser.version(),headless,bundled_engine:true});
    const context=await browser.newContext({viewport:{width:390,height:900},colorScheme:'dark',reducedMotion:'reduce'});
    await establishPreviewSession(context,request.origin,request.bypass);
    const page=await context.newPage();
@@ -129,10 +133,16 @@ async function observeUI(request,directory,engines,status){
    // Inspect only: this probe submits no enquiry, sign-in, publication or file.
    await checkAnonymousBoundaries(request,page.request);
    await context.close();
+   if(expanded){
+    const observed=await nvidiaObserver(browser,name,request,directory);
+    nvidia.views.push(...observed.views);nvidia.fallbacks.push(...observed.fallbacks);nvidia.asset_deliveries.push(...observed.asset_deliveries);
+    errors+=observed.counts.javascript_errors;mutations+=observed.counts.operational_mutations;violations+=observed.counts.accessibility_violations;speculativePrefetches+=observed.counts.speculative_prefetches;
+   }
   }finally{await browser.close();}
  }
  assert.equal(errors,0);assert.equal(mutations,0);assert.equal(violations,0);assert.equal(speculativePrefetches,0);
  const receipt={status,binding:request.binding,environment:request.environment,engines:Object.keys(engines),views,drone_views:droneViews,speculative_prefetches:speculativePrefetches,operational_mutations:mutations,javascript_errors:errors,accessibility_violations:violations,observed_at:new Date().toISOString(),scope:'public-product-presentation-and-unchanged-private-boundaries-no-owner-session-claim'};
+ if(expanded){receipt.qualification_profile='frontend-nvidia-v1';receipt.nvidia=nvidia;}
  fs.writeFileSync(directory+'/browser-receipt.json',JSON.stringify(receipt),{flag:'wx',mode:0o600});return receipt;
 }
 export async function checkUI(request,directory,engines={chromium,firefox,webkit}){
