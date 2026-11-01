@@ -5,36 +5,31 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import {spawn} from 'node:child_process';
 import {chromium,firefox,webkit} from '@playwright/test';
 import {measureProductTextReflow,observeNvidia} from './oracle_portal_nvidia.mjs';
 import {checkUI} from './oracle_portal_browser.mjs';
 import {PROFILE,CONTRACT,digest,retainPublicTextDiagnostics} from './oracle_portal_nvidia_contract.mjs';
+import {listenFixture,closeFixtureServer,spawnFixture,fetchFixture,waitForFixtureFrontend,withFixtureResource} from './oracle_portal_test_lifecycle.mjs';
 
 const root=process.env.ONESA_SOURCE_ROOT;
 assert.ok(root&&path.isAbsolute(root),'Explicit isolated source checkout required');
 const cwd=path.join(root,'onesa-company-portal-frontend');
 for(const name of ['.env','.env.local','.env.production','.env.production.local'])assert.equal(fs.existsSync(path.join(cwd,name)),false);
 let backend,server,origin,directory;
-before(async()=>{
+before(async t=>{
  backend=http.createServer((_request,response)=>response.writeHead(404,{'Content-Type':'application/json'}).end('{}'));
- await new Promise(resolve=>backend.listen(0,'127.0.0.1',resolve));
- const reservation=http.createServer();await new Promise(resolve=>reservation.listen(0,'127.0.0.1',resolve));const port=reservation.address().port;await new Promise(resolve=>reservation.close(resolve));
+ await listenFixture(backend);
+ const reservation=http.createServer();const port=await listenFixture(reservation);await closeFixtureServer(reservation);
  origin=`http://127.0.0.1:${port}`;
  directory=fs.mkdtempSync(path.join(process.env.RUNNER_TEMP||'/tmp','portal-nvidia-observer-'));
- server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','-p',String(port)],{cwd,env:{PATH:process.env.PATH,HOME:process.env.HOME,NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1',PUBLIC_RELEASE_ENABLED:'false',SITE_URL:origin,BACKEND_URL:`http://127.0.0.1:${backend.address().port}`},stdio:'ignore'});
- for(let attempt=0;attempt<60;attempt++){
-  if(await fetch(origin+'/en/products/onesa-drone').then(response=>response.ok,()=>false))return;
-  assert.equal(server.exitCode,null,'Isolated production frontend must remain running');await new Promise(resolve=>setTimeout(resolve,250));
- }
- throw Error('Isolated production build did not become ready');
+ server=spawnFixture(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','-p',String(port)],{cwd,env:{PATH:process.env.PATH,HOME:process.env.HOME,NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1',PUBLIC_RELEASE_ENABLED:'false',SITE_URL:origin,BACKEND_URL:`http://127.0.0.1:${backend.address().port}`},stdio:'ignore'});
+ await waitForFixtureFrontend(server,origin,{signal:t.signal});
 });
 after(async()=>{
  // Only fixed, validated public failure JSON/PNG files enter the existing
  // verification artifact. Browser receipts/session files stay in the temp root.
  if(directory){try{const retained=retainPublicTextDiagnostics(directory,path.join(cwd,'test-results','public-diagnostics'));console.log(JSON.stringify({scope:'OPTIONAL_PUBLIC_FAILURE_DIAGNOSTICS',retained}));}catch{console.error(JSON.stringify({scope:'OPTIONAL_PUBLIC_FAILURE_DIAGNOSTICS',retention:'refused'}));}}
- if(server&&server.exitCode===null){server.kill('SIGTERM');await new Promise(resolve=>server.once('exit',resolve));}
- if(backend){backend.closeAllConnections();await new Promise(resolve=>backend.close(resolve));}
+ try{await server?.stop();}finally{await closeFixtureServer(backend);}
 });
 function request(){
  return {qualification_profile:PROFILE,environment:'staging',origin,bypass:null,provider_token_included:false,
@@ -50,7 +45,7 @@ test('only canonical catalog model GET and HEAD responses allow private revalida
  const catalog=JSON.parse(fs.readFileSync(new URL('../../onesa-company-portal-frontend/public/models/nvidia/manifest.json',import.meta.url)));
  const paths=catalog.assets.map(asset=>'/models/nvidia/'+asset.glb.path);
  for(const asset of catalog.assets)for(const method of ['GET','HEAD']){
-  const response=await fetch(origin+'/models/nvidia/'+asset.glb.path,{method,redirect:'manual'});
+  const response=await fetchFixture(origin+'/models/nvidia/'+asset.glb.path,{method,redirect:'manual'});
   assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'private, no-cache');
   assert.match(response.headers.get('content-security-policy'),/script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/);
   const body=Buffer.from(await response.arrayBuffer());
@@ -58,19 +53,18 @@ test('only canonical catalog model GET and HEAD responses allow private revalida
   if(method==='GET')assert.equal(digest(body),asset.glb.sha256);
  }
  for(const path of [paths[0]+'?variant=synthetic',paths[0].replace('nvidia-transfer','%6evidia-transfer'),paths[0]+'/',paths[0].replace('.glb','.GLB'),'/models/nvidia/unknown/reference.glb','/models/nvidia/manifest.json','/licenses/three.txt','/en/products/onesa-drone','/admin','/engineering/sign-in/synthetic','/docs','/api/v1/auth/me','/api/v1/admin/content']){
-  const response=await fetch(origin+path,{redirect:'manual'}),policy=response.headers.get('cache-control')??'';
+  const response=await fetchFixture(origin+path,{redirect:'manual'}),policy=response.headers.get('cache-control')??'';
   assert.notEqual(policy,'private, no-cache',path);assert.doesNotMatch(policy,/(?:^|,)\s*(?:public|s-maxage\s*=)/i,path);
   if(path===paths[0]+'/'){assert.equal(response.status,308);assert.equal(response.headers.get('location'),paths[0]);}
   else if(!path.startsWith('/api/'))assert.match(policy,/(?:^|,)\s*no-store(?:,|$)/i,path);
   await response.body?.cancel();
  }
- const method=await fetch(origin+paths[0],{method:'POST',redirect:'manual'});
+ const method=await fetchFixture(origin+paths[0],{method:'POST',redirect:'manual'});
  assert.notEqual(method.headers.get('cache-control'),'private, no-cache');assert.match(method.headers.get('cache-control')??'',/(?:^|,)\s*no-store(?:,|$)/i);await method.body?.cancel();
 });
-async function verifyActualTextOverflowGuards(browser){
+async function verifyActualTextOverflowGuards(browser,t){
  const retainedBefore=fs.readdirSync(directory).sort();
- const context=await browser.newContext({viewport:{width:320,height:950},reducedMotion:'reduce'});
- try{
+ await withFixtureResource(t,()=>browser.newContext({viewport:{width:320,height:950},reducedMotion:'reduce'}),async context=>{
   const page=await context.newPage();
   // Actual engine layout in a separate synthetic document. These adverse cases
   // call only the shared measurement, never the hosted observer or its receipts.
@@ -105,21 +99,75 @@ async function verifyActualTextOverflowGuards(browser){
   await page.locator('#copy').evaluate(node=>{node.style.width='400px';node.style.whiteSpace='normal';});
   actual=await geometry();assert.ok(actual.right>321,'Actual viewport overflow required');await rejected('viewport_x');
   assert.deepEqual(fs.readdirSync(directory).sort(),retainedBefore,'Adverse measurements do not write failure artifacts or receipts');
- }finally{await context.close();}
+ });
+}
+
+// One failure-only, bounded record for the observed native Firefox timeout.
+// These wrappers call the actual owned API immediately and return its original
+// promise/result. No arguments, URLs, page content, responses or errors are logged.
+function observeFirefoxFixtureProgress(t,browser){
+ const pending=new Map(),recent=[],restores=[];let sequence=0,active=true,limited=false;
+ const wrap=(target,name,label,created)=>{
+  if(!active||restores.length>=128){limited=true;return;}
+  const original=target[name],descriptor=Object.getOwnPropertyDescriptor(target,name);
+  if(typeof original!=='function'){limited=true;return;}
+  const wrapped=function(...args){
+   const phase=label==='page.evaluate'&&typeof args[0]==='function'&&
+    (Function.prototype.toString.call(args[0]).match(/requestAnimationFrame/g)||[]).length===2?'page.paint-two-frames':label;
+   const id=++sequence,tracked=pending.size<16;
+   if(tracked)pending.set(id,{operation:id,phase});else limited=true;
+   const complete=(outcome,value)=>{
+    if(!active)return;
+    pending.delete(id);recent.push({operation:id,phase,outcome});if(recent.length>8)recent.shift();
+    if(outcome==='resolved'&&created){try{created(value);}catch{limited=true;}}
+   };
+   let result;
+   try{result=Reflect.apply(original,this,args);}catch(error){complete('rejected');throw error;}
+   if(result&&typeof result.then==='function'){
+    // Observe settlement without replacing the promise or its rejection reason.
+    void result.then(value=>complete('resolved',value),()=>complete('rejected')).catch(()=>{limited=true;});
+   }else complete('resolved',result);
+   return result;
+  };
+  target[name]=wrapped;
+  restores.push(()=>{if(target[name]===wrapped){if(descriptor)Object.defineProperty(target,name,descriptor);else delete target[name];}});
+ };
+ const page=value=>{
+  for(const name of ['goto','evaluate','emulateMedia','waitForFunction'])wrap(value,name,`page.${name}`);
+ };
+ const context=value=>{
+  wrap(value,'newPage','context.newPage',page);
+  wrap(value,'close','context.close');
+  wrap(value.request,'get','public-asset.get');
+ };
+ wrap(browser,'newContext','browser.newContext',context);
+ wrap(browser,'close','browser.close');
+ const abort=()=>{
+  if(!active)return;
+  console.error(JSON.stringify({state:'NVIDIA_FIXTURE_ABORT_PROGRESS',scope:'LOCAL_SYNTHETIC_NOT_HOSTED',engine:'firefox',
+   connected:browser.isConnected(),pending:[...pending.values()],recent,instrumentation_limited:limited}));
+ };
+ t.signal.addEventListener('abort',abort,{once:true});
+ return()=>{
+  active=false;t.signal.removeEventListener('abort',abort);
+  for(const restore of restores.reverse())restore();
+ };
 }
 
 for(const [engine,type]of Object.entries({chromium,firefox,webkit})){
  test(`${engine}: LOCAL_SYNTHETIC_NOT_HOSTED full NVIDIA observer`,{timeout:240000},async t=>{
-  const browser=await type.launch({headless:engine!=='firefox'});
-  try{
-   await t.test('actual DOM visible-font, own-overflow, ancestor-clipping and horizontal guards',{timeout:10000},async()=>verifyActualTextOverflowGuards(browser));
-   const observed=await observeNvidia(browser,engine,request(),directory);
-   assert.equal(observed.views.length,8);assert.equal(observed.fallbacks.length,2);assert.equal(observed.asset_deliveries.length,14);
-   for(const row of observed.views)assert.deepEqual(row.assets.map(asset=>asset.id),CONTRACT.asset_ids);
-   for(const row of observed.fallbacks)assert.deepEqual(row.product_index_asset_ids,CONTRACT.asset_ids);
-   assert.deepEqual(observed.counts,{operational_mutations:0,javascript_errors:0,accessibility_violations:0,speculative_prefetches:0});
-   assert.equal(fs.existsSync(path.join(directory,'browser-receipt.json')),false);
-   t.diagnostic(`LOCAL_SYNTHETIC_NOT_HOSTED: ${engine} ${browser.version()}, 8 views, 2 recovery/preview cases`);
-  }finally{await browser.close();}
+  await withFixtureResource(t,()=>type.launch({headless:engine!=='firefox'}),async browser=>{
+   await t.test('actual DOM visible-font, own-overflow, ancestor-clipping and horizontal guards',{timeout:10000},async child=>verifyActualTextOverflowGuards(browser,child));
+   const stopProgress=engine==='firefox'?observeFirefoxFixtureProgress(t,browser):()=>{};
+   try{
+    const observed=await observeNvidia(browser,engine,request(),directory);
+    assert.equal(observed.views.length,8);assert.equal(observed.fallbacks.length,2);assert.equal(observed.asset_deliveries.length,14);
+    for(const row of observed.views)assert.deepEqual(row.assets.map(asset=>asset.id),CONTRACT.asset_ids);
+    for(const row of observed.fallbacks)assert.deepEqual(row.product_index_asset_ids,CONTRACT.asset_ids);
+    assert.deepEqual(observed.counts,{operational_mutations:0,javascript_errors:0,accessibility_violations:0,speculative_prefetches:0});
+    assert.equal(fs.existsSync(path.join(directory,'browser-receipt.json')),false);
+    t.diagnostic(`LOCAL_SYNTHETIC_NOT_HOSTED: ${engine} ${browser.version()}, 8 views, 2 recovery/preview cases`);
+   }finally{stopProgress();}
+  });
  });
 }

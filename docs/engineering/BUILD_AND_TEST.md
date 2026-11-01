@@ -218,6 +218,19 @@ These tests remain `LOCAL_SYNTHETIC_NOT_HOSTED`. Network corruption/redirect
 fixtures in the existing local gallery suite also remain synthetic; they are
 not represented as injected hosted success. The new profile claims no signed-in
 business-workflow, database restore, simulation, sensor or hardware acceptance.
+The disposable product/NVIDIA tests connect Node test cancellation to closing
+their owned browser or context, bound startup HTTP headers and bodies, and wait
+for only their own Next child to exit after SIGTERM, with a bounded SIGKILL
+fallback. Run `node --test scripts/release/oracle_portal_test_lifecycle.test.mjs`
+for actual cancellation, held-loopback-response and child-process regressions.
+Existing test deadlines, rendered assertions and production probe limits remain
+unchanged. Cleanup attempts have their own deadline; a noncooperative browser
+driver can still require the unchanged outer CI timeout. The helper never searches
+for or terminates unrelated processes.
+If Firefox reaches its existing test deadline, the disposable observer test logs
+one bounded snapshot of pending API operations and recent outcomes. It records
+fixed phase labels only, returns the actual API promises unchanged, and does not
+record request arguments, URLs, page content, responses or credentials.
 Existing real readiness, anonymous denials, retained data-service checks, backup
 evidence, exact hosted artifact checks and owner-controlled release remain required.
 Source implementation and local tests do not install, commission, qualify or
