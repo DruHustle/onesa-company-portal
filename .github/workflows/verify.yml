@@ -131,12 +131,16 @@ jobs:
       env:
         NVIDIA_SCREENSHOT_DIR: ${{ runner.temp }}/portal-nvidia-gallery
         NVIDIA_FIREFOX_HEADED: 'true'
-    - name: Verify owner probe readiness with real isolated browsers
+    - name: 'Release requirement: owner probe readiness and NVIDIA observations'
       run: |
         portal_readiness_fixture=$(mktemp -d "$RUNNER_TEMP/portal-readiness.XXXXXX")
         ln -s "$GITHUB_WORKSPACE/onesa-company-portal-frontend/node_modules" "$portal_readiness_fixture/node_modules"
-        cp scripts/release/oracle_portal_browser.mjs scripts/release/oracle_portal_browser_readiness.test.mjs scripts/release/oracle_portal_browser_products.test.mjs scripts/release/oracle_portal_browser_session.test.mjs "$portal_readiness_fixture/"
-        ONESA_SOURCE_ROOT="$GITHUB_WORKSPACE" node --test "$portal_readiness_fixture/oracle_portal_browser_readiness.test.mjs" "$portal_readiness_fixture/oracle_portal_browser_products.test.mjs" "$portal_readiness_fixture/oracle_portal_browser_session.test.mjs"
+        mkdir -p "$portal_readiness_fixture/scripts/release" "$portal_readiness_fixture/onesa-company-portal-frontend/public/models/nvidia" "$portal_readiness_fixture/onesa-company-portal-frontend/public/licenses"
+        cp scripts/release/oracle_portal_browser.mjs scripts/release/oracle_portal_browser_session.mjs scripts/release/oracle_portal_browser_cli.test.mjs scripts/release/oracle_portal_browser_readiness.test.mjs scripts/release/oracle_portal_browser_products.test.mjs scripts/release/oracle_portal_browser_session.test.mjs scripts/release/oracle_portal_nvidia.mjs scripts/release/oracle_portal_nvidia_contract.mjs scripts/release/oracle_portal_nvidia.test.mjs scripts/release/oracle_portal_nvidia_contract.test.mjs scripts/release/oracle_portal_test_lifecycle.mjs scripts/release/oracle_portal_test_lifecycle.test.mjs "$portal_readiness_fixture/scripts/release/"
+        cp onesa-company-portal-frontend/public/models/nvidia/manifest.json "$portal_readiness_fixture/onesa-company-portal-frontend/public/models/nvidia/"
+        cp onesa-company-portal-frontend/public/licenses/three.txt "$portal_readiness_fixture/onesa-company-portal-frontend/public/licenses/"
+        ONESA_SOURCE_ROOT="$GITHUB_WORKSPACE" node --test "$portal_readiness_fixture/scripts/release/oracle_portal_browser_cli.test.mjs" "$portal_readiness_fixture/scripts/release/oracle_portal_browser_readiness.test.mjs" "$portal_readiness_fixture/scripts/release/oracle_portal_browser_products.test.mjs" "$portal_readiness_fixture/scripts/release/oracle_portal_browser_session.test.mjs" "$portal_readiness_fixture/scripts/release/oracle_portal_nvidia_contract.test.mjs" "$portal_readiness_fixture/scripts/release/oracle_portal_test_lifecycle.test.mjs"
+        ONESA_SOURCE_ROOT="$GITHUB_WORKSPACE" xvfb-run -a --server-args='-screen 0 1920x1080x24' node --test "$portal_readiness_fixture/scripts/release/oracle_portal_nvidia.test.mjs"
     - name: Verify static-first hero media with isolated synthetic controls
       run: npm run test:hero-motion
       working-directory: onesa-company-portal-frontend

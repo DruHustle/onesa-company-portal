@@ -105,6 +105,17 @@ or operational mutations cannot qualify. These changes require a new reviewed
 source, immutable installation and owner commissioning; the existing failed
 reservations and current production operation must never be reset or resubmitted.
 
+The explicit `frontend-nvidia-v1` profile adds current hosted observations for
+the reviewed public NVIDIA reference renderer. It retains component `frontend`,
+the original presentation gate, existing context/provider budgets and independent
+data services. Its policy and target configuration must select the same profile;
+the source must equal the newly installed reviewed main and its comparison source
+must match the actually retained frontend. All three pinned browser engines must
+observe the exact assets, rendering, controls, accessibility and adverse graphics
+previews. Local synthetic tests and source implementation do not establish hosted
+acceptance, installation or commissioning. Authenticated business workflows,
+database restore, simulation and hardware acceptance remain outside this scope.
+
 The API and worker adapters explicitly select each retained service's existing
 Compose profile for rendering and deployment. Identity-file pins and independent
 service targeting remain mandatory. New source still requires its own checks,

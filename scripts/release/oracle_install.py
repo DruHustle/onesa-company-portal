@@ -26,8 +26,14 @@ ALLOWED = {
     "runners/oracle_backup_store.mjs": "scripts/oracle_backup_store.mjs",
     "runners/oracle_portal_frontend.py": "scripts/release/oracle_portal_frontend.py",
     "runners/oracle_portal_browser.mjs": "scripts/release/oracle_portal_browser.mjs",
+    "runners/oracle_portal_browser_session.mjs": "scripts/release/oracle_portal_browser_session.mjs",
     "runners/oracle_frontend_build.py": "scripts/release/oracle_frontend_build.py",
     "runners/oracle_vercel_transport_guard.cjs": "scripts/release/oracle_vercel_transport_guard.cjs",
+}
+NVIDIA_ALLOWED = {
+    **ALLOWED,
+    "runners/oracle_portal_nvidia.mjs": "scripts/release/oracle_portal_nvidia.mjs",
+    "runners/oracle_portal_nvidia_contract.mjs": "scripts/release/oracle_portal_nvidia_contract.mjs",
 }
 SCANNER_ALLOWED = {
     **ALLOWED,
@@ -108,6 +114,13 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     if set(m["files"]) == set(ALLOWED):
         allowed, component, script, prefix = (
             ALLOWED,
+            "frontend",
+            "oracle_portal_frontend.py",
+            "portal-",
+        )
+    elif set(m["files"]) == set(NVIDIA_ALLOWED):
+        allowed, component, script, prefix = (
+            NVIDIA_ALLOWED,
             "frontend",
             "oracle_portal_frontend.py",
             "portal-",
@@ -199,6 +212,22 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         bundle / "tool-source.tar", {"source_tree": m["source_tree"]}
     )
     tool = policy["toolchain"]
+    profile = policy["components"][m["repository"] + ":" + component]
+    selected = (
+        module.qualification_profile(profile) if component == "frontend" else None
+    )
+    if component == "frontend":
+        require(
+            (allowed is NVIDIA_ALLOWED) == (selected == module.NVIDIA_PROFILE),
+            "Explicit frontend profile requires its complete reviewed installation",
+        )
+        require(
+            all(
+                module.profile_checks(profile, phase) <= set(profile["required_checks"][phase])
+                for phase in module.CHECKS
+            ),
+            "Selected frontend profile mandatory observations missing",
+        )
     tool_fields = {
         "source_commit",
         "source_tree",
@@ -218,6 +247,8 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     )
     if component == "api":
         tool_fields.add("accepted_api_baseline")
+    if selected == module.NVIDIA_PROFILE:
+        tool_fields.add("frontend_baseline")
     require(
         set(tool) == tool_fields
         and tool["source_commit"] == m["candidate_commit"]
@@ -225,6 +256,26 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         and tool["source_sha256"] == m["tool_source_sha256"],
         "Commissioned tool source differs from reviewed main",
     )
+    if selected == module.NVIDIA_PROFILE:
+        baseline = tool["frontend_baseline"]
+        require(
+            isinstance(baseline, dict)
+            and set(baseline) == {"source", "source_tree", "source_sha256"}
+            and re.fullmatch("[a-f0-9]{40}", baseline.get("source", ""))
+            and re.fullmatch("[a-f0-9]{40}", baseline.get("source_tree", ""))
+            and verifier.HEX.fullmatch(baseline.get("source_sha256", "")),
+            "Frontend comparison baseline must be separately pinned",
+        )
+        observed = github.api(
+            "repos/" + m["repository"] + "/git/commits/" + baseline["source"]
+        )
+        require(
+            observed["sha"] == baseline["source"]
+            and observed["tree"]["sha"] == baseline["source_tree"],
+            "Frontend baseline commit/tree differs from authoritative Git source",
+        )
+        module.nvidia_source_metadata(bundle / "tool-source.tar", files)
+        module.nvidia_dependency_pins(files)
     if component == "api":
         baseline = tool["accepted_api_baseline"]
         require(
@@ -249,7 +300,7 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         )
     if component == "frontend":
         require(
-            tool["probe_files"] == module.probe_source_files(files)
+            tool["probe_files"] == module.probe_source_files(files, selected)
             and tool["builder_sha256"] == m["files"]["runners/oracle_frontend_build.py"]
             and tool["transport_guard_sha256"]
             == m["files"]["runners/oracle_vercel_transport_guard.cjs"],

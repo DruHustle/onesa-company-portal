@@ -1,5 +1,7 @@
 import {NextRequest, NextResponse} from "next/server";
 import {surface,routeDestination,applicationOrigin} from "./lib/domains";
+import nvidiaCatalog from "./config/nvidia-reference-assets.json";
+const nvidiaModelPaths = new Set(nvidiaCatalog.assets.map(asset => `/models/nvidia/${asset.glb.path}`));
 /** Per-response nonces allow Next.js hydration without trusting injected inline scripts. */
 export function proxy(request: NextRequest) {
   const origin=applicationOrigin(request.headers.get('host'),request.nextUrl.origin);
@@ -33,7 +35,8 @@ export function proxy(request: NextRequest) {
   const response = NextResponse.next({request:{headers}});
   response.headers.set("Content-Security-Policy", policy);
   if(current==='portal')response.headers.set('X-Robots-Tag','noindex, nofollow');
-  response.headers.set("Cache-Control", "private, no-store");
+  const revalidateNvidiaModel = ["GET", "HEAD"].includes(request.method) && request.nextUrl.search === "" && !request.url.includes("?") && nvidiaModelPaths.has(request.nextUrl.pathname);
+  response.headers.set("Cache-Control", revalidateNvidiaModel ? "private, no-cache" : "private, no-store");
   // Enable only after approved domain/TLS verification; no inherited subdomain policy.
   if (process.env.ONESA_HSTS_ENABLED === "true" && request.nextUrl.protocol === "https:") {
     response.headers.set("Strict-Transport-Security", "max-age=31536000");

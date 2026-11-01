@@ -767,7 +767,7 @@ def runner(phase, binding, context):
         plan["preview_receipt_path"] = str(path)
         verify_static(binding, "staging", folder, plan, context_id)
         value = r.probe(binding, "staging", context_id, folder, plan)
-        value["checks"] = {k: "PASS" for k in r.CHECKS[phase]}
+        value["checks"] = {k: "PASS" for k in r.profile_checks(plan, phase)}
         value["deployment_id"] = receipt["deployment_id"]
     elif phase == "operations":
         value = r.operational_observations(binding, plan, folder, context_id)
@@ -817,7 +817,7 @@ def runner(phase, binding, context):
         )
         value["operation_id"] = operation
         value["deployment_id"] = receipt["deployment_id"]
-        value["checks"] = {k: "PASS" for k in r.CHECKS[phase]}
+        value["checks"] = {k: "PASS" for k in r.profile_checks(plan, phase)}
     r.unchanged(before, r.inventory())
     return {
         **value,
