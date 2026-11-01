@@ -27,6 +27,17 @@ asset hashes and pinned browser versions remain unchanged. Qualification still
 requires successful completion and exact bytes from the original browser response;
 an API refetch or rendered state alone cannot replace that evidence.
 
+The enlarged-text observation also checks the Drone page surrounding the gallery.
+Native Chromium and Firefox exposed German copy expanding a 320px viewport to
+420px at 200% text size: the mobile portfolio grid and software rows retained
+content-based minimum widths. Their copy now wraps within shrinkable tracks;
+the narrow-screen film control flows below the poster so enlarged text can grow
+without being clipped. The observer retains the gallery and full-page overflow
+assertions, and checks the measured portfolio/software copy and film button's own
+scroll dimensions and clipping ancestors. The qualification profile pins this
+exact reviewed stylesheet; hiding overflow or adding unrelated CSS fails closed.
+Actual rendering and reflow still require the pinned three-engine native run.
+
 Run these from `onesa-company-portal-frontend` after a locked install:
 
 ```sh

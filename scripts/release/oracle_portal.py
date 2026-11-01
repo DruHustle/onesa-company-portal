@@ -898,6 +898,10 @@ NVIDIA_DEPENDENCY_PINS = {
     NVIDIA_PREFIX + "package-lock.json": "a14df9606964f633c89d4237cb99b182767f6dbd47adfde92835f2b0d96bd4f1",
     NVIDIA_PREFIX + "vendor/onesa-portal-minimatch-callable-1.0.0.tgz": "c532a6f7105c1934d4b0852881a59b981dd68217663debdee1a919a9a9de493c",
 }
+NVIDIA_DRONE_LAYOUT = NVIDIA_PREFIX + "src/components/drone-product.module.css"
+# Close the measured DE/320px/200%-text correction over the exact reviewed
+# stylesheet; this profile cannot accept another display change under its name.
+NVIDIA_DRONE_LAYOUT_SHA256 = "4bac1e38ccf8f481005de7143f1c1a89f21b0a5b49c34c192a348e6cb912beb7"
 NVIDIA_ASSET_IDS = [
     "nvidia-transfer-conveyor",
     "nvidia-mobile-cart",
@@ -1247,6 +1251,10 @@ def source_scope(folder, binding, plan):
     _, old = source_inventory(archive, {"source_tree": baseline["source_tree"]})
     _, new = source_inventory(folder / "source.tar", binding)
     nvidia_dependency_pins(new)
+    require(
+        new.get(NVIDIA_DRONE_LAYOUT) == NVIDIA_DRONE_LAYOUT_SHA256,
+        "NVIDIA_REVIEWED_DRONE_REFLOW_ONLY",
+    )
     metadata = nvidia_source_metadata(folder / "source.tar", new)
     require(
         all(new.get(name) == digest for name, digest in tool["probe_files"].items()),

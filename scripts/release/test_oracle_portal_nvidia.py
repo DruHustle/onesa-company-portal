@@ -82,6 +82,7 @@ class NvidiaScopeTests(unittest.TestCase):
         self.plan = {"qualification_profile": r.NVIDIA_PROFILE, "retained_frontend": self.baseline.copy()}
         self.files.update(public_files())
         self.files[PREFIX + "src/proxy.ts"] = current_proxy
+        self.files[r.NVIDIA_DRONE_LAYOUT] = (ROOT / r.NVIDIA_DRONE_LAYOUT).read_bytes()
         for name in set(installer.NVIDIA_ALLOWED.values()) | {
             "scripts/check_tls_bundle.mjs", PREFIX + "package.json", PREFIX + "package-lock.json",
             PREFIX + "vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
@@ -188,6 +189,28 @@ class NvidiaScopeTests(unittest.TestCase):
         self.refresh()
         with self.assertRaisesRegex(r.Refused, "SOURCE_ASSET_BYTES_CHANGED"):
             self.scope()
+
+    def test_drone_reflow_cannot_admit_unrelated_css_or_hide_overflow(self):
+        path = r.NVIDIA_DRONE_LAYOUT
+        original = self.files[path]
+        self.scope()
+        for change in [
+            original + b"\n.hero { display: none; }\n",
+            original.replace(b"overflow-wrap: anywhere", b"overflow-x: hidden", 1),
+            original.replace(b"grid-template-columns:minmax(0,1fr);gap:30px", b"grid-template-columns:1fr;gap:30px", 1),
+        ]:
+            self.assertNotEqual(original, change)
+            self.files[path] = change
+            self.refresh()
+            with self.subTest(change=hashlib.sha256(change).hexdigest()), self.assertRaisesRegex(r.Refused, "NVIDIA_REVIEWED_DRONE_REFLOW_ONLY"):
+                self.scope()
+        self.files.pop(path)
+        (self.source / path).unlink()
+        self.refresh()
+        with self.assertRaisesRegex(r.Refused, "NVIDIA_REVIEWED_DRONE_REFLOW_ONLY"):
+            self.scope()
+        self.files[path] = original
+        self.refresh()
 
     def test_transitive_dependency_or_vendor_change_needs_new_explicit_review(self):
         for path in r.NVIDIA_DEPENDENCY_PINS:

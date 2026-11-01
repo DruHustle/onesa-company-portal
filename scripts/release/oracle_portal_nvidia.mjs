@@ -21,13 +21,39 @@ async function layoutDiagnostic(page){
    if(!(node instanceof HTMLElement))continue;
    const box=node.getBoundingClientRect(),style=getComputedStyle(node);
    if(box.width<=0||box.height<=0||style.display==='none'||style.visibility==='hidden')continue;
-   if(box.left>=-1&&box.right<=innerWidth+1&&node.scrollWidth<=node.clientWidth+1)continue;
+   const contentOverflow=style.display!=='inline'&&node.scrollWidth>node.clientWidth+1;
+   if(box.left>=-1&&box.right<=innerWidth+1&&!contentOverflow)continue;
    const role=node.getAttribute('role');
    elements.push({tag:node.tagName.toLowerCase(),classes:[...node.classList].slice(0,4).map(value=>/^[a-zA-Z0-9_-]{1,100}$/.test(value)?value:'other'),role:role===null?null:['button','group','img','slider','status','navigation','main'].includes(role)?role:'other',left:bounded(box.left),right:bounded(box.right),width:bounded(box.width),client_width:bounded(node.clientWidth),scroll_width:bounded(node.scrollWidth),overflow_x:['visible','hidden','clip','auto','scroll'].includes(style.overflowX)?style.overflowX:'other'});
    if(elements.length===20)break;
   }
   return {viewport_width:bounded(innerWidth),document_width:bounded(document.documentElement.scrollWidth),root_font_px:bounded(parseFloat(getComputedStyle(document.documentElement).fontSize)),elements};
  }).catch(()=>({observation_unavailable:true}));
+}
+
+async function assertProductTextReflow(page){
+ const rows=await page.evaluate(()=>{
+  // These are the block/flex copy containers measured in native DE/320px
+  // failures. Inline spans/anchors can have clientWidth=0 in Firefox.
+  const groups=[
+   ['portfolio','#platform > div, #platform p, #platform h2'],
+   ['software','main > div.section:has(> p.eyebrow) > section > div, main > div.section:has(> p.eyebrow) > section h2, main > div.section:has(> p.eyebrow) > section p, main > div.section > p.eyebrow'],
+   ['film','#concept-film button, #concept-film button > span:last-child'],
+  ];
+  const overflow=node=>{
+   const box=node.getBoundingClientRect(),style=getComputedStyle(node);
+   if(box.width<=0||box.height<=0||style.visibility!=='visible'||box.left<0||box.right>innerWidth+1||node.scrollWidth>node.clientWidth+1||node.scrollHeight>node.clientHeight+1)return true;
+   // A clipped ancestor must not make a text-overflow fix appear successful.
+   for(let parent=node.parentElement;parent;parent=parent.parentElement){
+    const bounds=parent.getBoundingClientRect(),parentStyle=getComputedStyle(parent);
+    if(['hidden','clip'].includes(parentStyle.overflowX)&&(box.left<bounds.left-1||box.right>bounds.right+1))return true;
+    if(['hidden','clip'].includes(parentStyle.overflowY)&&(box.top<bounds.top-1||box.bottom>bounds.bottom+1))return true;
+   }
+   return false;
+  };
+  return groups.map(([area,selector])=>{const nodes=[...document.querySelectorAll(selector)];return {area,count:nodes.length,overflow:nodes.some(overflow)};});
+ });
+ assert.deepEqual(rows,[{area:'portfolio',count:5,overflow:false},{area:'software',count:22,overflow:false},{area:'film',count:2,overflow:false}],'Enlarged Drone copy and film control must reflow without clipping');
 }
 
 async function visit(page,origin,locale,index=false){
@@ -141,7 +167,7 @@ export async function observeNvidia(browser,engine,request,directory){
    phase='enlarged-text';
    await page.evaluate(()=>{document.documentElement.style.fontSize='200%';});await frames(page);
    const overflow=await section.locator('p,h2').evaluateAll(nodes=>nodes.some(node=>{const box=node.getBoundingClientRect();return box.left<0||box.right>innerWidth+1||node.scrollWidth>node.clientWidth+1;}));
-   assert.equal(overflow,false,'Enlarged text must reflow');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+   assert.equal(overflow,false,'Enlarged text must reflow');await assertProductTextReflow(page);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
    await page.evaluate(()=>{document.documentElement.style.fontSize='';});await frames(page);
    phase='screenshot';await section.screenshot({path:`${directory}/${engine}-${locale}-${width}-${mode}-nvidia.png`});await drain();
    views.push({engine,locale,width,mode,assets,theme_model_reload_count:modelRequests-before,accessibility_violations:audit.violations.length,horizontal_overflow:false,enlarged_text_overflow:overflow});
