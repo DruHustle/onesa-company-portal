@@ -95,6 +95,20 @@ changes. For each model in all three engines, the gallery regression checks
 stable same-session canvas images, a changed dark appearance, and equality of
 initial light with returned light after a dark/light cycle, without reloading
 the model. It uses no cross-engine or cross-machine image baseline.
+If that unchanged initial/returned comparison fails, the journey retains exactly
+its three existing initial-light, dark and returned-light PNG buffers plus one
+fixed-schema JSON file under `test-results/public-diagnostics`. Each image is
+limited to 480×320 pixels and 512 KiB; JSON is limited to 16 KiB. Fixed engine/model
+names, canonical non-symlink directories and exclusive writes prevent traversal
+or overwrites. Optional one-second reads before and after each stable capture
+record canvas/host/stage/badge geometry, foreground/background RGBA, opacity and numeric transforms,
+backing dimensions, DPR, viewport/scroll position and media/renderer state.
+The crop is the composited canvas area, including any badge or rounded-corner
+background; it is not an isolated WebGL bitmap. No text, HTML, credentials,
+arbitrary URLs or error bodies enter the metadata. Diagnostic failure preserves
+the original assertion. This repository-only journey imports the existing pure
+PNG validator/deadline from `scripts/release/oracle_portal_nvidia_contract.mjs`;
+it requires the full source checkout and adds no production dependency.
 This fixture uses real loopback HTTP responses and server-side cookie observation;
 [Playwright routing hooks](https://playwright.dev/docs/network#headers-owned-by-the-network-stack)
 run before network-owned headers are attached.
