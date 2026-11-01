@@ -12,6 +12,8 @@ in the frontend lockfile; this gallery does not change backend contracts or
 grant simulation, sensor or physical-control authority.
 The renderer's complete MIT notice ships at `/licenses/three.txt`; the build
 compares it with the installed pinned package's license before emitting assets.
+Fixed same-origin model requests retain origin-scoped preview cookies and reject
+redirects; the application adds no credential headers or provider token.
 
 Run these from `onesa-company-portal-frontend` after a locked install:
 
@@ -31,7 +33,10 @@ The browser suite starts an isolated production frontend and loopback synthetic
 API. Its default run uses the locked Chromium, Firefox and WebKit engines to
 check both languages, light/dark appearance, desktop/mobile widths, all three
 models, keyboard controls, accessibility, download failure/retry, graphics-context
-loss, no-WebGL and no-JavaScript previews. Both scripts are mandatory named
+loss, no-WebGL and no-JavaScript previews. A synthetic HttpOnly cookie gate rejects
+anonymous model requests, then requires actual rendering of all three authorized
+models; a foreign redirect must fail without reaching its target.
+Both scripts are mandatory named
 `Release requirement:` steps in `verify.yml`; skipped or failed steps cannot
 qualify a release. CI captures temporary per-model screenshots before the theme
 and accessibility checks to retain their scrolling and theme-transition regression.

@@ -63,7 +63,8 @@ export async function visitDronePresentation(page,origin,locale){
   await play.focus();await expect(play).toBeFocused();await play.press('Enter');
   await page.waitForFunction(()=>{const video=document.querySelector('video');return video?.readyState>=2&&!video.paused;},null,{timeout:10000});
   assert.ok(requested.length>0);assert.equal(await video.evaluate(node=>node.controls),true);assert.equal(await video.evaluate(node=>node.duration),12);await video.evaluate(node=>node.pause());
-  await page.locator('main details summary').click();const slider=page.getByRole('slider');const angle=Number(await slider.inputValue());await slider.focus();await slider.press('ArrowRight');await expect(slider).toHaveValue(String(angle+1));
+  const explorer=page.locator('main details').filter({has:page.locator('svg[role="img"]')});
+  await expect(explorer).toHaveCount(1);await explorer.locator('summary').click();const slider=explorer.getByRole('slider');const angle=Number(await slider.inputValue());await slider.focus();await slider.press('ArrowRight');await expect(slider).toHaveValue(String(angle+1));
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   const audit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze();assert.deepEqual(audit.violations.map(row=>row.id),[]);
   await expect(page.locator(`a[href="/${locale}/contact?topic=drone"]`).first()).toBeVisible();

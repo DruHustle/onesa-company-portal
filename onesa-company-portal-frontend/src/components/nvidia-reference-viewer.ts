@@ -76,7 +76,7 @@ export function createReferenceViewer(options: {
   const deadline = window.setTimeout(() => abort.abort(), 15000);
   void (async () => {
     try {
-      const response = await fetch(`/models/nvidia/${options.path}`, {signal: abort.signal, cache: 'force-cache', credentials: 'omit', redirect: 'error'});
+      const response = await fetch(`/models/nvidia/${options.path}`, {signal: abort.signal, cache: 'force-cache', credentials: 'same-origin', redirect: 'error'});
       if (!response.ok || !response.body) throw new Error('Reference asset unavailable');
       const reader = response.body.getReader();
       const bytes = new Uint8Array(options.byteLength);

@@ -22,6 +22,48 @@ async function applyTheme(page, colorScheme) {
   // Apply the media-query style change and its paint before sampling contrast.
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
+async function verifyProtectedModels(browser, engine) {
+  const context = await browser.newContext({viewport: {width: 390, height: 844}});
+  let denied = 0, authorized = 0, foreignRequests = 0, redirect = false;
+  try {
+    const page = await context.newPage();
+    page.on('request', request => {if (request.url() === 'https://foreign.invalid/blocked.glb') foreignRequests++;});
+    await page.route('https://foreign.invalid/blocked.glb', route => route.fulfill({status: 403, body: 'Synthetic foreign denial'}));
+    await page.route(`${origin}/models/nvidia/**/*.glb`, async route => {
+      const request = route.request(), headers = await request.allHeaders();
+      assert.equal(new URL(request.url()).origin, origin); assert.equal(request.method(), 'GET');
+      assert.equal(headers.authorization, undefined);
+      if (headers.cookie !== '_vercel_jwt=synthetic-only') {
+        denied++;
+        return route.fulfill({status: 403, headers: {'cache-control': 'no-store'}, body: 'Synthetic preview cookie required'});
+      }
+      authorized++;
+      if (redirect) return route.fulfill({status: 307, headers: {location: 'https://foreign.invalid/blocked.glb', 'cache-control': 'no-store'}});
+      return route.continue();
+    });
+    await page.goto(`${origin}/en/products/onesa-drone`);
+    const section = page.locator('#nvidia-environments'); await section.scrollIntoViewIfNeeded();
+    await expect(section).toHaveAttribute('data-state', 'failed', {timeout: 30000});
+    assert.equal(denied, 1); assert.equal(authorized, 0);
+    await context.addCookies([{name: '_vercel_jwt', value: 'synthetic-only', url: origin, httpOnly: true, sameSite: 'Lax'}]);
+    assert.equal(await page.evaluate(() => document.cookie.includes('_vercel_jwt')), false);
+    await section.getByRole('button', {name: 'Retry 3D view'}).click();
+    await expect(section, `cookie-gated actual 3D rendering: ${engine}`).toHaveAttribute('data-state', 'ready', {timeout: 30000});
+    const choices = section.getByRole('group').getByRole('button');
+    for (const index of [1, 2]) {
+      await choices.nth(index).click();
+      await expect(section).toHaveAttribute('data-state', 'ready', {timeout: 30000});
+    }
+    assert.equal(denied, 1); assert.equal(authorized, 3);
+    redirect = true; await choices.nth(0).click();
+    await expect(section).toHaveAttribute('data-state', 'failed', {timeout: 30000});
+    assert.equal(authorized, 4); assert.equal(foreignRequests, 0, 'model redirects never reach a foreign origin');
+    results.push({engine, unauthenticatedModelDenied: 'passed', cookieGatedAllThreeModels: 'passed', foreignModelRedirectRefused: 'passed'});
+  } finally {
+    console.log(JSON.stringify({phase: 'cookie-gate-summary', engine, denied, authorized, foreignRequests}));
+    await context.close();
+  }
+}
 let browser;
 try {
   let ready = false;
@@ -37,6 +79,7 @@ try {
     browser = await launcher.launch(supplemental
       ? {executablePath: supplemental, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']}
       : {headless});
+    await verifyProtectedModels(browser, engine);
     for (const locale of ['en', 'de']) for (const width of [320, 1440]) for (const colorScheme of ['light', 'dark']) {
       const scenario = `${engine}/${locale}/${width}/${colorScheme}`;
       console.log(JSON.stringify({phase: 'gallery-view', engine, locale, width, colorScheme}));
