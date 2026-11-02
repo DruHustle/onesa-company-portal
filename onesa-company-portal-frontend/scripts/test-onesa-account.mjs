@@ -171,15 +171,31 @@ async function layout(page, a11y = true) {
     assert.deepEqual(audit.violations.map(value => ({ id: value.id, impact: value.impact, targets: value.nodes.map(node => node.target) })), []);
   }
 }
+async function applyTheme(page, colorScheme) {
+  const before = await page.locator("main").evaluate(node => ({
+    background: getComputedStyle(node).backgroundColor,
+    foreground: getComputedStyle(node).color,
+  }));
+  await page.emulateMedia({ colorScheme });
+  // Media emulation can resolve before inherited colors reach the next paint.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await expect.poll(() => page.locator("main").evaluate((node, { before, colorScheme }) => {
+    const style = getComputedStyle(node);
+    return {
+      media: matchMedia(`(prefers-color-scheme: ${colorScheme})`).matches,
+      backgroundChanged: style.backgroundColor !== before.background,
+      foregroundChanged: style.color !== before.foreground,
+      inheritedText: [...node.querySelectorAll("header a, header a span, h1, h2, article > span, fieldset, legend, label, button:not(.button)")].every(child => getComputedStyle(child).color === style.color),
+    };
+  }, { before, colorScheme }), { timeout: 5000 }).toEqual({ media: true, backgroundChanged: true, foregroundChanged: true, inheritedText: true });
+}
 async function preserveTheme(page, field) {
   await field.focus();
   const values = await page.locator("input").evaluateAll(nodes => nodes.map(input => ({ name: input.name, value: input.value, checked: input.checked })));
-  const before = await page.locator("main").evaluate(node => getComputedStyle(node).backgroundColor);
-  await page.emulateMedia({ colorScheme: "dark" });
-  await expect.poll(() => page.locator("main").evaluate(node => getComputedStyle(node).backgroundColor)).not.toBe(before);
+  await applyTheme(page, "dark");
   assert.deepEqual(await page.locator("input").evaluateAll(nodes => nodes.map(input => ({ name: input.name, value: input.value, checked: input.checked }))), values);
   await expect(field).toBeFocused(); await layout(page);
-  await page.emulateMedia({ colorScheme: "light" }); await expect(field).toBeFocused();
+  await applyTheme(page, "light"); await expect(field).toBeFocused();
 }
 function gate(state, path) {
   let release;
@@ -258,7 +274,7 @@ try {
         await expect(product("Onesa Drone").getByRole("button", { name: t.pending, exact: true })).toBeDisabled();
         await expect(product("Onesa Robot")).toContainText(t.denied);
         await expect(page.getByRole("heading", { name: t.admin })).toHaveCount(0);
-        await layout(page); await page.emulateMedia({ colorScheme: "dark" }); await layout(page);
+        await layout(page); await applyTheme(page, "dark"); await layout(page);
         await product("Onesa Robot").getByRole("button", { name: t.request, exact: true }).click();
         await expect(product("Onesa Robot").getByRole("button", { name: t.pending })).toBeDisabled();
         assert.equal(state.writes.at(-1).csrf, csrf);
