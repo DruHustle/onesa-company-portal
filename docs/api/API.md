@@ -150,3 +150,48 @@ The public content contract excludes this summary, working review metadata and s
 Older clients ignore the added property; a new client receiving an older response reports
 that live-edition details are unavailable rather than inferring publication from a draft.
 The change uses schema 012 and retains the worker's existing publication postconditions.
+
+## Shared Onesa account and product access (prepared, default off)
+
+The existing Portal hosts the independent `/api/v1/identity` issuer using its
+locked OpenID Connect provider. Fixed confidential clients use authorization code
+flow with mandatory S256 PKCE and exact HTTPS callbacks. Protocol routes remain
+separate from Engineering Docs identity and its independently approved membership.
+The authenticated `/identity/session` endpoint returns live, audience-bound account,
+MFA and product claims; applications never treat an unchecked ID token as proof.
+`/identity/revoke` defaults to a single token. With `all_sessions=true`, a live
+matching grant and its exact source session are required before revoking that
+account across products. `all_sessions_revoked` is true only after that transaction
+commits; an idempotent `ok` alone never proves global sign-out.
+
+`/account/register` accepts a name, email and one to three requested products.
+One-use mailbox verification creates a `member`, with pending product access and
+no Portal administration authority. Connecting an existing Portal account requires
+its current password and a verification link bound to its immutable user ID. It
+retains credentials, MFA and prior approvals. Account login, security and product
+requests use host-only cookies, exact Origin and CSRF on authenticated mutations.
+Identity artifacts stay encrypted server-side. Email uses the existing encrypted
+outbox; queue success does not establish delivery.
+
+Owner and Administrator roles administer Company Portal, AI, Drone and Robot.
+Assigning or removing an Onesa Administrator requires fresh owner password/MFA
+proof; existing administrative routes enforce the same rule in shared mode.
+`/admin/identity/accounts` provides bounded account search. Product-access updates
+require current revision plus fresh administrator proof. Per-product administrators
+require MFA as well. Normal accounts receive only active explicit product grants.
+Drone additionally requires explicit membership in an existing workspace; its
+product role caps each workspace role. Robot actuation and safety confirmations
+remain independently enforced by Robot.
+
+Every issued grant is bound to the exact account or MFA Portal session that
+approved it. Sign-out, credential changes, disablement and global-role changes
+invalidate that source. Held-lock regressions prove that admitted requests and
+late protocol writes cannot restore authority after sign-out. Permission changes
+are read on each application request. Source preparation does not enable the
+feature or establish hosted staging acceptance.
+
+Same-account reauthentication rotates the browser credential while carrying existing
+product grants to its replacement. Each carried grant retains its original
+authentication time, factors and expiry; confirming MFA in one product cannot
+freshen another product's sensitive-action proof. Switching accounts instead
+revokes the previous account's bindings in that browser.

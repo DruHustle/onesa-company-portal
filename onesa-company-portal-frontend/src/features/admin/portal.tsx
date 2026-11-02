@@ -113,10 +113,12 @@ function Select<T extends string>({
 export function AdminPortal({
   environment,
   accessEnabled = false,
+  identityEnabled = false,
   engineeringEnabled = false,
 }: {
   environment?: "PRODUCTION" | "STAGING" | "DEVELOPMENT";
   accessEnabled?: boolean;
+  identityEnabled?: boolean;
   engineeringEnabled?: boolean;
 }) {
   const [user, setUser] = useState<User | null>(null),
@@ -461,13 +463,13 @@ export function AdminPortal({
         <div className="admin-login">
           <h1 style={{ fontSize: "2rem" }}>Sign in</h1>
           {sessionError&&<div role="alert"><p>{sessionError}</p><button type="button" disabled={sessionChecking} onClick={()=>setSessionAttempt(value=>value+1)}>Retry session check</button></div>}{sessionChecking&&<p role="status">Checking your Portal session…</p>}
-          <AdminSignIn
+          {identityEnabled ? <><p>Use your Onesa account to administer Company Portal, AI, Drone and Robot.</p><a className="button" href="/account?next=/admin">Continue with Onesa</a></> : <AdminSignIn
             accessEnabled={accessEnabled}
             onSignedIn={(r) => {
               setCsrf(r.csrf);
               setSessionError('');setUser(r.user);
             }}
-          />
+          />}
           <p className="signin-registration">Approved and signing in for the first time? <a href="/access/setup-authenticator">Set up your authenticator</a>.</p>
           <details>
             <summary>Recover your password</summary>
@@ -1239,6 +1241,7 @@ export function AdminPortal({
             )}
             {tab === "Users" && (
               <p>
+                {identityEnabled && <><a href="/account?tab=access#access">Manage shared accounts and product access</a>. Normal product users register once from their Onesa account. </>}
                 Normal access: register → verify email → owner approval. A
                 Portal role grants business-workspace permissions. Engineering
                 membership is separate, and the provider’s approved-email policy
@@ -1288,6 +1291,7 @@ export function AdminPortal({
                           email: value(d, "email"),
                           password: value(d, "password"),
                           role: value(d, "role") as User["role"],
+                          ...(identityEnabled ? {stepUp: {password: value(d, "stepUpPassword"), code: value(d, "stepUpCode")}} : {}),
                         },
                       });
                     await refresh();
@@ -1371,6 +1375,7 @@ export function AdminPortal({
                       />
                     </>
                   )}
+                  {identityEnabled && !editUser && <fieldset><legend>Confirm direct account creation</legend><Field label="Your current password" name="stepUpPassword" type="password" required/><Field label="Fresh authenticator or unused recovery code" name="stepUpCode" required/></fieldset>}
                   <button className="button" disabled={busy || unsaved.pending}>
                     Save user
                   </button>

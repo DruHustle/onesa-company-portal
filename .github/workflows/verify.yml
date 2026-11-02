@@ -147,6 +147,9 @@ jobs:
     - name: Verify Portal engineering sign-in with isolated synthetic services
       run: npm run test:engineering-sign-in
       working-directory: onesa-company-portal-frontend
+    - name: Verify shared Onesa account and access management with isolated synthetic services
+      run: npm run test:onesa-account
+      working-directory: onesa-company-portal-frontend
     - name: Verify bounded public navigation with isolated synthetic services
       run: npm run test:public-loading && npm run test:drone-product
       working-directory: onesa-company-portal-frontend

@@ -6,7 +6,8 @@ import styles from "./registration.module.css";
 
 type Enrollment = operations["startMfaEnrollment"]["responses"][200]["content"]["application/json"];
 
-export function AuthenticatorSetup() {
+export function AuthenticatorSetup({ sharedAccount = false }: { sharedAccount?: boolean }) {
+  const returnPath = () => { const value = new URLSearchParams(window.location.search).get("returnTo"); return sharedAccount && value && /^\/account\/sign-in\/[A-Za-z0-9_-]{8,128}$/.test(value) ? value : sharedAccount ? "/account" : "/admin"; };
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [codes, setCodes] = useState<string[]>([]);
   const [saved, setSaved] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
@@ -46,9 +47,9 @@ export function AuthenticatorSetup() {
 
   return <main className={styles.shell}><section className={styles.card} aria-labelledby="authenticator-title">
     <a className="wordmark" href="https://onesa.eu/" aria-label="Onesa home">onesa<span>UG</span></a>
-    <p className={styles.context}>ONESA PORTAL · ADMINISTRATOR SETUP</p>
+    <p className={styles.context}>{sharedAccount ? "ONESA ACCOUNT · SECURITY" : "ONESA PORTAL · ADMINISTRATOR SETUP"}</p>
     <h1 id="authenticator-title" ref={heading} tabIndex={-1}>{step === 3 ? "Save your recovery codes" : "Set up your authenticator"}</h1>
-    <p className={styles.intro}>{step === 1 ? "After registration and approval, secure your account before your first sign-in." : step === 2 ? "Add an account in your authenticator app. Choose manual setup, enter the key below and select time-based codes." : "Each code works once if you cannot use your authenticator. Store these securely before continuing."}</p>
+    <p className={styles.intro}>{step === 1 ? (sharedAccount ? "Secure your single Onesa account. This authenticator protects administration and sensitive product operations." : "After registration and approval, secure your account before your first sign-in.") : step === 2 ? "Add an account in your authenticator app. Choose manual setup, enter the key below and select time-based codes." : "Each code works once if you cannot use your authenticator. Store these securely before continuing."}</p>
     <p className={styles.context}>STEP {step} OF 3</p>
     {step !== 3 && <form onSubmit={submit} aria-busy={busy}><fieldset disabled={busy}>
       <legend className={styles.srOnly}>{enrollment ? "Verify authenticator setup" : "Verify your approved account"}</legend>
@@ -66,13 +67,13 @@ export function AuthenticatorSetup() {
     {step === 3 && <>
       <ul className={styles.recoveryCodes} aria-label="One-use recovery codes">{codes.map(code => <li key={code}><code>{code}</code></li>)}</ul>
       <label className="check"><input type="checkbox" checked={saved} onChange={event => setSaved(event.target.checked)} />I have saved my recovery codes securely.</label>
-      <button className="button" disabled={!saved} onClick={() => { setCodes([]); window.location.replace("/admin"); }}>Continue to administrator sign-in</button>
+      <button className="button" disabled={!saved} onClick={() => { setCodes([]); window.location.replace(returnPath()); }}>{sharedAccount ? "Continue to Onesa sign-in" : "Continue to administrator sign-in"}</button>
       <p className={styles.intro}>Wait for your authenticator’s next code, or use a saved recovery code to sign in. Setup does not sign you in automatically.</p>
     </>}
     {error && <p role="alert" className={styles.notice}>{error}</p>}
     <div className={styles.support}>
-      {step !== 3 && <a href="/admin">Already enrolled? Sign in</a>}
-      <details><summary>Help with setup</summary><p>You need an approved administrator account and its registered password. This page cannot replace existing MFA or reset your account. Engineering Docs has a separate sign-in flow.</p><a href="/access/register?audience=admin">Register for administrator access</a><p><a href="https://onesa.eu/en/contact">Contact Onesa</a></p></details>
+      {step !== 3 && <a href={sharedAccount ? "/account" : "/admin"}>Already enrolled? Sign in</a>}
+      <details><summary>Help with setup</summary><p>{sharedAccount ? "Use your verified Onesa account and its password. Setup adds MFA for all your products; it does not grant additional product access or replace an existing authenticator." : "You need an approved administrator account and its registered password. This page cannot replace existing MFA or reset your account. Engineering Docs has a separate sign-in flow."}</p><a href={sharedAccount ? "/account/register" : "/access/register?audience=admin"}>{sharedAccount ? "Create your Onesa account" : "Register for administrator access"}</a><p><a href="https://onesa.eu/en/contact">Contact Onesa</a></p></details>
     </div>
   </section></main>;
 }
