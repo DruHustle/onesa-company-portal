@@ -1135,3 +1135,35 @@ release verification from Drone source `ff493035`. The Portal CTA reflects that
 available simulation release while retaining development and no-flight-service
 statements. This documentation does not claim the Portal is published; fresh
 main checks and source-bound hosted release evidence remain mandatory.
+
+## Shared Onesa identity and account experience
+
+The backend `tests/onesa-identity.test.ts` uses the guarded disposable PostgreSQL
+database and the actual locked OIDC provider. It covers new and existing identity
+verification, all three product grants, explicit workspace assignment, owner-only
+global administration, MFA, exact callbacks, wrong PKCE, code replay, live role
+changes, native Portal session reuse, account switching and truthful global logout.
+Concurrent regressions hold a real account row lock, admit an HTTP operation,
+revoke its source session, and prove that a password change or sign-in completion
+cannot succeed afterward. Restored protocol records cannot revive a revoked source;
+restore quarantine preserves approvals while clearing sign-in capabilities.
+
+After the normal locked build, run `npm run test:onesa-account` from the frontend.
+The default suite uses the pinned Chromium, Firefox and WebKit installations with
+a production frontend and isolated loopback synthetic API. It covers EN/DE forms,
+320px and desktop layouts, system appearance changes without losing field values
+or focus, product status cards, MFA, verification/recovery fragments, continuation,
+access administration, workspace editing and sign-out. `npm run test:domains`
+includes exact protocol redirect and callback-header guards. CI runs these cases
+without credentials or provider mutations.
+
+An explicitly supplied `ONESA_TEST_CHROMIUM_EXECUTABLE` with
+`ONESA_TEST_BROWSERS=chromium` supports a supplemental local engine when the pinned
+browser download is unavailable. That run is labeled supplemental and never
+substitutes for native three-engine CI or hosted end-to-end acceptance.
+
+The feature remains off until complete owner-held issuer/client configuration,
+additive migrations, restricted grants, exact frontend callback allowlisting and
+independent component qualification are available. The UI uses `/account` for
+the shared product hub and access management. There is no new paid infrastructure
+and no automatic deployment or physical Robot action in these tests.

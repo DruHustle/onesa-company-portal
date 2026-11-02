@@ -181,3 +181,16 @@ version support is promised.
 
 Maintained by Onesa UG (haftungsbeschränkt), Heidelberg, Germany. No project software
 license has been assigned; dependency and model licenses do not grant an Onesa license.
+
+### Shared Onesa accounts
+
+Prepared, opt-in shared identity gives each person one account for AI, Drone and
+Robot, with explicit access to the products they need. `/account` provides product
+selection, access requests, password recovery and a shared administration view.
+Onesa Administrators administer all applications with MFA; product administrators
+and normal users retain separate product/workspace roles. Existing data and
+credentials are preserved through verified linking. See the
+[API contract](docs/api/API.md#shared-onesa-account-and-product-access-prepared-default-off)
+and [schema](docs/database/SCHEMA.md#shared-onesa-identity-prepared-migrations-013-and-014).
+The source feature is disabled by default; deployment and staging acceptance remain
+separate release requirements.
