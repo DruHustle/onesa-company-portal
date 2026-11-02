@@ -21,6 +21,7 @@ import oracle_owner as verifier
 INSTALL_PARENT = Path("/usr/local/lib/onesa-release")
 ALLOWED = {
     "oracle_owner.py": "scripts/release/oracle_owner.py",
+    "runtime_lifecycle.py": "scripts/release/runtime_lifecycle.py",
     "oracle_install.py": "scripts/release/oracle_install.py",
     "runners/oracle_portal.py": "scripts/release/oracle_portal.py",
     "runners/oracle_backup_store.mjs": "scripts/oracle_backup_store.mjs",

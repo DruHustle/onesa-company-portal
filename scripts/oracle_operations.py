@@ -14,6 +14,7 @@ worker = production.worker
 PRIVATE = worker.PRIVATE
 PATHS = [
     "infra/oracle/operations",
+    "scripts/release/runtime_lifecycle.py",
     "scripts/oracle_backup_store.mjs",
     "scripts/oracle_backup_payload.mjs",
     "scripts/oracle_metrics.mjs",

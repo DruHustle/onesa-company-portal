@@ -832,6 +832,59 @@ to test cleanup.
 
 ## Operations notification regression
 
+### Bounded process recovery
+
+`python3 -m unittest discover -s scripts -p 'test_oracle*.py'` also exercises the
+opt-in host recovery controller and shared owner lifecycle interlock. Disposable
+state tests cover separated failure samples, missing/rapid/backward-clock samples,
+startup, stopped/paused/restarting processes, dependency outages, changed image or
+configuration, pre-action recovery, one-action cycle limits, restart delays and
+the persistent three-attempt budget. Intent is fsynced before signaling; storage
+failure and interrupted actions cannot create an automatic replay. Unknown Docker
+or probe output supplies no restart evidence. Only approved full identities can
+be enrolled; the example configuration is disabled and contains placeholders.
+
+The controller uses the fixed local Docker socket to inspect and run process
+checks. API checks use `/api/v1/health` inside the container. Worker checks use
+`dist/src/jobs/liveness-check.js` and no database or scanner connection. The existing
+worker success marker and scanner health remain dependency/readiness evidence.
+Recovery does not change mail claims, ambiguous-delivery reconciliation or leases;
+the full backend mail/retry tests remain mandatory. SMTP is not claimed to provide
+exactly-once delivery after an ambiguous process crash.
+
+The Python signal tests exercise the full 150-second API and 180-second worker
+grace periods with a deterministic clock, including replacement-process and
+maintenance races. On the disposable native image runner, the mandatory
+`Release requirement: bounded recovery with actual Docker process faults` step
+executes `scripts/oracle_recovery_smoke.py` against the exact built backend image.
+It creates its own network-isolated, mount-free API and independent sentinel with
+synthetic configuration. It observes health with an unavailable database, actual
+process crash recovery, a suspended application, same-container/image recovery,
+and a Docker stop in the final pre-signal callback. Its one-second injected lab
+grace changes no installed target policy. The fixture refuses an installed Onesa
+host and removes only its own full container IDs. A local machine without a Docker
+daemon cannot replace this native gate with mocked process results.
+
+The controller never calls Docker start/restart, pulls images or changes restart
+policies. It pins the live init process using a Linux PID descriptor, the container
+cgroup and process start identity before TERM and again before any delayed KILL.
+Docker's existing `unless-stopped` policy owns exit recovery. The controller budget
+does not cap Docker's independent native crash-restart policy. Three failed samples
+over at least 120 seconds are required; subsequent controller attempts wait at least
+300 then 900 seconds, with at most three in 24 hours. Exhaustion and ambiguous
+signals latch for owner review, including across controller restarts. Existing
+production/shared outage alerts retain their current bounded notification behavior;
+this feature introduces no staging email or extra database readiness polling.
+
+Installation remains default-off. The commissioned owner verifier and controller
+must share the lifecycle interlock before enrollment can be enabled. Holds survive
+failed deployments and maintenance; changing source alone does not install that
+interlock on the existing host. A replaced container, configuration or image needs
+fresh reviewed enrollment. Protected runtime instructions govern activation and
+reconciliation; never delete a pending journal to reset a budget or rerun the
+initial operations bootstrap on an established host. Scanner and other product
+containers remain outside this version's automatic recovery allowlist.
+
 `scripts/test_oracle_metrics.py` runs the actual metrics JavaScript with disposable
 database and scanner modules using Node 24. It performs no provider request or real
 database query. Database import/query/cleanup failures must preserve an independent

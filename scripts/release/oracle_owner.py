@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
+import types
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -103,6 +104,8 @@ REQUIRED_CHECKS = {
 HEX = re.compile(r"[a-f0-9]{64}")
 OPENSSL = "/usr/bin/openssl" if sys.platform == "linux" else "/opt/homebrew/bin/openssl"
 ANCHOR = Path("/etc/onesa/oracle-release-trust.json")
+LIFECYCLE_SHA256 = "c0e5e1c46887af8a69171fd3076f67bc64f5a21c9748829887eb6201206b256c"
+_lifecycle_module = None
 
 
 class Rejected(ValueError):
@@ -138,6 +141,20 @@ def digest(value):
 
 def file_digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def lifecycle_module():
+    """Execute only the helper bytes bound by this commissioned verifier pin."""
+    global _lifecycle_module
+    path = Path(__file__).resolve().with_name("runtime_lifecycle.py")
+    raw = path.read_bytes()
+    require(hashlib.sha256(raw).hexdigest() == LIFECYCLE_SHA256, "Lifecycle helper source pin changed")
+    if _lifecycle_module is None:
+        module = types.ModuleType("onesa_owner_runtime_lifecycle")
+        module.__file__ = str(path)
+        exec(compile(raw, str(path), "exec"), module.__dict__)
+        _lifecycle_module = module
+    return _lifecycle_module
 
 
 def timestamp():
@@ -723,7 +740,28 @@ class Store:
             )
         return result
 
+    def lifecycle_action(self, kind, record, action, *, complete=lambda result: True):
+        """Hold across reservation, provider work and acceptance; interruption stays held."""
+        binding = record["binding"]
+        scope = binding["repository"] + ":" + binding["component"]
+        reference = str(self.root) + ":" + record["id"]
+        module = lifecycle_module()
+        try:
+            with module.lifecycle_lock() as guard:
+                token = guard.begin_hold(kind, scope, reference, resume=True)
+                result = action()
+                # A later observation never cancels an independent owner revocation.
+                if complete(result) and not (guard.read_hold() or {}).get("revocations"):
+                    guard.complete_hold(token)
+                return result
+        except module.LifecycleError as error:
+            raise Rejected(str(error)) from None
+
     def qualify(self, context):
+        record = self.get(context, "context")["record"]
+        return self.lifecycle_action("owner-qualify", record, lambda: self._qualify(context))
+
+    def _qualify(self, context):
         r = self.get(context, "context")["record"]
         binding = r["binding"]
         with self.transaction():
@@ -754,6 +792,10 @@ class Store:
         return result
 
     def authorize(self, qualification):
+        record = self.get(qualification, "qualification")["record"]
+        return self.lifecycle_action("owner-authorize", record, lambda: self._authorize(qualification))
+
+    def _authorize(self, qualification):
         r = self.get(qualification, "qualification")["record"]
         binding = r["binding"]
         with self.transaction():
@@ -786,6 +828,13 @@ class Store:
             )
 
     def deploy(self, authorization):
+        record = self.get(authorization, "authorization")["record"]
+        def completed(_result):
+            row = self.db.execute("SELECT state FROM deployments WHERE authorization=?", (authorization,)).fetchone()
+            return row is not None and row[0] == "accepted"
+        return self.lifecycle_action("owner-deploy", record, lambda: self._deploy(authorization), complete=completed)
+
+    def _deploy(self, authorization):
         r = self.get(authorization, "authorization")["record"]
         binding = r["binding"]
         existing = self.db.execute(
@@ -854,9 +903,16 @@ class Store:
             self.db.execute(
                 "UPDATE deployments SET state='deployed-unverified' WHERE id=?", (id_,)
             )
-        return self.inspect(id_, observe=True)
+        return self._inspect(id_, observe=True)
 
     def inspect(self, operation, *, observe=False):
+        if not observe:
+            return self._inspect(operation, observe=False)
+        intent = self.get(operation, "deployment-intent", historical=True)["record"]
+        authorization = self.get(intent["details"]["authorization"], "authorization", historical=True)["record"]
+        return self.lifecycle_action("owner-deploy", authorization, lambda: self._inspect(operation, observe=True))
+
+    def _inspect(self, operation, *, observe=False):
         r = self.get(operation, "deployment-intent", historical=True)["record"]
         row = self.db.execute(
             "SELECT state FROM deployments WHERE id=?", (operation,)
@@ -898,6 +954,16 @@ class Store:
 
     def revoke(self, record):
         r = self.get(record, historical=True)["record"]
+        module = lifecycle_module()
+        try:
+            with module.lifecycle_lock() as guard:
+                binding = r["binding"]
+                guard.mark_revocation(binding["repository"] + ":" + binding["component"], str(self.root) + ":" + record)
+                return self._revoke(record, r)
+        except module.LifecycleError as error:
+            raise Rejected(str(error)) from None
+
+    def _revoke(self, record, r):
         with self.transaction():
             result = self.put("revocation", r["binding"], {"revoked_id": record})
             self.db.execute("UPDATE records SET revoked=1 WHERE id=?", (record,))
