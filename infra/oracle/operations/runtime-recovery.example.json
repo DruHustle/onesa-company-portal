@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "enabled": false,
+  "targets": {
+    "portal-api-staging": {
+      "container_id": "<full approved container ID>",
+      "image_id": "sha256:<approved immutable image ID>",
+      "source_commit": "<approved source commit>",
+      "configuration_sha256": "<private inspected configuration fingerprint>"
+    }
+  }
+}

@@ -231,6 +231,13 @@ jobs:
         image=$(docker image inspect "onesa-security-candidate:$APPLICATION-$GITHUB_RUN_ID" --format '{{.Id}}')
         sudo -n python3 scripts/release/worker_fixture_smoke.py "$image" --worker-workflows --synthetic-scanner --worker-production
         sudo -n python3 scripts/release/worker_fixture_smoke.py "$image" --worker-workflows --synthetic-scanner --api-runtime
+    - name: "${{ matrix.application == 'onesa-company-portal-backend' && 'Release requirement: bounded recovery with actual Docker process faults' || 'Process recovery fixtures apply only to the backend image' }}"
+      if: matrix.application == 'onesa-company-portal-backend'
+      env:
+        APPLICATION: ${{ matrix.application }}
+      run: |
+        image=$(docker image inspect "onesa-security-candidate:$APPLICATION-$GITHUB_RUN_ID" --format '{{.Id}}')
+        sudo -n --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,RUNNER_OS,GITHUB_REPOSITORY,GITHUB_SHA python3 scripts/oracle_recovery_smoke.py "$image"
     - name: Scan full runtime, including unfixed vendor advisories
       run: 'mkdir -p data/security
 
