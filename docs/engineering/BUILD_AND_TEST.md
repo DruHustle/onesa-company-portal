@@ -852,6 +852,13 @@ Recovery does not change mail claims, ambiguous-delivery reconciliation or lease
 the full backend mail/retry tests remain mandatory. SMTP is not claimed to provide
 exactly-once delivery after an ambiguous process crash.
 
+Real-child shutdown regressions synchronize actual work entry and SIGTERM handling
+through fixture IPC. A startup heartbeat alone does not prove a job is in flight.
+Shutdown checks use the production pulse period and retain the three-second clean
+drain bound; a separate fast-pulse fixture still checks actual suspension and crash.
+Deterministic startup and atomic-replacement cases retain the strict file-custody
+checks instead of treating every transient read refusal as a stopped worker.
+
 The Python signal tests exercise the full 150-second API and 180-second worker
 grace periods with a deterministic clock, including replacement-process and
 maintenance races. On the disposable native image runner, the mandatory

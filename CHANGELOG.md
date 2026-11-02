@@ -23,6 +23,9 @@
 - Match the native fault fixture's explicit `no-new-privileges:true` option to the
   commissioned runtime profile. Docker preserves the supplied option spelling;
   retain strict profile refusal and emit only fixed, bounded failure codes.
+- Synchronize real-child shutdown tests with actual work entry and signal handling.
+  Distinguish a startup heartbeat from in-flight work, retain the three-second drain
+  assertion, and keep atomic-file custody and production recovery behavior unchanged.
 
 ## Unreleased — One Onesa account across products
 

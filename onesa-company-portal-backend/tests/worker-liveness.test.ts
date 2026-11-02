@@ -1,7 +1,8 @@
 import './local-environment.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,readFile,stat,chmod,symlink,link,unlink,writeFile,rm} from 'node:fs/promises';
+import fsPromises,{mkdtemp,readFile,stat,chmod,symlink,link,unlink,writeFile,rm} from 'node:fs/promises';
+import {syncBuiltinESMExports} from 'node:module';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawn} from 'node:child_process';
@@ -54,6 +55,33 @@ test('Private atomic process evidence rejects links, wrong modes, corrupt and ov
   }
   assert.equal(await workerProcessAlive(directory),false);
  }finally{await liveness.stop();await rm(directory,{recursive:true,force:true});}
+});
+
+test('Atomic heartbeat replacement refuses an unlinked open inode while the current record remains live',async()=>{
+ const {directory,path}=await fixture();
+ const liveness=new WorkerProcessLiveness({path});
+ const originalOpen=fsPromises.open;
+ let replaced=false;
+ let observedLinks:number|undefined;
+ try{
+  await liveness.start();
+  fsPromises.open=async(...args:Parameters<typeof originalOpen>)=>{
+   const file=await originalOpen(...args);
+   if(args[0]===path&&!replaced){
+    replaced=true;
+    await liveness.pulse();
+    observedLinks=(await file.stat()).nlink;
+   }
+   return file;
+  };
+  syncBuiltinESMExports();
+  try{
+   assert.equal(await workerProcessAlive(path),false);
+   assert.equal(replaced,true);
+   assert.equal(observedLinks,0);
+  }finally{fsPromises.open=originalOpen;syncBuiltinESMExports();}
+  assert.equal(await workerProcessAlive(path),true);
+ }finally{fsPromises.open=originalOpen;syncBuiltinESMExports();await liveness.stop();await rm(directory,{recursive:true,force:true});}
 });
 
 test('An unresolved work promise fails its progress bound while event-loop pulses continue',async()=>{
@@ -141,28 +169,60 @@ test('SIGTERM interrupts real worker-loop idle promptly and drains in-flight wor
   const {directory,path}=await fixture();
   const child=spawn(process.execPath,['--import','tsx','tests/fixtures/worker-liveness-child.ts',path,mode],{stdio:['ignore','pipe','pipe','ipc'],env:{PATH:process.env.PATH}});
   let stderr='';child.stderr?.on('data',part=>{stderr+=part.toString();});
+  const events:unknown[]=[];child.on('message',message=>{events.push(message);});
   const exited=once(child,'exit');
   try{
-   await until(async()=>{try{return (await snapshot(path)).phase===(mode==='idle'?'idle':'working')&&await workerProcessAlive(path);}catch{return false;}});
+   await until(async()=>{try{return events.includes('tick-entered')&&(await snapshot(path)).phase===(mode==='idle'?'idle':'working')&&await workerProcessAlive(path);}catch{return false;}});
    const before=Date.now();
-   child.kill('SIGTERM');
+   const remaining=()=>Math.max(1,3000-(Date.now()-before));
+   assert.equal(child.kill('SIGTERM'),true);
+   await until(async()=>events.includes('stop-observed'),remaining());
    if(mode==='drain'){
     await sleep(50);
     assert.equal(child.exitCode,null);
+    assert.equal(events.includes('tick-completed'),false);
     assert.equal(await workerProcessAlive(path),true);
     child.send('release');
    }
-   const [code,signal]=await Promise.race([exited,sleep(3000).then(()=>{throw new Error('Worker did not drain promptly');})]);
+   await until(async()=>events.includes('loop-completed'),remaining());
+   const [code,signal]=await Promise.race([exited,sleep(remaining()).then(()=>{throw new Error('Worker did not drain promptly');})]);
    assert.equal(code,0);assert.equal(signal,null);assert.equal(stderr,'');
+   assert.equal(events.includes('tick-completed'),true);
    assert.ok(Date.now()-before<3000);
    assert.equal(await workerProcessAlive(path),false);
   }finally{if(child.exitCode===null){child.kill('SIGKILL');await exited;}await rm(directory,{recursive:true,force:true});}
  }
 });
 
+test('A startup working heartbeat does not prove tick entry and SIGTERM skips work not yet started',async()=>{
+ const {directory,path}=await fixture();
+ const child=spawn(process.execPath,['--import','tsx','tests/fixtures/worker-liveness-child.ts',path,'startup'],{stdio:['ignore','pipe','pipe','ipc'],env:{PATH:process.env.PATH}});
+ const events:unknown[]=[];child.on('message',message=>{events.push(message);});
+ let stderr='';child.stderr?.on('data',part=>{stderr+=part.toString();});
+ const exited=once(child,'exit');
+ try{
+  await until(async()=>events.includes('startup-pulse'));
+  assert.equal((await snapshot(path)).phase,'working');
+  assert.equal(await workerProcessAlive(path),true);
+  assert.equal(events.includes('tick-entered'),false);
+  const before=Date.now();
+  const remaining=()=>Math.max(1,3000-(Date.now()-before));
+  assert.equal(child.kill('SIGTERM'),true);
+  await until(async()=>events.includes('stop-observed'),remaining());
+  child.send('start');
+  await until(async()=>events.includes('loop-completed'),remaining());
+  const [code,signal]=await Promise.race([exited,sleep(remaining()).then(()=>{throw new Error('Startup fixture did not stop promptly');})]);
+  assert.equal(code,0);assert.equal(signal,null);assert.equal(stderr,'');
+  assert.ok(Date.now()-before<3000);
+  assert.equal(events.includes('tick-entered'),false);
+  assert.equal(events.includes('tick-completed'),false);
+  assert.equal(await workerProcessAlive(path),false);
+ }finally{if(child.exitCode===null&&child.signalCode===null){child.kill('SIGKILL');await exited;}await rm(directory,{recursive:true,force:true});}
+});
+
 test('A real suspended worker stops pulsing and a crashed process fails even with fresh evidence',async()=>{
  const {directory,path}=await fixture();
- const child=spawn(process.execPath,['--import','tsx','tests/fixtures/worker-liveness-child.ts',path,'drain'],{stdio:['ignore','pipe','pipe','ipc'],env:{PATH:process.env.PATH}});
+ const child=spawn(process.execPath,['--import','tsx','tests/fixtures/worker-liveness-child.ts',path,'pulse'],{stdio:['ignore','pipe','pipe','ipc'],env:{PATH:process.env.PATH}});
  const exited=once(child,'exit');
  try{
   await until(async()=>await workerProcessAlive(path));
