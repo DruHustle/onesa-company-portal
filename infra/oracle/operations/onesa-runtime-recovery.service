@@ -1,0 +1,20 @@
+[Unit]
+Description=Onesa bounded owner-enrolled Docker process recovery
+After=docker.service
+Requires=docker.service
+ConditionPathExists=/etc/onesa/runtime-recovery.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I /opt/onesa/portal-operations/current/infra/oracle/operations/recovery.py run
+User=root
+UMask=0077
+TimeoutStartSec=300
+Nice=10
+MemoryMax=128M
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/onesa/runtime-recovery
+StandardOutput=journal
+StandardError=journal

@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased — Bounded Docker process recovery
+
+- Prepare an opt-in Linux host controller for explicitly enrolled Portal API and
+  worker containers. Three failed process samples over two minutes precede action;
+  unknown probes, startup, stopped containers and dependency failures cannot trigger it.
+- Pin the full container ID, image, source and private configuration fingerprint.
+  Signal only the verified live init process through a Linux PID descriptor, retain
+  the API's 150-second and worker's 180-second shutdown allowances, and let Docker's
+  existing exit policy recover the same container. Never start a stopped container,
+  pull an image, migrate data, replace a service or roll back a version automatically.
+- Persist intent before signaling; use five- and fifteen-minute delays and at most
+  three controller attempts in 24 hours. Exhausted or ambiguous actions require owner
+  reconciliation. The existing Docker crash policy has its own restart behavior.
+- Separate worker process liveness from successful-work/scanner readiness, with
+  bounded progress and event-loop evidence that preserves staging's long idle sleep.
+  Add a shared owner lifecycle lock and durable maintenance/deployment holds.
+- Keep production/shared notification policy, database idling and existing host
+  resources. Add disposable state/security regressions and a mandatory native Docker
+  crash/hang/manual-stop test. Source promotion does not enable the controller;
+  exact-source installation, enrollment and hosted acceptance remain separate.
+- Match the native fault fixture's explicit `no-new-privileges:true` option to the
+  commissioned runtime profile. Docker preserves the supplied option spelling;
+  retain strict profile refusal and emit only fixed, bounded failure codes.
+- Synchronize real-child shutdown tests with actual work entry and signal handling.
+  Distinguish a startup heartbeat from in-flight work, retain the three-second drain
+  assertion, and keep atomic-file custody and production recovery behavior unchanged.
+
 ## Unreleased — One Onesa account across products
 
 - Prepare an opt-in identity layer on the existing Portal: one verified account,

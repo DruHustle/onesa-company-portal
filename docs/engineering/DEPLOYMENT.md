@@ -62,6 +62,15 @@ container; installed tools and credentials retain their private custody modes.
 Detailed operational instructions are maintained in protected Engineering Docs.
 This public source is a reference page, not a deployment or recovery runbook.
 
+The opt-in Docker recovery controller and updated owner verifier share a lifecycle
+lock and durable operation holds. Active qualification, deployment, observation
+and maintenance suppress recovery; interrupted operations retain their hold for
+matching owner reconciliation. A verifier source pin also binds its lifecycle
+helper. Existing installations do not acquire this behavior merely from a source
+merge. Recovery enrollment binds each accepted full container/image/configuration
+identity and must be reviewed again after replacement. It supplies no deployment,
+automatic version rollback, migration or physical-actuation authority.
+
 [Open the protected guide](https://docs.engineering.onesa.eu/docs/ecosystem/PORTAL_DEPLOYMENT).
 Sign in through Onesa Portal with an individually approved engineering identity.
 
