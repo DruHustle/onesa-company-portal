@@ -43,6 +43,7 @@ export async function tick(){
  // Business-data expiry stays disabled until approved rules, impact previews,
  // legal holds, deletion cascades and recovery/deletion replay are qualified.
  // Explicitly authorized storage-deletion outbox work above remains independent.
+ await db.query('DELETE FROM identity_grant_sessions WHERE expires_at<now()');await db.query('DELETE FROM identity_records WHERE expires_at<now()');await db.query('DELETE FROM identity_sessions WHERE expires_at<now()');await db.query('DELETE FROM identity_registration_links WHERE expires_at<now()');
  await db.query('DELETE FROM engineering_identity_records WHERE expires_at<now()');await db.query('DELETE FROM engineering_email_challenges WHERE expires_at<now()');
  await db.query('DELETE FROM access_links WHERE expires_at<now()');
  await db.query('DELETE FROM sessions WHERE expires_at<now()');await db.query('DELETE FROM recovery_tokens WHERE expires_at<now()');await db.query('DELETE FROM rate_limits WHERE expires_at<now()');

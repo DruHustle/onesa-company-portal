@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — One Onesa account across products
+
+- Prepare an opt-in identity layer on the existing Portal: one verified account,
+  explicit AI/Drone/Robot access and per-product roles, with MFA-protected global
+  administration and a shared account/product hub.
+- Preserve existing credentials and data through verified immutable-ID linking.
+  Bind product grants to their source session, read permissions live, and report
+  global sign-out only after confirmed revocation.
+- Add additive schema, recovery invalidation, protocol and concurrent PostgreSQL
+  regressions, EN/DE account flows and isolated multi-browser checks. This entry
+  records prepared source; it does not claim deployment or hosted acceptance.
+
 ## Unreleased — Independent scanner observations and worker status
 
 - Check the production consumer's scanner readiness independently of database

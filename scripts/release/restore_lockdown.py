@@ -136,7 +136,33 @@ ACCESS_SQL = """DO $access$ BEGIN
  END IF;
 END $access$;
 """
-SQL = SQL.replace("COMMIT;", ENGINEERING_SQL + ACCESS_SQL + "COMMIT;", 1)
+# Additive Onesa account schema: preserve account/approval evidence, invalidate
+# every restored sign-in capability. Older snapshots may predate either migration.
+IDENTITY_SQL = """DO $identity$ DECLARE relation_name text; present integer; BEGIN
+ SELECT count(*) INTO present FROM unnest(ARRAY[
+  'identity_profiles','identity_sessions','identity_records',
+  'identity_product_access','identity_drone_memberships','identity_registration_links'
+ ]) AS name WHERE to_regclass('public.'||name) IS NOT NULL;
+ IF present NOT IN (0,6) THEN RAISE EXCEPTION 'Incomplete restored Onesa identity schema'; END IF;
+ IF present=0 AND to_regclass('public.identity_grant_sessions') IS NOT NULL THEN
+  RAISE EXCEPTION 'Restored grant binding has no identity schema';
+ END IF;
+ IF present=6 THEN
+  IF to_regclass('public.identity_grant_sessions') IS NOT NULL THEN
+   DELETE FROM public.identity_grant_sessions;
+  END IF;
+  FOREACH relation_name IN ARRAY ARRAY['identity_sessions','identity_records','identity_registration_links'] LOOP
+   EXECUTE format('DELETE FROM public.%I',relation_name);
+  END LOOP;
+  IF EXISTS(SELECT 1 FROM public.identity_sessions)
+  OR EXISTS(SELECT 1 FROM public.identity_records)
+  OR EXISTS(SELECT 1 FROM public.identity_registration_links) THEN
+   RAISE EXCEPTION 'Restored Onesa sign-in capability remains active';
+  END IF;
+ END IF;
+END $identity$;
+"""
+SQL = SQL.replace("COMMIT;", ENGINEERING_SQL + ACCESS_SQL + IDENTITY_SQL + "COMMIT;", 1)
 
 if __name__ == "__main__":
     main()

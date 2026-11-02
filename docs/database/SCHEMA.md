@@ -108,3 +108,30 @@ reviewed compatible candidate and the established preservation/restore controls.
 Isolated restore quarantine clears both scheduled publication and published snapshots,
 including backups predating migration 012. This extends the existing disposable-target
 lockdown; it grants no live-restore, erasure, credential or production-data authority.
+
+## Shared Onesa identity (prepared migrations 013 and 014)
+
+Migration 013 preserves the existing `users.id`, password and MFA fields and adds
+the nonadministrative `member` role. `identity_profiles` stores verified identity
+and display name. It never infers verification from unrelated historical email
+records. `identity_product_access` holds explicit status, role and revision for
+AI, Drone and Robot; `identity_drone_memberships` identifies existing workspaces
+with narrower roles. No product data is moved into the identity database.
+
+`identity_sessions`, encrypted `identity_records` and hashed one-use
+`identity_registration_links` hold expiring capabilities. Migration 014 adds
+`identity_grant_sessions`, which binds a provider grant to an specific source
+session, actual authentication time, factors and expiry. Source-session rechecks
+run under the same account lock as global revocation and password changes.
+Credential/MFA/disable/global-role changes revoke central capabilities atomically
+through the database trigger. The existing worker cleans expired capabilities;
+account and access approval evidence remain.
+
+The existing provisioning path grants restricted CRUD on these seven new tables;
+no new service, sequence, public privilege or credential rotation is required.
+Readiness validates migration checksums and actual privileges. Keep additive schema
+when reverting application code, and disable shared identity before a compatible
+application rollback. Do not remove new identities or rewrite existing passwords.
+Isolated restore quarantine clears all shared sessions, grants and verification
+links, including optional migration 014 artifacts, while preserving account and
+approval records. Activation still requires the existing restore/release controls.
