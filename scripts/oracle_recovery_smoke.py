@@ -26,6 +26,13 @@ PHASES = {
     "guard", "setup", "dependency-liveness", "crash", "hang",
     "manual-stop", "preservation", "cleanup",
 }
+REFUSAL_CODES = {
+    "RUNTIME_IDENTITY_CHANGED", "RUNTIME_LABELS_CHANGED", "PROCESS_PROFILE_CHANGED",
+    "UNSAFE_RUNTIME_PROFILE", "PUBLIC_PORT_BINDING", "PROCESS_NOT_RUNNING",
+    "FULL_CONTAINER_ID_REQUIRED", "DOCKER_INSPECTION_FAILED",
+    "DOCKER_INSPECTION_IDENTITY", "PROCESS_CGROUP_MISMATCH",
+    "PROCESS_INCARNATION_CHANGED",
+}
 
 
 def require(condition, message):
@@ -36,6 +43,13 @@ def require(condition, message):
 def phase(name):
     require(name in PHASES, "Fixed fixture diagnostic phase required")
     print(json.dumps({"event": "isolated_recovery_smoke", "phase": name}), flush=True)
+
+
+def diagnostic_code(error):
+    # Only these fixed controller codes may leave the fixture. Arbitrary errors,
+    # Docker responses, argument values and exception messages remain redacted.
+    value = str(error)
+    return value if value in REFUSAL_CODES else "FIXTURE_FAILURE"
 
 
 def runner_guard(image):
@@ -121,7 +135,7 @@ class Fixtures:
             "run", "-d", "--pull=never", "--name", name,
             "--network", "none", "--init", "--restart", "unless-stopped",
             "--stop-timeout", "1", "--read-only", "--tmpfs", "/tmp",
-            "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
+            "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true",
             "--memory", "256m", "--cpus", "0.5", "--pids-limit", "128",
             "--label", LABEL + "=" + self.operation,
             "--label", "com.docker.compose.project=" + self.project,
@@ -345,6 +359,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError):
+    except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError) as error:
+        print(json.dumps({"event": "isolated_recovery_smoke", "result": "failed", "code": diagnostic_code(error)}), file=sys.stderr)
         print("Isolated recovery smoke failed; no hosted acceptance claimed", file=sys.stderr)
         raise SystemExit(1) from None

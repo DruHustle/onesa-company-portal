@@ -20,6 +20,9 @@
   resources. Add disposable state/security regressions and a mandatory native Docker
   crash/hang/manual-stop test. Source promotion does not enable the controller;
   exact-source installation, enrollment and hosted acceptance remain separate.
+- Match the native fault fixture's explicit `no-new-privileges:true` option to the
+  commissioned runtime profile. Docker preserves the supplied option spelling;
+  retain strict profile refusal and emit only fixed, bounded failure codes.
 
 ## Unreleased — One Onesa account across products
 

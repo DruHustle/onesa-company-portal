@@ -865,6 +865,14 @@ grace changes no installed target policy. The fixture refuses an installed Onesa
 host and removes only its own full container IDs. A local machine without a Docker
 daemon cannot replace this native gate with mocked process results.
 
+The fixture uses the same explicit `no-new-privileges:true` security option as the
+commissioned runtime profile. Docker preserves a bare `no-new-privileges` option
+in its metadata, so that shorthand fails the controller's strict profile check.
+The CLI regression captures the actual Docker create request through a disposable
+local Unix-socket Engine fixture; it needs the Docker CLI, but creates no container
+and contacts no daemon. Native failures expose only fixed refusal codes, never
+Docker configuration, environment values or arbitrary exception messages.
+
 The controller never calls Docker start/restart, pulls images or changes restart
 policies. It pins the live init process using a Linux PID descriptor, the container
 cgroup and process start identity before TERM and again before any delayed KILL.
