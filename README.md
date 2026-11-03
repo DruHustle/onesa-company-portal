@@ -159,6 +159,13 @@ retention, processor contracts, legal publication or applicant/customer processi
 The owner-authorized pre-launch runtime mode enables existing public features while legal prerequisites remain explicitly unapproved. Default launch mode restores their global publication hold. Editorial review and every protected-data boundary remain enforced; see the deployment procedure.
 Free-provider wakeups and capacity limits are documented, without an uptime guarantee.
 
+The requested Oracle Kubernetes consolidation has read-only host preflight and
+private Portainer configuration/observation tools in `infra/oracle/`. They preserve
+existing Compose workloads and do not install or activate a cluster. The
+[deployment reference](docs/engineering/DEPLOYMENT.md#kubernetes-host-and-private-ui-preparation)
+distinguishes this prepared source from host qualification, application migrations,
+private UI access and independent database recovery.
+
 Keep three permanent branches: `dev`, `staging`, `main`. Temporary Dependabot security-update
 and necessary narrow security-release branches are allowed. Normal fixes integrate through
 `dev → staging → main`; bot PRs target default main and receive isolated tests, never

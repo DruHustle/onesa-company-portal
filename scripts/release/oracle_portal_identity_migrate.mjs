@@ -80,6 +80,8 @@ export async function migrate(request,io){
 
 export async function live(request){
  validateRequest(request);
+ // Keep the application TLS trust policy even though readiness is side-effect-free.
+ await import('/app/dist/src/security/tls-trust.js');
  const {default:pg}=await import('/app/node_modules/pg/lib/index.js');
  const {applicationRoleSafe}=await import('/app/dist/src/services/database-role.js');
  const {databaseReady}=await import('/app/dist/src/services/database-readiness.js');
