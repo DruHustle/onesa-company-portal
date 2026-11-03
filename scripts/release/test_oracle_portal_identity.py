@@ -737,6 +737,8 @@ class FallbackProofTests(unittest.TestCase):
         self.assertEqual(
             [call.args[0][1] for call in run.call_args_list], ["logs", "logs", "exec"]
         )
+        command = run.call_args_list[-1].args[0]
+        self.assertEqual(command[command.index("-h") + 1], "127.0.0.1")
 
     def test_fallback_requires_every_observation_and_the_exact_candidate(self):
         value = binding()

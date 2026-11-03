@@ -330,6 +330,8 @@ def wait_for_restore(container, database):
                     "exec",
                     container,
                     "pg_isready",
+                    "-h",
+                    "127.0.0.1",
                     "-U",
                     "postgres",
                     "-d",
