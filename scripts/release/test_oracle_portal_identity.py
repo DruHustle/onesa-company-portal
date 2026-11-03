@@ -491,10 +491,22 @@ class AcceptedRuntimeTests(unittest.TestCase):
 
 class SignatureTests(unittest.TestCase):
     setUpClass = classmethod(owner_fixtures.OwnerStoreTests.setUpClass.__func__)
-    setUp = owner_fixtures.OwnerStoreTests.setUp
     settings = owner_fixtures.OwnerStoreTests.settings
     open = owner_fixtures.OwnerStoreTests.open
     commission_fixture = owner_fixtures.OwnerStoreTests.commission_fixture
+
+    def setUp(self):
+        owner_fixtures.OwnerStoreTests.setUp(self)
+
+        def fixture_private(path, *, directory=False, uid=0):
+            path = Path(path)
+            # Native CI is unprivileged. Keep real file/mode/link checks under
+            # its disposable store; never consult or relax production custody.
+            self.assertTrue(path == self.root or self.root in path.parents)
+            owner.private(path, directory=directory, uid=os.getuid())
+            return path
+
+        self.enterContext(patch.object(r, "private", side_effect=fixture_private))
 
     def records(self):
         context = self.store.put("context", self.binding, {"ci": [{"run_id": 123}]})[

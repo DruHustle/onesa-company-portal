@@ -60,7 +60,7 @@ test('preview bypass is separately origin scoped and synthetic addresses bind to
 });
 
 test('MFA calculation matches RFC 4226 six-digit counter vectors', () => {
-  const key = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+  const key = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'; // gitleaks:allow -- public RFC 4226 test vector, never a hosted credential.
   for (const [step, expected] of ['755224','287082','359152','969429','338314','254676','287922','162583','399871','520489'].entries())
     assert.equal(totp(key, step), expected);
   assert.throws(() => totp(key, -1)); assert.throws(() => totp('bad', 0));

@@ -75,11 +75,11 @@ PINS = {
     "onesa-company-portal-frontend/src/config/nvidia-reference-assets.json": "f6049c874e1e3f9b5860ca1bf6d5bad22b5176f7282c868253225d80bff94704",
     "onesa-company-portal-frontend/src/config/onesa-applications.json": "0eeccc055f8d6df8662f0763453932e5d55dd5be9530a45a4cd863962f01e635",
     "onesa-company-portal-frontend/src/config/products.ts": "598d187624bc37f4d754e09b426c229a67b6e9c10b24a8aef24a391c57057ee5",
-    "onesa-company-portal-frontend/src/features/access/authenticator-setup.tsx": "dda65bd27cb9ca642ce3020555931f7f11387e05105df5918e4670e011a5cd97",
-    "onesa-company-portal-frontend/src/features/account/access-manager.tsx": "f3a5974714f2f1a69d3c87421a8e3ac02d71c280eb88b11aa0b7d9d104cac1e0",
+    "onesa-company-portal-frontend/src/features/access/authenticator-setup.tsx": "dda65bd27cb9ca642ce3020555931f7f11387e05105df5918e4670e011a5cd97",  # gitleaks:allow -- SHA-256 of reviewed public source.
+    "onesa-company-portal-frontend/src/features/account/access-manager.tsx": "f3a5974714f2f1a69d3c87421a8e3ac02d71c280eb88b11aa0b7d9d104cac1e0",  # gitleaks:allow -- SHA-256 of reviewed public source.
     "onesa-company-portal-frontend/src/features/account/account.module.css": "d8505f9ea39cb9e505e7c6285c308947d77594c47a167cb709ce6d2880d06ad9",
     "onesa-company-portal-frontend/src/features/account/account.tsx": "35f3c027d623d0e4af04120537f50c70c8d35b99eccde8470c1e61e3443a0679",
-    "onesa-company-portal-frontend/src/features/account/api.ts": "a33165e1c49aa2cf2607960728ac4bcb7d333ec011425ab6635f032069e6a32d",
+    "onesa-company-portal-frontend/src/features/account/api.ts": "a33165e1c49aa2cf2607960728ac4bcb7d333ec011425ab6635f032069e6a32d",  # gitleaks:allow -- SHA-256 of reviewed public source.
     "onesa-company-portal-frontend/src/features/account/security.tsx": "bbdeb339758445978c49ae30345424ee487a45e6003617a35de6e59a1102bf83",
     "onesa-company-portal-frontend/src/features/admin/portal.tsx": "deeb9722ccf7434a2835e24f9e2425ea2fcab7c32a46da9dc0306a7621fdcd6e",
     "onesa-company-portal-frontend/src/lib/api/generated/schema.d.ts": "cc807897d168b53e45f55dab0a497bbaddc1f2d68eb94b98dd1176cd456ed795",
