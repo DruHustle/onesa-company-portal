@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {readFileSync} from 'node:fs';
+import {X509Certificate} from 'node:crypto';
 import {validateRequest, totp, ACCOUNT_CHECKS, PRODUCT_CHECKS, authorizationBinding, verifyCallback, validateOwnerSession, verifyEntitlements} from './oracle_portal_identity_browser.mjs';
-import {validateMailbox, parseImapResponse, messageLink, deliveredLink} from './oracle_portal_identity_mail.mjs';
+import {validateMailbox, parseImapResponse, messageLink, deliveredLink, observeZohoOnce, zohoTLSRoots, ZOHO_BLOCKED_CA} from './oracle_portal_identity_mail.mjs';
 
 const operation = '12345678-1234-1234-1234-123456789abc';
 function request() {
@@ -180,6 +182,68 @@ test('delivery requires matching server UID, internal delivery time and complete
   assert.throws(() => deliveredLink({...response, literals: [raw.subarray(1)]}, '42', observation), /MAIL_MESSAGE_BOUNDS/);
   const old = {...response, records: [response.records[0].replace(new Date().toUTCString(), '01-Jan-2019 00:00:00 +0000')]};
   assert.equal(deliveredLink(old, '42', observation), null);
+});
+
+const zohoMailbox = () => ({provider:'zoho-eu-api',account_id:'12345678901234567890',folder_id:'9000000002014',username:'acceptance@onesa.eu',access_token:'synthetic-read-only-token'});
+function zohoMock({account={},rows,content=mail(),id='1709876209452100005',rawId=id,status=200}={}) {
+ const calls=[];
+ const defaultRows=[{messageId:id,folderId:'9000000002014',receivedTime:String(Date.now()),size:String(content.length)}];
+ const send=async (url, options)=>{
+  calls.push({url,method:options.method,redirect:options.redirect,auth:options.headers.Authorization});
+  if(status!==200)return new Response('{}',{status});
+  if(url.endsWith('/api/accounts/12345678901234567890'))return Response.json({status:{code:200},data:{accountId:'12345678901234567890',primaryEmailAddress:'acceptance@onesa.eu',role:'member',enabled:true,...account}});
+  if(url.includes('/messages/view?'))return Response.json({status:{code:200},data:rows??defaultRows});
+  return new Response('{\"status\":{\"code\":200},\"data\":{\"messageId\":'+rawId+',\"content\":'+JSON.stringify(content.toString())+'}}');
+ };
+ return {send,calls};
+}
+const zohoObservation=()=>({recipient,after:Date.now()-1000,portal,path:'/account/confirm'});
+
+test('Zoho TLS roots preserve the application blocked-certificate policy',()=>{
+ const source=readFileSync(new URL('../../onesa-company-portal-backend/src/security/tls-trust.ts',import.meta.url),'utf8');
+ assert.match(source,new RegExp(ZOHO_BLOCKED_CA));
+ const blocked=readFileSync(new URL('../fixtures/emsign-ecc-g3-public-cert.txt',import.meta.url),'utf8');
+ assert.equal(new X509Certificate(blocked).fingerprint256.replaceAll(':','').toLowerCase(),ZOHO_BLOCKED_CA);
+ assert(zohoTLSRoots().length>0);assert(!zohoTLSRoots().some(pem=>new X509Certificate(pem).fingerprint256.replaceAll(':','').toLowerCase()===ZOHO_BLOCKED_CA));
+});
+
+test('Zoho mailbox is pinned to the dedicated EU test account and rejects extra or malformed scope',()=>{
+ const value=zohoMailbox();assert.equal(validateMailbox(value),value);
+ const candidate=request();candidate.fixtures.mailbox=value;assert.doesNotThrow(()=>validateRequest(candidate));
+ for(const change of [v=>v.username='owner@onesa.eu',v=>v.account_id='1/../../other',v=>v.folder_id='0',v=>v.access_token='too-short',v=>v.access_token='synthetic-token\r\nInjected:yes',v=>v.host='attacker.invalid',v=>v.provider='other']){
+  const bad=zohoMailbox();change(bad);assert.throws(()=>validateMailbox(bad));
+ }
+});
+
+test('Zoho observation checks account, fresh folder and lossless message ID before parsing the exact link',async()=>{
+ const mock=zohoMock(),seen=new Set();assert.equal(await observeZohoOnce(zohoMailbox(),zohoObservation(),seen,mock.send),link);
+ assert.deepEqual(mock.calls.map(c=>new URL(c.url).origin),['https://mail.zoho.eu','https://mail.zoho.eu','https://mail.zoho.eu']);
+ assert(mock.calls.every(c=>c.method==='GET'&&c.redirect==='error'&&c.auth==='Zoho-oauthtoken synthetic-read-only-token'));
+ assert(mock.calls[2].url.endsWith('/messages/1709876209452100005/originalmessage'));assert(seen.has('1709876209452100005'));
+});
+
+test('Zoho observation refuses foreign/admin account, foreign folder, duplicate IDs, changed ID and HTTP errors',async()=>{
+ const now=String(Date.now()),row={messageId:'1709876209452100005',folderId:'9000000002014',receivedTime:now,size:'200'};
+ for(const scenario of [{account:{primaryEmailAddress:'owner@onesa.eu'}},{account:{role:'admin'}},{account:{accountId:'123'}},
+  {rows:[{...row,folderId:'7'}]},{rows:[row,row]},{rawId:'1709876209452100006'},{status:302}]){
+  const mock=zohoMock(scenario);await assert.rejects(()=>observeZohoOnce(zohoMailbox(),zohoObservation(),new Set(),mock.send));
+ }
+});
+
+test('Zoho observation skips stale or previously inspected mail and never follows an unrelated recipient link',async()=>{
+ for(const [rows,seen] of [[[{messageId:'1709876209452100005',folderId:'9000000002014',receivedTime:String(Date.now()-120000),size:'200'}],new Set()], [undefined,new Set(['1709876209452100005'])]]){
+  const mock=zohoMock({rows});assert.equal(await observeZohoOnce(zohoMailbox(),zohoObservation(),seen,mock.send),null);assert.equal(mock.calls.length,2);
+ }
+ const mock=zohoMock({content:mail(link,'other@example.org')});assert.equal(await observeZohoOnce(zohoMailbox(),zohoObservation(),new Set(),mock.send),null);
+});
+
+test('Zoho observation rejects TLS bypass and oversized or malformed provider responses without exposing credentials',async()=>{
+ const prior=process.env.NODE_TLS_REJECT_UNAUTHORIZED;process.env.NODE_TLS_REJECT_UNAUTHORIZED='0';
+ try{const mock=zohoMock();await assert.rejects(()=>observeZohoOnce(zohoMailbox(),zohoObservation(),new Set(),mock.send),/ZOHO_TLS_REQUIRED/);assert.equal(mock.calls.length,0);}
+ finally{if(prior===undefined)delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;else process.env.NODE_TLS_REJECT_UNAUTHORIZED=prior;}
+ for(const payload of ['x'.repeat(1024*1024+1),'{bad-json}',JSON.stringify({status:{code:401},data:{}})]){
+  const send=async()=>new Response(payload,{status:200});await assert.rejects(()=>observeZohoOnce(zohoMailbox(),zohoObservation(),new Set(),send));
+ }
 });
 
 test('CLI refuses caller PASS receipts and never prints input credentials or exception bodies', () => {

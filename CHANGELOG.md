@@ -2,6 +2,9 @@
 
 ## Unreleased — Identity deployment and hosted observation integration
 
+- Support read-only Zoho EU test-mailbox observations with an explicitly scoped
+  account and existing recipient, timestamp and link checks; live delivery and
+  provider authorization remain unverified.
 - Keep database-readiness imports independent of application environment and pool
   initialization so the isolated owner migration helper can run without runtime
   credentials in its process environment.
