@@ -1342,13 +1342,19 @@ reviewed current-main tree. The existing narrow API and worker profiles retain
 their original rejection of authentication and migration changes. The new profile
 admits only the checksummed 012-to-014 additive migration, grants the existing
 restricted runtime role without creating or rotating credentials, and keeps schema
-014 during the staged retained-image rollback and candidate reapplication.
+014 during the staged compatible fallback and candidate reapplication. The fallback
+uses the exact candidate image with identity disabled; historical images are not
+qualified merely because they start or can read the additive schema.
 
 Its restore observation reads the actual encrypted off-instance backup and escrow,
 compares every restored table with the original snapshot manifest, rehearses the
 additive migration, and replays the reviewed erasure ledger with capability
-lockdown inside an isolated PostgreSQL container. The disposable target has no
-network, published port or persistent host mount. A successful rehearsal cannot
+lockdown inside an isolated PostgreSQL container. Before the staging migration,
+the candidate image shares that container's networkless namespace, creates only
+synthetic accounts, and checks native owner authentication, member serialization
+and denial, API readiness, retained entitlement data and an actual worker cycle.
+The runner verifies removal of the operation-owned candidate and database containers.
+The disposable target has no network, published port or persistent host mount. A successful rehearsal cannot
 activate a restored service or establish that a future erasure ledger is complete.
 Interrupted migration or provider commands retain their intent and require
 inspection; neither a retry nor an automatic production rollback is inferred.

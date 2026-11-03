@@ -130,8 +130,10 @@ account and access approval evidence remain.
 The existing provisioning path grants restricted CRUD on these seven new tables;
 no new service, sequence, public privilege or credential rotation is required.
 Readiness validates migration checksums and actual privileges. Keep additive schema
-when reverting application code, and disable shared identity before a compatible
-application rollback. Do not remove new identities or rewrite existing passwords.
+when reverting application code. Older images cannot safely serialize new member
+roles even when they can read the schema. Use the qualified candidate image with
+shared identity disabled as the fallback; verify it against restored data containing
+a member before using it. Do not remove new identities or rewrite existing passwords.
 Isolated restore quarantine clears all shared sessions, grants and verification
 links, including optional migration 014 artifacts, while preserving account and
 approval records. Activation still requires the existing restore/release controls.

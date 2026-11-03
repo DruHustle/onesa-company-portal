@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import json
 import re
+import secrets
 import subprocess
 import time
 from pathlib import Path
@@ -23,6 +24,65 @@ import restore_replay
 
 BACKUP = Path("/var/lib/onesa/operations/backup-success.json")
 MANIFEST_SQL = "SELECT format('SELECT json_build_object(''table'',%L,''count'',count(*),''hash'',md5(coalesce(string_agg(to_jsonb(t)::text,E''\\n'' ORDER BY to_jsonb(t)::text),''''))) FROM public.%I t;',tablename,tablename) FROM pg_tables WHERE schemaname='public' ORDER BY tablename\n\\gexec\n"
+
+# Executed only inside the source-bound candidate image, sharing the network
+# namespace of the already quarantined, networkless restore. All accounts and
+# credentials below are synthetic and exist only for the lifetime of that copy.
+FALLBACK_PROGRAM = r"""
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {spawn} from 'node:child_process';
+import {setTimeout as delay} from 'node:timers/promises';
+const {db} = await import('./dist/src/services/db.js');
+const {passwordHash,encrypt,totp} = await import('./dist/src/auth/crypto.js');
+const {buildApp} = await import('./dist/src/app.js');
+const owner=randomUUID(), member=randomUUID();
+const ownerEmail='onesa-fallback-'+owner+'@example.invalid';
+const memberEmail='onesa-fallback-'+member+'@example.invalid';
+const password='Synthetic offline fallback password';
+const secret='JBSWY3DPEHPK3PXP';
+let app, worker;
+try {
+  await db.query('INSERT INTO users(id,email,password_hash,role,mfa_secret) VALUES($1,$2,$3,$4,$5),($6,$7,$8,$9,NULL)',
+    [owner,ownerEmail,passwordHash(password),'owner',encrypt(secret),member,memberEmail,passwordHash(password),'member']);
+  await db.query("INSERT INTO identity_profiles(user_id,display_name,email_verified_at) VALUES($1,'Synthetic member',now())",[member]);
+  await db.query("INSERT INTO identity_product_access(user_id,product,role,status) VALUES($1,'ai','user','active')",[member]);
+  const before=(await db.query('SELECT id,email,password_hash,role,disabled FROM users WHERE id=$1',[member])).rows[0];
+  app=await buildApp({logging:false}); await app.ready();
+  const config=await app.inject({url:'/api/v1/account/config'});
+  assert.equal(config.statusCode,200); assert.equal(config.json().enabled,false);
+  const ready=await app.inject({url:'/api/v1/ready'}); assert.equal(ready.statusCode,200);
+  const login=await app.inject({method:'POST',url:'/api/v1/auth/login',payload:{email:ownerEmail,password,code:totp(secret)}});
+  assert.equal(login.statusCode,200); assert.equal(login.json().user.id,owner);
+  const cookie=login.cookies.filter(c=>c.value).map(c=>c.name+'='+c.value).join('; ');
+  const list=await app.inject({url:'/api/v1/admin/users?search='+encodeURIComponent(ownerEmail),headers:{cookie}});
+  assert.equal(list.statusCode,200); assert.ok(list.json().items.some(u=>u.id===owner && u.role==='owner'));
+  const members=await app.inject({url:'/api/v1/admin/users?search='+encodeURIComponent(memberEmail),headers:{cookie}});
+  assert.equal(members.statusCode,200); assert.equal(members.json().items.length,0);
+  const deny=await app.inject({method:'POST',url:'/api/v1/auth/login',payload:{email:memberEmail,password,code:''}});
+  assert.equal(deny.statusCode,401);
+  const start=(await db.query('SELECT clock_timestamp()::text AS started')).rows[0].started;
+  worker=spawn(process.execPath,['dist/src/jobs/worker.js'],{stdio:'ignore'});
+  let observed=false;
+  for(let i=0;i<100;i++) {
+    if(worker.exitCode!==null) break;
+    const result=await db.query("SELECT updated_at >= $1::timestamptz AS updated FROM operational_state WHERE key='worker_success'",[start]);
+    if(result.rows[0]?.updated===true) {observed=true; break;}
+    await delay(300);
+  }
+  assert.equal(observed,true);
+  assert.equal(worker.exitCode,null); assert.equal(worker.kill('SIGTERM'),true);
+  const stopped=await Promise.race([new Promise(resolve=>worker.once('exit',()=>resolve(true))),delay(10000).then(()=>false)]);
+  assert.equal(stopped,true); worker=undefined;
+  assert.deepEqual((await db.query('SELECT id,email,password_hash,role,disabled FROM users WHERE id=$1',[member])).rows[0],before);
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM identity_product_access WHERE user_id=$1 AND product='ai' AND role='user' AND status='active'",[member])).rows[0].n,1);
+  process.stdout.write(JSON.stringify({representative_member_present:true,account_serialization:true,native_authentication:true,api_behavior:true,worker_behavior:true}));
+} finally {
+  if(worker && worker.exitCode===null) worker.kill('SIGKILL');
+  if(app) await app.close();
+  await db.end();
+}
+"""
 
 
 def validate(plan):
@@ -90,6 +150,49 @@ def verify_retained(plan, proof):
         "IDENTITY_RESTORE_PROOF_STALE_OR_CHANGED",
     )
     return backup
+
+
+def verify_fallback(proof, binding):
+    """Refuse rollout until the isolated restored-data fallback was observed.
+
+    A restored schema and a healthy old container alone are not evidence that a
+    member account can coexist with the native API and worker.  The observation
+    must be produced by the restore operation, not supplied by an operator.
+    """
+    fallback = proof.get("compatible_fallback")
+    r.require(
+        isinstance(fallback, dict)
+        and fallback.get("image") == binding["artifact_digest"]
+        and fallback.get("source_commit") == binding["candidate_commit"]
+        and fallback.get("identity_enabled") is False
+        and fallback.get("representative_member_present") is True
+        and fallback.get("account_serialization") is True
+        and fallback.get("native_authentication") is True
+        and fallback.get("api_behavior") is True
+        and fallback.get("worker_behavior") is True
+        and fallback.get("operation_resources_removed") is True,
+        "IDENTITY_COMPATIBLE_FALLBACK_REHEARSAL_REQUIRED",
+    )
+
+
+def verify_container_removed(container):
+    """Confirm the exact operation-owned container is absent from Docker."""
+    r.require(
+        re.fullmatch(r"[a-f0-9]{64}", container) is not None,
+        "IDENTITY_RESTORE_CONTAINER_IDENTITY",
+    )
+    remaining = r.docker(
+        "container",
+        "ls",
+        "--all",
+        "--no-trunc",
+        "--filter",
+        "id=" + container,
+        "--format",
+        "{{.ID}}",
+        timeout=20,
+    )
+    r.require(not remaining.strip(), "IDENTITY_RESTORE_CLEANUP_NOT_CONFIRMED")
 
 
 def private_capture(args, data, timeout=180):
@@ -200,6 +303,218 @@ def sql(container, database, text):
         data=text.encode(),
         timeout=120,
     )
+
+
+def wait_for_restore(container, database):
+    """Wait past the postgres image's temporary initialization server."""
+    deadline = time.monotonic() + 60
+    while True:
+        logs = subprocess.run(
+            ["/usr/bin/docker", "logs", container],
+            capture_output=True,
+            timeout=5,
+            check=False,
+            env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"},
+        )
+        r.require(
+            logs.returncode == 0
+            and len(logs.stdout) + len(logs.stderr) <= 2 * 1024 * 1024,
+            "IDENTITY_RESTORE_STARTUP_OBSERVATION_FAILED",
+        )
+        initialized = b"PostgreSQL init process complete" in logs.stdout
+        if (
+            initialized
+            and subprocess.run(
+                [
+                    "/usr/bin/docker",
+                    "exec",
+                    container,
+                    "pg_isready",
+                    "-U",
+                    "postgres",
+                    "-d",
+                    database,
+                ],
+                capture_output=True,
+                timeout=5,
+                check=False,
+                env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"},
+            ).returncode
+            == 0
+        ):
+            return
+        r.require(time.monotonic() < deadline, "IDENTITY_RESTORE_STARTUP_FAILED")
+        time.sleep(0.5)
+
+
+def fallback_observe(binding, operation, restore_name, container, database, ledger):
+    """Run the candidate API and worker against quarantined restored data.
+
+    The candidate shares only the restore container's empty network namespace.
+    The restore, synthetic account data, and limited database role are disposable.
+    No real account, provider, storage mount, or network is made available.
+    """
+    identity.common.identifier(operation)
+    r.require(
+        restore_name == "onesa-isolated-portal-restore-" + operation.replace("-", "")
+        and database == "onesa_identity_restore"
+        and re.fullmatch(r"[a-f0-9]{64}", container)
+        and re.fullmatch(r"sha256:[a-f0-9]{64}", binding["artifact_digest"])
+        and re.fullmatch(r"[a-f0-9]{40}", binding["candidate_commit"]),
+        "IDENTITY_FALLBACK_OPERATION_SCOPE",
+    )
+    inspection = json.loads(r.docker("inspect", container))
+    r.require(
+        restore_replay.isolated_target(restore_name, database, inspection, ledger)
+        == container,
+        "IDENTITY_FALLBACK_RESTORE_ISOLATION",
+    )
+    role = "onesa_fallback_probe"
+    r.require(
+        sql(
+            container,
+            database,
+            "SELECT count(*) FROM pg_roles WHERE rolname='" + role + "';",
+        ).strip()
+        == b"0",
+        "IDENTITY_FALLBACK_ROLE_EXISTS",
+    )
+    sql(
+        container,
+        database,
+        r"""
+CREATE ROLE onesa_fallback_probe LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+GRANT USAGE ON SCHEMA public TO onesa_fallback_probe;
+SELECT format('GRANT SELECT,INSERT,UPDATE,DELETE ON TABLE public.%I TO onesa_fallback_probe;',tablename)
+  FROM pg_tables WHERE schemaname='public' AND tablename<>'schema_migrations'
+\gexec
+GRANT SELECT ON public.schema_migrations, public.published_content TO onesa_fallback_probe;
+GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA public TO onesa_fallback_probe;
+""",
+    )
+    name = "onesa-isolated-portal-fallback-" + operation.replace("-", "")
+    r.require(
+        subprocess.run(
+            ["/usr/bin/docker", "container", "inspect", name],
+            capture_output=True,
+            check=False,
+            timeout=20,
+        ).returncode
+        != 0,
+        "IDENTITY_FALLBACK_NAMESPACE_EXISTS",
+    )
+    probe = None
+    checks = None
+    try:
+        probe = (
+            r.docker(
+                "create",
+                "-i",
+                "--name",
+                name,
+                "--pull=never",
+                "--network",
+                "container:" + container,
+                "--read-only",
+                "--tmpfs",
+                "/tmp:rw,nosuid,nodev,noexec,size=64m",
+                "--memory",
+                "768m",
+                "--cpus",
+                "0.5",
+                "--pids-limit",
+                "64",
+                "--cap-drop",
+                "ALL",
+                "--security-opt",
+                "no-new-privileges:true",
+                "--label",
+                "org.onesa.restore-scope=isolated-fallback",
+                "--label",
+                "org.onesa.restore-operation=" + operation,
+                "--env",
+                "NODE_ENV=production",
+                "--env",
+                "DATABASE_URL=postgresql://" + role + "@127.0.0.1:5432/" + database,
+                "--env",
+                "PUBLIC_ORIGIN=https://fallback.example.invalid",
+                "--env",
+                "SESSION_KEY=" + secrets.token_hex(32),
+                "--env",
+                "PROXY_SHARED_KEY=" + secrets.token_hex(32),
+                "--env",
+                "S3_BUCKET=synthetic-offline-fallback",
+                "--env",
+                "ONESA_IDENTITY_ENABLED=false",
+                "--entrypoint",
+                "node",
+                binding["artifact_digest"],
+                "--input-type=module",
+                "-",
+                timeout=60,
+            )
+            .decode()
+            .strip()
+        )
+        r.require(
+            re.fullmatch(r"[a-f0-9]{64}", probe), "IDENTITY_FALLBACK_CONTAINER_IDENTITY"
+        )
+        item = json.loads(r.docker("inspect", probe))[0]
+        labels = item["Config"].get("Labels") or {}
+        r.require(
+            item["Id"] == probe
+            and item["Name"] == "/" + name
+            and item["Image"] == binding["artifact_digest"]
+            and item["HostConfig"]["NetworkMode"] == "container:" + container
+            and item["HostConfig"]["ReadonlyRootfs"] is True
+            and not item["HostConfig"].get("PortBindings")
+            and all(m.get("Type") == "tmpfs" for m in item.get("Mounts", []))
+            and labels.get("org.onesa.restore-scope") == "isolated-fallback"
+            and labels.get("org.onesa.restore-operation") == operation,
+            "IDENTITY_FALLBACK_CONTAINER_SCOPE",
+        )
+        checks = json.loads(
+            r.docker(
+                "start",
+                "--attach",
+                "--interactive",
+                probe,
+                data=FALLBACK_PROGRAM.encode(),
+                timeout=120,
+            )
+        )
+        expected = {
+            key: True
+            for key in [
+                "representative_member_present",
+                "account_serialization",
+                "native_authentication",
+                "api_behavior",
+                "worker_behavior",
+            ]
+        }
+        r.require(checks == expected, "IDENTITY_FALLBACK_APPLICATION_CHECKS")
+    finally:
+        if probe:
+            item = json.loads(r.docker("inspect", probe))[0]
+            labels = item["Config"].get("Labels") or {}
+            r.require(
+                item["Id"] == probe
+                and item["Name"] == "/" + name
+                and labels.get("org.onesa.restore-scope") == "isolated-fallback"
+                and labels.get("org.onesa.restore-operation") == operation,
+                "IDENTITY_FALLBACK_CLEANUP_OWNERSHIP",
+            )
+            r.docker("rm", "-f", probe)
+            verify_container_removed(probe)
+    return {
+        "image": binding["artifact_digest"],
+        "source_commit": binding["candidate_commit"],
+        "identity_enabled": False,
+        **checks,
+        "operation_resources_removed": True,
+    }
 
 
 def observe(binding, plan, operation, target):
@@ -379,24 +694,7 @@ def observe(binding, plan, operation, target):
             == container,
             "IDENTITY_RESTORE_ISOLATION",
         )
-        deadline = time.monotonic() + 60
-        while subprocess.run(
-            [
-                "/usr/bin/docker",
-                "exec",
-                container,
-                "pg_isready",
-                "-U",
-                "postgres",
-                "-d",
-                database,
-            ],
-            capture_output=True,
-            timeout=5,
-            check=False,
-        ).returncode:
-            r.require(time.monotonic() < deadline, "IDENTITY_RESTORE_STARTUP_FAILED")
-            time.sleep(0.5)
+        wait_for_restore(container, database)
         r.docker(
             "exec",
             "-i",
@@ -476,6 +774,9 @@ def observe(binding, plan, operation, target):
             lockdown.strip() == b"ERASURE_REPLAY_AND_CAPABILITY_LOCKDOWN_PASS",
             "IDENTITY_RESTORED_CAPABILITIES_NOT_LOCKED",
         )
+        fallback = fallback_observe(
+            binding, operation, name, container, database, ledger
+        )
         proof = {
             "state": "ISOLATED_IDENTITY_RESTORE_OBSERVED_NOT_AUTHORIZATION",
             "source_commit": binding["candidate_commit"],
@@ -488,6 +789,7 @@ def observe(binding, plan, operation, target):
             "objects_verified": len(payload["objects"]),
             "schema_014_rehearsed": True,
             "capability_lockdown": True,
+            "compatible_fallback": fallback,
             "off_instance_readback": readback,
             "network": "none",
             "host_data_mounts": False,
@@ -504,6 +806,7 @@ def observe(binding, plan, operation, target):
                 "IDENTITY_RESTORE_CLEANUP_OWNERSHIP",
             )
             r.docker("rm", "-f", container)
+            verify_container_removed(container)
     proof["isolated_container_removed"] = True
     r.write(target / "receipt.json", proof)
     return proof

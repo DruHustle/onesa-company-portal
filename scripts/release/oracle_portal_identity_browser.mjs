@@ -13,7 +13,8 @@ export const ACCOUNT_CHECKS = Object.freeze([
 ]);
 export const PRODUCT_CHECKS = Object.freeze([
   'ai_authenticated_workspace', 'drone_authorized_workspace', 'robot_readonly_simulation',
-  'global_administrator_products', 'product_revocation',
+  'global_administrator_products', 'product_revocation', 'one_product_entitlement',
+  'two_product_entitlements', 'access_request_approval',
 ]);
 const PRODUCTS = ['ai', 'drone', 'robot'];
 const PRODUCTION = {portal: 'https://portal.onesa.eu', ai: 'https://platform.onesa.eu',
@@ -287,6 +288,41 @@ async function grant(owner, request, ownerSession, target, product, status) {
       stepUp: await stepUp(request.fixtures.owner)}});
 }
 
+export function verifyEntitlements(snapshot, expected) {
+  require(snapshot?.account && !snapshot.account.globalAdmin && !snapshot.account.portalAccess &&
+    Array.isArray(snapshot.access) && Array.isArray(expected) && new Set(expected).size === expected.length &&
+    expected.every(product => PRODUCTS.includes(product)), 'MEMBER_ENTITLEMENT_SCOPE');
+  const rows = snapshot.access;
+  require(rows.length === PRODUCTS.length && new Set(rows.map(row => row.product)).size === PRODUCTS.length &&
+    rows.every(row => PRODUCTS.includes(row.product) && ['pending','active','revoked','rejected'].includes(row.status) &&
+      row.role === (row.product === 'ai' ? 'user' : 'viewer')) &&
+    rows.filter(row => row.status === 'active').map(row => row.product).sort().join(',') === [...expected].sort().join(','),
+  'MEMBER_ENTITLEMENT_MISMATCH');
+}
+
+async function deniedProductSignIn(context, request, product, expect) {
+  const origin = request.origins[product], page = await context.newPage();
+  try {
+    await page.goto(origin + (product === 'robot' ? '/console' : '/'), {waitUntil: 'domcontentloaded'});
+    const startPath = product === 'ai' ? '/api/v1/auth/onesa/start' : '/api/v1/auth/identity/start';
+    const started = page.waitForResponse(response => new URL(response.url()).origin === origin &&
+      new URL(response.url()).pathname === startPath && response.request().method() === 'POST');
+    await page.getByRole('button', {name: 'Continue with Onesa', exact: true}).click();
+    const start = await responseJSON(await started, [200], 'PRODUCT_START_NOT_ACKNOWLEDGED');
+    authorizationBinding(product === 'ai' ? start.authorize_url : start.authorization_url, request, product);
+    await page.waitForURL(url => url.origin === request.origins.portal && url.pathname.startsWith('/account/sign-in/'), {timeout: 120000});
+    const continuation = page.getByRole('button', {name: /^Continue as /});
+    await expect(continuation).toBeVisible({timeout: 20000});
+    const denied = page.waitForResponse(response => new URL(response.url()).origin === request.origins.portal &&
+      /^\/api\/v1\/account\/interaction\/[^/]+\/continue$/.test(new URL(response.url()).pathname) && response.request().method() === 'POST');
+    await continuation.click();
+    const body = await responseJSON(await denied, [403], 'PRODUCT_DENIAL_NOT_OBSERVED');
+    require(body.error?.code === 'PRODUCT_ACCESS_REQUIRED', 'PRODUCT_DENIAL_REASON');
+    await expect(page.getByRole('alert')).toContainText('Request access');
+    await api(context, origin, '/api/v1/auth/me', {status: [401, 403]});
+  } finally { await page.close(); }
+}
+
 export function authorizationBinding(raw, request, product) {
   let url; try { url = new URL(raw); } catch { throw new ObservationError('PRODUCT_AUTHORIZATION_URL'); }
   const parameters = url.searchParams;
@@ -422,6 +458,12 @@ async function passwordReset(context, request, fixture, expect) {
     await api(context, request.origins.portal, '/api/v1/account/me', {status: [401]});
     if (request.scope === 'integrated') for (const product of PRODUCTS)
       await api(context, request.origins[product], '/api/v1/auth/me', {status: [401, 403]});
+    const token = new URLSearchParams(new URL(link).hash.slice(1)).get('access-link');
+    require(/^[a-f0-9]{64}$/.test(token || ''), 'PASSWORD_RESET_TOKEN_FORMAT');
+    await api(anonymous, request.origins.portal, '/api/v1/auth/password/reset',
+      {method: 'POST', body: {token, password}, status: [400]});
+    await api(anonymous, request.origins.portal, '/api/v1/account/login',
+      {method: 'POST', body: {email: fixture.email, password: fixture.password, code: ''}, status: [401]});
     // Confirm a real login using the new credential, then end that session too.
     const logged = await loginAccount(anonymous, request, {...fixture, password}, expect);
     await api(anonymous, request.origins.portal, '/api/v1/account/logout',
@@ -490,9 +532,24 @@ export async function observeHostedIdentity(input) {
       await api(administrator, request.origins.portal, '/api/v1/admin/identity/accounts?search=' + encodeURIComponent(adminFixture.email));
     });
     if (request.scope === 'integrated') {
-      for (const product of PRODUCTS) await grant(owner, request, ownerSession, targets.get('member'), product, 'active');
-      for (const [product, check] of [['ai', 'ai_authenticated_workspace'], ['drone', 'drone_authorized_workspace'], ['robot', 'robot_readonly_simulation']])
-        await observe(check, () => productSignIn(member, request, product, {...request.fixtures.member, id: targets.get('member').id}, expect));
+      const memberFixture = {...request.fixtures.member, id: targets.get('member').id};
+      await grant(owner, request, ownerSession, targets.get('member'), 'ai', 'active');
+      await observe('ai_authenticated_workspace', () => productSignIn(member, request, 'ai', memberFixture, expect));
+      await observe('one_product_entitlement', async () => {
+        verifyEntitlements(await api(member, request.origins.portal, '/api/v1/account/me'), ['ai']);
+        await deniedProductSignIn(member, request, 'drone', expect);
+        await deniedProductSignIn(member, request, 'robot', expect);
+      });
+      await grant(owner, request, ownerSession, targets.get('member'), 'drone', 'active');
+      await observe('drone_authorized_workspace', () => productSignIn(member, request, 'drone', memberFixture, expect));
+      await observe('two_product_entitlements', async () => {
+        verifyEntitlements(await api(member, request.origins.portal, '/api/v1/account/me'), ['ai', 'drone']);
+        await api(member, request.origins.ai, '/api/v1/auth/me');
+        await deniedProductSignIn(member, request, 'robot', expect);
+      });
+      await grant(owner, request, ownerSession, targets.get('member'), 'robot', 'active');
+      verifyEntitlements(await api(member, request.origins.portal, '/api/v1/account/me'), PRODUCTS);
+      await observe('robot_readonly_simulation', () => productSignIn(member, request, 'robot', memberFixture, expect));
       await observe('global_administrator_products', async () => {
         for (const product of PRODUCTS) await productSignIn(administrator, request, product, {...adminFixture, id: targets.get('administrator').id}, expect);
       });
@@ -501,6 +558,21 @@ export async function observeHostedIdentity(input) {
         await api(member, request.origins.robot, '/api/v1/auth/me', {status: [401, 403]});
         await api(member, request.origins.ai, '/api/v1/auth/me');
         await api(member, request.origins.drone, '/api/v1/auth/me');
+      });
+      await observe('access_request_approval', async () => {
+        const page = await member.newPage();
+        try {
+          await page.goto(request.origins.portal + '/account', {waitUntil: 'domcontentloaded'});
+          const card = page.locator('article').filter({has: page.getByRole('heading', {name: 'Onesa Robot', exact: true})});
+          const requested = page.waitForResponse(response => new URL(response.url()).origin === request.origins.portal &&
+            new URL(response.url()).pathname === '/api/v1/account/products/robot/request' && response.request().method() === 'POST');
+          await card.getByRole('button', {name: 'Request access', exact: true}).click();
+          const snapshot = await responseJSON(await requested, [200], 'ACCESS_REQUEST_NOT_ACKNOWLEDGED');
+          require(snapshot.access?.find(row => row.product === 'robot')?.status === 'pending', 'ACCESS_REQUEST_NOT_PENDING');
+        } finally { await page.close(); }
+        await grant(owner, request, ownerSession, targets.get('member'), 'robot', 'active');
+        verifyEntitlements(await api(member, request.origins.portal, '/api/v1/account/me'), PRODUCTS);
+        await productSignIn(member, request, 'robot', memberFixture, expect);
       });
     }
     await observe('password_reset_delivery', () => passwordReset(member, request, request.fixtures.member, expect));

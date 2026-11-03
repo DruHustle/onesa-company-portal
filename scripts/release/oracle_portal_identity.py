@@ -59,6 +59,9 @@ HOSTED_CHECKS = {
     "robot_readonly_simulation",
     "global_administrator_products",
     "member_administrator_denial",
+    "one_product_entitlement",
+    "two_product_entitlements",
+    "access_request_approval",
     "product_revocation",
     "password_reset_delivery",
     "global_session_revocation",
@@ -69,6 +72,9 @@ ACCOUNT_CHECKS = HOSTED_CHECKS - {
     "robot_readonly_simulation",
     "global_administrator_products",
     "product_revocation",
+    "one_product_entitlement",
+    "two_product_entitlements",
+    "access_request_approval",
 }
 
 
@@ -485,7 +491,7 @@ def source_and_image(binding, plan, folder):
         "--entrypoint",
         "sha256sum",
         image["Id"],
-        *sorted(expected)
+        *sorted(expected),
     )
     observed = {}
     for line in output.decode().splitlines():
@@ -729,20 +735,13 @@ def compose_change(
     service = env if kind == "api" else "worker"
     expected = json.loads(json.dumps(original))
     chosen = expected["services"][service]
-    image = (
-        plan["baseline"][TARGETS[env][kind]]["image"]
-        if rollback
-        else binding["artifact_digest"]
-    )
-    # Retained image and original env restore compatibility while schema stays 014.
+    # Historical images cannot safely serialize accounts created with schema 013.
+    # The qualified candidate itself is the fallback, with identity disabled.
+    image = binding["artifact_digest"]
     labels = dict(chosen.get("labels") or {})
     labels.update(
         {
-            "org.onesa.source-commit": (
-                plan["baseline"][TARGETS[env][kind]]["source"]
-                if rollback
-                else binding["candidate_commit"]
-            ),
+            "org.onesa.source-commit": binding["candidate_commit"],
             "org.onesa.release-operation": operation,
         }
     )
@@ -751,7 +750,9 @@ def compose_change(
         not (IDENTITY_KEYS & set(environment)),
         "IDENTITY_BASELINE_MUST_BE_FEATURE_DISABLED",
     )
-    if not rollback:
+    if rollback:
+        environment["ONESA_IDENTITY_ENABLED"] = "false"
+    else:
         environment.update(values)
     chosen.update(image=image, labels=labels, environment=environment)
     override = target / (kind + "-override.json")
@@ -850,6 +851,9 @@ def read_health(plan, env, enabled):
     if enabled:
         value = r.http_read(origin, "/api/v1/account/config", 200, bypass)
         r.require(value.get("enabled") is True, "IDENTITY_CONFIG_NOT_ENABLED")
+    else:
+        value = r.http_read(origin, "/api/v1/account/config", 200, bypass)
+        r.require(value.get("enabled") is False, "IDENTITY_CONFIG_NOT_DISABLED")
     return {"health": "PASS", "readiness": "PASS", "shared_identity_enabled": enabled}
 
 
@@ -897,8 +901,9 @@ def verify_probe_image(plan):
         "oracle_portal_browser_session.mjs",
     ]
     expected = {
-        "/opt/onesa-company-portal/scripts/release/"
-        + name: files["scripts/release/" + name]
+        "/opt/onesa-company-portal/scripts/release/" + name: files[
+            "scripts/release/" + name
+        ]
         for name in names
     }
     output = r.docker(
@@ -911,7 +916,7 @@ def verify_probe_image(plan):
         "--entrypoint",
         "sha256sum",
         image["Id"],
-        *sorted(expected)
+        *sorted(expected),
     )
     actual = {}
     for line in output.decode().splitlines():
@@ -1091,13 +1096,16 @@ def staging(binding, plan, context, folder, records):
         import oracle_portal_identity_restore as restore
 
         restored = restore.observe(binding, plan, operation, target / "restore")
+        # Do not alter the live staging schema until a candidate-based fallback
+        # has passed the full restored-data rehearsal, including member accounts.
+        restore.verify_fallback(restored, binding)
         schema = migration(
             binding, plan, "staging", operation, migrations, "apply", target
         )
         scope = tuple(TARGETS["staging"].values())
         actual = {}
-        # Exercise retained application rollback against the additive schema,
-        # then restore the candidate before any registration/mail workflow.
+        # Exercise the already-qualified compatible fallback on staging, then
+        # restore the candidate before the registration/mail workflow.
         for label, rollback in [
             ("forward", False),
             ("rollback", True),
@@ -1133,7 +1141,7 @@ def staging(binding, plan, context, folder, records):
             "hosted": browser,
             "runtime_targets": actual,
             "rollback": {
-                "retained_images_exercised": True,
+                "compatible_candidate_exercised": True,
                 "additive_schema_retained": True,
                 "credential_changes": 0,
                 "down_migrations": 0,
@@ -1169,6 +1177,7 @@ def operations(binding, plan, records):
     import oracle_portal_identity_restore as restore
 
     restore.verify_retained(plan, stage["restore"])
+    restore.verify_fallback(stage["restore"], binding)
     for env in ENVIRONMENTS:
         for name in TARGETS[env].values():
             old = plan["baseline"][name]["image"]

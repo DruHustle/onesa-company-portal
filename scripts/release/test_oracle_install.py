@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -494,3 +495,31 @@ class IsolatedInstallerEntryTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         self.assertIn(b"--manifest-pin", result.stdout)
+
+    def test_installed_identity_runners_import_the_complete_bundle_under_isolated_python(
+        self,
+    ):
+        source = Path(installer.__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for destination, upstream in installer.IDENTITY_ALLOWED.items():
+                target = root / destination
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source / upstream, target)
+            for runner in (
+                "oracle_portal_identity.py",
+                "oracle_portal_identity_acceptance.py",
+            ):
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        "-I",
+                        "-c",
+                        "import runpy,sys; runpy.run_path(sys.argv[1],run_name='installed_probe')",
+                        str(root / "runners" / runner),
+                    ],
+                    capture_output=True,
+                    timeout=10,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr.decode())

@@ -2,6 +2,19 @@
 
 ## Unreleased — Identity deployment and hosted observation integration
 
+- Rehearse the exact candidate with identity disabled against quarantined restored
+  data and a synthetic member before migration; check the native API and worker,
+  and verify operation-owned container removal. Earlier images are not a fallback
+  qualification merely because their health checks pass.
+- Scope native Portal logout to its presented session and its bound product
+  grants; other account and Portal sessions remain active. Shared account logout
+  and explicit session revocation continue to revoke globally.
+- Resolve the installed identity-acceptance runner's owner-verifier import from
+  the reviewed bundle under isolated Python; exercise the actual bundle layout.
+- Require the hosted password-reset observation to reject the used reset token
+  and the old password before verifying sign-in with the new password.
+- Exercise one-, two- and three-product entitlements through product sign-in,
+  including denied sign-in and the account request/owner approval workflow.
 - Add an explicit frontend identity source profile covering the reviewed account
   interface, proxy and existing product presentation. Keep the previous profiles
   and every NVIDIA/public-renderer requirement; pin the current reviewed files.

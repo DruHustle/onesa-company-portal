@@ -17,7 +17,11 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+_runners = Path(__file__).resolve().parent
+# The owner verifier is installed one directory above the reviewed runners.
+# Python's isolated mode omits both directories from its default import path.
+sys.path.insert(0, str(_runners.parent))
+sys.path.insert(0, str(_runners))
 import oracle_owner as owner
 import oracle_portal as r
 import oracle_portal_identity as identity

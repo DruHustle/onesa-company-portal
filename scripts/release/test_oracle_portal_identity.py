@@ -5,6 +5,7 @@ import copy
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -115,6 +116,20 @@ def seal(value, plan):
 
 
 class ProfileTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("node"), "Node is required for browser/verifier contract")
+    def test_hosted_browser_and_owner_verifier_require_the_same_observations(self):
+        root = Path(__file__).resolve().parents[2]
+        program = (
+            "import {ACCOUNT_CHECKS,PRODUCT_CHECKS} from "
+            "'./scripts/release/oracle_portal_identity_browser.mjs'; "
+            "console.log(JSON.stringify({account:ACCOUNT_CHECKS,product:PRODUCT_CHECKS}));"
+        )
+        observed = json.loads(subprocess.check_output(
+            ["node", "--input-type=module", "-e", program], cwd=root, timeout=15
+        ))
+        self.assertEqual(set(observed["account"]), identity.ACCOUNT_CHECKS)
+        self.assertEqual(set(observed["account"]) | set(observed["product"]), identity.HOSTED_CHECKS)
+
     def test_only_separate_profile_and_existing_four_targets(self):
         value, plan = inputs()
         identity.validate_plan(value, plan)
@@ -408,6 +423,61 @@ class OperationTests(unittest.TestCase):
             )
             self.assertEqual(r.read(self.root / "api-intent.json")["request_budget"], 1)
 
+    def test_fallback_selects_qualified_candidate_and_explicitly_disables_identity(
+        self,
+    ):
+        value, plan = inputs()
+        original = {
+            "services": {
+                "staging": {
+                    "environment": {"PORT": "8300"},
+                    "image": plan["baseline"][identity.TARGETS["staging"]["api"]][
+                        "image"
+                    ],
+                    "labels": {},
+                }
+            }
+        }
+
+        def render(runtime, env, kind, override=None):
+            result = copy.deepcopy(original)
+            if override is not None:
+                result["services"][env].update(r.read(override)["services"][env])
+            return result
+
+        with (
+            patch.object(identity, "rendered", side_effect=render),
+            patch.object(
+                identity, "recipe_command", return_value=["synthetic-compose"]
+            ),
+            patch.object(
+                identity.subprocess,
+                "run",
+                side_effect=subprocess.TimeoutExpired("synthetic", 300),
+            ),
+        ):
+            with self.assertRaisesRegex(r.Refused, "INTERRUPTED_INSPECT_ONLY"):
+                identity.compose_change(
+                    value,
+                    plan,
+                    "staging",
+                    "api",
+                    str(uuid4()),
+                    self.root,
+                    {
+                        "ONESA_IDENTITY_ENABLED": "true",
+                        "ONESA_IDENTITY_CONFIG_B64": "secret",
+                    },
+                    rollback=True,
+                )
+        selected = r.read(self.root / "api-override.json")["services"]["staging"]
+        self.assertEqual(selected["image"], value["artifact_digest"])
+        self.assertEqual(
+            selected["labels"]["org.onesa.source-commit"], value["candidate_commit"]
+        )
+        self.assertEqual(selected["environment"]["ONESA_IDENTITY_ENABLED"], "false")
+        self.assertNotIn("ONESA_IDENTITY_CONFIG_B64", selected["environment"])
+
     def test_rendered_privilege_or_mount_change_stops_before_provider_request(self):
         value, plan = inputs()
         original = {
@@ -639,6 +709,143 @@ class SignatureTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(r.Refused, "REVOKED_OR_MISSING"):
             acceptance.signed_dependency(reference, "production")
+
+
+class FallbackProofTests(unittest.TestCase):
+    def test_fallback_rejects_foreign_restore_before_docker_access(self):
+        with patch.object(r, "docker") as docker:
+            with self.assertRaisesRegex(r.Refused, "FALLBACK_OPERATION_SCOPE"):
+                restore.fallback_observe(
+                    binding(), str(uuid4()), "someone-elses-restore", "a" * 64,
+                    "onesa_identity_restore", {},
+                )
+            docker.assert_not_called()
+
+    def test_temporary_postgres_server_cannot_satisfy_restore_readiness(self):
+        temporary = subprocess.CompletedProcess([], 0, b"temporary server ready", b"")
+        initialized = subprocess.CompletedProcess(
+            [], 0, b"PostgreSQL init process complete", b""
+        )
+        ready = subprocess.CompletedProcess([], 0, b"accepting connections", b"")
+        with (
+            patch.object(
+                restore.subprocess, "run", side_effect=[temporary, initialized, ready]
+            ) as run,
+            patch.object(restore.time, "sleep"),
+        ):
+            restore.wait_for_restore("a" * 64, "onesa_identity_restore")
+        self.assertEqual(
+            [call.args[0][1] for call in run.call_args_list], ["logs", "logs", "exec"]
+        )
+
+    def test_fallback_requires_every_observation_and_the_exact_candidate(self):
+        value = binding()
+        valid = {
+            "image": value["artifact_digest"],
+            "source_commit": value["candidate_commit"],
+            "identity_enabled": False,
+            "representative_member_present": True,
+            "account_serialization": True,
+            "native_authentication": True,
+            "api_behavior": True,
+            "worker_behavior": True,
+            "operation_resources_removed": True,
+        }
+        restore.verify_fallback({"compatible_fallback": valid}, value)
+        for key in valid:
+            candidate = dict(valid)
+            candidate.pop(key)
+            with (
+                self.subTest(missing=key),
+                self.assertRaisesRegex(r.Refused, "FALLBACK_REHEARSAL_REQUIRED"),
+            ):
+                restore.verify_fallback({"compatible_fallback": candidate}, value)
+        for key in ("image", "source_commit"):
+            candidate = dict(valid)
+            candidate[key] = "unrelated"
+            with self.subTest(changed=key), self.assertRaises(r.Refused):
+                restore.verify_fallback({"compatible_fallback": candidate}, value)
+        with self.assertRaises(r.Refused):
+            restore.verify_fallback({}, value)
+
+    def test_container_cleanup_requires_a_successful_exact_id_readback(self):
+        container = "a" * 64
+        with patch.object(r, "docker", return_value=b"") as docker:
+            restore.verify_container_removed(container)
+            self.assertIn("id=" + container, docker.call_args.args)
+        with patch.object(r, "docker", return_value=(container + "\n").encode()):
+            with self.assertRaisesRegex(r.Refused, "CLEANUP_NOT_CONFIRMED"):
+                restore.verify_container_removed(container)
+        with patch.object(r, "docker", side_effect=r.Refused("DOCKER_UNAVAILABLE")):
+            with self.assertRaisesRegex(r.Refused, "DOCKER_UNAVAILABLE"):
+                restore.verify_container_removed(container)
+        with self.assertRaisesRegex(r.Refused, "CONTAINER_IDENTITY"):
+            restore.verify_container_removed("not-an-id")
+
+    def test_failed_fallback_removes_only_the_verified_operation_container(self):
+        operation = str(uuid4())
+        candidate, parent, probe = binding(), "b" * 64, "a" * 64
+        name = "onesa-isolated-portal-fallback-" + operation.replace("-", "")
+        item = {
+            "Id": probe,
+            "Name": "/" + name,
+            "Image": candidate["artifact_digest"],
+            "Config": {
+                "Labels": {
+                    "org.onesa.restore-scope": "isolated-fallback",
+                    "org.onesa.restore-operation": operation,
+                }
+            },
+            "HostConfig": {
+                "NetworkMode": "container:" + parent,
+                "ReadonlyRootfs": True,
+                "PortBindings": {},
+            },
+            "Mounts": [],
+        }
+
+        def docker(*args, **kwargs):
+            if args == ("inspect", parent):
+                return b"[{}]"
+            if args == ("inspect", probe):
+                return json.dumps([item]).encode()
+            if args[0] == "create":
+                return probe.encode()
+            if args[0] == "start":
+                raise r.Refused("SYNTHETIC_PROBE_FAILURE")
+            return b""
+
+        with (
+            patch.object(restore, "sql", return_value=b"0"),
+            patch.object(
+                restore.restore_replay, "isolated_target", return_value=parent
+            ),
+            patch.object(
+                restore.subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess([], 1),
+            ),
+            patch.object(r, "docker", side_effect=docker) as docker_call,
+        ):
+            with self.assertRaisesRegex(r.Refused, "SYNTHETIC_PROBE_FAILURE"):
+                restore.fallback_observe(
+                    candidate,
+                    operation,
+                    "onesa-isolated-portal-restore-" + operation.replace("-", ""),
+                    parent,
+                    "onesa_identity_restore",
+                    {},
+                )
+        self.assertIn(
+            (("rm", "-f", probe), {}),
+            [(call.args, call.kwargs) for call in docker_call.call_args_list],
+        )
+        self.assertTrue(
+            any(
+                call.args[:3] == ("container", "ls", "--all")
+                for call in docker_call.call_args_list
+            )
+        )
 
 
 class BackupPayloadTests(unittest.TestCase):

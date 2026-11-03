@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {validateRequest, totp, ACCOUNT_CHECKS, PRODUCT_CHECKS, authorizationBinding, verifyCallback, validateOwnerSession} from './oracle_portal_identity_browser.mjs';
+import {validateRequest, totp, ACCOUNT_CHECKS, PRODUCT_CHECKS, authorizationBinding, verifyCallback, validateOwnerSession, verifyEntitlements} from './oracle_portal_identity_browser.mjs';
 import {validateMailbox, parseImapResponse, messageLink, deliveredLink} from './oracle_portal_identity_mail.mjs';
 
 const operation = '12345678-1234-1234-1234-123456789abc';
@@ -29,7 +29,23 @@ test('source, separate acceptance component and exact full input scope are requi
     r => r.fixtures.owner.id = operation, r => r.physical_hardware_authorized = true]) {
     const value = request(); change(value); assert.throws(() => validateRequest(value));
   }
-  assert.equal(ACCOUNT_CHECKS.length, 7); assert.equal(PRODUCT_CHECKS.length, 5);
+  assert.equal(ACCOUNT_CHECKS.length, 7); assert.equal(PRODUCT_CHECKS.length, 8);
+});
+
+test('member entitlement observations require exact active products and ordinary roles', () => {
+  const snapshot = {account: {globalAdmin: false, portalAccess: false}, access: [
+    {product: 'ai', role: 'user', status: 'active'},
+    {product: 'drone', role: 'viewer', status: 'pending'},
+    {product: 'robot', role: 'viewer', status: 'pending'},
+  ]};
+  verifyEntitlements(snapshot, ['ai']);
+  assert.throws(() => verifyEntitlements(snapshot, ['ai', 'drone']), /MEMBER_ENTITLEMENT_MISMATCH/);
+  for (const change of [v => v.account.globalAdmin = true, v => v.account.portalAccess = true,
+    v => v.access[1].role = 'admin', v => v.access[2].product = 'drone', v => v.access.pop()]) {
+    const changed = structuredClone(snapshot); change(changed); assert.throws(() => verifyEntitlements(changed, ['ai']));
+  }
+  snapshot.access[1].status = 'active'; verifyEntitlements(snapshot, ['ai', 'drone']);
+  snapshot.access[2].status = 'active'; verifyEntitlements(snapshot, ['ai', 'drone', 'robot']);
 });
 
 test('arbitrary, cross-environment and credential-bearing origins cannot receive fixtures', () => {

@@ -863,6 +863,52 @@ test("An existing MFA Portal session can approve an explicitly bound shared gran
   );
 });
 
+test("Native Portal logout revokes only grants bound to that native session", async () => {
+  const first = await signIn("admin");
+  const savedAccountCookie = first.jar.get("onesa_account")!;
+  first.jar.delete("onesa_account");
+  const portalGrant = await complete(await authorization("admin", 0, first), true);
+  first.jar.set("onesa_account", savedAccountCookie);
+  const second = await signIn("admin");
+  const independentGrant = await complete(await authorization("admin", 1, second), true);
+  const response = await first.request({
+    method: "POST", url: "/api/v1/auth/logout",
+    headers: { "x-csrf-token": first.session.csrf }, payload: {},
+  });
+  assert.equal(response.statusCode, 200, response.body);
+  assert.equal((await inspect(portalGrant.token, 0)).json().active, false);
+  assert.equal((await inspect(independentGrant.token, 1)).json().active, true);
+  assert.equal((await first.request({url: "/api/v1/account/me"})).statusCode, 200);
+  assert.equal((await second.request({url: "/api/v1/admin/dashboard"})).statusCode, 200);
+});
+
+test("Identity-disabled candidate keeps native administration usable with a member on schema 014", async () => {
+  const before = (await db.query("SELECT id,email,password_hash,role,disabled FROM users WHERE id=$1", [member])).rows[0];
+  const previous = process.env.ONESA_IDENTITY_ENABLED;
+  process.env.ONESA_IDENTITY_ENABLED = "false";
+  const fallback = await buildApp({logging: false});
+  try {
+    await fallback.ready();
+    const login = await fallback.inject({method: "POST", url: "/api/v1/auth/login", headers: proxy,
+      payload: {email: emails.owner, password, code: await factor(owner)}});
+    assert.equal(login.statusCode, 200, login.body);
+    const cookie = login.cookies.filter(c => c.value).map(c => c.name + "=" + c.value).join("; ");
+    const list = await fallback.inject({url: "/api/v1/admin/users", headers: {...proxy, cookie}});
+    assert.equal(list.statusCode, 200, list.body);
+    assert.ok(list.json().items.some((user: {id: string}) => user.id === owner));
+    assert.ok(!list.json().items.some((user: {id: string}) => user.id === member));
+    const memberLogin = await fallback.inject({method: "POST", url: "/api/v1/auth/login", headers: proxy,
+      payload: {email: emails.member, password, code: ""}});
+    assert.equal(memberLogin.statusCode, 401);
+    const configResponse = await fallback.inject({url: "/api/v1/account/config", headers: proxy});
+    assert.deepEqual(configResponse.json(), {enabled: false, applications: []});
+    assert.deepEqual((await db.query("SELECT id,email,password_hash,role,disabled FROM users WHERE id=$1", [member])).rows[0], before);
+  } finally {
+    process.env.ONESA_IDENTITY_ENABLED = previous;
+    await fallback.close();
+  }
+});
+
 async function revokeWhileBlocked(
   work: () => Promise<
     Awaited<ReturnType<ReturnType<typeof browser>["request"]>>
