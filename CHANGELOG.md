@@ -2,6 +2,9 @@
 
 ## Unreleased — Identity deployment and hosted observation integration
 
+- Keep database-readiness imports independent of application environment and pool
+  initialization so the isolated owner migration helper can run without runtime
+  credentials in its process environment.
 - Prefer the official vulnerability database before its cache mirror in image
   security checks, retaining both scanners and the existing blocking gate.
 
