@@ -129,3 +129,57 @@ The API and worker adapters explicitly select each retained service's existing
 Compose profile for rendering and deployment. Identity-file pins and independent
 service targeting remain mandatory. New source still requires its own checks,
 commissioned installation and hosted qualification.
+
+## Kubernetes host and private UI preparation
+
+The owner-requested Oracle consolidation has read-only preparation source in
+`infra/oracle/kubernetes_preflight.py` and `infra/oracle/portainer_private.py`.
+Neither script installs Kubernetes, applies manifests, changes firewall rules,
+creates paid resources or replaces an existing application. The existing
+`dev → staging → main` and protected component-release procedures still apply.
+This source is not a live-cluster acceptance record.
+
+The host observer requires Linux/systemd and reports measured available memory,
+CPU capacity/load, disk reserve, cgroups, swap, occupied cluster ports, network
+overlap and Docker runtime-identity stability (container/image IDs, start time,
+running state and restart count). That fingerprint does not verify mounts,
+networks, resource configuration or health; full preservation remains separate.
+It uses the local Docker socket explicitly and never requests application
+environment files. The conservative starting
+budget reserves 2 GiB for K3s, 512 MiB for its management UI, 1 GiB of host headroom
+and 10 GiB of free installation space, before separately declared additional
+workload requirements. These are preparation budgets, not proof of application
+capacity or a recommendation to resize the VM.
+
+Existing K3s/Kubernetes state requires its own upgrade path. Existing HTTP/HTTPS
+listeners are preserved; initial Traefik and ServiceLB must remain disabled while
+the retained ingress serves Compose workloads. The source-documented
+`ONESA_WORKER_INPUT` firewall currently permits the approved SSH path and ends in
+DROP. Its presence is an explicit integration blocker, not permission to disable
+the firewall or open Kubernetes administration to the internet or Tailscale.
+The protected operational procedure must review the actual pod/API networking,
+provider rules and preserved workloads before installing anything.
+
+The Portainer CE renderer requires an exact reviewed image digest, observed node
+hostname and an existing retained storage class. It produces one persistent
+instance with a Recreate strategy, HTTPS-only ClusterIP service, no ingress or
+host ports, and a policy denying pod ingress. Its local management identity has
+cluster-admin rights, so first access and owner setup must use the approved
+private SSH/loopback forwarding route. It grants no public product-user access.
+The observer checks the selected configuration, current rollout and bound PV/PVC
+identity with Retain policies; it never reads Secrets. A passing configuration
+observation does not establish UI sign-in, external reachability, backups or a
+successful restore. No mutable image, default storage class or implicit remote
+Kubernetes context is accepted.
+
+Application migration still requires database-specific backup/restore, measured
+capacity, preserved jobs and data, exact-source staging acceptance, actual private
+UI access, and a reviewed data rollback. K3s datastore/token backup is separate
+from application database backup. One VM does not provide host-level high
+availability. An external backup provider and any Render paid capacity remain
+separate decisions; this preparation changes neither.
+
+Upstream reference: [K3s requirements](https://docs.k3s.io/installation/requirements),
+[network services](https://docs.k3s.io/networking/networking-services),
+[datastore recovery](https://docs.k3s.io/datastore/backup-restore), and
+[Portainer CE Kubernetes installation](https://docs.portainer.io/start/install-ce/server/kubernetes/baremetal).

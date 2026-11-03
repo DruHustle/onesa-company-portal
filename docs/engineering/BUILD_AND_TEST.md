@@ -1,5 +1,39 @@
 # Separate application builds and tests
 
+## Kubernetes host and private Portainer preparation
+
+The preparation tools perform no installation, cloud mutation or workload
+cutover. Their offline tests use synthetic host observations and Kubernetes
+objects; no production credentials, Docker daemon or Kubernetes cluster is used.
+The existing Oracle preparation CI discovery includes the new tests:
+
+```sh
+python3 -m unittest discover -s scripts -p 'test_oracle_kubernetes_preparation.py'
+```
+
+Adverse cases cover insufficient available memory despite large total RAM,
+additional workload reserves, fractional CPU limits, missing cgroups, active swap,
+existing clusters, occupied ports, overlapping Docker/host routes, unknown
+observations and changed container runtime identities. The fingerprint covers
+IDs/images/start/running/restarts, not Docker configuration, mounts or networks.
+Command tests verify bounded
+execution against the local Docker socket with no inherited provider context or
+secret output. A container execution environment is refused before host inspection.
+
+Portainer tests cover immutable CE images, private HTTPS service configuration,
+forbidden public/host exposure, added ingress permission, stale rollout status,
+an unqualified nodeName scheduling override, unreviewed container execution
+settings, unbound or mismatched PVCs, and unsafe
+Delete storage policies. The verification command uses explicit local K3s
+kubeconfig and only fixed `get` requests; it never retrieves Secrets. Rendering
+is offline and does not contact or modify a cluster.
+
+Actual Oracle host observations, reviewed firewall integration, image/platform
+qualification, Kubernetes installation, authenticated private UI acceptance,
+database migration and independent restore checks remain hosted work. Local PASS
+results do not establish those outcomes. See the
+[deployment reference](DEPLOYMENT.md#kubernetes-host-and-private-ui-preparation).
+
 ## NVIDIA reference asset gallery
 
 The product index and Drone product page contain three browser derivatives from
