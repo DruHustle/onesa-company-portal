@@ -1,6 +1,7 @@
 FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS dependencies
 WORKDIR /app
 COPY package*.json ./
+COPY vendor ./vendor
 RUN npm ci
 FROM dependencies AS build
 COPY . .
@@ -11,7 +12,8 @@ RUN apk add --no-cache 'musl>=1.2.6-r3' 'musl-utils>=1.2.6-r3'
 ENV NODE_ENV=production PORT=8300 STORAGE_DIR=/app/storage
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --omit=dev && mkdir -p storage && chown node:node storage
+COPY vendor ./vendor
+RUN npm ci --omit=dev && rm -rf vendor && mkdir -p storage && chown node:node storage
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node migrations ./migrations
 # Node starts the application directly; package managers are build-only tooling.

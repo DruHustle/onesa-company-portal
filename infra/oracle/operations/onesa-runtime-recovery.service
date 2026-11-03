@@ -6,7 +6,7 @@ ConditionPathExists=/etc/onesa/runtime-recovery.json
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/python3 -I /opt/onesa/portal-operations/current/infra/oracle/operations/recovery.py run
+ExecStart=/usr/bin/python3 -I /opt/onesa/runtime-recovery/current/infra/oracle/operations/recovery.py run
 User=root
 UMask=0077
 TimeoutStartSec=300

@@ -1,5 +1,42 @@
 # Changelog
 
+## Unreleased — Identity deployment and hosted observation integration
+
+- Rehearse the exact candidate with identity disabled against quarantined restored
+  data and a synthetic member before migration; check the native API and worker,
+  and verify operation-owned container removal. Earlier images are not a fallback
+  qualification merely because their health checks pass.
+- Scope native Portal logout to its presented session and its bound product
+  grants; other account and Portal sessions remain active. Shared account logout
+  and explicit session revocation continue to revoke globally.
+- Resolve the installed identity-acceptance runner's owner-verifier import from
+  the reviewed bundle under isolated Python; exercise the actual bundle layout.
+- Require the hosted password-reset observation to reject the used reset token
+  and the old password before verifying sign-in with the new password.
+- Exercise one-, two- and three-product entitlements through product sign-in,
+  including denied sign-in and the account request/owner approval workflow.
+- Add an explicit frontend identity source profile covering the reviewed account
+  interface, proxy and existing product presentation. Keep the previous profiles
+  and every NVIDIA/public-renderer requirement; pin the current reviewed files.
+- Add a source-bound hosted account observer with separate account-service and
+  cross-product scopes. Use actual browser sign-in and read-only TLS inbox
+  observations for verification and reset links, enforce role/MFA denials, test
+  live product access and revocation, and disable only operation-owned fixtures.
+  Anonymous public-renderer results cannot supply authenticated acceptance.
+- Keep synthetic regression evidence separate from hosted observations. This
+  source change does not report a deployed migration, activated recovery timer,
+  configured provider or completed live acceptance.
+
+## Unreleased — Backend development dependency repair
+
+- Apply the patched minimatch 11.0.1 implementation to the backend's three
+  callable ESLint consumers through an independently packaged local adapter,
+  while retaining the native export interface for TypeScript's parser. Pin
+  upstream provenance, integrity and license; preserve production package versions.
+- Run the real consumer and bounded adverse-input checks in verification, and
+  provide the local archive to both clean Docker dependency stages. The locked
+  backend audit reports zero findings; no audit threshold is relaxed.
+
 ## Unreleased — Bounded Docker process recovery
 
 - Prepare an opt-in Linux host controller for explicitly enrolled Portal API and
@@ -26,6 +63,11 @@
 - Synchronize real-child shutdown tests with actual work entry and signal handling.
   Distinguish a startup heartbeat from in-flight work, retain the three-second drain
   assertion, and keep atomic-file custody and production recovery behavior unchanged.
+- Add a separate source-matched owner installer and disabled enrollment path using
+  signed identity-release runtime observations. Preserve consumed budgets, unresolved
+  holds and interrupted enrollment transactions. Add staging-only hosted fault tests
+  and require real scheduled timer observations before production recovery activation.
+  Disposable tests do not establish installation, live acceptance or deployment.
 
 ## Unreleased — One Onesa account across products
 

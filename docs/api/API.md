@@ -190,6 +190,11 @@ late protocol writes cannot restore authority after sign-out. Permission changes
 are read on each application request. Source preparation does not enable the
 feature or establish hosted staging acceptance.
 
+Native Portal `/auth/logout` ends only the presented Portal session and the
+product grants bound to that native session. It preserves other native sessions
+and independent account sessions. `/account/logout` and `/auth/revoke` retain
+their documented all-session revocation behavior.
+
 Same-account reauthentication rotates the browser credential while carrying existing
 product grants to its replacement. Each carried grant retains its original
 authentication time, factors and expiry; confirming MFA in one product cannot
