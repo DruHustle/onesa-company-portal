@@ -82,15 +82,20 @@ jobs:
       run: python3 -m unittest discover -s scripts/release -p 'test_*.py'
     - name: Verify bounded owner deployment transport
       run: node --test scripts/release/oracle_vercel_transport_guard.test.cjs
+    - name: 'Release requirement: shared identity hosted observer boundaries'
+      run: node --test scripts/release/oracle_portal_identity_browser.test.mjs
     - name: 'Release requirement: owned worker fixture and TLS mail guards'
       run: node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs scripts/release/oracle_portal_worker_probe.test.mjs scripts/release/oracle_portal_scanner_workflows.test.mjs scripts/release/oracle_portal_worker_production.test.mjs scripts/release/oracle_portal_api_production.test.mjs
+    - name: 'Release requirement: shared identity migration boundaries'
+      run: node --test scripts/release/oracle_portal_identity_migrate.test.mjs
     - run: npm ci
       working-directory: onesa-company-portal-backend
     - run: npm ci
       working-directory: onesa-company-portal-frontend
     - name: 'Release requirement: locked development dependency compatibility'
-      run: npm run test:dependency-security
-      working-directory: onesa-company-portal-frontend
+      run: |
+        npm --prefix onesa-company-portal-backend run test:dependency-security
+        npm --prefix onesa-company-portal-frontend run test:dependency-security
     - name: 'Release requirement: NVIDIA asset integrity and parser safety'
       run: npm run test:nvidia-assets
       working-directory: onesa-company-portal-frontend

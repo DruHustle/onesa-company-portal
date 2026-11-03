@@ -878,6 +878,7 @@ def component_folder(binding):
 
 PRESENTATION_PROFILE = "presentation-v1"
 NVIDIA_PROFILE = "frontend-nvidia-v1"
+IDENTITY_PROFILE = "frontend-identity-v1"
 NVIDIA_PREFIX = "onesa-company-portal-frontend/"
 NVIDIA_CATALOG = NVIDIA_PREFIX + "public/models/nvidia/manifest.json"
 NVIDIA_LICENSE = NVIDIA_PREFIX + "public/licenses/three.txt"
@@ -929,7 +930,7 @@ NVIDIA_CONTRACT = {
 def qualification_profile(value):
     selected = value.get("qualification_profile", PRESENTATION_PROFILE)
     require(
-        selected in {PRESENTATION_PROFILE, NVIDIA_PROFILE},
+        selected in {PRESENTATION_PROFILE, NVIDIA_PROFILE, IDENTITY_PROFILE},
         "UNKNOWN_FRONTEND_QUALIFICATION_PROFILE",
     )
     return selected
@@ -938,7 +939,7 @@ def qualification_profile(value):
 def profile_checks(plan, phase):
     extra = (
         NVIDIA_CHECKS
-        if qualification_profile(plan) == NVIDIA_PROFILE
+        if qualification_profile(plan) in {NVIDIA_PROFILE, IDENTITY_PROFILE}
         and phase in {"staging", "production"}
         else set()
     )
@@ -960,7 +961,7 @@ def probe_source_files(files, selected=PRESENTATION_PROFILE):
         "onesa-company-portal-frontend/package-lock.json",
         "onesa-company-portal-frontend/vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
     }
-    if selected == NVIDIA_PROFILE:
+    if selected in {NVIDIA_PROFILE, IDENTITY_PROFILE}:
         names |= {
             "scripts/release/oracle_portal_nvidia.mjs",
             "scripts/release/oracle_portal_nvidia_contract.mjs",
@@ -968,6 +969,8 @@ def probe_source_files(files, selected=PRESENTATION_PROFILE):
             NVIDIA_LICENSE,
             NVIDIA_PREFIX + "src/config/nvidia-reference-assets.json",
         }
+    if selected == IDENTITY_PROFILE:
+        names.add("scripts/release/oracle_portal_identity_scope.py")
     require(names <= set(files), "COMPLETE_COMMISSIONED_PROBE_SOURCE_REQUIRED")
     return {name: files[name] for name in sorted(names)}
 
@@ -977,10 +980,10 @@ def configuration_value(binding, plan, env):
     return {
         **(
             {
-                "qualification_profile": NVIDIA_PROFILE,
+                "qualification_profile": qualification_profile(plan),
                 "nvidia_observation_contract": NVIDIA_CONTRACT,
             }
-            if qualification_profile(plan) == NVIDIA_PROFILE
+            if qualification_profile(plan) in {NVIDIA_PROFILE, IDENTITY_PROFILE}
             else {}
         ),
         "schema_version": 1,
@@ -1252,6 +1255,24 @@ def source_scope(folder, binding, plan):
     require(sha(private(folder / "source.tar")) == binding["source_sha256"], "SOURCE_ARCHIVE_DIGEST")
     _, old = source_inventory(archive, {"source_tree": baseline["source_tree"]})
     _, new = source_inventory(folder / "source.tar", binding)
+    if qualification_profile(plan) == IDENTITY_PROFILE:
+        from oracle_portal_identity_scope import reviewed_delta
+
+        changed = reviewed_delta(old, new)
+        require(
+            all(new.get(name) == digest for name, digest in tool["probe_files"].items()),
+            "IDENTITY_FRONTEND_DIFFERS_FROM_INSTALLED_PROBE_SOURCE",
+        )
+        metadata = nvidia_source_metadata(folder / "source.tar", new)
+        return {
+            "qualification_profile": IDENTITY_PROFILE,
+            "baseline_source": baseline["source"],
+            "changed_frontend_paths": changed,
+            "authentication_source_explicitly_reviewed": True,
+            "new_full_business_acceptance_claimed": False,
+            "product_presentation_requires_current_hosted_acceptance": True,
+            "nvidia": metadata,
+        }
     nvidia_dependency_pins(new)
     require(
         new.get(NVIDIA_DRONE_LAYOUT) == NVIDIA_DRONE_LAYOUT_SHA256,
@@ -1698,7 +1719,7 @@ def preflight(binding):
         == plan["retained_frontend"]["deployment_id"],
         "CONCURRENT_FRONTEND_PUBLICATION_PRESERVED",
     )
-    if qualification_profile(plan) == NVIDIA_PROFILE:
+    if qualification_profile(plan) in {NVIDIA_PROFILE, IDENTITY_PROFILE}:
         retained = plan["retained_frontend"]
         actual = frontend.provider("/v13/deployments/" + retained["deployment_id"])
         require(
@@ -1734,7 +1755,7 @@ def probe(binding, env, operation, folder, plan):
     api = readiness_and_denials(plan, env, observation)
     scope = (
         source_scope(folder, binding, plan)
-        if qualification_profile(plan) == NVIDIA_PROFILE else None
+        if qualification_profile(plan) in {NVIDIA_PROFILE, IDENTITY_PROFILE} else None
     )
     nvidia = scope["nvidia"] if scope is not None else None
     request = output / "browser-request.json"

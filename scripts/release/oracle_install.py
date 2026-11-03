@@ -36,6 +36,10 @@ NVIDIA_ALLOWED = {
     "runners/oracle_portal_nvidia.mjs": "scripts/release/oracle_portal_nvidia.mjs",
     "runners/oracle_portal_nvidia_contract.mjs": "scripts/release/oracle_portal_nvidia_contract.mjs",
 }
+IDENTITY_FRONTEND_ALLOWED = {
+    **NVIDIA_ALLOWED,
+    "runners/oracle_portal_identity_scope.py": "scripts/release/oracle_portal_identity_scope.py",
+}
 SCANNER_ALLOWED = {
     **ALLOWED,
     "runners/oracle_portal_scanner.py": "scripts/release/oracle_portal_scanner.py",
@@ -61,6 +65,24 @@ API_ALLOWED = {
     "runners/oracle_portal_api_production.mjs": "scripts/release/oracle_portal_api_production.mjs",
     "runners/oracle_portal_api_recovery.py": "scripts/release/oracle_portal_api_recovery.py",
     "runners/oracle_portal_worker_production.mjs": "scripts/release/oracle_portal_worker_production.mjs",
+}
+IDENTITY_ALLOWED = {
+    **API_ALLOWED,
+    **WORKER_ALLOWED,
+    **{
+        "runners/" + name: "scripts/release/" + name
+        for name in [
+            "oracle_portal_identity.py",
+            "oracle_portal_identity_migrate.mjs",
+            "oracle_portal_identity_restore.py",
+            "oracle_portal_identity_acceptance.py",
+            "oracle_portal_identity_browser.mjs",
+            "oracle_portal_identity_mail.mjs",
+            "restore_lockdown.py",
+            "restore_replay.py",
+        ]
+    },
+    "runners/oracle_backup_open.mjs": "scripts/oracle_backup_open.mjs",
 }
 
 MAX_BYTES = 2 * 1024 * 1024
@@ -126,6 +148,13 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "oracle_portal_frontend.py",
             "portal-",
         )
+    elif set(m["files"]) == set(IDENTITY_FRONTEND_ALLOWED):
+        allowed, component, script, prefix = (
+            IDENTITY_FRONTEND_ALLOWED,
+            "frontend",
+            "oracle_portal_frontend.py",
+            "portal-",
+        )
     elif set(m["files"]) == set(SCANNER_ALLOWED):
         allowed, component, script, prefix = (
             SCANNER_ALLOWED,
@@ -146,6 +175,15 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "api",
             "oracle_portal_api.py",
             "portal-api-",
+        )
+    elif set(m["files"]) == set(IDENTITY_ALLOWED):
+        # The same complete reviewed closure supports two independent owner
+        # profiles. Neither may inherit authority from the other's component.
+        allowed, component, script, prefix = (
+            IDENTITY_ALLOWED,
+            "identity",
+            "oracle_portal_identity.py",
+            "portal-identity-",
         )
     else:
         raise verifier.Rejected(
@@ -191,6 +229,14 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         and policy["schema_version"] == 1,
         "Installation policy schema",
     )
+    if allowed is IDENTITY_ALLOWED and set(policy["components"]) == {
+        "DruHustle/onesa-company-portal:identity-acceptance"
+    }:
+        component, script, prefix = (
+            "identity-acceptance",
+            "oracle_portal_identity_acceptance.py",
+            "portal-identity-acceptance-",
+        )
     require(
         set(policy["components"]) == {"DruHustle/onesa-company-portal:" + component},
         "Only the selected independent Portal component profile is eligible",
@@ -223,8 +269,14 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "Explicit frontend profile requires its complete reviewed installation",
         )
         require(
+            (allowed is IDENTITY_FRONTEND_ALLOWED)
+            == (selected == getattr(module, "IDENTITY_PROFILE", None)),
+            "Shared identity frontend requires its complete reviewed installation",
+        )
+        require(
             all(
-                module.profile_checks(profile, phase) <= set(profile["required_checks"][phase])
+                module.profile_checks(profile, phase)
+                <= set(profile["required_checks"][phase])
                 for phase in module.CHECKS
             ),
             "Selected frontend profile mandatory observations missing",
@@ -248,7 +300,12 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     )
     if component == "api":
         tool_fields.add("accepted_api_baseline")
-    if selected == module.NVIDIA_PROFILE:
+    if component in {"identity", "identity-acceptance"}:
+        tool_fields |= {"identity_files", "probe_image", "postgres_image"}
+    if selected in {
+        module.NVIDIA_PROFILE,
+        getattr(module, "IDENTITY_PROFILE", "frontend-identity-v1"),
+    }:
         tool_fields.add("frontend_baseline")
     require(
         set(tool) == tool_fields
@@ -257,7 +314,10 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         and tool["source_sha256"] == m["tool_source_sha256"],
         "Commissioned tool source differs from reviewed main",
     )
-    if selected == module.NVIDIA_PROFILE:
+    if selected in {
+        module.NVIDIA_PROFILE,
+        getattr(module, "IDENTITY_PROFILE", "frontend-identity-v1"),
+    }:
         baseline = tool["frontend_baseline"]
         require(
             isinstance(baseline, dict)
@@ -328,6 +388,28 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "Scanner backup transport differs from reviewed source",
         )
         images = ["transport_image"]
+    if component in {"identity", "identity-acceptance"}:
+        identity_spec = importlib.util.spec_from_file_location(
+            "reviewed_oracle_identity_profile", bundle / "runners" / script
+        )
+        identity_module = importlib.util.module_from_spec(identity_spec)
+        identity_spec.loader.exec_module(identity_module)
+        source_spec = importlib.util.spec_from_file_location(
+            "reviewed_oracle_identity_source",
+            bundle / "runners/oracle_portal_identity.py",
+        )
+        source_module = importlib.util.module_from_spec(source_spec)
+        source_spec.loader.exec_module(source_module)
+        require(
+            profile.get("qualification_profile") == identity_module.PROFILE
+            and all(
+                identity_module.CHECKS[phase] <= set(profile["required_checks"][phase])
+                for phase in verifier.PHASES
+            )
+            and tool["identity_files"] == source_module.identity_source_files(files),
+            "Explicit identity profile/source or mandatory observations missing",
+        )
+        images += ["probe_image", "postgres_image"]
     require(
         all(
             isinstance(tool[k], str) and re.fullmatch("sha256:[a-f0-9]{64}", tool[k])
@@ -386,16 +468,18 @@ def install(bundle, manifest_pin, github, *, dry_run=False, uid=0):
         "Existing owner SSH/sudo installation required",
     )
     if not INSTALL_PARENT.exists():
-        verifier.private(
-            INSTALL_PARENT.parent, directory=True
-        ) if INSTALL_PARENT.parent.stat().st_mode & 0o077 == 0 else require(
-            all(
-                p.stat().st_uid == 0
-                and p.stat().st_mode & 0o022 == 0
-                and not p.is_symlink()
-                for p in [INSTALL_PARENT.parent, *INSTALL_PARENT.parent.parents]
-            ),
-            "Untrusted installation parent",
+        (
+            verifier.private(INSTALL_PARENT.parent, directory=True)
+            if INSTALL_PARENT.parent.stat().st_mode & 0o077 == 0
+            else require(
+                all(
+                    p.stat().st_uid == 0
+                    and p.stat().st_mode & 0o022 == 0
+                    and not p.is_symlink()
+                    for p in [INSTALL_PARENT.parent, *INSTALL_PARENT.parent.parents]
+                ),
+                "Untrusted installation parent",
+            )
         )
         INSTALL_PARENT.mkdir(mode=0o700)
     verifier.private(INSTALL_PARENT, directory=True)
@@ -442,7 +526,9 @@ def install(bundle, manifest_pin, github, *, dry_run=False, uid=0):
         finally:
             os.close(fd)
         return {**receipt, "target": str(target)}
-    except BaseException:  # noqa: BLE001 -- Retain a partial immutable installation on interruption.
+    except (
+        BaseException
+    ):  # noqa: BLE001 -- Retain a partial immutable installation on interruption.
         # Never erase an uncertain installation to make retry appear clean.
         raise verifier.Rejected(
             "Installation interrupted; inspect retained version; no automatic retry"
@@ -480,7 +566,9 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:  # noqa: BLE001 -- CLI boundary redacts private input and provider diagnostics.
+    except (
+        Exception
+    ):  # noqa: BLE001 -- CLI boundary redacts private input and provider diagnostics.
         raise SystemExit(
             "Oracle installation refused; inspect private prerequisites and retained state"
         ) from None

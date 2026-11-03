@@ -69,11 +69,11 @@ class InstallTests(unittest.TestCase):
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(
-            dir=Path.home()
-            if os.getuid() == 0
-            else "/private/tmp"
-            if Path("/private/tmp").exists()
-            else None
+            dir=(
+                Path.home()
+                if os.getuid() == 0
+                else "/private/tmp" if Path("/private/tmp").exists() else None
+            )
         )
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
@@ -107,6 +107,12 @@ class InstallTests(unittest.TestCase):
             files["onesa-company-portal-frontend/" + name] = (
                 b"// disposable parser fixture only\n"
             )
+        if self.component in {"identity", "identity-acceptance"}:
+            for name in subprocess.check_output(
+                ["git", "-C", str(repo), "ls-files", "onesa-company-portal-backend"],
+                text=True,
+            ).splitlines():
+                files[name] = (repo / name).read_bytes()
         for name, data in files.items():
             path = source_root / name
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -170,7 +176,13 @@ class InstallTests(unittest.TestCase):
                     for phase in verifier.PHASES
                 },
             }
-        if self.component in {"scanner", "worker", "api"}:
+        if self.component in {
+            "scanner",
+            "worker",
+            "api",
+            "identity",
+            "identity-acceptance",
+        }:
             tool = self.policy["toolchain"]
             self.policy["toolchain"] = {
                 **{
@@ -198,6 +210,28 @@ class InstallTests(unittest.TestCase):
                 "artifact_digest": "sha256:" + "e" * 64,
             }
             self.github.baseline_expected = ("b" * 40, "c" * 40)
+        if self.component in {"identity", "identity-acceptance"}:
+            import oracle_portal_identity as identity
+            import oracle_portal_identity_acceptance as acceptance
+
+            selected = identity if self.component == "identity" else acceptance
+            profile = self.policy["components"][
+                "DruHustle/onesa-company-portal:" + self.component
+            ]
+            profile["qualification_profile"] = selected.PROFILE
+            profile["required_checks"] = {
+                phase: sorted(values) for phase, values in selected.CHECKS.items()
+            }
+            self.policy["toolchain"].update(
+                identity_files=identity.identity_source_files(
+                    {
+                        name: hashlib.sha256(data).hexdigest()
+                        for name, data in files.items()
+                    }
+                ),
+                probe_image="sha256:" + "5" * 64,
+                postgres_image="sha256:" + "6" * 64,
+            )
         self.seal()
 
     def put(self, name, data):
@@ -346,7 +380,7 @@ class WorkerInstallTests(InstallTests):
     def test_shared_scanner_code_pin_is_required_for_worker_installation(self):
         self.policy["toolchain"]["workflow_files"][
             "scripts/release/oracle_portal_scanner.py"
-        ] = "f" * 64
+        ] = ("f" * 64)
         self.seal()
         with self.assertRaises(verifier.Rejected):
             self.validate()
@@ -387,6 +421,64 @@ class APIInstallTests(InstallTests):
                 self.validate()
         self.setUp()
         self.manifest["files"].pop("runners/oracle_portal_api_production.mjs")
+        self.seal()
+        with self.assertRaises(verifier.Rejected):
+            self.validate()
+
+
+class IdentityInstallTests(InstallTests):
+    allowed = installer.IDENTITY_ALLOWED
+    component = "identity"
+    script = "oracle_portal_identity.py"
+    prefix = "portal-identity-"
+
+    def test_auth_migration_browser_and_restore_closure_cannot_be_trimmed(self):
+        for name in [
+            "oracle_portal_identity_migrate.mjs",
+            "oracle_portal_identity_browser.mjs",
+            "oracle_portal_identity_mail.mjs",
+            "restore_lockdown.py",
+        ]:
+            prior = self.manifest["files"].pop("runners/" + name)
+            self.seal()
+            with self.subTest(name=name), self.assertRaises(verifier.Rejected):
+                self.validate()
+            self.manifest["files"]["runners/" + name] = prior
+
+    def test_identity_requires_reviewed_source_map_and_explicit_migration_checks(self):
+        tool = self.policy["toolchain"]
+        name = "onesa-company-portal-backend/src/identity/routes.ts"
+        original = tool["identity_files"][name]
+        tool["identity_files"][name] = "0" * 64
+        self.seal()
+        with self.assertRaises(verifier.Rejected):
+            self.validate()
+        tool["identity_files"][name] = original
+        self.policy["components"]["DruHustle/onesa-company-portal:identity"][
+            "required_checks"
+        ]["staging"].remove("identity_migration")
+        self.seal()
+        with self.assertRaises(verifier.Rejected):
+            self.validate()
+
+
+class IdentityAcceptanceInstallTests(IdentityInstallTests):
+    component = "identity-acceptance"
+    script = "oracle_portal_identity_acceptance.py"
+    prefix = "portal-identity-acceptance-"
+
+    def test_identity_requires_reviewed_source_map_and_explicit_migration_checks(self):
+        name = "onesa-company-portal-backend/src/identity/routes.ts"
+        self.policy["toolchain"]["identity_files"].pop(name)
+        self.seal()
+        with self.assertRaises(verifier.Rejected):
+            self.validate()
+
+    def test_account_profile_cannot_issue_integrated_acceptance(self):
+        profile = self.policy["components"][
+            "DruHustle/onesa-company-portal:identity-acceptance"
+        ]
+        profile["qualification_profile"] = "portal-shared-identity-v1"
         self.seal()
         with self.assertRaises(verifier.Rejected):
             self.validate()

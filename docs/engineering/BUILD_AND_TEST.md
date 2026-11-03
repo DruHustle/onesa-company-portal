@@ -174,6 +174,18 @@ probe's actual COPY inputs, performs a clean offline install from the warmed CI
 cache, checks its installed consumers and verifies both commissioned source
 closures. It runs in the existing Oracle preparation suite after frontend install.
 
+The backend now carries its own independently packaged callable adapter for the
+same patched minimatch 11.0.1 implementation. Its exact ESLint consumers use the
+callable interface, while TypeScript's parser retains the upstream named exports.
+Run `npm --prefix onesa-company-portal-backend run test:dependency-security` after
+a clean locked install. Five tests check the actual installed consumers, upstream
+integrity/license, ESLint file enumeration and errors, pattern behavior and bounded
+adverse preprocessing. Verification runs both frontend and backend suites. The
+backend Docker stages copy the reviewed archive before `npm ci`; the final stage
+still omits development dependencies and removes the archive. Production package
+versions and integrity values remain unchanged. A fresh backend audit reports no
+findings; this does not replace image scanning or hosted acceptance.
+
 The explicit Oracle `frontend-nvidia-v1` profile adds anonymous public-renderer
 qualification while retaining the original presentation-only source gate.
 Selecting it requires matching commissioned policy and target configuration,
@@ -900,6 +912,40 @@ reconciliation; never delete a pending journal to reset a budget or rerun the
 initial operations bootstrap on an established host. Scanner and other product
 containers remain outside this version's automatic recovery allowlist.
 
+The separate owner adapter `scripts/release/oracle_runtime_recovery.py` supplies
+source-matched installation, disabled enrollment, staging acceptance, activation
+and ordinary timer observation. It does not rerun the initial operations bootstrap.
+Its immutable closure binds the controller, lifecycle helper, owner verifier and
+both systemd units to the reviewed current-main source and CI. Existing owner SSH
+commissioning and root-only custody remain required. Enrollment consumes the
+identity release adapter's signed runtime observations, verifies unrevoked ancestry,
+and checks the actual full container/image/configuration binding and process probe.
+An image missing the worker liveness program cannot enroll.
+
+The owner acceptance path exercises only the two enrolled staging targets. Before
+each crash, suspension, deliberate stop or owner restoration it persists intent and
+acquires the shared lifecycle lock. It checks a real maintenance hold, confirms that
+the installed timer observes stopped containers without starting them, and preserves
+all unrelated container identities. A failed or interrupted test retains its journal;
+it cannot be replayed as a fresh test. Controller budgets and production grace periods
+are unchanged. The native Actions-only Docker fixture keeps its separate host guards.
+
+Production recovery activation requires both staging fault acceptance and at least
+six healthy ordinary timer executions spanning five minutes. The observer checks
+systemd invocation/trigger timestamps and fresh durable controller state; repeated
+readback or manual controller runs cannot manufacture this interval. Activation is
+reported as enabled but unverified until its own ordinary timer observation succeeds.
+Disabled reenrollment preserves each target's consumed attempt budget and refuses
+pending or latched actions. An interrupted two-file enrollment resumes only its exact
+private transaction; disabling remediation preserves holds and uncertainty.
+
+`python3 -m unittest discover -s scripts -p 'test_oracle_recovery_commissioning.py'`
+uses disposable filesystem, systemd/Docker fixtures and real Ed25519 owner signatures
+to test custody, source changes, revoked/stale acceptance, interrupted enrollment,
+held actuation, unchanged production workloads and timer evidence. These tests do
+not establish an installed host, process fault acceptance or production activation.
+The full native Docker gate and protected hosted procedure remain required.
+
 `scripts/test_oracle_metrics.py` runs the actual metrics JavaScript with disposable
 database and scanner modules using Node 24. It performs no provider request or real
 database query. Database import/query/cleanup failures must preserve an independent
@@ -1235,3 +1281,105 @@ additive migrations, restricted grants, exact frontend callback allowlisting and
 independent component qualification are available. The UI uses `/account` for
 the shared product hub and access management. There is no new paid infrastructure
 and no automatic deployment or physical Robot action in these tests.
+
+### Deployment profiles and hosted identity observations
+
+The explicit `frontend-identity-v1` profile covers the reviewed account interface,
+identity routing and the existing public product renderer. It binds the actual
+retained provider deployment and verified baseline archive to the installed current
+main source. A literal file/hash map permits the reviewed frontend changes only;
+unrelated hero, layout, dependency or routing changes require a new review. The
+original presentation/NVIDIA profiles keep their existing restrictions. The new
+profile retains every three-engine public-renderer observation, and its anonymous
+receipt does not claim authenticated account or cross-product acceptance.
+
+Run `python3 -m unittest discover -s scripts/release -p
+'test_oracle_portal_identity_scope.py'` and
+`node --test scripts/release/oracle_portal_identity_browser.test.mjs` along with the
+existing release suite. The observer boundary suite checks origin and source
+bindings, operation-owned synthetic addresses, standard MFA vectors, preview
+cookie scope, bounded IMAP literal parsing, MIME transfer encoding, exact delivered
+recipient/time/link checks and redacted refusal output. These are local regression
+tests, not evidence that a provider or hosted interface accepted the release.
+
+The separately installed hosted helper consumes private stdin only. Its account
+scope observes real registration, verification delivery, member/administrator UI
+and API access, fresh MFA, password-reset delivery and sign-out. Its integrated
+scope additionally follows each product's actual browser authorization flow,
+checks AI's empty synthetic workspace, an explicitly assigned existing Drone
+simulation workspace and Robot's read-only simulator, then observes permission
+and global-session revocation. Each product's own complete workflow qualification
+remains required; this combined check neither starts physical operations nor
+substitutes read-only identity results for simulation or AI workflow tests.
+
+The owner-held fixtures contain an existing owner credential, two operation-unique
+synthetic email aliases/passwords, an approved Drone workspace and a TLS IMAP inbox
+credential. The alias templates bind to the reserved operation ID. The helper
+uses the retained owner password/MFA API to authorize fixture setup; it does not
+invent an email-verification record for the existing owner. The new account UI and
+actual verification delivery are exercised by both synthetic principals. Cleanup
+atomically disables each proven fixture UUID with the existing `viewer` role and
+preserves its MFA material and audit history. The helper requires the synthetic
+accounts to be absent before registration; it never resets
+an existing person's password or MFA. Each generated account is disabled on
+completion, with audit history retained. A partially acknowledged operation is
+inspected and cleaned up without replaying its registration or grant. Uncertain
+cleanup blocks a successful receipt and retains an explicit inspection requirement.
+
+Inbox observations use verified TLS, read-only `EXAMINE` and `BODY.PEEK`, bounded
+messages, exact recipients and both message/delivery timestamps. Only same-origin
+account confirmation/reset links are used. Queue completion or SMTP acceptance
+does not establish delivery. Preview credentials are exchanged in isolated cookie
+jars and scoped to their exact origin; no global credential-bearing headers,
+screenshots, storage-state files or message contents enter the receipt. Actual
+execution requires the existing protected owner procedure and private fixtures.
+### Shared identity release adapters
+
+`portal-shared-identity-v1` is a separate owner-verifier profile for the existing
+Portal API and worker. Installation compares the complete backend source closure,
+including authentication, migrations, dependency locks and build inputs, with the
+reviewed current-main tree. The existing narrow API and worker profiles retain
+their original rejection of authentication and migration changes. The new profile
+admits only the checksummed 012-to-014 additive migration, grants the existing
+restricted runtime role without creating or rotating credentials, and keeps schema
+014 during the staged retained-image rollback and candidate reapplication.
+
+Its restore observation reads the actual encrypted off-instance backup and escrow,
+compares every restored table with the original snapshot manifest, rehearses the
+additive migration, and replays the reviewed erasure ledger with capability
+lockdown inside an isolated PostgreSQL container. The disposable target has no
+network, published port or persistent host mount. A successful rehearsal cannot
+activate a restored service or establish that a future erasure ledger is complete.
+Interrupted migration or provider commands retain their intent and require
+inspection; neither a retry nor an automatic production rollback is inferred.
+
+Backend qualification runs the hosted account scope. The separate
+`portal-shared-identity-acceptance-v1` profile runs full product acceptance after
+the independently qualified Portal, AI, Drone and Robot components are available.
+It checks genuine Ed25519-signed component records, their commissioning and
+revocation chains, and the actual served Docker/Vercel revisions before and after
+the browser journeys. Container identity and the complete configuration fingerprint
+must match the independently signed backend observation. A future production
+deployment ID is resolved only from the exact signed frontend acceptance, then
+checked against the provider and served alias; staging IDs remain explicit.
+Production inspection reads the completed browser receipt
+and current revisions; it cannot repeat registration, mail, login or deployment.
+Operation-specific synthetic mailbox aliases, actual TLS inbox delivery and
+cleanup are required. A provider receipt or successful mail enqueue cannot stand
+in for these observations. Protected custody, provider configuration and execution
+remain in the canonical engineering source; these are source capabilities, not
+claims of completed hosted qualification.
+
+The credential-free regressions are included in native verification:
+
+```sh
+python3 -m unittest discover -s scripts/release -p 'test_oracle_portal_identity.py'
+python3 -m unittest discover -s scripts/release -p 'test_oracle_install.py'
+node --test scripts/release/oracle_portal_identity_migrate.test.mjs
+```
+
+They exercise exact source closure, foreign environment and credential rejection,
+real signature verification and revocation, interruption without retry, atomic
+migration failure, checksum drift, idempotence, credential preservation, recovered
+archive integrity and read-only production inspection. These tests use disposable
+fixtures and do not issue live release records.

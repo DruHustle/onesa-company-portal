@@ -135,3 +135,14 @@ application rollback. Do not remove new identities or rewrite existing passwords
 Isolated restore quarantine clears all shared sessions, grants and verification
 links, including optional migration 014 artifacts, while preserving account and
 approval records. Activation still requires the existing restore/release controls.
+
+The dedicated shared-identity release adapter serializes the existing 012-to-014
+transition with the same migration advisory lock. It refuses partial or unknown
+schema histories and compares all applied checksums before writing. Both additive
+migrations and restricted grants commit together; a completed 014 database is
+idempotent. Existing account IDs, email addresses, credential fields, MFA, role
+and disablement are checked under the transaction's account-table lock. A failed
+post-commit runtime-readiness observation is an uncertain release outcome requiring
+inspection, never an instruction to replay or reverse the migration. The ordinary
+API profile remains unable to apply it. See the
+[release adapter tests](../engineering/BUILD_AND_TEST.md#shared-identity-release-adapters).
