@@ -1,6 +1,6 @@
 // Fixed, transaction-bound 012 -> 014 migration for the owner identity adapter.
 // Credentials arrive on private stdin; this helper never creates release authority.
-import {createHash} from 'node:crypto';
+import {createHash,X509Certificate} from 'node:crypto';
 import {readFile,readdir} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 
@@ -23,7 +23,10 @@ export function connectionScope(uri,target,owner){
 }
 
 export function validateRequest(request){
- need(exact(request,['action','environment','operation_id','source_commit','database','owner_uri','runtime_uri','migrations']));
+ const fields=['action','environment','operation_id','source_commit','database','owner_uri','runtime_uri','migrations'];
+ if(Object.hasOwn(request||{},'database_ca_pem'))fields.push('database_ca_pem');
+ need(exact(request,fields));
+ if(Object.hasOwn(request,'database_ca_pem'))validateDatabaseCA(request.database_ca_pem);
  need(['inspect','apply'].includes(request.action)&&['staging','production'].includes(request.environment));
  need(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(request.operation_id));
  need(/^[a-f0-9]{40}$/.test(request.source_commit));
@@ -37,6 +40,15 @@ export function validateRequest(request){
  need(Object.entries(additions).every(([n,h])=>request.migrations[n]===h),'IDENTITY_MIGRATION_SOURCE_CHANGED');
  connectionScope(request.owner_uri,db,true);connectionScope(request.runtime_uri,db,false);
  return request;
+}
+
+// A custody-pinned private CA is optional for a self-hosted database. Accept
+// exactly one certificate authority, never keys, chains or unbounded input.
+export function validateDatabaseCA(pem){
+ need(typeof pem==='string'&&Buffer.byteLength(pem)<=8192&&/^-----BEGIN CERTIFICATE-----\r?\n[A-Za-z0-9+/=\r\n]+-----END CERTIFICATE-----\r?\n?$/.test(pem),'IDENTITY_DATABASE_CA_INVALID');
+ let certificate;try{certificate=new X509Certificate(pem);}catch{need(false,'IDENTITY_DATABASE_CA_INVALID');}
+ need(certificate.ca===true,'IDENTITY_DATABASE_CA_INVALID');
+ return pem;
 }
 
 export function validateState(rows,manifest){
@@ -81,14 +93,15 @@ export async function migrate(request,io){
 export async function live(request){
  validateRequest(request);
  // Keep the application TLS trust policy even though readiness is side-effect-free.
- await import('/app/dist/src/security/tls-trust.js');
+ const {permittedCertificateRoots}=await import('/app/dist/src/security/tls-trust.js');
+ if(request.database_ca_pem)need(permittedCertificateRoots([request.database_ca_pem]).length===1,'IDENTITY_DATABASE_CA_BLOCKED');
  const {default:pg}=await import('/app/node_modules/pg/lib/index.js');
  const {applicationRoleSafe}=await import('/app/dist/src/services/database-role.js');
  const {databaseReady}=await import('/app/dist/src/services/database-readiness.js');
  const connect=async(uri,owner)=>{
   const u=connectionScope(uri,request.database,owner);
   for(const key of [...u.searchParams.keys()])u.searchParams.delete(key);
-  const c=new pg.Client({connectionString:u.href,ssl:{rejectUnauthorized:true,servername:request.database.host},enableChannelBinding:true,connectionTimeoutMillis:10000,statement_timeout:45000,query_timeout:50000});
+  const c=new pg.Client({connectionString:u.href,ssl:{rejectUnauthorized:true,servername:request.database.host,...(request.database_ca_pem?{ca:request.database_ca_pem}:{})},enableChannelBinding:true,connectionTimeoutMillis:10000,statement_timeout:45000,query_timeout:50000});
   await c.connect();need(c.connection.stream.encrypted===true&&c.connection.stream.authorized===true);return c;
  };
  let client,runtime,active=false;

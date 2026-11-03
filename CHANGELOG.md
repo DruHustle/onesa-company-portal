@@ -2,6 +2,9 @@
 
 ## Unreleased — Identity deployment and hosted observation integration
 
+- Permit a custody-pinned private certificate authority for the isolated identity
+  migration helper while preserving hostname verification and the TLS trust policy.
+  Docker database provisioning, runtime connectivity and cutover remain unqualified.
 - Keep database-readiness imports independent of application environment and pool
   initialization so the isolated owner migration helper can run without runtime
   credentials in its process environment.
