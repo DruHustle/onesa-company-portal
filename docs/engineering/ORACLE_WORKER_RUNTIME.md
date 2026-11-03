@@ -13,6 +13,15 @@ are separate from database/scanner readiness and staging idle polling. Durable
 budgets, Linux process identity checks and the shared maintenance/deployment
 interlock constrain actions; source tests do not establish live activation.
 
+The dedicated owner adapter now binds its installer, controller, lifecycle helper
+and systemd units to the exact qualified source. Enrollment requires signed identity
+release observations and a healthy compatible process, including the worker's actual
+liveness program. It preserves attempts and unresolved holds during disabled
+reenrollment. Production activation requires staging fault acceptance and distinct
+ordinary timer observations; the staging owner test never faults production targets.
+This implementation does not commission an existing host or replace the protected
+runtime procedure.
+
 [Open the protected guide](https://docs.engineering.onesa.eu/docs/ecosystem/PORTAL_WORKER_RUNTIME).
 Sign in through Onesa Portal with an individually approved engineering identity.
 
