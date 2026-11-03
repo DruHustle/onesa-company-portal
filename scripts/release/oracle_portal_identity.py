@@ -627,6 +627,12 @@ def validate_custody(plan):
             pointer = selected[kind]["runtime_file"]
             private_bytes(pointer, pointer["path"])
             values = r.runtime_values(Path(pointer["path"]))
+            ca = custody.get("database_ca_pem")
+            expected_ca = base64.b64encode(ca.encode("utf-8")).decode("ascii") if ca else None
+            r.require(
+                values.get("ONESA_DATABASE_CA_PEM_B64") == expected_ca,
+                "IDENTITY_RUNTIME_DATABASE_CA_MISMATCH",
+            )
             r.require(
                 not IDENTITY_KEYS & set(values),
                 "IDENTITY_BASELINE_MUST_BE_FEATURE_DISABLED",

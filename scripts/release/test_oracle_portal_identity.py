@@ -341,6 +341,24 @@ class CustodyTests(unittest.TestCase):
         self.assertEqual(observed[0]["database_ca_pem"], "synthetic-ca-value")
         self.assertNotIn("synthetic-ca-value", json.dumps(writes))
 
+    def test_runtime_ca_must_match_pinned_custody_for_api_and_worker(self):
+        stage = self.plan["environments"]["staging"]
+        self.databases[stage["database_file"]["path"]]["database_ca_pem"] = "synthetic-ca"
+        expected = base64.b64encode(b"synthetic-ca").decode("ascii")
+        for kind in ("api", "worker"):
+            self.environment[stage[kind]["runtime_file"]["path"]]["ONESA_DATABASE_CA_PEM_B64"] = expected
+        identity.validate_custody(self.plan)
+        values = self.environment[stage["worker"]["runtime_file"]["path"]]
+        values["ONESA_DATABASE_CA_PEM_B64"] = base64.b64encode(b"other-ca").decode("ascii")
+        with self.assertRaisesRegex(r.Refused, "RUNTIME_DATABASE_CA_MISMATCH"):
+            identity.validate_custody(self.plan)
+        values.pop("ONESA_DATABASE_CA_PEM_B64")
+        with self.assertRaisesRegex(r.Refused, "RUNTIME_DATABASE_CA_MISMATCH"):
+            identity.validate_custody(self.plan)
+        self.databases[stage["database_file"]["path"]].pop("database_ca_pem")
+        with self.assertRaisesRegex(r.Refused, "RUNTIME_DATABASE_CA_MISMATCH"):
+            identity.validate_custody(self.plan)
+
     def test_api_worker_pairing_and_distinct_stage_database(self):
         identity.validate_custody(self.plan)
         name = self.plan["environments"]["staging"]["worker"]["runtime_file"]["path"]
