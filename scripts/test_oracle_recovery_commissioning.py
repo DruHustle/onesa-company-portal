@@ -248,6 +248,29 @@ class SourceInstallationTests(FilesystemFixture):
         super().setUp()
         private = r.owner.private
 
+        if os.getuid() != 0:
+            fixture_root, fixture_uid = self.root, os.getuid()
+
+            class FixturePath(type(Path())):
+                def lstat(self):
+                    observed = super().lstat()
+                    if self.is_relative_to(fixture_root):
+                        # Only this disposable tree represents the host's root
+                        # ownership. Preserve every real mode/type/link/inode
+                        # field, and never normalize a foreign-owned fixture.
+                        if observed.st_uid != fixture_uid:
+                            raise AssertionError("Foreign owner in disposable recovery fixture")
+                        fields = list(observed)
+                        fields[4] = 0
+                        return os.stat_result(fields)
+                    return observed
+
+            # Scope the adapter to the recovery module. The real owner/lifecycle
+            # custody helpers still read actual metadata and the runner UID.
+            self.enterContext(patch.object(r, "Path", FixturePath))
+            self.enterContext(patch.object(r, "ROOT", FixturePath(r.ROOT)))
+            self.enterContext(patch.object(r, "UNITS", FixturePath(r.UNITS)))
+
         def fixture_private(path, *, directory=False, uid=0):
             # Hosted CI owns its disposable bundle as the runner account. Keep
             # the real custody checks; production still requires UID 0.
@@ -255,6 +278,19 @@ class SourceInstallationTests(FilesystemFixture):
             return private(path, directory=directory, uid=os.getuid())
 
         self.enterContext(patch.object(r.owner, "private", side_effect=fixture_private))
+
+    def test_fixture_parent_adapter_preserves_writable_and_symlink_rejection(self):
+        writable = self.root / "unsafe-parent"
+        writable.mkdir(mode=0o700)
+        writable.chmod(0o777)
+        with self.assertRaisesRegex(ValueError, "DIRECTORY_PARENT"):
+            r.mkdir_private(writable / "child")
+        self.assertFalse((writable / "child").exists())
+        alias = self.root / "parent-alias"
+        alias.symlink_to(self.state, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, "DIRECTORY_PARENT"):
+            r.mkdir_private(alias / "child")
+        self.assertFalse((self.state / "child").exists())
 
     def bundle(self):
         directory = self.root / "bundle"
