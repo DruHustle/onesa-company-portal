@@ -2,6 +2,9 @@
 
 ## Unreleased — Identity deployment and hosted observation integration
 
+- Prefer the official vulnerability database before its cache mirror in image
+  security checks, retaining both scanners and the existing blocking gate.
+
 - Rehearse the exact candidate with identity disabled against quarantined restored
   data and a synthetic member before migration; check the native API and worker,
   and verify operation-owned container removal. Earlier images are not a fallback
