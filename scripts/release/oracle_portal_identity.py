@@ -594,13 +594,28 @@ def identity_values(binding, plan, env):
     return values
 
 
+def database_custody(pointer):
+    """Read the pinned owner custody; a private CA is optional and never logged."""
+    custody = json.loads(private_bytes(pointer))
+    fields = ["database", "owner_uri"]
+    if isinstance(custody, dict) and "database_ca_pem" in custody:
+        fields.append("database_ca_pem")
+    exact(custody, fields, "IDENTITY_DATABASE_CUSTODY_SCHEMA")
+    if "database_ca_pem" in custody:
+        ca = custody["database_ca_pem"]
+        r.require(
+            isinstance(ca, str) and 0 < len(ca.encode("utf-8")) <= 8192,
+            "IDENTITY_DATABASE_CA_INVALID",
+        )
+    return custody
+
+
 def validate_custody(plan):
     """Cross-check the existing API/worker credentials without exposing values."""
     databases = []
     for env in ENVIRONMENTS:
         selected = plan["environments"][env]
-        custody = json.loads(private_bytes(selected["database_file"]))
-        exact(custody, ["database", "owner_uri"], "IDENTITY_DATABASE_CUSTODY_SCHEMA")
+        custody = database_custody(selected["database_file"])
         database = custody["database"]
         exact(
             database,
@@ -612,6 +627,12 @@ def validate_custody(plan):
             pointer = selected[kind]["runtime_file"]
             private_bytes(pointer, pointer["path"])
             values = r.runtime_values(Path(pointer["path"]))
+            ca = custody.get("database_ca_pem")
+            expected_ca = base64.b64encode(ca.encode("utf-8")).decode("ascii") if ca else None
+            r.require(
+                values.get("ONESA_DATABASE_CA_PEM_B64") == expected_ca,
+                "IDENTITY_RUNTIME_DATABASE_CA_MISMATCH",
+            )
             r.require(
                 not IDENTITY_KEYS & set(values),
                 "IDENTITY_BASELINE_MUST_BE_FEATURE_DISABLED",
@@ -646,8 +667,7 @@ def validate_custody(plan):
 
 def migration(binding, plan, env, operation, migrations, action, target):
     selected = plan["environments"][env]
-    custody = json.loads(private_bytes(selected["database_file"]))
-    exact(custody, ["database", "owner_uri"], "IDENTITY_DATABASE_CUSTODY_SCHEMA")
+    custody = database_custody(selected["database_file"])
     runtime = selected["api"]["runtime_file"]
     private_bytes(runtime, runtime["path"])
     values = r.runtime_values(Path(runtime["path"]))
@@ -661,6 +681,8 @@ def migration(binding, plan, env, operation, migrations, action, target):
         "runtime_uri": values["DATABASE_URL"],
         "migrations": migrations,
     }
+    if "database_ca_pem" in custody:
+        request["database_ca_pem"] = custody["database_ca_pem"]
     program = Path(__file__).with_name("oracle_portal_identity_migrate.mjs").read_text()
     program += "\nimport fs from 'node:fs';try{console.log(JSON.stringify(await live(JSON.parse(fs.readFileSync(0,'utf8')))));}catch{console.log(JSON.stringify({state:'IDENTITY_MIGRATION_REFUSED_INSPECT_WITHOUT_RETRY'}));process.exitCode=1;}\n"
     row = json.loads(r.docker("inspect", TARGETS[env]["api"]))[0]

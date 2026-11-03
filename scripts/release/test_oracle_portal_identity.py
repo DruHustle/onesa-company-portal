@@ -289,6 +289,76 @@ class CustodyTests(unittest.TestCase):
             )
         )
 
+    def test_optional_private_ca_custody_is_bounded_and_unknown_fields_refused(self):
+        pointer = self.plan["environments"]["staging"]["database_file"]
+        row = self.databases[pointer["path"]]
+        row["database_ca_pem"] = "synthetic-ca"
+        self.assertEqual(
+            identity.database_custody(pointer)["database_ca_pem"], "synthetic-ca"
+        )
+        for invalid in ("", "x" * 8193, 1, None):
+            row["database_ca_pem"] = invalid
+            with self.assertRaisesRegex(r.Refused, "DATABASE_CA_INVALID"):
+                identity.database_custody(pointer)
+        row.pop("database_ca_pem")
+        row["unexpected"] = True
+        with self.assertRaisesRegex(r.Refused, "DATABASE_CUSTODY_SCHEMA"):
+            identity.database_custody(pointer)
+
+    def test_migration_passes_ca_on_stdin_without_recording_it(self):
+        pointer = self.plan["environments"]["staging"]["database_file"]
+        self.databases[pointer["path"]]["database_ca_pem"] = "synthetic-ca-value"
+        operation = str(uuid4())
+        writes = []
+        observed = []
+
+        def docker(*args, **kwargs):
+            if args[0] == "inspect":
+                return json.dumps(
+                    [{"NetworkSettings": {"Networks": {"synthetic-net": {}}}}]
+                ).encode()
+            self.assertEqual(args[0], "run")
+            observed.append(json.loads(kwargs["data"]))
+            return json.dumps(
+                {
+                    "source_commit": binding()["candidate_commit"],
+                    "operation_id": operation,
+                    "environment": "staging",
+                    "state": "IDENTITY_SCHEMA_INSPECTED_NOT_AUTHORIZATION",
+                    "credential_changes": 0,
+                    "down_migrations": 0,
+                    "existing_accounts_preserved": True,
+                    "schema_version": 12,
+                }
+            ).encode()
+
+        with patch.object(r, "docker", side_effect=docker), patch.object(
+            r, "write", side_effect=lambda path, value: writes.append(value)
+        ):
+            identity.migration(
+                binding(), self.plan, "staging", operation, {}, "inspect", Path("/synthetic")
+            )
+        self.assertEqual(observed[0]["database_ca_pem"], "synthetic-ca-value")
+        self.assertNotIn("synthetic-ca-value", json.dumps(writes))
+
+    def test_runtime_ca_must_match_pinned_custody_for_api_and_worker(self):
+        stage = self.plan["environments"]["staging"]
+        self.databases[stage["database_file"]["path"]]["database_ca_pem"] = "synthetic-ca"
+        expected = base64.b64encode(b"synthetic-ca").decode("ascii")
+        for kind in ("api", "worker"):
+            self.environment[stage[kind]["runtime_file"]["path"]]["ONESA_DATABASE_CA_PEM_B64"] = expected
+        identity.validate_custody(self.plan)
+        values = self.environment[stage["worker"]["runtime_file"]["path"]]
+        values["ONESA_DATABASE_CA_PEM_B64"] = base64.b64encode(b"other-ca").decode("ascii")
+        with self.assertRaisesRegex(r.Refused, "RUNTIME_DATABASE_CA_MISMATCH"):
+            identity.validate_custody(self.plan)
+        values.pop("ONESA_DATABASE_CA_PEM_B64")
+        with self.assertRaisesRegex(r.Refused, "RUNTIME_DATABASE_CA_MISMATCH"):
+            identity.validate_custody(self.plan)
+        self.databases[stage["database_file"]["path"]].pop("database_ca_pem")
+        with self.assertRaisesRegex(r.Refused, "RUNTIME_DATABASE_CA_MISMATCH"):
+            identity.validate_custody(self.plan)
+
     def test_api_worker_pairing_and_distinct_stage_database(self):
         identity.validate_custody(self.plan)
         name = self.plan["environments"]["staging"]["worker"]["runtime_file"]["path"]

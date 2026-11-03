@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
+import {rootCertificates} from 'node:tls';
 import {readFile,readdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {additions,connectionScope,migrate,validateRequest,validateState} from './oracle_portal_identity_migrate.mjs';
@@ -42,6 +43,13 @@ test('foreign host/database/role, disabled TLS and duplicated query parameters f
   r.owner_uri.replace('portal_owner:','portal_app:'),r.owner_uri.replace('verify-full','require'),
   r.owner_uri+'&sslmode=disable',r.owner_uri+'&options=-csearch_path=foreign',r.owner_uri.replace('postgresql:','http:'),
  ])assert.throws(()=>connectionScope(uri,r.database,true));
+});
+
+test('a custody-pinned private CA must be one bounded CA certificate',()=>{
+ const trusted=rootCertificates[0],r=request();r.database_ca_pem=trusted;assert.doesNotThrow(()=>validateRequest(r));
+ for(const invalid of ['',trusted+trusted, trusted+'\nPRIVATE KEY', 'x'.repeat(8193),42,null]){
+  const invalidRequest=request();invalidRequest.database_ca_pem=invalid;assert.throws(()=>validateRequest(invalidRequest),/CA_INVALID/);
+ }
 });
 
 test('migration is atomic, grants only after both migrations, and checks real runtime readiness',async()=>{
