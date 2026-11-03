@@ -244,6 +244,18 @@ class PlanTests(unittest.TestCase):
 
 
 class SourceInstallationTests(FilesystemFixture):
+    def setUp(self):
+        super().setUp()
+        private = r.owner.private
+
+        def fixture_private(path, *, directory=False, uid=0):
+            # Hosted CI owns its disposable bundle as the runner account. Keep
+            # the real custody checks; production still requires UID 0.
+            self.assertTrue(Path(path).resolve().is_relative_to(self.root))
+            return private(path, directory=directory, uid=os.getuid())
+
+        self.enterContext(patch.object(r.owner, "private", side_effect=fixture_private))
+
     def bundle(self):
         directory = self.root / "bundle"
         directory.mkdir(mode=0o700)
