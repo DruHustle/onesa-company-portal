@@ -2,7 +2,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { applicationRoleSafe } from './database-role.js';
-import { HttpError } from './workflows.js';
+import { HttpError } from './errors.js';
 
 type Connection = Pick<Pool | PoolClient, 'query'>;
 export async function databaseReady(connection:Connection, production:boolean) {
