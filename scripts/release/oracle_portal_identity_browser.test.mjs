@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {validateRequest, totp, ACCOUNT_CHECKS, PRODUCT_CHECKS, authorizationBinding, verifyCallback, validateOwnerSession, verifyEntitlements} from './oracle_portal_identity_browser.mjs';
-import {validateMailbox, parseImapResponse, messageLink, deliveredLink} from './oracle_portal_identity_mail.mjs';
+import {readFileSync} from 'node:fs';
+import {X509Certificate} from 'node:crypto';
+import {validateRequest, totp, ACCOUNT_CHECKS, PRODUCT_CHECKS, authorizationBinding, verifyCallback, validateOwnerSession, verifyEntitlements, continueExistingProductSession} from './oracle_portal_identity_browser.mjs';
+import {validateMailbox, parseImapResponse, messageLink, deliveredLink, observeZohoOnce, waitForZoho, zohoTLSRoots, ZOHO_BLOCKED_CA} from './oracle_portal_identity_mail.mjs';
 
 const operation = '12345678-1234-1234-1234-123456789abc';
 function request() {
@@ -46,6 +48,46 @@ test('member entitlement observations require exact active products and ordinary
   }
   snapshot.access[1].status = 'active'; verifyEntitlements(snapshot, ['ai', 'drone']);
   snapshot.access[2].status = 'active'; verifyEntitlements(snapshot, ['ai', 'drone', 'robot']);
+});
+
+test('product SSO observation never supplies credentials when central recognition is lost', async () => {
+  const email = request().fixtures.member.email;
+  const current = request().origins.portal + '/account/sign-in/synthetic-interaction';
+  function page({continuation, fields = []} = {}) {
+    const events = [];
+    return {
+      events,
+      url: () => current,
+      getByRole: (role, options) => ({
+        isVisible: async () => Boolean(continuation && (options.name instanceof RegExp ? options.name.test(continuation) : options.name === continuation)),
+        click: async () => events.push('continue'),
+      }),
+      locator: selector => ({isVisible: async () => fields.some(name => selector === 'input[name="' + name + '"]'),
+        fill: async () => assert.fail('An SSO observation must not enter a password or MFA code')}),
+      waitForURL: async predicate => {
+        assert.equal(predicate(new URL(current)), false);
+        assert.equal(predicate(new URL(request().origins.drone)), true);
+        events.push('redirect');
+      },
+    };
+  }
+  // The real account UI also renders an optional account-switch form beside
+  // Continue as. Reusing the matching identity must leave that form untouched.
+  const reused = page({continuation: 'Continue as ' + email, fields: ['email', 'password']});
+  await continueExistingProductSession(reused, email);
+  assert.deepEqual(reused.events, ['continue', 'redirect']);
+  for (const fields of [['email', 'password'], ['password'], ['code']]) {
+    const expired = page({fields});
+    await assert.rejects(() => continueExistingProductSession(expired, email), /PRODUCT_SSO_REAUTHENTICATION_REQUIRED/);
+    assert.deepEqual(expired.events, []);
+  }
+  const switched = page({continuation: 'Continue as another@example.org', fields: ['email', 'password']});
+  await assert.rejects(() => continueExistingProductSession(switched, email), /PRODUCT_SSO_PRINCIPAL_MISMATCH/);
+  assert.deepEqual(switched.events, []);
+  // A provider may still be loading or complete authorization without an
+  // interaction. Neither case is permission to fill a credential form.
+  const pending = page(); await continueExistingProductSession(pending, email);
+  assert.deepEqual(pending.events, []);
 });
 
 test('arbitrary, cross-environment and credential-bearing origins cannot receive fixtures', () => {
@@ -182,6 +224,92 @@ test('delivery requires matching server UID, internal delivery time and complete
   assert.equal(deliveredLink(old, '42', observation), null);
 });
 
+const zohoMailbox = () => ({provider:'zoho-eu-api',account_id:'12345678901234567890',folder_id:'9000000002014',username:'acceptance@onesa.eu',access_token:'synthetic-read-only-token'});
+function zohoMock({account={},rows,content=mail(),id='1709876209452100005',rawId=id,status=200}={}) {
+ const calls=[];
+ const defaultRows=[{messageId:id,folderId:'9000000002014',receivedTime:String(Date.now()),size:String(content.length)}];
+ const send=async (url, options)=>{
+  calls.push({url,method:options.method,redirect:options.redirect,auth:options.headers.Authorization});
+  if(status!==200)return new Response('{}',{status});
+  if(url.endsWith('/api/accounts/12345678901234567890'))return Response.json({status:{code:200},data:{accountId:'12345678901234567890',primaryEmailAddress:'acceptance@onesa.eu',role:'member',enabled:true,...account}});
+  if(url.includes('/messages/view?'))return Response.json({status:{code:200},data:rows??defaultRows});
+  return new Response('{\"status\":{\"code\":200},\"data\":{\"messageId\":'+rawId+',\"content\":'+JSON.stringify(content.toString())+'}}');
+ };
+ return {send,calls};
+}
+const zohoObservation=()=>({recipient,after:Date.now()-1000,portal,path:'/account/confirm'});
+
+test('Zoho TLS roots preserve the application blocked-certificate policy',()=>{
+ const source=readFileSync(new URL('../../onesa-company-portal-backend/src/security/tls-trust.ts',import.meta.url),'utf8');
+ assert.match(source,new RegExp(ZOHO_BLOCKED_CA));
+ const blocked=readFileSync(new URL('../fixtures/emsign-ecc-g3-public-cert.txt',import.meta.url),'utf8');
+ assert.equal(new X509Certificate(blocked).fingerprint256.replaceAll(':','').toLowerCase(),ZOHO_BLOCKED_CA);
+ assert(zohoTLSRoots().length>0);assert(!zohoTLSRoots().some(pem=>new X509Certificate(pem).fingerprint256.replaceAll(':','').toLowerCase()===ZOHO_BLOCKED_CA));
+});
+
+test('Zoho mailbox is pinned to the dedicated EU test account and rejects extra or malformed scope',()=>{
+ const value=zohoMailbox();assert.equal(validateMailbox(value),value);
+ const candidate=request();candidate.fixtures.mailbox=value;assert.doesNotThrow(()=>validateRequest(candidate));
+ for(const change of [v=>v.username='owner@onesa.eu',v=>v.account_id='1/../../other',v=>v.folder_id='0',v=>v.access_token='too-short',v=>v.access_token='synthetic-token\r\nInjected:yes',v=>v.host='attacker.invalid',v=>v.provider='other']){
+  const bad=zohoMailbox();change(bad);assert.throws(()=>validateMailbox(bad));
+ }
+});
+
+test('Zoho observation checks account, fresh folder and lossless message ID before parsing the exact link',async()=>{
+ const mock=zohoMock(),seen=new Set();assert.equal(await observeZohoOnce(zohoMailbox(),zohoObservation(),seen,mock.send),link);
+ assert.deepEqual(mock.calls.map(c=>new URL(c.url).origin),['https://mail.zoho.eu','https://mail.zoho.eu','https://mail.zoho.eu']);
+ assert(mock.calls.every(c=>c.method==='GET'&&c.redirect==='error'&&c.auth==='Zoho-oauthtoken synthetic-read-only-token'));
+ assert(mock.calls[2].url.endsWith('/messages/1709876209452100005/originalmessage'));assert(seen.has('1709876209452100005'));
+});
+
+test('Zoho observation refuses foreign/admin account, foreign folder, duplicate IDs, changed ID and HTTP errors',async()=>{
+ const now=String(Date.now()),row={messageId:'1709876209452100005',folderId:'9000000002014',receivedTime:now,size:'200'};
+ for(const scenario of [{account:{primaryEmailAddress:'owner@onesa.eu'}},{account:{role:'admin'}},{account:{accountId:'123'}},
+  {rows:[{...row,folderId:'7'}]},{rows:[row,row]},{rawId:'1709876209452100006'},{status:302}]){
+  const mock=zohoMock(scenario);await assert.rejects(()=>observeZohoOnce(zohoMailbox(),zohoObservation(),new Set(),mock.send));
+ }
+});
+
+test('Zoho observation skips stale or previously inspected mail and never follows an unrelated recipient link',async()=>{
+ for(const [rows,seen] of [[[{messageId:'1709876209452100005',folderId:'9000000002014',receivedTime:String(Date.now()-120000),size:'200'}],new Set()], [undefined,new Set(['1709876209452100005'])]]){
+  const mock=zohoMock({rows});assert.equal(await observeZohoOnce(zohoMailbox(),zohoObservation(),seen,mock.send),null);assert.equal(mock.calls.length,2);
+ }
+ const mock=zohoMock({content:mail(link,'other@example.org')});assert.equal(await observeZohoOnce(zohoMailbox(),zohoObservation(),new Set(),mock.send),null);
+});
+
+test('Zoho observation rejects TLS bypass and oversized or malformed provider responses without exposing credentials',async()=>{
+ const prior=process.env.NODE_TLS_REJECT_UNAUTHORIZED;process.env.NODE_TLS_REJECT_UNAUTHORIZED='0';
+ try{const mock=zohoMock();await assert.rejects(()=>observeZohoOnce(zohoMailbox(),zohoObservation(),new Set(),mock.send),/ZOHO_TLS_REQUIRED/);assert.equal(mock.calls.length,0);}
+ finally{if(prior===undefined)delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;else process.env.NODE_TLS_REJECT_UNAUTHORIZED=prior;}
+ for(const payload of ['x'.repeat(1024*1024+1),'{bad-json}',JSON.stringify({status:{code:401},data:{}})]){
+  const send=async()=>new Response(payload,{status:200});await assert.rejects(()=>observeZohoOnce(zohoMailbox(),zohoObservation(),new Set(),send));
+ }
+});
+
+test('Zoho polling accepts delivery after 60 seconds within one admission-bound deadline and paces every GET',async t=>{
+ const startedAt=Date.now();t.mock.timers.enable({apis:['Date'],now:startedAt});
+ const observation={recipient,after:startedAt,portal,path:'/account/confirm'},calls=[];
+ const send=async(url,options)=>{
+  calls.push(Date.now());
+  return zohoMock({rows:Date.now()<startedAt+65000?[]:undefined}).send(url,options);
+ };
+ const pause=async milliseconds=>t.mock.timers.tick(milliseconds);
+ assert.equal(await waitForZoho(zohoMailbox(),observation,send,pause),link);
+ assert(Date.now()>=startedAt+65000);assert(Date.now()<startedAt+90000);
+ for(let index=1;index<calls.length;index++)assert(calls[index]-calls[index-1]>=2200);
+ for(const instant of calls)assert(calls.filter(time=>time>=instant&&time<instant+60000).length<=30);
+});
+
+test('Zoho polling refuses stale admission and cannot extend the 90-second delivery deadline',async t=>{
+ const startedAt=Date.now();t.mock.timers.enable({apis:['Date'],now:startedAt});
+ const observation={recipient,after:startedAt,portal,path:'/account/confirm'};
+ const mock=zohoMock({rows:[]}),pause=async milliseconds=>t.mock.timers.tick(milliseconds);
+ await assert.rejects(()=>waitForZoho(zohoMailbox(),{...observation,after:startedAt-60001},mock.send,pause),/MAIL_OBSERVATION_WINDOW/);
+ assert.equal(mock.calls.length,0);
+ await assert.rejects(()=>waitForZoho(zohoMailbox(),observation,mock.send,pause),/INBOX_DELIVERY_NOT_OBSERVED/);
+ assert.equal(Date.now(),startedAt+90000);
+});
+
 test('CLI refuses caller PASS receipts and never prints input credentials or exception bodies', () => {
   const program = fileURLToPath(new URL('./oracle_portal_identity_browser.mjs', import.meta.url));
   for (const input of [JSON.stringify({...request(), checks: {passed: true}}), '{"password":"synthetic-private-value"', 'x'.repeat(65537)]) {
@@ -189,4 +317,19 @@ test('CLI refuses caller PASS receipts and never prints input credentials or exc
     assert.equal(result.status, 1); assert.equal(result.stdout, '');
     assert.match(result.stderr, /^[A-Z_]+\n$/); assert.ok(!result.stderr.includes('synthetic-private'));
   }
+});
+
+test('Canonical identity and integration observations retain full source and artifact bindings',()=>{
+ for(const component of ['identity','identity-acceptance']){
+  const value=request();value.scope=component==='identity'?'account':'integrated';
+  Object.assign(value.binding,{repository:'DruHustle/onesa-ug',schema_version:2,repository_id:1444746154,product:'portal',source_path:'onesa-company-portal',product_source_tree:'9'.repeat(40),branch:'main'},{component,source_sha256:'c'.repeat(64),build_sha256:'d'.repeat(64),artifact_digest:'sha256:'+'e'.repeat(64),configuration_sha256:{staging:'1'.repeat(64),production:'2'.repeat(64)},target_environment:'production'});
+  assert.equal(validateRequest(value).scope,value.scope);
+  for(const [key,replacement] of Object.entries({schema_version:1,repository_id:'1444746154',product:'robot',source_path:'onesa-robot',product_source_tree:'bad',branch:'dev',component:'frontend',target_environment:'staging',release_authorized:true})){
+   const changed=structuredClone(value);changed.binding[key]=replacement;
+   assert.throws(()=>validateRequest(changed));
+  }
+  for(const key of ['schema_version','repository_id','product','source_path','product_source_tree','branch','source_sha256','configuration_sha256']){
+   const changed=structuredClone(value);delete changed.binding[key];assert.throws(()=>validateRequest(changed));
+  }
+ }
 });

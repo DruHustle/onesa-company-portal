@@ -52,6 +52,9 @@ def validate_plan(binding, plan):
         "SCANNER_WORKFLOW_PLAN_SCHEMA",
     )
     application = profile["application_binding"]
+    if binding.get("repository") == r.CANONICAL_REPOSITORY:
+        r.require(r.portal_source_binding(application) == r.portal_source_binding(binding),
+                  "CANONICAL_WORKFLOW_APPLICATION_SOURCE")
     r.require(
         isinstance(application, dict)
         and set(application) == set(binding)
@@ -157,14 +160,7 @@ def verify_application(binding, plan, folder):
         r.sha(folder / build_name) == application["build_sha256"]
         and all(
             build.get(key) == application[key]
-            for key in [
-                "repository",
-                "component",
-                "candidate_commit",
-                "source_tree",
-                "source_sha256",
-                "artifact_digest",
-            ]
+            for key in r.build_source_fields(application)
         )
         and build.get("architecture") == "arm64"
         and build.get("dockerfile_sha256")

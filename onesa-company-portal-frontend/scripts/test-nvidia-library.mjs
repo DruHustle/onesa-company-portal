@@ -140,6 +140,32 @@ async function verifyNormalThemeGuard(canvas){
   finally{await stage.evaluate((node,original)=>{if(original===null)node.removeAttribute('style');else node.setAttribute('style',original);},originalStage,{timeout:1000});}
   assertNormalThemeSnapshot(await themeSnapshot(canvas),baseline);
 }
+async function verifyGraphicsPrerequisite(browser, engine) {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    const observed = await page.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 2;
+      const gl = canvas.getContext('webgl2', {alpha: true, antialias: true, powerPreference: 'low-power'});
+      if (!gl) return {webgl2: false};
+      try {
+        gl.clearColor(1, 0, 1, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        const pixel = new Uint8Array(4);
+        gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+        return {webgl2: true, contextLost: gl.isContextLost(), error: gl.getError(), pixel: Array.from(pixel)};
+      } finally {
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+      }
+    });
+    console.log(JSON.stringify({phase: 'graphics-prerequisite', engine, ...observed}));
+    assert.deepEqual(observed, {webgl2: true, contextLost: false, error: 0, pixel: [255, 0, 255, 255]},
+      `A working real WebGL2 renderer is required before ${engine} gallery acceptance`);
+  } finally {
+    await context.close();
+  }
+}
 async function verifyProtectedModels(browser, engine) {
   const context = await browser.newContext({viewport: {width: 390, height: 844}});
   let denied = 0, authorized = 0, foreignRequests = 0, foreignWireRequests = 0, sameOriginRequests = 0, sameOriginWireRequests = 0, unexpected = 0, redirect = '', foreignOrigin;
@@ -247,6 +273,7 @@ try {
     browser = await launcher.launch(supplemental
       ? {executablePath: supplemental, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']}
       : {headless});
+    await verifyGraphicsPrerequisite(browser, engine);
     await verifyProtectedModels(browser, engine);
     for (const locale of ['en', 'de']) for (const width of [320, 1440]) for (const colorScheme of ['light', 'dark']) {
       const scenario = `${engine}/${locale}/${width}/${colorScheme}`;

@@ -2,8 +2,17 @@ export type EngineeringSignInAction = "session" | "details" | "link" | "password
 
 /** Describe only the state reported by the server; a failed login does not prove registration status. */
 export function engineeringSignInError(status: number, code: unknown, action: EngineeringSignInAction) {
-  if (code === "ONESA_SESSION_REQUIRED") return {
-    message: "Your Onesa session or Engineering Docs access is no longer active. Choose another sign-in method or start a new sign-in.", restart: true, registration: false,
+  if (code === "ONESA_SESSION_REQUIRED" || code === "ACCOUNT_REQUIRED") return {
+    message: "Your Onesa account session or Engineering Docs access is no longer active. Sign in to Onesa again or start a new Docs sign-in.", restart: true, registration: false,
+  };
+  if (code === "ONESA_REAUTH_REQUIRED") return {
+    message: "Sign in to Onesa again to confirm your identity for this Docs request.", restart: false, registration: false,
+  };
+  if (code === "ENGINEERING_ACCOUNT_PROOF") return {
+    message: "Your Onesa account could not be linked to this Docs identity. Use the same approved email and confirm your existing Docs access again.", restart: false, registration: false,
+  };
+  if (code === "ENGINEERING_ACCOUNT_CONFLICT") return {
+    message: "This Docs identity is already linked to an Onesa account. Sign in with that Onesa account to continue.", restart: false, registration: false,
   };
   if (code === "ENGINEERING_INTERACTION") return {
     message: "This sign-in request is no longer active in this browser. Open your latest email link again, or start a new sign-in.", restart: true, registration: false,

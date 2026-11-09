@@ -3,6 +3,7 @@
 import json
 import unittest
 from datetime import timedelta
+from unittest.mock import patch
 
 import oracle_portal as r
 import oracle_portal_scanner as scanner
@@ -21,6 +22,10 @@ class CompletedRevocationTests(unittest.TestCase):
         )
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
+        # This suite isolates the original signed disposition semantics. The
+        # complete old-installation/new-verifier custody path is exercised with
+        # real Git archives in test_portal_historical_journals.py.
+        self.enterContext(patch.object(r, "historical_verifier", return_value=r.VERIFIER))
         self.owner = self.fixture.owner
         self.binding = self.owner.binding
         qualification = self.owner.store.qualify(self.owner.context())["record"]

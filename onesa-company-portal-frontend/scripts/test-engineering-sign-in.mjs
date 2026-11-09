@@ -5,15 +5,22 @@ import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { setTimeout as delay } from "node:timers/promises";
-import { chromium, expect } from "@playwright/test";
+import { chromium, firefox, webkit, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 const accessEnabled = process.env.ONESA_TEST_ACCESS_MODE !== "disabled";
+const engineName = process.env.ONESA_SIGNIN_BROWSER || "chromium";
+const engines = {chromium, firefox, webkit};
+if (!Object.hasOwn(engines, engineName)) throw Error("Unknown sign-in test browser");
+const supplemental = process.env.ONESA_TEST_CHROMIUM_EXECUTABLE;
+if (supplemental && !supplemental.startsWith("/")) throw Error("Supplemental Chromium path must be absolute");
+if (supplemental && engineName !== "chromium") throw Error("Supplemental Chromium is only valid for the Chromium test engine");
 const states = new Map(),
   proxyKey = "synthetic-ui-proxy-only",
   proof = "a".repeat(64);
 let engineeringConfirmations = 0, adminConfirmations = 0, tokenInRequestUrl = false;
 const registrationRequests = [];
 const signInChoices = new Map();
+const accountLinkChoices = new Map();
 let registrationConfirmation = {status: "pending", audience: "engineering"};
 let enrollmentGate = null, enrollmentCalls = 0, verificationCalls = 0;
 const syntheticRecoveryCodes = Array.from({length: 8}, (_, i) => String(i).repeat(24));
@@ -74,11 +81,17 @@ const api = http.createServer(async (req, res) => {
     }
   }
   if (action === "details") {
-    res.end(JSON.stringify({ csrf: proof, emailSent: states.has(uid), linkResendSeconds: states.has(uid) ? 30 : 0, ...(uid.startsWith("synthetic_session_") ? {onesaAccount:{email:"synthetic-engineer@onesa.eu"}} : {}), ...(req.headers.cookie?.includes("onesa_ui_handoff=fixture") ? {linkEmail: "synthetic-engineer@onesa.eu"} : {}) }));
+    res.end(JSON.stringify({ csrf: proof, emailSent: states.has(uid), linkResendSeconds: states.has(uid) ? 30 : 0,
+      ...(uid.startsWith("synthetic_session_") || uid.startsWith("synthetic_shared_session_") ? {onesaAccount:{email:"synthetic-engineer@onesa.eu"}} : {}),
+      ...(uid.startsWith("synthetic_shared_") ? {onesaSignInPath: "/account?returnTo=" + encodeURIComponent("/engineering/sign-in/" + uid)} : {}),
+      ...(uid === "synthetic_shared_session_initial_fresh" ? {onesaReauthRequired: true} : {}),
+      ...(uid.startsWith("synthetic_shared_link_") ? {onesaLink: {email: "synthetic-engineer@onesa.eu"}} : {}),
+      ...(req.headers.cookie?.includes("onesa_ui_handoff=fixture") ? {linkEmail: "synthetic-engineer@onesa.eu"} : {}) }));
     return;
   }
   const input = JSON.parse(body);
   signInChoices.set(uid+"/"+action,input.rememberBrowser);
+  accountLinkChoices.set(uid+"/"+action,input.linkOnesaAccount);
   if (action === "link-prepare") {
     if (input.token !== proof) { res.writeHead(401).end('{}'); return; }
     res.setHeader('set-cookie', 'onesa_ui_handoff=fixture; Path=/; HttpOnly; SameSite=Lax');
@@ -196,7 +209,7 @@ try {
     await delay(250);
   }
   if (!ready) throw Error("Isolated renderer readiness deadline");
-  browser = await chromium.launch();
+  browser = await engines[engineName].launch(supplemental ? {executablePath: supplemental, args: ["--disable-dev-shm-usage"]} : {});
   if (accessEnabled) {
     const context = await browser.newContext({ viewport: { width: 320, height: 568 } });
     const page = await context.newPage();
@@ -369,6 +382,75 @@ try {
   const screenshotDir = process.env.ONESA_SIGNIN_SCREENSHOTS;
   if (screenshotDir) await mkdir(screenshotDir, { recursive: true, mode: 0o700 });
   const views = [];
+  if (accessEnabled) {
+    for (const method of ["password", "handoff"]) for (const consent of [false, true]) {
+      const context = await browser.newContext({viewport: {width: 320, height: 800}, colorScheme: consent ? "dark" : "light"});
+      const page = await context.newPage(), uid = "synthetic_shared_link_" + method + "_" + consent;
+      try {
+        if (method === "handoff") await context.addCookies([{name: "onesa_ui_handoff", value: "fixture", url: origin, httpOnly: true, sameSite: "Lax"}]);
+        await page.goto(origin + "/engineering/sign-in/" + uid, {waitUntil: "networkidle"});
+        await expect(page.getByRole("link", {name: "Sign in with your Onesa account", exact: true})).toHaveAttribute("href", "/account?returnTo=" + encodeURIComponent("/engineering/sign-in/" + uid));
+        if (method === "password") {
+          await expect(page.getByRole("checkbox", {name: "Use my Onesa account for future Docs sign-ins", exact: true})).toHaveCount(0);
+          await page.getByRole("button", {name: "Email and password", exact: true}).click();
+          await expect(page.getByLabel("Email address", {exact: true})).toHaveValue("synthetic-engineer@onesa.eu");
+          await page.getByLabel("Existing Engineering Docs password", {exact: true}).fill("synthetic-valid-password");
+        }
+        const checkbox = page.getByRole("checkbox", {name: "Use my Onesa account for future Docs sign-ins", exact: true});
+        await expect(checkbox).not.toBeChecked();
+        expect(accountLinkChoices.has(uid + "/" + (method === "password" ? "password" : "handoff-verify"))).toBe(false);
+        if (consent && method === "password") {
+          await checkbox.check();
+          await page.getByLabel("Email address", {exact: true}).fill("different-engineer@example.test");
+          await expect(checkbox).toHaveCount(0);
+          await page.getByLabel("Email address", {exact: true}).fill("synthetic-engineer@onesa.eu");
+          await expect(checkbox).not.toBeChecked();
+        }
+        if (consent) await checkbox.check();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        expect((await new AxeBuilder({page}).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
+        await verifyOpeningHandoff(page, uid, page.getByRole("button", {name: method === "password" ? "Sign in to Docs" : "Confirm sign-in and open Docs", exact: true}));
+        expect(accountLinkChoices.get(uid + "/" + (method === "password" ? "password" : "handoff-verify"))).toBe(consent ? true : undefined);
+        views.push({type: "explicit-existing-Docs-proof-link", method, consent, width: 320, axeViolations: 0});
+      } finally { await context.close(); }
+    }
+    const context = await browser.newContext({viewport: {width: 390, height: 844}}), page = await context.newPage();
+    try {
+      const uid = "synthetic_shared_link_request_only";
+      await page.goto(origin + "/engineering/sign-in/" + uid, {waitUntil: "networkidle"});
+      await page.clock.install();
+      await page.getByRole("button", {name: "Send sign-in link", exact: true}).click();
+      await expect(page.getByRole("status")).toHaveText("Sent.");
+      expect(accountLinkChoices.get(uid + "/link")).toBeUndefined();
+      await page.getByRole("button", {name: "Email and password", exact: true}).click();
+      await page.getByLabel("Existing Engineering Docs password", {exact: true}).fill("synthetic-valid-password");
+      await page.clock.fastForward(30000);
+      await expect(page.getByRole("button", {name: "Email and password", exact: true})).toHaveAttribute("aria-pressed", "true");
+      await expect(page.getByLabel("Existing Engineering Docs password", {exact: true})).toHaveValue("synthetic-valid-password");
+      await expect(page.getByText("Sent.", {exact: true})).toHaveCount(0);
+      views.push({type: "link-request-does-not-link-account-or-reset-password-method"});
+      const fresh = "synthetic_shared_session_fresh";
+      await page.goto(origin + "/engineering/sign-in/" + fresh, {waitUntil: "networkidle"});
+      await page.route(origin + "/engineering/sign-in/" + fresh + "/session", route => route.fulfill({status: 403, json: {error: {code: "ONESA_REAUTH_REQUIRED"}}}));
+      await page.getByRole("button", {name: "Continue with Onesa", exact: true}).click();
+      await expect(page.locator("#engineering-sign-in").getByRole("alert")).toContainText("confirm your identity");
+      await expect(page.getByRole("link", {name: "Sign in to Onesa again", exact: true})).toHaveAttribute("href", "/account?returnTo=" + encodeURIComponent("/engineering/sign-in/" + fresh) + "&reauthenticate=1");
+      views.push({type: "fresh-Docs-request-uses-existing-central-MFA-flow"});
+      const initiallyFresh = "synthetic_shared_session_initial_fresh";
+      await page.goto(origin + "/engineering/sign-in/" + initiallyFresh, {waitUntil: "networkidle"});
+      await expect(page.getByRole("button", {name: "Continue with Onesa", exact: true})).toHaveCount(0);
+      await expect(page.getByRole("link", {name: "Sign in to Onesa again", exact: true})).toHaveAttribute("href", "/account?returnTo=" + encodeURIComponent("/engineering/sign-in/" + initiallyFresh) + "&reauthenticate=1");
+      expect(signInChoices.has(initiallyFresh + "/session")).toBe(false);
+      views.push({type: "initial-forced-Docs-reauthentication-cannot-loop-through-existing-account"});
+      const invalid = "synthetic_shared_invalid_return";
+      await page.route(origin + "/engineering/sign-in/" + invalid + "/details", route => route.fulfill({status: 200, json: {csrf: proof, onesaSignInPath: "https://attacker.example.test/account"}}));
+      await page.goto(origin + "/engineering/sign-in/" + invalid, {waitUntil: "networkidle"});
+      await expect(page.getByRole("link", {name: "Sign in with your Onesa account", exact: true})).toHaveCount(0);
+      await expect(page.locator("form")).toHaveCount(0);
+      await expect(page.getByRole("link", {name: "Start a new sign-in", exact: true})).toBeVisible();
+      views.push({type: "foreign-central-sign-in-link-refused"});
+    } finally { await context.close(); }
+  }
   if(accessEnabled)for(const colorScheme of ["light","dark"]){
     const context=await browser.newContext({viewport:{width:390,height:844},colorScheme}),page=await context.newPage();
     const uid="synthetic_session_"+colorScheme;
@@ -719,6 +801,7 @@ try {
         "Isolated production renderer and synthetic mock API; backend protocol tested separately; no hosted/provider acceptance claimed",
       views: views.length,
       accessEnabled,
+      browser: {engine: engineName, version: browser.version(), supplemental: Boolean(supplemental)},
       requestStateControls: accessEnabled ? {lightDarkDisabledFeedback: true, duplicateBlocked: true, malformedAcknowledgementDoesNotShowSent: true, recipientChangesClearSentWithoutBypassingCooldown: true, plainSentMessageWithoutButton: true, resendDisabledUntilThirtySeconds: true, failedSendPreservesEmail: true, successfulRetryClearsError: true, expiredLoadAndSubmitRestart: true, actionablePasswordRegistrationAndApprovalErrors: true, serviceFailureNotMislabeledExpired: true, stalledRequestRecovery: true} : null,
       firstAdministratorSetup: accessEnabled ? {enrollmentCalls, verificationCalls, syntheticOnly: true, failedCodeKeepsSetup: true, recoveryAcknowledgementRequired: true, noSessionCreated: true} : null,
       mailSent: 0,

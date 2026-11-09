@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.*
+.secrets
+.runtime
+runtime
+coverage
+test-results
+*.pem
+*.key

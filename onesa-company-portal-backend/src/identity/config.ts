@@ -2,7 +2,38 @@ import { createPrivateKey, createPublicKey } from "node:crypto";
 import { z } from "zod";
 
 export const identityPath = "/api/v1/identity";
-export const products = ["ai", "drone", "robot"] as const;
+export const products = ["ai", "drone", "robot", "mobile"] as const;
+export const mobileRoles = [
+  "admin",
+  "operations",
+  "support",
+  "finance",
+  "agent",
+  "auditor",
+  "customer",
+] as const;
+export function defaultProductRole(product: Product): string {
+  return product === "ai"
+    ? "user"
+    : product === "mobile"
+      ? "customer"
+      : "viewer";
+}
+export function validProductRole(product: Product, role: string): boolean {
+  const allowed: readonly string[] =
+    product === "ai"
+      ? ["user", "admin"]
+      : product === "mobile"
+        ? mobileRoles
+        : ["viewer", "operator", "admin"];
+  return allowed.includes(role);
+}
+export function productRequiresMfa(product: string, role: unknown): boolean {
+  return (
+    role === "admin" ||
+    (product === "mobile" && typeof role === "string" && role !== "customer")
+  );
+}
 export type Product = (typeof products)[number];
 const absoluteHttps = z
   .string()
@@ -30,7 +61,7 @@ const client = z
 const schema = z
   .object({
     issuer: absoluteHttps,
-    clients: z.array(client).min(1).max(3),
+    clients: z.array(client).min(1).max(4),
     cookieKeys: z.array(z.string().min(48).max(256)).min(1).max(2),
     jwks: z
       .object({ keys: z.array(z.record(z.string(), z.string())).length(1) })

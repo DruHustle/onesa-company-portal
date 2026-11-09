@@ -2,7 +2,7 @@ import './local-environment.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createMailer,companyMailSignature} from '../src/services/mail.js';
-const config={MAIL_PROVIDER:'resend' as const,RESEND_API_KEY:'synthetic-test-key',MAIL_FROM:'Onesa <notifications@mail.onesa.eu>',MAIL_REPLY_TO:'reply@example.invalid',SMTP_PORT:587,NODE_ENV:'test'};
+const config={MAIL_PROVIDER:'resend' as const,RESEND_API_KEY:'synthetic-test-key',MAIL_FROM:'Onesa Portal <notifications-portal@onesa.eu>',MAIL_REPLY_TO:'reply@example.invalid',SMTP_PORT:587,NODE_ENV:'test'};
 const message={id:'883bc062-62ad-453f-a79d-5744ef984b55',to:'recipient@example.invalid',subject:'Synthetic notification',text:'Synthetic message'};
 test('Resend retries reuse the job key and preserve the encrypted-outbox plaintext only in the request',async()=>{
  const calls:RequestInit[]=[];
@@ -38,4 +38,26 @@ test('Resend refuses missing configuration and invalid destinations before netwo
  await assert.rejects(send!({...message,to:'victim@example.invalid\r\nBcc: someone@example.invalid'}));
  await assert.rejects(send!({...message,subject:'Injected\nheader'}));
  assert.equal(createMailer({...config,MAIL_PROVIDER:'smtp',SMTP_HOST:undefined}),null);
+});
+
+test('Sender configuration rejects header injection and address lists before transport creation',()=>{
+ const unexpectedRequest=async()=>{throw new Error('Unexpected network access');};
+ const unexpectedTransport=(()=>{throw new Error('Unexpected transport creation');}) as Parameters<typeof createMailer>[2];
+ for(const provider of ['resend','smtp'] as const){
+  for(const from of ['Onesa <notifications-portal@onesa.eu>\r\nBcc: victim@example.invalid','first@onesa.eu, second@onesa.eu','Onesa <first@onesa.eu>, <second@onesa.eu>','Group: Onesa <first@onesa.eu>','Onesa <not-an-address>','Onesa\u0000 <first@onesa.eu>']){
+   assert.throws(()=>createMailer({...config,MAIL_PROVIDER:provider,SMTP_HOST:'smtp.example.invalid',MAIL_FROM:from},unexpectedRequest,unexpectedTransport),{name:'ZodError'});
+  }
+  for(const replyTo of ['reply@example.invalid\nBcc: victim@example.invalid','first@onesa.eu,second@onesa.eu']){
+   assert.throws(()=>createMailer({...config,MAIL_PROVIDER:provider,SMTP_HOST:'smtp.example.invalid',MAIL_REPLY_TO:replyTo},unexpectedRequest,unexpectedTransport),{name:'ZodError'});
+  }
+ }
+});
+
+test('Validated senders keep explicit configuration and shared-domain identities byte for byte',async()=>{
+ for(const from of ['Onesa Portal <notifications-portal@onesa.eu>','Onesa Accounts <accounts@onesa.eu>','"Onesa, Portal" <notifications-portal@onesa.eu>','notifications-portal@onesa.eu','Onesa <notifications@mail.onesa.eu>']){
+  let body='';
+  const send=createMailer({...config,MAIL_FROM:from},async(_url,options)=>{body=String(options?.body);return Response.json({id:'5f907c4c-6b34-452b-88c3-03d199dd33a0'});});
+  await send!(message);
+  assert.equal(JSON.parse(body).from,from);
+ }
 });

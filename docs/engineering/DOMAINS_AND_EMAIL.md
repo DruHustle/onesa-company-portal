@@ -3,7 +3,7 @@
 Owner-requested mapping (2026-10-10). This configuration is prepared locally;
 provider assignments, DNS changes, TLS and real delivery are not yet completed.
 
-Current mail evidence, 2026-10-13: authoritative DNS is now Cloudflare and staff MX
+Historical mail evidence, 2026-10-13: authoritative DNS is now Cloudflare and staff MX
 points to Zoho EU. The existing Ireland Resend domain is verified. Missing sending
 authentication records after the nameserver migration caused a real Zoho DMARC
 bounce. The exact Resend DKIM TXT plus `rsend.mail` and `send.mail` CNAME records were
@@ -66,51 +66,79 @@ configuration; arbitrary Vercel preview aliases are rejected by a split deployme
 AI Render and Vercel use `ONESA_PUBLIC_ORIGIN=https://platform.onesa.eu`, with
 `ONESA_API_URL` pointing to its actual Render API on Vercel. Keep API/model keys private.
 
-## Resend sending domain
+## One sending domain: onesa.eu
 
-Recommended sending domain: `mail.onesa.eu`, sender
-`Onesa <notifications@mail.onesa.eu>`. This separates application mail reputation
-from Zoho staff mailboxes at `onesa.eu`. This is a recommendation, not a provisioned
-or verified domain.
+The owner-selected policy from 2026-11-04 uses `onesa.eu` for all visible
+transactional senders. Portal configuration examples now use
+`Onesa Portal <notifications-portal@onesa.eu>`; AI examples use
+`Onesa AI <notifications-ai@onesa.eu>`. Existing configured runtime values remain
+authoritative until a verified cutover. The historical verification of
+`mail.onesa.eu` above does not establish that `onesa.eu` is verified for Resend.
 
-1. Add `mail.onesa.eu` in Resend Domains; select Ireland (`eu-west-1`) for sending.
-   Keep open/click tracking disabled for transactional security messages.
-2. Copy the exact generated DKIM TXT and sending/Return-Path SPF TXT and MX records
-   from Resend into Squarespace. They belong at the provided names under the sending
-   domain, not at the root staff-mailbox MX. Do not duplicate SPF TXT records at one
-   hostname. Check DMARC alignment and existing policy before adding/changing it.
-   Resend sending-region selection does not establish EU data residency: its official
-   documentation says account data, email metadata, logs and API records remain in the US.
-3. Verify the domain and create a send-only API key scoped to this domain.
-   Store it as `RESEND_API_KEY` in the Render **worker** secret environment only.
-   Do not put it in Vercel, `NEXT_PUBLIC_*`, GitHub source, logs or shared frontend files.
-4. Configure the worker as below. Set API `NOTIFY_EMAIL` to an existing owner-approved
-   recipient and share it with the worker. `hello@onesa.eu` is only a possible Reply-To:
-   creating that sender string does not provision an inbox.
+Resend supplies email delivery. Render or Oracle hosts the application/worker and
+stores its private configuration; adding a custom web domain in Render does not
+verify an email sender. A single verified Resend domain can send using all required
+local parts without creating a sender identity for each address. These sender
+strings do not create mailboxes. Replies continue to the existing approved,
+monitored `info@onesa.eu` inbox through `MAIL_REPLY_TO`.
+
+1. Inspect the existing Resend domain and Cloudflare records. Add or verify the
+   exact `onesa.eu` sending domain only if required. Keep transactional open/click
+   tracking disabled. Preserve the existing region and unrelated settings.
+2. Copy the exact DKIM and Return-Path records supplied by this domain's Records
+   tab. Current Resend domains can use CNAME pairs or MX/TXT records; do not copy
+   historical values from the old subdomain or invent provider DNS values. Keep
+   existing Zoho root MX and its DKIM/SPF records. Validate existing DMARC alignment
+   without weakening its policy or adding a second SPF record at one hostname.
+3. Keep sending keys private and scoped to the intended domain/environment. A
+   domain-scoped key for `mail.onesa.eu` does not establish permission to send from
+   `onesa.eu`. Production and staging retain separate credentials and deployment
+   settings; no staging notification policy is changed by the sender examples.
+4. Before changing live `MAIL_FROM` or `MAIL_REPLY_TO`, finish or reconcile pending,
+   running and ambiguously accepted email jobs under their existing configuration.
+   The provider idempotency key is stable per job, but a changed sender changes
+   the request body. Do not reset attempts, create replacement jobs automatically,
+   clear reconciliation failures or remove the old verified domain to force retries.
+5. Update only the intended worker environment, deploy through its existing release
+   path and verify actual provider acceptance and inbox delivery with a separately
+   approved recipient. Source tests use fake transports and send no external mail.
 
 ```dotenv
 MAIL_PROVIDER=resend
 RESEND_API_KEY=replace-with-private-send-only-key
-MAIL_FROM=Onesa <notifications@mail.onesa.eu>
+MAIL_FROM=Onesa Portal <notifications-portal@onesa.eu>
+MAIL_REPLY_TO=info@onesa.eu
 NOTIFY_EMAIL=OWNER_APPROVED_EXISTING_MAILBOX
-# Optional, only after the mailbox exists:
-# MAIL_REPLY_TO=hello@onesa.eu
 ```
 
-The portal keeps its durable encrypted-body email outbox, worker lease/fencing and
-bounded retries. Resend uses HTTPS with a 15-second timeout and a stable job-UUID
-idempotency key. Provider acceptance changes a job to `accepted`; it does not prove
-inbox delivery. Resend idempotency lasts 24 hours, so retries after that window need
-operator reconciliation. The existing SMTP transport remains selectable with
-`MAIL_PROVIDER=smtp`; no new SDK dependency is required.
+`MAIL_FROM` accepts one bare email address or one display-name/address pair.
+`MAIL_REPLY_TO` accepts one bare email address. Control characters and address lists
+are rejected before a network request or SMTP transport is created. Explicit valid
+sender bytes are preserved, including an existing subdomain during migration.
+Never put mail credentials in frontend configuration, source or logs.
 
-The integration currently covers existing portal notifications and password-reset
-messages. AI email verification/recovery and robot notifications are not implemented
-by these settings. Resend receiving/webhooks are a separate application feature;
-staff inboxes use the owner-selected Zoho Mail service. No inbound MX
-changes, mailbox purchase, real recipient message, commit, push or deploy happened here.
-Before enabling production, qualify delivery, bounce/complaint handling and the actual
-provider/data-handling configuration; retain the existing release approval gates.
+The durable encrypted-body outbox, worker lease/fencing, bounded retries and
+stable job-UUID idempotency key remain unchanged. Provider acceptance records
+`accepted`; it does not prove inbox delivery. Expired or ambiguous retries require
+operator reconciliation. `MAIL_PROVIDER=smtp` remains available for supported
+hosts. Use the Resend HTTPS API on Render Free, whose SMTP ports are blocked.
+
+Shared Onesa account verification and recovery remain Portal identity functions.
+Product notification names do not create separate product accounts. A dedicated
+`Onesa Accounts <accounts@onesa.eu>` sender is reserved for a future separately
+configured identity channel; the current Portal outbox uses its single `MAIL_FROM`
+for its existing mail types. Robot and Drone have no standalone mail transport in
+this source. Their sender names are policy reservations, not enabled delivery.
+
+Resend sending-region selection alone does not establish all service data residency;
+review the provider's current processing documentation for the actual account.
+No DNS, mailbox, provider setting or deployed environment is changed by these source
+examples. Retain the existing release and data-handling approvals.
+
+References: [Resend sender addresses](https://resend.com/docs/knowledge-base/how-do-I-create-an-email-address-or-sender-in-resend),
+[Resend MX and CNAME coexistence](https://resend.com/docs/knowledge-base/how-do-i-avoid-conflicting-with-my-mx-records),
+[Render environment settings](https://render.com/docs/configure-environment-variables),
+[Render Free SMTP limits](https://render.com/docs/free).
 
 ## Local verification
 
@@ -161,10 +189,13 @@ Sources: [Vercel custom domains](https://vercel.com/docs/domains/working-with-do
 [Resend idempotency](https://resend.com/docs/dashboard/emails/idempotency-keys),
 [Resend receiving](https://resend.com/docs/dashboard/receiving/introduction).
 
-## Zoho Mail staff inboxes (owner-selected)
+## Zoho Mail staff inboxes (historical setup, 2026-10-10)
 
-The owner confirmed Squarespace DNS and Zoho Mail on 2026-10-10. Use Zoho for staff
-mailboxes at `onesa.eu` and Resend only for transactional mail at `mail.onesa.eu`.
+The owner confirmed Squarespace DNS and Zoho Mail on 2026-10-10. This dated setup
+record is retained as history. Current authoritative DNS is Cloudflare; preserve
+Zoho staff mailboxes and root MX. The current sender policy above supersedes the
+old Resend `mail.onesa.eu` recommendation, and its generated sending records must
+be read from the actual verified domain.
 
 1. In the existing Zoho Mail Admin Console, add `onesa.eu` to the intended organization.
    Confirm its actual account region/data center; do not select or purchase a new plan

@@ -116,9 +116,10 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     verifier.private(bundle, directory=True, uid=uid)
     raw = checked_file(bundle / "manifest.json", manifest_pin, uid)
     m = json.loads(raw)
+    consolidated = m.get("schema_version") == 2
     require(
         set(m)
-        == {
+        == ({
             "schema_version",
             "repository",
             "candidate_commit",
@@ -126,14 +127,15 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "files",
             "policy_sha256",
             "tool_source_sha256",
-        },
+        } | (verifier.PORTAL_SOURCE_FIELDS if consolidated else set())),
         "Installation manifest schema",
     )
     require(
-        m["schema_version"] == 1
-        and m["repository"] == "DruHustle/onesa-company-portal",
+        consolidated or (m["schema_version"] == 1
+        and m["repository"] == "DruHustle/onesa-company-portal"),
         "Installation repository refused",
     )
+    source_binding = verifier.portal_operational_source(m) if consolidated else None
     if set(m["files"]) == set(ALLOWED):
         allowed, component, script, prefix = (
             ALLOWED,
@@ -189,19 +191,51 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         raise verifier.Rejected(
             "Only complete reviewed component installation profiles are accepted"
         )
+    policy_bytes = checked_file(bundle / "policy.json", m["policy_sha256"], uid)
+    policy = json.loads(policy_bytes)
+    require(
+        set(policy) == {"schema_version", "components", "toolchain"}
+        and type(policy["schema_version"]) is int
+        and policy["schema_version"] == (2 if consolidated else 1),
+        "Installation policy schema",
+    )
+    if allowed is IDENTITY_ALLOWED and set(policy["components"]) == {
+        verifier.component_scope({**m, "component": "identity-acceptance"})
+    }:
+        component, script, prefix = (
+            "identity-acceptance", "oracle_portal_identity_acceptance.py",
+            "portal-identity-acceptance-",
+        )
+    if consolidated:
+        prefix += "canonical-"
+    require(
+        set(policy["components"]) == {verifier.component_scope({**m, "component": component})},
+        "Only the selected independent Portal component profile is eligible",
+    )
+    archives = None
+    if consolidated:
+        require(policy["toolchain"].get("source_binding") == source_binding,
+                "Canonical installation policy source differs")
+        archives = verifier.portal_source_archives(
+            bundle / "source-artifacts", verifier.portal_archive_pins(policy["toolchain"]), uid=uid,
+        )
     github.owner()
     # Actual main, owner merge, first-attempt jobs, hygiene and artifacts are fetched
     # by the existing verifier. No supplied PASS receipt is accepted here.
-    ci = github.qualify(
-        {k: m[k] for k in ["repository", "candidate_commit", "source_tree"]}
-    )
+    ci = (github.qualify({**source_binding, "component": component}, archives)
+          if consolidated else github.qualify(
+              {k: m[k] for k in ["repository", "candidate_commit", "source_tree"]}))
     require(ci, "Current exact-main checks missing")
     source = github.api(
-        "repos/" + m["repository"] + "/git/trees/" + m["source_tree"] + "?recursive=1"
+        "repos/" + m["repository"] + "/git/trees/"
+        + (m["product_source_tree"] if consolidated else m["source_tree"]) + "?recursive=1"
     )
     require(not source.get("truncated"), "Source tree incomplete")
+    if consolidated:
+        require(source.get("sha") == m["product_source_tree"], "Canonical installation subtree changed")
     blobs = {r["path"]: r for r in source["tree"] if r["type"] == "blob"}
-    payloads = {}
+    payloads = ({"source-artifacts/" + name + ".zip": base64.b64decode(data, validate=True)
+                 for name, data in archives.items()} if consolidated else {})
     for local, upstream in allowed.items():
         relative(local)
         checksum = m["files"][local]
@@ -222,25 +256,6 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "Installation executable differs from current main",
         )
         payloads[local] = data
-    policy_bytes = checked_file(bundle / "policy.json", m["policy_sha256"], uid)
-    policy = json.loads(policy_bytes)
-    require(
-        set(policy) == {"schema_version", "components", "toolchain"}
-        and policy["schema_version"] == 1,
-        "Installation policy schema",
-    )
-    if allowed is IDENTITY_ALLOWED and set(policy["components"]) == {
-        "DruHustle/onesa-company-portal:identity-acceptance"
-    }:
-        component, script, prefix = (
-            "identity-acceptance",
-            "oracle_portal_identity_acceptance.py",
-            "portal-identity-acceptance-",
-        )
-    require(
-        set(policy["components"]) == {"DruHustle/onesa-company-portal:" + component},
-        "Only the selected independent Portal component profile is eligible",
-    )
     # This source archive is data. Reconstruct its Git tree before using any
     # derived probe-code pins. All executable bootstrap modules were compared to
     # genuine current-main Git blobs above, before loading this stdlib parser.
@@ -256,10 +271,10 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     _app, files = module.source_inventory(
-        bundle / "tool-source.tar", {"source_tree": m["source_tree"]}
+        bundle / "tool-source.tar", source_binding or {"source_tree": m["source_tree"]}
     )
     tool = policy["toolchain"]
-    profile = policy["components"][m["repository"] + ":" + component]
+    profile = policy["components"][verifier.component_scope({**m, "component": component})]
     selected = (
         module.qualification_profile(profile) if component == "frontend" else None
     )
@@ -287,6 +302,8 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         "source_sha256",
         "probe_files",
     }
+    if consolidated:
+        tool_fields |= {"source_binding", "source_archives"}
     tool_fields |= (
         {
             "probe_image",
@@ -328,7 +345,8 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "Frontend comparison baseline must be separately pinned",
         )
         observed = github.api(
-            "repos/" + m["repository"] + "/git/commits/" + baseline["source"]
+            "repos/" + ("DruHustle/onesa-company-portal" if consolidated else m["repository"])
+            + "/git/commits/" + baseline["source"]
         )
         require(
             observed["sha"] == baseline["source"]
@@ -352,7 +370,8 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "API comparison baseline must be separately pinned",
         )
         observed = github.api(
-            "repos/" + m["repository"] + "/git/commits/" + baseline["candidate_commit"]
+            "repos/" + ("DruHustle/onesa-company-portal" if consolidated else m["repository"])
+            + "/git/commits/" + baseline["candidate_commit"]
         )
         require(
             observed["sha"] == baseline["candidate_commit"]
@@ -418,18 +437,20 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         "Literal immutable tool image pins required",
     )
     target = INSTALL_PARENT / (prefix + m["source_tree"])
-    profile = policy["components"][m["repository"] + ":" + component]
+    profile = policy["components"][verifier.component_scope({**m, "component": component})]
     probe = {
         "repository": m["repository"],
         "component": component,
         "candidate_commit": m["candidate_commit"],
         "source_tree": m["source_tree"],
-        "source_sha256": "0" * 64,
+        "source_sha256": m["tool_source_sha256"] if consolidated else "0" * 64,
         "build_sha256": "0" * 64,
         "artifact_digest": "sha256:" + "0" * 64,
         "configuration_sha256": {"staging": "0" * 64, "production": "0" * 64},
         "target_environment": "production",
     }
+    if consolidated:
+        probe.update(source_binding)
     verifier.binding_valid(probe, policy)
     require(
         profile["qualification_attempt_limit"] == 1,
@@ -488,6 +509,8 @@ def install(bundle, manifest_pin, github, *, dry_run=False, uid=0):
     )  # Atomic no-replace reservation. Interrupted installs are retained.
     try:
         (target / "runners").mkdir(mode=0o700)
+        if manifest["schema_version"] == 2:
+            (target / "source-artifacts").mkdir(mode=0o700)
         for name, data in payloads.items():
             path = target / relative(name)
             with os.fdopen(
@@ -508,6 +531,8 @@ def install(bundle, manifest_pin, github, *, dry_run=False, uid=0):
             "policy_sha256": manifest["policy_sha256"],
             "ci": ci,
             "provider_requests": 0,
+            **({"source_binding": verifier.portal_operational_source(manifest)}
+               if manifest["schema_version"] == 2 else {}),
         }
         with os.fdopen(
             os.open(
