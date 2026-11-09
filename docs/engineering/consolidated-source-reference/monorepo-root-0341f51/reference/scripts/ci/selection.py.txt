@@ -1,0 +1,97 @@
+"""Conservative product selection; missing/ambiguous Git evidence runs every suite."""
+
+import argparse
+import json
+import os
+import re
+import subprocess
+from pathlib import PurePosixPath
+
+from config import FIELDS, PRODUCTS, ROOT, VERIFICATION_COMPONENTS
+
+
+def classify(paths, full=False):
+    selected = {key: False for key in VERIFICATION_COMPONENTS}
+    if full or paths is None:
+        return {key: True for key in VERIFICATION_COMPONENTS}
+    by_directory = {value: key for key, value in VERIFICATION_COMPONENTS.items()}
+    for name in paths:
+        path = PurePosixPath(name)
+        if (
+            not name
+            or path.is_absolute()
+            or str(path) != name
+            or any(part in {".", ".."} for part in path.parts)
+            or any(ord(character) < 32 for character in name)
+            or len(path.parts) < 2
+            or path.parts[0] not in by_directory
+        ):
+            return {key: True for key in VERIFICATION_COMPONENTS}
+        # Changes to shared identity, workflow controls and contract snapshots can
+        # affect consumers even though application releases remain independent.
+        if any(
+            marker in name.lower()
+            for marker in (
+                "/.github/",
+                "/scripts/",
+                "/contracts/",
+                "/migrations/",
+                "/docs/ecosystem/",
+                "identity",
+                "repository_hygiene",
+            )
+        ):
+            return {key: True for key in VERIFICATION_COMPONENTS}
+        selected[by_directory[path.parts[0]]] = True
+        # The billing browser fixture consumes the existing Portal foundation;
+        # the company bridge is the only other direct source integration.
+        if name == "onesa-company-portal/onesa-company-portal-frontend/src/styles/onesa-foundation.css" or name.startswith(
+            "onesa-company-portal/onesa-company-portal-backend/src/billing/"
+        ):
+            selected["billing"] = True
+    return selected
+
+
+def changed_files(base, root=ROOT):
+    if not re.fullmatch(r"[a-f0-9]{40}", base) or set(base) == {"0"}:
+        return None
+    process = subprocess.run(
+        ["git", "diff", "--name-only", "--no-renames", "-z", base, "HEAD", "--"],
+        cwd=root,
+        capture_output=True,
+        check=False,
+    )
+    if process.returncode:
+        return None
+    try:
+        return [item for item in process.stdout.decode("utf-8").split("\0") if item]
+    except UnicodeDecodeError:
+        return None
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--product", choices=PRODUCTS)
+    parser.add_argument("--output", default=os.getenv("GITHUB_OUTPUT"))
+    args = parser.parse_args()
+    if args.product:
+        # A called product always runs its complete established verification.
+        result = {name: True for name in FIELDS}
+        result.update(applications=["frontend", "backend"], verify=True)
+    else:
+        result = classify(
+            changed_files(os.getenv("BASE_SHA", "")),
+            full=os.getenv("GITHUB_EVENT_NAME") != "pull_request",
+        )
+    lines = [
+        key + "=" + json.dumps(value, separators=(",", ":"))
+        for key, value in result.items()
+    ]
+    if args.output:
+        with open(args.output, "a", encoding="utf-8") as output:
+            output.write("\n".join(lines) + "\n")
+    print("Selected verification:", json.dumps(result, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()

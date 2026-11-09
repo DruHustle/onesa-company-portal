@@ -10,11 +10,18 @@ const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}
 const hex40=/^[a-f0-9]{40}$/,hex64=/^[a-f0-9]{64}$/;
 const matches=(pattern,value)=>typeof value==='string'&&pattern.test(value);
 
+const sourceFields=['schema_version','repository_id','product','source_path','product_source_tree','branch'];
+function canonicalSource(b){
+ return b.repository==='DruHustle/onesa-ug'&&b.schema_version===2&&b.repository_id===1444746154&&
+  b.product==='portal'&&b.source_path==='onesa-company-portal'&&b.branch==='main'&&
+  typeof b.product_source_tree==='string'&&/^[a-f0-9]{40}$/.test(b.product_source_tree);
+}
+
 export function validate(request,raw,actual){
  need(keys(request,['binding','operation_id','fixture_id','environment','ci_run_id','runtime_sha256','mode']));
  const b=request.binding;
- need(keys(b,['repository','component','candidate_commit','source_tree','source_sha256','build_sha256','artifact_digest','configuration_sha256','target_environment']));
- need(b.repository==='DruHustle/onesa-company-portal'&&b.component==='worker'&&b.target_environment==='production');
+ need(keys(b,[...['repository','component','candidate_commit','source_tree','source_sha256','build_sha256','artifact_digest','configuration_sha256','target_environment'],...(b.repository==='DruHustle/onesa-ug'?sourceFields:[])]));
+ need((b.repository==='DruHustle/onesa-company-portal'||canonicalSource(b))&&b.component==='worker'&&b.target_environment==='production');
  need(matches(hex40,b.candidate_commit)&&matches(hex40,b.source_tree)&&matches(hex64,b.source_sha256)&&matches(hex64,b.build_sha256)&&matches(/^sha256:[a-f0-9]{64}$/,b.artifact_digest));
  need(keys(b.configuration_sha256,['staging','production'])&&Object.values(b.configuration_sha256).every(v=>typeof v==='string'&&hex64.test(v)));
  need(request.environment==='production'&&['prepare','inspect'].includes(request.mode)&&matches(uuid,request.operation_id)&&matches(uuid,request.fixture_id));

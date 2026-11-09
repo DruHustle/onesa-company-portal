@@ -6,6 +6,7 @@ import http from 'node:http';
 import {fileURLToPath} from 'node:url';
 import {chromium} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import {createInteractionRecorder, installAircraftInteractionObserver, recordSyntheticPageObservation} from './drone-product-diagnostics.mjs';
 for(const name of ['.env','.env.local','.env.production','.env.production.local'])assert.equal(await stat(name).then(()=>true,()=>false),false,'Isolated fixture requires a clean frontend checkout');
 const catalog=JSON.parse(await readFile(new URL('../public/models/nvidia/manifest.json',import.meta.url),'utf8'));
 const knownIds=['nvidia-transfer-conveyor','nvidia-mobile-cart','nvidia-storage-rack'];
@@ -15,7 +16,7 @@ const server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','
 let browser,active;
 async function publicInteractionDiagnostic(){
  if(!active)return;
- const record={schema_version:1,state:'DRONE_PRODUCT_INTERACTION_FAILED',locale:active.locale,width:active.width,mode:active.mode,phase:active.phase,browser_connected:browser?.isConnected()??false,page_closed:active.page.isClosed(),javascript_errors:Math.min(active.errors.length,1000000),crashes:Math.min(active.crashes,1000000),models:active.models,geometry:null};
+ const record={schema_version:2,state:'DRONE_PRODUCT_INTERACTION_FAILED',locale:active.locale,width:active.width,mode:active.mode,phase:active.phase,browser_connected:browser?.isConnected()??false,page_closed:active.page.isClosed(),javascript_errors:Math.min(active.errors.length,1000000),crashes:Math.min(active.crashes,1000000),models:active.models,interaction:active.interaction.snapshot(),geometry:null};
  if(active.phase==='aircraft_details'&&!record.page_closed){
   let timer;
   try{record.geometry=await Promise.race([
@@ -40,7 +41,9 @@ try{
  browser=await chromium.launch();let views=0;
  for(const locale of ['en','de'])for(const colorScheme of ['light','dark'])for(const width of [390,1440]){
   const context=await browser.newContext({viewport:{width,height:950},colorScheme,reducedMotion:'reduce'});const page=await context.newPage();const errors=[],motionRequests=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',request=>{if(request.url().endsWith('.mp4'))motionRequests.push(request.url());});
-  const observed={locale,width,mode:colorScheme,phase:'navigation',page,errors,crashes:0,models:[]},requests=new WeakMap();active=observed;
+  const observed={locale,width,mode:colorScheme,phase:'navigation',page,errors,crashes:0,models:[],interaction:createInteractionRecorder()},requests=new WeakMap();active=observed;
+  await page.exposeBinding('__onesaDroneProductObservation',(source,value)=>recordSyntheticPageObservation(source,page,observed.interaction,value));
+  await page.addInitScript(installAircraftInteractionObserver);
   page.on('crash',()=>observed.crashes++);
   page.on('request',request=>{const url=new URL(request.url()),id=url.origin==='http://127.0.0.1:3348'?knownModels.get(url.pathname):undefined;if(!id||observed.models.length>=12)return;const state={asset_id:id,terminal:'pending',status:null};observed.models.push(state);requests.set(request,state);});
   page.on('response',response=>{const state=requests.get(response.request());if(state)state.status=response.status();});
@@ -52,6 +55,7 @@ try{
   observed.phase='film_before_play';
   const film=page.locator('video');await film.scrollIntoViewIfNeeded();assert.equal(await film.getAttribute('src'),null);assert.equal(await film.getAttribute('autoplay'),null);assert.deepEqual(motionRequests,[],'The concept film must not download before a play request, including with reduced motion');
   observed.phase='aircraft_details';
+  observed.interaction.beforeCommand();
   await page.locator('main details').filter({has:page.locator('svg[role="img"]')}).locator('summary').click();const slider=page.locator('main details').filter({has:page.locator('svg[role="img"]')}).getByRole('slider');await slider.fill('-30');assert.equal(await slider.inputValue(),'-30');assert.ok(await page.locator(`a[href="/${locale}/contact?topic=drone"]`).first().isVisible());
   observed.phase='accessibility';
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal overflow');

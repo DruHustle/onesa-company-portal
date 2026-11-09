@@ -482,14 +482,14 @@ class RequestJournalTests(unittest.TestCase):
         )
         with (
             patch.object(
-                r, "verify_invocation", side_effect=r.Refused("PREVIOUS_NOT_ACCEPTED")
+                r, "verify_historical_operation", side_effect=r.Refused("PREVIOUS_NOT_ACCEPTED")
             ) as verify,
             patch.object(scanner.subprocess, "run") as create,
             self.assertRaisesRegex(r.Refused, "PREVIOUS_NOT_ACCEPTED"),
         ):
             scanner.deploy(self.binding, self.plan, self.context, self.root)
         create.assert_not_called()
-        self.assertTrue(verify.call_args.kwargs["dependency"])
+        self.assertTrue(verify.call_args.kwargs["require_accepted"])
         self.assertFalse(
             scanner.deployment_folder(self.context["operation_id"]).exists()
         )

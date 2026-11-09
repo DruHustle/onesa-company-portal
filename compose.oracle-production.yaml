@@ -25,6 +25,9 @@ services:
     security_opt: [no-new-privileges:true]
     volumes: [scanner_socket:/run/onesa-scanner:ro]
     group_add: ['3000']
+    # The prepared private database joins this existing bridge and the API bridge.
+    # Keep the worker on one network; its DATABASE_URL changes only at an approved
+    # coordinated cutover. The inert database template lives in the API Compose file.
     networks: [worker_egress]
     mem_limit: 512m
     cpus: 0.1

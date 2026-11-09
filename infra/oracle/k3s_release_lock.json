@@ -1,0 +1,61 @@
+{
+  "documentation": [
+    "https://docs.k3s.io/installation/configuration",
+    "https://docs.k3s.io/installation/airgap",
+    "https://docs.portainer.io/start/requirements-and-prerequisites",
+    "https://docs.oracle.com/en-us/iaas/Content/Compute/Tasks/gettingmetadata.htm"
+  ],
+  "k3s": {
+    "platforms": {
+      "amd64": {
+        "airgap": {
+          "name": "k3s-airgap-images-amd64.tar.zst",
+          "sha256": "7d939471907df2d4e537a9c308bf94173e453fff4a2e9e77e9ae92a64be3007f",
+          "size": 194444189,
+          "url": "https://github.com/k3s-io/k3s/releases/download/v1.36.5%2Bk3s1/k3s-airgap-images-amd64.tar.zst"
+        },
+        "binary": {
+          "name": "k3s",
+          "sha256": "d73847bcd3c5fccef0115b372e2f9a91f3032dc84bbf71518a4617565294d313",
+          "size": 79077538,
+          "url": "https://github.com/k3s-io/k3s/releases/download/v1.36.5%2Bk3s1/k3s"
+        }
+      },
+      "arm64": {
+        "airgap": {
+          "name": "k3s-airgap-images-arm64.tar.zst",
+          "sha256": "aeb7b47b0f0cb1356a5f0bc1c11b7c499deceeeafcd411963064e02bfc77da84",
+          "size": 176489628,
+          "url": "https://github.com/k3s-io/k3s/releases/download/v1.36.5%2Bk3s1/k3s-airgap-images-arm64.tar.zst"
+        },
+        "binary": {
+          "name": "k3s-arm64",
+          "sha256": "135e34cb9e8a1cfae3cb55577789e93501efe7edc080a8b2630458a85b07721e",
+          "size": 71434402,
+          "url": "https://github.com/k3s-io/k3s/releases/download/v1.36.5%2Bk3s1/k3s-arm64"
+        }
+      }
+    },
+    "prerelease": false,
+    "release_url": "https://github.com/k3s-io/k3s/releases/tag/v1.36.5%2Bk3s1",
+    "version": "v1.36.5+k3s1"
+  },
+  "portainer": {
+    "index_digest": "sha256:3609c307943bca8e5c492f69ddd6965df177208b50678a4cff28391c8dd4e96e",
+    "platforms": {
+      "amd64": {
+        "config_digest": "sha256:8bfae45f9e7b3359ec4046e6f36cf148c067958a049e6fbbdb77f92d015faa33",
+        "manifest_digest": "sha256:1c9fd7e7a19941c15bec2c915298a5c95c7d2fab9882772bdb4dbe57a4d019f1"
+      },
+      "arm64": {
+        "config_digest": "sha256:fafb46ca9eb007831faa5f468f03c3ef4b2211cfa9ff58f0bc05c55444d0b558",
+        "manifest_digest": "sha256:a57ae8195d5b1ab3ecb3b932a4674258f3103e8bedef3685d1204a61d842d03f"
+      }
+    },
+    "repository": "portainer/portainer-ce",
+    "version": "2.45.3"
+  },
+  "schema_version": 1,
+  "shared_lifecycle_sha256": "c0e5e1c46887af8a69171fd3076f67bc64f5a21c9748829887eb6201206b256c",
+  "verified_at": "2026-11-04"
+}

@@ -132,3 +132,17 @@ test('The stdin command never exports private caller values or arbitrary excepti
  assert.equal(Buffer.concat(stderr).toString('utf8'),'');
  assert.equal(Buffer.concat(stdout).toString('utf8').includes('synthetic-private-secret'),false);
 });
+
+test('Canonical Portal observations require every source dimension and retain the original component limits',()=>{
+ const value=input();Object.assign(value.request.binding,{repository:'DruHustle/onesa-ug',schema_version:2,repository_id:1444746154,product:'portal',source_path:'onesa-company-portal',product_source_tree:'9'.repeat(40),branch:'main'});
+ value.raw=prepare(value);
+ validate(value.request,value.raw,value.values,now);
+ for(const [key,replacement] of Object.entries({schema_version:1,repository_id:'1444746154',product:'robot',source_path:'onesa-robot',product_source_tree:'bad',branch:'dev',component:'frontend',target_environment:'staging',release_authorized:true})){
+  const changed=structuredClone(value.request);changed.binding[key]=replacement;
+  assert.throws(()=>validate(changed,value.raw,value.values,now));
+ }
+ for(const key of ['schema_version','repository_id','product','source_path','product_source_tree','branch']){
+  const changed=structuredClone(value.request);delete changed.binding[key];
+  assert.throws(()=>validate(changed,value.raw,value.values,now));
+ }
+});

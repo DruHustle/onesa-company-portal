@@ -1,0 +1,18 @@
+--- a/pkg/oci/spec_opts_user_bounds_test.go
++++ b/pkg/oci/spec_opts_user_bounds_test.go
+@@ -63 +63,2 @@
+-			data := append(bytes.Repeat([]byte{0}, tc.padBytes), beyond...)
++			// Blank lines exercise the total-file cap independently of the parser's line cap.
++			data := append(bytes.Repeat([]byte{'\n'}, tc.padBytes), beyond...)
+@@ -146,0 +148,11 @@
++
++// A file below the 10 MiB file cap must still reject one oversized group line.
++// Keep this separate from TestOpenUserFileCapsReads: neither bound replaces the other.
++func TestGroupParserLineBoundIndependentOfFileCap(t *testing.T) {
++    t.Parallel()
++    data := append(bytes.Repeat([]byte{'x'}, 2 << 20), []byte("\nbeyond:x:42:\n")...)
++    fsys := fstest.MapFS{"etc/group": &fstest.MapFile{Data: data, Mode: 0o644}}
++    gids, err := getSupplementalGroupsFromFS(fsys, func(g user.Group) bool { return g.Name == "beyond" })
++    assert.ErrorContains(t, err, "token too long")
++    assert.Empty(t, gids, "Oversized group lines must not silently yield partial groups")
++}

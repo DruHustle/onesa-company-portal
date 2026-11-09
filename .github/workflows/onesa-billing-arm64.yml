@@ -1,0 +1,70 @@
+# Source: onesa-billing/scripts/ci/workflows/verify-arm64.yml; keep byte-for-byte content in sync.
+name: Onesa company billing native ARM64 verification
+on:
+  pull_request:
+    branches: [dev, staging, main]
+    paths:
+    - onesa-billing/**
+    - scripts/ci/**
+    - .github/workflows/onesa-billing-arm64.yml
+  push:
+    branches: [dev, staging, main]
+    paths:
+    - onesa-billing/**
+    - scripts/ci/**
+    - .github/workflows/onesa-billing-arm64.yml
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: onesa-billing-arm64-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  verify:
+    name: company-billing-arm64
+    if: >-
+      github.repository == 'DruHustle/onesa-company-portal' && github.repository_id == '1412150327' &&
+      github.event.repository.private == false && github.run_attempt == '1' &&
+      (github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    steps:
+    - name: Require the canonical public repository and native hosted ARM64 runner
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: |
+        test "$RUNNER_ENVIRONMENT" = github-hosted
+        test "$RUNNER_OS" = Linux
+        test "$RUNNER_ARCH" = ARM64
+        test "$(uname -m)" = aarch64
+        test "$GITHUB_REPOSITORY" = DruHustle/onesa-company-portal
+        test "$GITHUB_REPOSITORY_ID" = 1412150327
+        test "$GITHUB_RUN_ATTEMPT" = 1
+        test "$EXPECTED_PRIVATE" = false
+        test "$(gh api "repos/$GITHUB_REPOSITORY" --jq ".private")" = false
+        printf "BILLING_REPOSITORY_VISIBILITY=public\n" >> "$GITHUB_ENV"
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+      with:
+        node-version: '24.22.1'
+        architecture: arm64
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      with:
+        python-version: '3.11.18'
+        architecture: arm64
+    - name: Verify native profile boundaries and the private runtime fixture
+      run: |
+        python3 -m unittest discover -s onesa-billing/scripts/ci/test -p 'test_*.py'
+        node --test onesa-billing/scripts/ci/test/runtime_fixture.test.cjs
+    - name: Build, scan and verify the actual native ARM64 billing image
+      run: python3 onesa-billing/scripts/ci/runtime_acceptance.py --native-architecture arm64 --output "$RUNNER_TEMP/onesa-company-billing-arm64-runtime"
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      if: always()
+      with:
+        name: company-billing-arm64-runtime-${{ github.run_id }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/onesa-company-billing-arm64-runtime/*.json
+        retention-days: 3
+        if-no-files-found: error

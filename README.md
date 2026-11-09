@@ -194,3 +194,33 @@ credentials are preserved through verified linking. See the
 and [schema](docs/database/SCHEMA.md#shared-onesa-identity-prepared-migrations-013-and-014).
 The source feature is disabled by default; deployment and staging acceptance remain
 separate release requirements.
+
+### Company billing account
+
+The prepared `/account/billing` page reuses a verified Onesa account session or an
+existing MFA Portal session. It lists the current company catalog and the user's
+billing accounts, starts hosted Checkout, and reads purchase and invoice status.
+An uncertain purchase stays attached to its original operation and request keys;
+the page reads account history before offering another purchase. Payment status
+comes from the billing service's verified provider records. Returning from a
+hosted payment page alone does not confirm payment.
+
+The Portal backend supplies a fixed, authenticated bridge to the separate company
+billing service. Billing resolves its own account memberships; Portal staff,
+Engineering Docs and product roles grant no billing role. The existing split-host
+policy keeps account routes on the protected Portal hostname and the company
+hostname's API limited to public routes. No browser token paste or provider secret
+is needed. The frontend vendors reviewed billing web version `0.1.0` with an exact
+five-file manifest checked during its build.
+
+`BILLING_BRIDGE_ENABLED=false` is the default. The other backend-only placeholders
+in both environment examples remain empty until separately qualified issuer, key and
+private service configuration is available. Prefer the private key file input;
+never add Stripe, Metronome or signing credentials to frontend configuration.
+See the [billing API boundary](docs/api/API.md#company-billing-bridge-prepared-default-off),
+[configuration and checks](docs/engineering/BUILD_AND_TEST.md#company-billing-bridge-and-account-page),
+and [independent billing service](onesa-billing/README.md). The billing source lives
+in this Portal repository and retains its separate runtime, database and release
+qualification.
+This describes source behavior; deployment, merchant activation, tax configuration
+and actual hosted payment acceptance require their own evidence.

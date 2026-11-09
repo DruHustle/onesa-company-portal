@@ -1,5 +1,7 @@
 // Read-only, bounded inbox observations. SMTP/provider acceptance is not delivery.
 import tls from 'node:tls';
+import https from 'node:https';
+import {X509Certificate} from 'node:crypto';
 import {isIP} from 'node:net';
 import {setTimeout as delay} from 'node:timers/promises';
 
@@ -13,6 +15,15 @@ const address = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@[A-Za-z0-9.-]{3,189}$/;
 const quote = value => '"' + value.replaceAll('\\', '\\\\').replaceAll('"', '\\"') + '"';
 
 export function validateMailbox(value) {
+  if (value?.provider === 'zoho-eu-api') {
+    require(Object.getPrototypeOf(value) === Object.prototype &&
+      Object.keys(value).sort().join(',') === 'access_token,account_id,folder_id,provider,username', 'MAILBOX_SCHEMA');
+    require(typeof value.account_id === 'string' && /^[1-9][0-9]{0,23}$/.test(value.account_id) &&
+      typeof value.folder_id === 'string' && /^[1-9][0-9]{0,23}$/.test(value.folder_id) &&
+      value.username === 'acceptance@onesa.eu' &&
+      typeof value.access_token === 'string' && /^[A-Za-z0-9._-]{16,2048}$/.test(value.access_token), 'MAILBOX_CREDENTIAL_SCHEMA');
+    return value;
+  }
   require(value && Object.getPrototypeOf(value) === Object.prototype &&
     Object.keys(value).sort().join(',') === 'host,password,port,username', 'MAILBOX_SCHEMA');
   require(typeof value.host === 'string' && value.host.length <= 253 &&
@@ -130,10 +141,115 @@ export function deliveredLink(response, uid, observation) {
   return messageLink(response.literals[0], observation);
 }
 
+// Optional Zoho EU Mail API observer; its actual account/API entitlement must be
+// verified separately. URLs are constructed here and GETs cannot follow redirects.
+const ZOHO_ORIGIN = 'https://mail.zoho.eu';
+const ZOHO_REQUEST_INTERVAL = 2200;
+const liveZohoPacing = {nextAt: 0};
+export const ZOHO_BLOCKED_CA = '86a1ecba089c4a8d3bbe2734c612ba341d813e043cf9e8a862cd5c57a36bbe6b';
+export function zohoTLSRoots() {
+  require(typeof tls.getCACertificates === 'function', 'ZOHO_TLS_POLICY_UNAVAILABLE');
+  const roots = tls.getCACertificates('default').filter(pem =>
+    new X509Certificate(pem).fingerprint256.replaceAll(':', '').toLowerCase() !== ZOHO_BLOCKED_CA);
+  require(roots.length > 0, 'ZOHO_TLS_POLICY_UNAVAILABLE');
+  return roots;
+}
+function zohoTransport(url, options) {
+  // Native HTTPS never follows redirects and uses only policy-filtered roots.
+  return new Promise((resolve, reject) => {
+    const request = https.request(url, {method: 'GET', headers: options.headers, signal: options.signal,
+      servername: 'mail.zoho.eu', ca: zohoTLSRoots(), rejectUnauthorized: true, agent: false}, response =>
+      resolve({status: response.statusCode, body: response}));
+    request.once('error', reject); request.end();
+  });
+}
+async function zohoJson(path, token, deadline, transport) {
+  require(Date.now() < deadline && /^\/api\/accounts\/[1-9][0-9]{0,23}(?:\/messages\/(?:view|[1-9][0-9]{0,23}\/originalmessage)(?:\?[A-Za-z0-9=&]+)?)?$/.test(path), 'ZOHO_REQUEST_SCOPE');
+  require(process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0', 'ZOHO_TLS_REQUIRED');
+  const response = await transport(ZOHO_ORIGIN + path, {method: 'GET', redirect: 'error',
+    headers: {Authorization: 'Zoho-oauthtoken ' + token, Accept: 'application/json'},
+    signal: AbortSignal.timeout(Math.max(1, Math.min(15000, deadline - Date.now())))});
+  require(response && response.status === 200 && response.body, 'ZOHO_REQUEST_FAILED');
+  let bytes = 0; const chunks = [];
+  for await (const part of response.body) {
+    const chunk = Buffer.from(part); bytes += chunk.length; require(bytes <= MAX_RESPONSE, 'ZOHO_RESPONSE_BOUNDS'); chunks.push(chunk);
+  }
+  let value;
+  try {
+    // Zoho can send IDs as 19-digit JSON numbers; retain the exact source digits.
+    value = JSON.parse(Buffer.concat(chunks).toString('utf8'), (key, item, context) =>
+      ['messageId', 'accountId', 'folderId'].includes(key) && typeof item === 'number' &&
+        context?.source && /^[1-9][0-9]{0,23}$/.test(context.source) ? context.source : item);
+  } catch { throw new MailObservationError('ZOHO_RESPONSE_SCHEMA'); }
+  require(value && value.status?.code === 200 && value.data, 'ZOHO_RESPONSE_SCHEMA');
+  return value.data;
+}
+
+export async function observeZohoOnce(configuration, observation, seen, transport = zohoTransport, deadline = Date.now() + 15000, startedAt = Date.now()) {
+  const mailbox = validateMailbox(configuration);
+  require(mailbox.provider === 'zoho-eu-api' && seen instanceof Set && seen.size <= 1000, 'MAILBOX_SCHEMA');
+  const now = Date.now();
+  require(Number.isFinite(startedAt) && startedAt <= now && Number.isFinite(deadline) &&
+    now < deadline && deadline <= startedAt + 90000 && address.test(observation.recipient) &&
+    Number.isFinite(observation.after) && observation.after >= startedAt - 60000 &&
+    observation.after <= startedAt, 'MAIL_OBSERVATION_WINDOW');
+  const base = '/api/accounts/' + mailbox.account_id;
+  const account = await zohoJson(base, mailbox.access_token, deadline, transport);
+  require(account.accountId === mailbox.account_id && account.primaryEmailAddress === mailbox.username &&
+    account.role === 'member' && account.enabled === true, 'ZOHO_ACCOUNT_SCOPE');
+  const rows = await zohoJson(base + '/messages/view?folderId=' + mailbox.folder_id + '&limit=50&sortBy=date&sortorder=false', mailbox.access_token, deadline, transport);
+  require(Array.isArray(rows) && rows.length <= 50, 'ZOHO_LIST_SCHEMA');
+  const unique = new Set();
+  for (const row of rows) {
+    require(row && typeof row.messageId === 'string' && /^[1-9][0-9]{0,23}$/.test(row.messageId) &&
+      row.folderId === mailbox.folder_id && typeof row.receivedTime === 'string' && /^[0-9]{1,16}$/.test(row.receivedTime) &&
+      typeof row.size === 'string' && /^[0-9]{1,6}$/.test(row.size) && Number(row.size) > 0 && Number(row.size) <= MAX_MESSAGE &&
+      !unique.has(row.messageId), 'ZOHO_LIST_SCHEMA');
+    unique.add(row.messageId);
+  }
+  for (const row of rows) {
+    const received = Number(row.receivedTime);
+    if (!Number.isSafeInteger(received) || received < observation.after - 30000 || received > Date.now() + 30000 || seen.has(row.messageId)) continue;
+    const message = await zohoJson(base + '/messages/' + row.messageId + '/originalmessage', mailbox.access_token, deadline, transport);
+    require(message.messageId === row.messageId && typeof message.content === 'string' &&
+      Buffer.byteLength(message.content) <= MAX_MESSAGE, 'ZOHO_MESSAGE_SCHEMA');
+    seen.add(row.messageId);
+    const link = messageLink(Buffer.from(message.content, 'utf8'), observation);
+    if (link) return link;
+  }
+  return null;
+}
+
+export async function waitForZoho(mailbox, observation, transport = zohoTransport, pause = delay) {
+  const seen = new Set(), startedAt = Date.now(), deadline = startedAt + 90000;
+  // Keep live pacing across sequential account observations. Freshness binds to
+  // admission, so a legitimate delivery after 60 seconds can use the full window.
+  // 2.2 seconds between GET starts stays below Zoho's 30 requests/minute limit.
+  const pacing = transport === zohoTransport ? liveZohoPacing : {nextAt: 0};
+  const pacedTransport = async (url, options) => {
+    const requestAt = Math.max(Date.now(), pacing.nextAt);
+    pacing.nextAt = requestAt + ZOHO_REQUEST_INTERVAL;
+    if (requestAt > Date.now()) await pause(Math.min(requestAt - Date.now(), Math.max(0, deadline - Date.now())));
+    require(Date.now() < deadline, 'INBOX_DELIVERY_NOT_OBSERVED');
+    options.signal.throwIfAborted();
+    return transport(url, options);
+  };
+  while (Date.now() < deadline) {
+    const link = await observeZohoOnce(mailbox, observation, seen, pacedTransport, deadline, startedAt);
+    if (link) return link;
+    await pause(Math.min(3000, Math.max(0, deadline - Date.now())));
+  }
+  throw new MailObservationError('INBOX_DELIVERY_NOT_OBSERVED');
+}
+
 export async function waitForDeliveredLink(configuration, observation) {
   const mailbox = validateMailbox(configuration);
   require(address.test(observation.recipient) && Number.isFinite(observation.after) &&
     observation.after >= Date.now() - 60000 && observation.after <= Date.now(), 'MAIL_OBSERVATION_WINDOW');
+  if (mailbox.provider === 'zoho-eu-api') {
+    try { return await waitForZoho(mailbox, observation); }
+    catch (error) { if (error instanceof MailObservationError) throw error; throw new MailObservationError('MAILBOX_OBSERVATION_FAILED'); }
+  }
   let socket;
   try {
     socket = tls.connect({host: mailbox.host, port: mailbox.port, servername: mailbox.host,

@@ -1,0 +1,2624 @@
+{
+  "schema_version": 1,
+  "vendor_sha256": "49dcecdb4f64f5e92bdc52d204d407fb39729e492f09074488125ee58b6f2895",
+  "vendor_inventory_sha256": "8053e99626239741fe01d32346faa99a96a93bea5ca318790162b0f02d004a70",
+  "payload": "cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f",
+  "files": [
+    {
+      "path": "notices/buildroot/COPYING",
+      "sha256": "9755181e27175cb3510b4da8629caa406fb355a19aa8e7d55f06bf8ab33323c4",
+      "bytes": 18767,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/check-config-lxc/COPYING",
+      "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+      "bytes": 26530,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/check-config-moby/LICENSE",
+      "sha256": "7c87873291f289713ac5df48b1f2010eb6963752bbd6b530416ab99fc37914a8",
+      "bytes": 10765,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/check-config-moby/NOTICE",
+      "sha256": "b40ec5b16182103ef1cd69d42a21c98369e35bd483b3973902da4807c0755446",
+      "bytes": 642,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni-modules/github.com/alexflint/go-filemutex@v1.3.0/LICENSE",
+      "sha256": "240de627ae367c36d073fcd3ee6089eac119dccfebcfe28f0f91dab499dd3fb1",
+      "bytes": 1098,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni-modules/github.com/containernetworking/cni@v1.3.0/LICENSE",
+      "sha256": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+      "bytes": 11358,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni-modules/github.com/coreos/go-iptables@v0.8.0/LICENSE",
+      "sha256": "73ba74dfaa520b49a401b5d21459a8523a146f3b7518a833eea5efa85130bf68",
+      "bytes": 10273,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni-modules/github.com/coreos/go-iptables@v0.8.0/NOTICE",
+      "sha256": "572b159624f1898b40e9f09c9e4cfb65a595044960982aa95126bc28f7d1e6c0",
+      "bytes": 126,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni-modules/github.com/godbus/dbus/v5@v5.1.0/LICENSE",
+      "sha256": "e4646a82a976369d7ae8f6ed5c11d35dc0af18433a8ccc24c85b459ad8b95128",
+      "bytes": 1328,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni-modules/github.com/mattn/go-shellwords@v1.0.12/LICENSE",
+      "sha256": "dce57e2906b8ebfc7a0978105aac3082ddceb8a1f673bec71b9c8dc5df51c5d7",
+      "bytes": 1085,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni-modules/github.com/moby/sys/reexec@v0.1.0/LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni-modules/github.com/networkplumbing/go-nft@v0.4.0/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni-modules/github.com/pkg/errors@v0.9.1/LICENSE",
+      "sha256": "8d427fd87bc9579ea368fde3d49f9ca22eac857f91a9dec7e3004bdfab7dee86",
+      "bytes": 1312,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni-modules/github.com/safchain/ethtool@v0.6.2/LICENSE",
+      "sha256": "9b630bec609d7f1fa60387ecf3ccc3e1c86e8e18503ae07d050c26b174bbc8d9",
+      "bytes": 11354,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni-modules/github.com/vishvananda/netlink@v1.3.1/LICENSE",
+      "sha256": "04cf148229e562c643203d1ee8c43aae2022e5130e95ceb8ba8357a27c1a9abe",
+      "bytes": 10796,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni-modules/github.com/vishvananda/netns@v0.0.5/LICENSE",
+      "sha256": "04cf148229e562c643203d1ee8c43aae2022e5130e95ceb8ba8357a27c1a9abe",
+      "bytes": 10796,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni-modules/golang.org/x/sys@v0.40.0/LICENSE",
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "bytes": 1453,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni-modules/sigs.k8s.io/knftables@v0.0.18/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/cni/LICENSE",
+      "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+      "bytes": 11357,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/flannel/LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/go1.26.10/LICENSE",
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "bytes": 1453,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/k3s-root/LICENSE",
+      "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+      "bytes": 10175,
+      "kind": "notice"
+    },
+    {
+      "path": "notices/k3s/LICENSE",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "bytes": 10174,
+      "kind": "notice"
+    },
+    {
+      "path": "provenance/cni-build-info.txt",
+      "sha256": "7756b25122437c188646b73dbbad9ab05c363dd69f4b6ed8171ef74855380e6f",
+      "bytes": 3112,
+      "kind": "provenance"
+    },
+    {
+      "path": "provenance/cni-module-checksums.json",
+      "sha256": "d566340fc9103c080dfa3fb53a5de6b1cce89c1d2eadb33b61be6a89c2c82851",
+      "bytes": 2660,
+      "kind": "provenance"
+    },
+    {
+      "path": "provenance/go-source-download.json",
+      "sha256": "1d738606d86a81b632d18128df17ec17ccab053263e47a595a1a30edc2ca9db0",
+      "bytes": 213,
+      "kind": "provenance"
+    },
+    {
+      "path": "provenance/libcap-patch-context-adaptation.json",
+      "sha256": "f87e7213b68d31104e37e163fe829e104894efb7cdc805721eee569639958c66",
+      "bytes": 424,
+      "kind": "provenance"
+    },
+    {
+      "path": "provenance/libtirpc-patch-context-adaptation.json",
+      "sha256": "9fec7d7c885c670f8b0e9e8f9fef3bdea4e89f11a9801d0fafdc2e3c6f656b23",
+      "bytes": 264,
+      "kind": "provenance"
+    },
+    {
+      "path": "provenance/nfs-patch-context-adaptation.json",
+      "sha256": "c1e2c1d40cdee683819eb6ddee96387418b8e5ade371675b3da3e9f85576cd3d",
+      "bytes": 255,
+      "kind": "provenance"
+    },
+    {
+      "path": "provenance/package-info.json",
+      "sha256": "ba4f681132ef98e08730d66a4ff21a199b31ecaa191c920d095f7fa3ad9fbbde",
+      "bytes": 99386,
+      "kind": "provenance"
+    },
+    {
+      "path": "provenance/source-download-plan.json",
+      "sha256": "d80345e969936dbc44f5b1005e425779039b5c8d1a960e8983de4902b96c9020",
+      "bytes": 8183,
+      "kind": "provenance"
+    },
+    {
+      "path": "provenance/source-provenance.json",
+      "sha256": "d7f8b6e1bd84fcc21d2ee70253fe597d63b0adb2647f581482d6981fc7e2e895",
+      "bytes": 468,
+      "kind": "provenance"
+    },
+    {
+      "path": "provenance/userspace-source-custody.json",
+      "sha256": "33932c26cc671df1d515f4e511883ff7b260c0ccf17f1cd49c758c26657104ee",
+      "bytes": 35615,
+      "kind": "provenance"
+    },
+    {
+      "path": "recipes/buildroot.config",
+      "sha256": "2c1fec4cb4139499c66fd9b6ccd85c557807ba2a24d705b6fcbb5b674ff7fc8a",
+      "bytes": 140133,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0001-networking-libiproute-use-linux-if_packet.h-instead-.patch",
+      "sha256": "91456b44b6b91f7fecee0cec375d6d9dc8ab497eb6f9dae0d475f2bbd4daeaf4",
+      "bytes": 1247,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0002-Makefile.flags-strip-non-l-arguments-returned-by-pkg.patch",
+      "sha256": "80f5c505e59f6a3ad2d1fb6006c6814b572849a15396083e959ab0f08657cb1f",
+      "bytes": 1174,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0003-libbb-sockaddr2str-ensure-only-printable-characters-.patch",
+      "sha256": "5d063d321e86c0a40cbc9875491675becb6474123c3426a994c7afb076555f3e",
+      "bytes": 1512,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0004-nslookup-sanitize-all-printed-strings-with-printable.patch",
+      "sha256": "dc494525a7120c28dbc0afa238c6cfebfd2a5ee59bb255c481bfd675bcb2a4dd",
+      "bytes": 2521,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0005-seedrng-fix-getrandom-detection-for-non-glibc-libc.patch",
+      "sha256": "8f6634f457ad26ab6f88dffe64c971a75f81251e1565085904f9b44bfd3fbc52",
+      "bytes": 4152,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0006-menuconfig-GCC-failing-saying-ncurses-is-not-found.patch",
+      "sha256": "a26b5b699d84d01d19a291b4dcc53c117a3326d3a58ec205caaf238d2ed217ff",
+      "bytes": 1390,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0007-tc-Fix-compilation-with-Linux-v6.8-rc1.patch",
+      "sha256": "1e07632c8c7f76eb2d87bcd574dd0f785874c4d307ad0a22e822943c66cc6978",
+      "bytes": 2266,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0008-awk.c-fix-CVE-2023-42366-bug-15874.patch",
+      "sha256": "3f221c1015776a8e9f18a2c6941dd6c2a54b0257f7136fd88e86543742de58fc",
+      "bytes": 1458,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0009-hwclock-Check-for-SYS_settimeofday-before-calling-sy.patch",
+      "sha256": "f50dae9976a0022de9f0122d724394561daad6266b39e27f1c3fe5eb4164b759",
+      "bytes": 2195,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0010-libbb-sha-add-missing-sha-NI-guard.patch",
+      "sha256": "1191339ec410b0d9887cd9a8ec955aa87d5e1155a23155ce39d7b0e7fb3e09ec",
+      "bytes": 2359,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0011-syslogd-fix-wrong-OPT_locallog-flag-detection.patch",
+      "sha256": "f6644c4c40c48c43edd8650b95bb42d685aeb9d7487270226864ec93bf46bb27",
+      "bytes": 1504,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0012-archival-libarchive-sanitize-filenames-on-output.patch",
+      "sha256": "1be6414cf4f9e890bc0a90c5d2e8bdc4b7768fd00c252f9a28e180ee87f1fed5",
+      "bytes": 2272,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0013-testsuite-tar-tests-fix-test-after-cve-2025-46394.patch",
+      "sha256": "738615776b0dca878b170f9242bab7d07023e5cb70dfe7c19fcfed3e72dfad4b",
+      "bytes": 1421,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0014-wget-dont-allow-control-characters-or-spaces-in-the-URL.patch",
+      "sha256": "0506f13375c2425d2ff46a453616a9cb88de1a0c6878d26cd5fdc8ae9ebea51f",
+      "bytes": 1505,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0015-netstat-sanitize-argv0-for-p-CVE-2024-58251.patch",
+      "sha256": "c111e4aec4459a6a79b4e2a0b990ddbf1d8337cb45f66bcd4b88bb4b9f72b7ea",
+      "bytes": 1844,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0016-archival-disallow-path-traversals-CVE-2023-39810.patch",
+      "sha256": "0b716ec8a748de31a9e57ce6b6e0da00eb9a72657146b03a19eeef3f5b15ee72",
+      "bytes": 4930,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0017-tar-strip-unsafe-hardlink-components.patch",
+      "sha256": "154111adf8b62a3f26086003cdef7a3396d8a6e3a1b45c3aa9c6aafb48d24853",
+      "bytes": 7482,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0018-only-strip-unsafe-components-from-hardlinks.patch",
+      "sha256": "1769201465ef71cfaa5783ae7ca9acae5d32dcf79efdd25c2d9d3227ddd37913",
+      "bytes": 1630,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0019-CVE-2026-29004-01.patch",
+      "sha256": "a13645d59e67b87fa2031e327b66bd0ee13edc9a46ac055c62d75add147093fd",
+      "bytes": 1261,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/busybox/0020-CVE-2026-29004-02.patch",
+      "sha256": "06e6e7f6d05c2b20909b65011d763da885d120baccb43ca478cd80a427568703",
+      "bytes": 1731,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/conntrack-tools/0100-static.patch",
+      "sha256": "82e7a41f0360b927556c8ad63f53f25fcb10236cbc61962771fef3ad82384224",
+      "bytes": 351,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/coreutils/0001-coreutils-mcel-port-to-uClibc-ng.patch",
+      "sha256": "006b2db49e3e777cf1c204b68957daf624eb40366ddd0745d846bc8cca29c33d",
+      "bytes": 1386,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/ebtables/0001-replace-ebtables-save-perl-script-with-bash.patch",
+      "sha256": "f391a8ae12f805cd31a690be722b6f2b8419010354fece98b490124c1cdea6ab",
+      "bytes": 2169,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/gmp/0001-Complete-function-prototype-in-acinclude.m4-for-C23-.patch",
+      "sha256": "b4a584a36e61b3c1050e98a05e2c72b6f5401a72366423b7e62d903b4b44395b",
+      "bytes": 1603,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/iproute2/0001-nstat-NULL-Dereference-when-no-entries-specified.patch",
+      "sha256": "d146f6242bcecfd7bc38f823d519a0df5d559a9a1bde225739a063ba8ab0e36e",
+      "bytes": 1315,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/ipset/0001-ipset-fix-implicit-declaration-of-function-basename.patch",
+      "sha256": "5fbe7192da23712f298f937fe7f4daa0a3a756d509bf6134bcac1be5bfd671d0",
+      "bytes": 968,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/iptables/0001-nft-fix-interface-comparisons-in-C-commands.patch",
+      "sha256": "9cca9e3536c1f0ebfa18d3de80fbea064c0a931e51690a025c691a5eae5289cf",
+      "bytes": 6837,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libcap/0001-Address-a-potential-TOCTOU-race-condition-in-cap-set-file.patch",
+      "sha256": "1ebeea14475e1e0311f3a17c2f393730f767f05ddf7b41fc3093a9fb9ffcc040",
+      "bytes": 5161,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libffi/0001-Fix-use-of-compact-eh-frames-on-MIPS.patch",
+      "sha256": "c34863b864eb7bb8c823197cdd055f2bee2bc06142e064c5971358648bc4283e",
+      "bytes": 1588,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libffi/0002-arc-Fix-warnings.patch",
+      "sha256": "e39ad80fafc458e9f61eedd8e8d7d07f8ce915fb184d2f1cb49d3554654440ef",
+      "bytes": 1888,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libffi/0003-arc-Do-not-use-mov_s-and-movl_s-instructions.patch",
+      "sha256": "7c5137e936b7a8c4231c8f6738525cca13c8f5506ca634c46a66ad3556cd6e60",
+      "bytes": 1354,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libffi/0004-src-or1k-ffi.c-fix-prototype-of-ffi_call_SYSV.patch",
+      "sha256": "d4ee282f4b0736cc2363e71711d5a8370719ab50a01d12026e753c4c297efcb0",
+      "bytes": 2008,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libffi/0005-src-or1k-ffi.c-fix-incompatible-pointer-type.patch",
+      "sha256": "91d658c3532c47c27b00cc1c9c8f46f08d9b2c245e1a9fde997f00b79b4aee2f",
+      "bytes": 1647,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libglib2/0001-gstring-Fix-overflow-check-when-expanding-the-string.patch",
+      "sha256": "994b9822357b7d9b40d4962349ce4ad468684003e539d3476267a1aec44becd2",
+      "bytes": 2849,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libglib2/0002-gfileutils-fix-computation-of-temporary-file-name.patch",
+      "sha256": "8220fc45cd2d13fd5b1004bcc33fc4e9163f8cb59ffed9b7b94ab1ff0f17fdd5",
+      "bytes": 1340,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libglib2/0003-gvariant-parser-Fix-potential-integer-overflow-parsi.patch",
+      "sha256": "739d9971608dee0fc3db1f1692b84f198790e9d19249d52bd281928542283745",
+      "bytes": 2320,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libglib2/0004-gvariant-parser-Use-size_t-to-count-numbers-of-child.patch",
+      "sha256": "4fd068412faa9309a1be3356002ef75ba5151c4174fe539ea00e560ab2747c5a",
+      "bytes": 7697,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libglib2/0005-gvariant-parser-Convert-error-handling-code-to-use-s.patch",
+      "sha256": "81fa884c9a39be2a9391620c75eef5171af9c1d90b5d17392c9bec7e2babc5b0",
+      "bytes": 4859,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libmnl/0001-examples-add-rtnl-link-can.patch",
+      "sha256": "ca7ccdc5da43b32799215d2be06962eccf1eddb60e8157758ecc60f45079b9ba",
+      "bytes": 13223,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libmnl/0002-include-cache-copy-of-can.h-and-can-netlink.h.patch",
+      "sha256": "a13a92e5795b619fa1d7e6fab4ab6a2939df2ab222653d8e95596194849cb761",
+      "bytes": 20063,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libnetfilter_conntrack/0001-conntrack-fix-build-with-kernel-5-15-and-musl.patch",
+      "sha256": "6558a81b880364b620844dbc15fd50ca2ac5145de3e8af0f346c6d118f4aca63",
+      "bytes": 2146,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libtirpc/0001-Update-declarations-to-allow-compile-with-gcc-15.patch",
+      "sha256": "384898b8ca18fdf7b28ea1fa8eece1f8f7bba730559dd2b0e64eae0bba96eaeb",
+      "bytes": 2128,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/libtirpc/0002-update-signal-and-key_call-declarations-to-allow-com.patch",
+      "sha256": "8f406580fcf750b6d3a8242e4e2d3532ce2710d246dec5a3faa9ec26072343f8",
+      "bytes": 2257,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/musl/0001-avoid-kernel-if_ether.h.patch",
+      "sha256": "7fb1ec8ed9bda3b670d03b8cb9a46f769276ae066c3b975ee9cc974284bd97fd",
+      "bytes": 819,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/musl/0002-package-musl-Make-scheduler-functions-Linux-compatib.patch",
+      "sha256": "d074724a3edc8f9a86b207ce4baf9a9b24a5f24cb26d1075f3df6bdb8e9495a7",
+      "bytes": 2262,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/musl/0003-fix-pathological-slowness-incorrect-mappings-in-icon.patch",
+      "sha256": "98506a81bca5f3807b3ab2b10c7ee2298ec73354e8368ea6eb80080af2bacfd7",
+      "bytes": 7666,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/musl/0004-qsort-fix-leonardo-heap-corruption-from-bug-in-doubl.patch",
+      "sha256": "435af2170b2929951e664522b29538b98931048e9be566a7780298b0d654fe09",
+      "bytes": 1650,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/musl/0005-qsort-hard-preclude-oob-array-writes-independent-of-.patch",
+      "sha256": "322830abe71d97e3348c35c0f5b806135603121b31555f7536e45ef4964c900c",
+      "bytes": 3106,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/musl/0006-qsort-fix-shift-UB-in-shl-and-shr.patch",
+      "sha256": "b9d740558f3770b1659ed489bddedb8e9b092f04319f805756eac90c061720df",
+      "bytes": 1321,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0001-sys-utils-setarch.c-fix-build-with-uclibc-ng-1.0.39.patch",
+      "sha256": "e32687c00479ee7b88e8370b8e1b2213ffb57948416104f829fe7c0101a029f9",
+      "bytes": 1458,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0002-c.h-consolidate-THREAD_LOCAL.patch",
+      "sha256": "73483b60b04c728e50e4f31caaa958cbc2edfb2de4c3546a9c6b399a7ad67f5f",
+      "bytes": 1597,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0003-autotools-define-HAVE_LIBPTHREAD-and-PTHREAD_LIBS.patch",
+      "sha256": "0df313ead00a7418e2772c0bb52808aa082948765d9c4fb527e15e6e6a6ee4a5",
+      "bytes": 1415,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0004-meson-add-HAVE_LIBPTHREAD.patch",
+      "sha256": "093f24a8d078f0d615c1e15ad51ce4cb079c94a60bcc52afb8df2b3bf373b87f",
+      "bytes": 746,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0005-libuuid-support-non-cached-scenarios-when-lpthread-i.patch",
+      "sha256": "75ba6070e49cc09f50a101c1dff138b75007389ab3e0aaf3d499b102b6478e49",
+      "bytes": 2504,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0006-add-loopdev-fl-nofollow.patch",
+      "sha256": "265fddbc77b8d57829cb3622e4ee43b6e9599409cf58838b0ed35c4c4ff36dfd",
+      "bytes": 4216,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0007-lib-path-avoid-double-free-for-cpusets.patch",
+      "sha256": "6a0399ee9baff5c7d4fd06aaab422df30a3a2caaead97151ab06395dbc654f5a",
+      "bytes": 860,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0008-CVE-2025-14104-1.patch",
+      "sha256": "77126ce7b8a76db5dd0e9932f667df789a0d4b9d201c98f6b7759c69b058c1ea",
+      "bytes": 1266,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0009-CVE-2025-14104-2.patch",
+      "sha256": "5f983895ac45e87de03e72d3c0807cf4a4cc4154a13d460c6b58536eb291215b",
+      "bytes": 858,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0010-CVE-2026-53612.patch",
+      "sha256": "80ab8c029776bd9853cd5b95d41222f53a7e57bc22b86af487329a02412ff8c1",
+      "bytes": 2984,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0011-CVE-2026-53613-1.patch",
+      "sha256": "46981da397f15fdbad33d0541eae24ab3725b02ffa969916b4f07bd161751300",
+      "bytes": 2856,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0012-CVE-2026-53613-2.patch",
+      "sha256": "3bc1362ad2127e51cb242c9bfbbc3418a53b820792871e8db4496561a6d4d43b",
+      "bytes": 6143,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0013-CVE-2026-53614.patch",
+      "sha256": "8be57ccb953a5c03f4d310ffa508c32f56c9bf75c385df5d43776993ddf2c1ad",
+      "bytes": 2754,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0014-loopdev-use-openat2-RESOLVE_NO_SYMLINKS-for-backing-.patch",
+      "sha256": "298a6cdf0c9bc43387816ab9d038958f9ab5577fc447a7efd86db6c4d0a53600",
+      "bytes": 2191,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/buildroot/package/util-linux/0015-CVE-2026-13595.patch",
+      "sha256": "14ec55f6154157f6aea4c4b6bed8ce0191f4b8ae77deb9271549f87e90db28df",
+      "bytes": 5231,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/check-config.sh",
+      "sha256": "6bcb732ad5185b8e6589d38b2d21a67c677b45336e418dddba027283ebfea5d4",
+      "bytes": 14335,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/Dockerfile",
+      "sha256": "6743d45a53fb4ac43b1b00b0b6ac1a8b7ca418e70beabb5226100e6fadbcfeb2",
+      "bytes": 1131,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/buildroot/amd64config",
+      "sha256": "45c75ab5fd90e15681f8e128f6bfcfec2c639540d8522d73479173d043235030",
+      "bytes": 2472,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/buildroot/arm64config",
+      "sha256": "989c228b4867ba619be67e94e8456e914fff73a1c03b9908afad0747d9458316",
+      "bytes": 2305,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/buildroot/armconfig",
+      "sha256": "50867937bfee374dec25592cb6620d3240d666f0aa07f83e5e057243d1892fe8",
+      "bytes": 2475,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/buildroot/config",
+      "sha256": "e9c347d391a65383a314dc45487978d3e0673a4f4652442d1bd4d2aa9b33fe9b",
+      "bytes": 137615,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/buildroot/riscv64config",
+      "sha256": "b1464e49ca5b211b1ec477e818909a3621364fa50134cf68c749a40215f2d636",
+      "bytes": 895,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/iptables-detect/README.md",
+      "sha256": "82859d35cebb64f241b5946768768f34bbc4a21607421641e85349b49b3ae669",
+      "bytes": 1325,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/iptables-detect/iptables-detect.sh",
+      "sha256": "baf828389b1545c6867573daddd042df435b140ead8b2f758a3f3e3677fd4e80",
+      "bytes": 7996,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/iptables-detect/xtables-set-mode.sh",
+      "sha256": "454dcddfe5d3ec102c60d7ac363a33e602c803b020acd9602acf5747ac1f77f0",
+      "bytes": 2214,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/package/busybox/0001-networking-libiproute-use-linux-if_packet.h-instead-.patch",
+      "sha256": "91456b44b6b91f7fecee0cec375d6d9dc8ab497eb6f9dae0d475f2bbd4daeaf4",
+      "bytes": 1247,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/package/busybox/0002-Makefile.flags-strip-non-l-arguments-returned-by-pkg.patch",
+      "sha256": "80f5c505e59f6a3ad2d1fb6006c6814b572849a15396083e959ab0f08657cb1f",
+      "bytes": 1174,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/package/busybox/busybox.config",
+      "sha256": "ea03bf84fad41a8a04896906c661c73bdaedea4b6cecf7931f4bcef64c621282",
+      "bytes": 32798,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/package/conntrack-tools/0100-static.patch",
+      "sha256": "82e7a41f0360b927556c8ad63f53f25fcb10236cbc61962771fef3ad82384224",
+      "bytes": 351,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/package/conntrack-tools/Config.in",
+      "sha256": "d6747e5d6f84852bfb6a5197d6b5b733b1d9d13f4588bcf35cd91affde92d356",
+      "bytes": 815,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/package/conntrack-tools/conntrack-tools.hash",
+      "sha256": "ad85f6a7ae1780e7a2fad35f06b455571d512258774a2fc1e3a28642bcb56c6f",
+      "bytes": 215,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/package/conntrack-tools/conntrack-tools.mk",
+      "sha256": "34ff4cdf37f5ad15bcfc6461173dea9b469500b6563095c584192a2224960ce2",
+      "bytes": 766,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/package/fakeroot/0100-fixup.patch",
+      "sha256": "f9069c14967ebaa435665e20cc29f3bb6904c19f6cd8b6b2811951da1bc0a024",
+      "bytes": 711,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/package/fuse-overlayfs/Config.in",
+      "sha256": "46474507b63ad81190503dacbaa79b5d9082f6799571395f733ccf9d47739dce",
+      "bytes": 562,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/patches/0100-package-iproute2-fixup.patch",
+      "sha256": "7407be5b717fb68d4a2550ee2fe8d80241d2b3ed0d7b4dd1870240c1e93fb9ba",
+      "bytes": 824,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/patches/0100-package-iptables-static.patch",
+      "sha256": "81086a67b3d096056dcf4c4215c0b73e7fefd35c5250b28fceba97078373bd16",
+      "bytes": 614,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/patches/0100-package-libcap-fixup.patch",
+      "sha256": "154aa9f4c9a6bf001741f94d0089f10c1c6bc1f7c8421ad6401bfcf6189fc814",
+      "bytes": 921,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/patches/0100-package-libfuse3-static.patch",
+      "sha256": "b8b1867de948c36097317a14710e55133cd7a53f6a021a8cdccbe5c4fc5075bd",
+      "bytes": 558,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/patches/0100-package-libtirpc-fixup.patch",
+      "sha256": "9462a59e7a59cd972092d8c8cb2e6e489f1ea00c17a9bd5abbfa4bc6b717cce2",
+      "bytes": 800,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/patches/0100-package-linux-headers-install.patch",
+      "sha256": "fc08775e9308286bd6852d69fada2fcc9466aa0cdb28d7788c283e6aa340b167",
+      "bytes": 401,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/patches/0100-package-nfs-utils-fixup.patch",
+      "sha256": "8293cfc8e6d043fd14e7220710acceebffa0be132003e2ccf3af15bf82fd0dd3",
+      "bytes": 538,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/patches/0100-package-nftables-libnftnl-versions.patch",
+      "sha256": "c50adbede0de7efd1b8f4b0d9878ba5d4ce9901818b3ca7f90adc1afdd4cca47",
+      "bytes": 2681,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/scripts/build",
+      "sha256": "0d8d6935f688308e4284ce8328822283754915c3d533f043c8e98ba20e874f5e",
+      "bytes": 144,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/scripts/ci",
+      "sha256": "d5616359e3bd4f732d9d6021d58e0dac20b5c25a18c1e29056296b95a0004213",
+      "bytes": 122,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/scripts/download",
+      "sha256": "632c0de0a82c0fc5723c2039d7c4c5d319b998d16f49a26420fbd4506493dfe5",
+      "bytes": 282,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/scripts/package",
+      "sha256": "82669f81122e1c4b47ddc31debc56106a45ef286c4a95ac17572c2a9822322c9",
+      "bytes": 2305,
+      "kind": "recipe"
+    },
+    {
+      "path": "recipes/k3s-root/scripts/patch",
+      "sha256": "b9c623ae2346e2f2461fe6debe5ee3dcf3ab4a07f898d3243d1ffe257679393b",
+      "bytes": 340,
+      "kind": "recipe"
+    },
+    {
+      "path": "sources/buildroot.tar.gz",
+      "sha256": "32e0115b41fc3a3659f13ed64b14843a98b0ccc0ac4b9edc50f918f952369419",
+      "bytes": 7229543,
+      "kind": "source",
+      "url": "https://codeload.github.com/buildroot/buildroot/tar.gz/d030e36bbc9669230c015be971b14b6e062cfdde"
+    },
+    {
+      "path": "sources/check-config-lxc.tar.gz",
+      "sha256": "64f86c538a9c7a4d93a24cb9e969075c0a9df1ea5ac91aad24d75555ab5d4b86",
+      "bytes": 532260,
+      "kind": "source",
+      "url": "https://codeload.github.com/lxc/lxc/tar.gz/91a3c828da5a33719753bb205e01f60041ee22ae"
+    },
+    {
+      "path": "sources/check-config-moby.tar.gz",
+      "sha256": "c31784504d91e7afe09eb82c2d4697b18776c75d394bb4dcdf339d7a586ec5ea",
+      "bytes": 9499055,
+      "kind": "source",
+      "url": "https://codeload.github.com/moby/moby/tar.gz/c83188248e9c310b766942eac50fc84c533b7abe"
+    },
+    {
+      "path": "sources/cni-modules/github.com/alexflint/go-filemutex@v1.3.0.zip",
+      "sha256": "ed65d87b6614be009bb000847311cf6a0b89b010f93589d479c7f2f7d3a58a60",
+      "bytes": 6253,
+      "kind": "source",
+      "url": "https://proxy.golang.org/github.com/alexflint/go-filemutex/@v/v1.3.0.zip"
+    },
+    {
+      "path": "sources/cni-modules/github.com/containernetworking/cni@v1.3.0.zip",
+      "sha256": "7badb83e3b25468653c98f63f5d57ecfee92ef9022f203773de79fa777e445db",
+      "bytes": 186704,
+      "kind": "source",
+      "url": "https://proxy.golang.org/github.com/containernetworking/cni/@v/v1.3.0.zip"
+    },
+    {
+      "path": "sources/cni-modules/github.com/coreos/go-iptables@v0.8.0.zip",
+      "sha256": "48d679f4287e901385f1707d83e8e766089feee5ec36d0810b23d3b7ddeec4d1",
+      "bytes": 21540,
+      "kind": "source",
+      "url": "https://proxy.golang.org/github.com/coreos/go-iptables/@v/v0.8.0.zip"
+    },
+    {
+      "path": "sources/cni-modules/github.com/godbus/dbus/v5@v5.1.0.zip",
+      "sha256": "03dfa8e71089a6f477310d15c4d3a036d82d028532881b50fee254358e782ad9",
+      "bytes": 105330,
+      "kind": "source",
+      "url": "https://proxy.golang.org/github.com/godbus/dbus/v5/@v/v5.1.0.zip"
+    },
+    {
+      "path": "sources/cni-modules/github.com/mattn/go-shellwords@v1.0.12.zip",
+      "sha256": "6d35c3edc92e47a06988788d683c1ad389719b55ef19d5a7f239ab4708b6da11",
+      "bytes": 9134,
+      "kind": "source",
+      "url": "https://proxy.golang.org/github.com/mattn/go-shellwords/@v/v1.0.12.zip"
+    },
+    {
+      "path": "sources/cni-modules/github.com/moby/sys/reexec@v0.1.0.zip",
+      "sha256": "3d9e1e4628e61f0e86aab5a0f4f947396686e12102721590bd0966f3600bae22",
+      "bytes": 7144,
+      "kind": "source",
+      "url": "https://proxy.golang.org/github.com/moby/sys/reexec/@v/v0.1.0.zip"
+    },
+    {
+      "path": "sources/cni-modules/github.com/networkplumbing/go-nft@v0.4.0.zip",
+      "sha256": "c59d9713cd66c5d24c799036fc624da1b63e41a3168f115f2f6311c1bba0c9b3",
+      "bytes": 51545,
+      "kind": "source",
+      "url": "https://proxy.golang.org/github.com/networkplumbing/go-nft/@v/v0.4.0.zip"
+    },
+    {
+      "path": "sources/cni-modules/github.com/pkg/errors@v0.9.1.zip",
+      "sha256": "d4c36b8bcd0616290a3913215e0f53b931bd6e00670596f2960df1b44af2bd07",
+      "bytes": 17866,
+      "kind": "source",
+      "url": "https://proxy.golang.org/github.com/pkg/errors/@v/v0.9.1.zip"
+    },
+    {
+      "path": "sources/cni-modules/github.com/safchain/ethtool@v0.6.2.zip",
+      "sha256": "eb4fa1f3360018d135d20c05f752886c9b54dca01f23207badeb0a8a6acfd53e",
+      "bytes": 34528,
+      "kind": "source",
+      "url": "https://proxy.golang.org/github.com/safchain/ethtool/@v/v0.6.2.zip"
+    },
+    {
+      "path": "sources/cni-modules/github.com/vishvananda/netlink@v1.3.1.zip",
+      "sha256": "213c83dcc66cbeca2b83eca59d08649fa5ea96f463a8c014e8d6b6d5e601887e",
+      "bytes": 303001,
+      "kind": "source",
+      "url": "https://proxy.golang.org/github.com/vishvananda/netlink/@v/v1.3.1.zip"
+    },
+    {
+      "path": "sources/cni-modules/github.com/vishvananda/netns@v0.0.5.zip",
+      "sha256": "07804b88c922c2a6780efe392ffef9d126eac584384eb3eb17bcadd34cfa9422",
+      "bytes": 13843,
+      "kind": "source",
+      "url": "https://proxy.golang.org/github.com/vishvananda/netns/@v/v0.0.5.zip"
+    },
+    {
+      "path": "sources/cni-modules/golang.org/x/sys@v0.40.0.zip",
+      "sha256": "d7f9fe44300fc8d47b30d06cd001d9c62c54c6119818a19a2e33a93538971669",
+      "bytes": 2003724,
+      "kind": "source",
+      "url": "https://proxy.golang.org/golang.org/x/sys/@v/v0.40.0.zip"
+    },
+    {
+      "path": "sources/cni-modules/sigs.k8s.io/knftables@v0.0.18.zip",
+      "sha256": "74377e84d4759cf8263b6e79d8a30f1018ba45e2a039afd60c2e767ac4b03ec4",
+      "bytes": 62196,
+      "kind": "source",
+      "url": "https://proxy.golang.org/sigs.k8s.io/knftables/@v/v0.0.18.zip"
+    },
+    {
+      "path": "sources/cni.tar.gz",
+      "sha256": "802826ab41f9eaa5b2c4ab45bc3e40044ea823aea46539506f1b1b9c8a2a7629",
+      "bytes": 4200838,
+      "kind": "source",
+      "url": "https://codeload.github.com/rancher/plugins/tar.gz/413c9c219e9021d7bd8ab64a696655ab45382382"
+    },
+    {
+      "path": "sources/flannel.tar.gz",
+      "sha256": "f4fda6d5564e054d82421030ffb2bcd0800fb643fc6f27695b47392ae09699ea",
+      "bytes": 30279,
+      "kind": "source",
+      "url": "https://codeload.github.com/flannel-io/cni-plugin/tar.gz/0940aaf4a0edda6c9bcd9bc34b3466a0d579ddda"
+    },
+    {
+      "path": "sources/go1.26.10.src.tar.gz",
+      "sha256": "fd63e883ba2f2bfca93c1646b31ebef63e2b1e4d2b317c9789d976a68d81f36f",
+      "bytes": 34164741,
+      "kind": "source",
+      "url": "https://go.dev/dl/go1.26.10.src.tar.gz"
+    },
+    {
+      "path": "sources/k3s-root.tar.gz",
+      "sha256": "f48ff451871c7750f076778fa89ec0bc6c2f38069845a57450c11b72d0230782",
+      "bytes": 52632,
+      "kind": "source",
+      "url": "https://codeload.github.com/k3s-io/k3s-root/tar.gz/e4facffedba378a1c6da98580a4914c6766df576"
+    },
+    {
+      "path": "sources/k3s.tar.gz",
+      "sha256": "8152853bb3f1e351bdea07429268cd3a04041fe534e6ca119b0414eac0133241",
+      "bytes": 777869,
+      "kind": "source",
+      "url": "https://codeload.github.com/k3s-io/k3s/tar.gz/fa45d6a5ad0c9b8fdf90cf6a2eeeafaccfb60709"
+    },
+    {
+      "path": "userspace/licenses/busybox/LICENSE",
+      "sha256": "bbfc9843646d483c334664f651c208b9839626891d8f17604db2146962f43548",
+      "bytes": 18348,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/busybox/archival/libarchive/bz/LICENSE",
+      "sha256": "b5a136ed67798e51fe2e0ca0b2a21cb01b904ff0c9f7d563a6292e276607e58f",
+      "bytes": 1999,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/conntrack-tools/COPYING",
+      "sha256": "91df39d1816bfb17a4dda2d3d2c83b1f6f2d38d53e53e41e8f97ad5ac46a0cad",
+      "bytes": 17982,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/coreutils/COPYING",
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      "bytes": 35149,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/ebtables/COPYING",
+      "sha256": "ebdb8ae564c952792017ec680e2edd30443642216eb9f8a3d8fa166c0cb628c1",
+      "bytes": 18110,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/ethtool/COPYING",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "bytes": 18092,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/ethtool/LICENSE",
+      "sha256": "5d632934396f90c82dfebe3c9512648bbb6333b406113d0cd331b0e0aa2d34a1",
+      "bytes": 100,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/findutils/COPYING",
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      "bytes": 35149,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/fuse-overlayfs/COPYING",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "bytes": 18092,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/gcc-final/COPYING.RUNTIME",
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
+      "bytes": 3324,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/gmp/COPYING.LESSERv3",
+      "sha256": "a853c2ffec17057872340eee242ae4d96cbf2b520ae27d903e1b2fef1a5f9d1c",
+      "bytes": 7639,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/gmp/COPYINGv2",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "bytes": 18092,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/iproute2/COPYING",
+      "sha256": "e6d6a009505e345fe949e1310334fcb0747f28dae2856759de102ab66b722cb4",
+      "bytes": 18011,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/ipset/COPYING",
+      "sha256": "231f7edcc7352d7734a96eef0b8030f77982678c516876fcb81e25b32d68564c",
+      "bytes": 18002,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/iptables/COPYING",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "bytes": 18092,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/jansson/LICENSE",
+      "sha256": "1fff7d37d22157bcd81ab53b6c54da755d7c2f868f15807d9bde920f10730da0",
+      "bytes": 1081,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/libcap/License",
+      "sha256": "68467e731f4744bd6e0bb69e8df9c3a994e09cd6b203d0c41327ac6d079c581d",
+      "bytes": 20318,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/libffi/LICENSE",
+      "sha256": "67894089811f93fca47a76f85e017da6f8582d4ba0905963c6e0f1ad6df7a195",
+      "bytes": 1132,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/libfuse3/LICENSE",
+      "sha256": "b8832d9caaa075bbbd2aef24efa09f8b7ab66a832812d88c602da0c7b4397fad",
+      "bytes": 435,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/libglib2/COPYING",
+      "sha256": "fa6f36630bb1e0c571d34b2bbdf188d08495c9dbf58f28cac112f303fc1f58fb",
+      "bytes": 25967,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/libmnl/COPYING",
+      "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+      "bytes": 26530,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/libnetfilter_conntrack/COPYING",
+      "sha256": "91df39d1816bfb17a4dda2d3d2c83b1f6f2d38d53e53e41e8f97ad5ac46a0cad",
+      "bytes": 17982,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/libnetfilter_cthelper/COPYING",
+      "sha256": "91df39d1816bfb17a4dda2d3d2c83b1f6f2d38d53e53e41e8f97ad5ac46a0cad",
+      "bytes": 17982,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/libnetfilter_cttimeout/COPYING",
+      "sha256": "91df39d1816bfb17a4dda2d3d2c83b1f6f2d38d53e53e41e8f97ad5ac46a0cad",
+      "bytes": 17982,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/libnetfilter_queue/COPYING",
+      "sha256": "91df39d1816bfb17a4dda2d3d2c83b1f6f2d38d53e53e41e8f97ad5ac46a0cad",
+      "bytes": 17982,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/libnfnetlink/COPYING",
+      "sha256": "91df39d1816bfb17a4dda2d3d2c83b1f6f2d38d53e53e41e8f97ad5ac46a0cad",
+      "bytes": 17982,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/libnftnl/COPYING",
+      "sha256": "98193898c663001eff2fdcfb676e210c13042bc1a05e8d570c363efa396f8e24",
+      "bytes": 18008,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/libseccomp/LICENSE",
+      "sha256": "102900208eef27b766380135906d431dba87edaa7ec6aa72e6ebd3dd67f3a97b",
+      "bytes": 24428,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/libtirpc/COPYING",
+      "sha256": "17cf6098f95bdbb269f0bbc68e76c88fe20487ca7ec53f454923ab4256ecd2e7",
+      "bytes": 1476,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/libzlib/LICENSE",
+      "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2",
+      "bytes": 1002,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/linenoise/LICENSE",
+      "sha256": "efe1692aa5b869edaa0ac88f95eb0276c1125304ffc636a299db3ebbab47f62b",
+      "bytes": 1408,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/linux-headers/COPYING",
+      "sha256": "fb5a425bd3b3cd6071a3a9aff9909a859e7c1158d54d32e07658398cd67eb6a0",
+      "bytes": 496,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/linux-headers/LICENSES/exceptions/Linux-syscall-note",
+      "sha256": "8e378ab93586eb55135d3bc119cce787f7324f48394777d00c34fa3d0be3303f",
+      "bytes": 1258,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/linux-headers/LICENSES/preferred/GPL-2.0",
+      "sha256": "f6b78c087c3ebdf0f3c13415070dd480a3f35d8fc76f3d02180a407c1c812f79",
+      "bytes": 18729,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/musl-compat-headers/queue.h",
+      "sha256": "c13407edd0e33be73cae72514cb234f8612e1c0e54401c9448daffd3a240158b",
+      "bytes": 30075,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/musl/COPYRIGHT",
+      "sha256": "b870108ec5e7790e9f9919064f1b9421d62d5f9b0e6c230c6adf7ea2da62e97b",
+      "bytes": 6196,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/nftables/COPYING",
+      "sha256": "4ee1e51baf5f3166712fa0c3e01338c7257e50ddef245d28bb14ad68f6070ba5",
+      "bytes": 18341,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/pcre2/LICENCE.md",
+      "sha256": "9cf7ac6976099a1d856826d3ef1b093bd6b84489dc6100628ac79e740cf9885a",
+      "bytes": 3867,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/pigz/README",
+      "sha256": "328634933a65dbc7f97a0f51df52741dc67f593bbe9eccabc9eedc6934c4983b",
+      "bytes": 2186,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/slirp/COPYRIGHT",
+      "sha256": "b28aecf4796a6a22054167f0a976de13d9db335669d37afd2dc7ea4c335e1e13",
+      "bytes": 2960,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/slirp4netns/COPYING",
+      "sha256": "58db3cfabf8ec806bc060e54ab5466a31de4a3ae80fe4a8aa02fb6b1c053c93f",
+      "bytes": 15138,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/util-linux/Documentation/licenses/COPYING.BSD-3-Clause",
+      "sha256": "9b718a9460fed5952466421235bc79eb49d4e9eacc920d7a9dd6285ab8fd6c6d",
+      "bytes": 1391,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/util-linux/Documentation/licenses/COPYING.BSD-4-Clause-UC",
+      "sha256": "ba7640f00d93e72e92b94b9d71f25ec53bac2f1682f5c4adcccb0018359f60f8",
+      "bytes": 1824,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/util-linux/Documentation/licenses/COPYING.GPL-2.0-or-later",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "bytes": 18092,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/util-linux/Documentation/licenses/COPYING.ISC",
+      "sha256": "e53348ce276358e9997014071c5294b36a18c4b34f32f00ee57b9acce0aafd63",
+      "bytes": 697,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/util-linux/Documentation/licenses/COPYING.LGPL-2.1-or-later",
+      "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+      "bytes": 26530,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/util-linux/Documentation/licenses/COPYING.MIT",
+      "sha256": "8555341619542abb48c102afd954e42d4478e5be16ad3d5af7b0ff71009e7348",
+      "bytes": 1054,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/licenses/util-linux/README.licensing",
+      "sha256": "27f25514040a401b2ceb7057eae1f46cedb1666664b519b5be7e0960d1b35164",
+      "bytes": 968,
+      "kind": "notice"
+    },
+    {
+      "path": "userspace/sources/busybox/busybox-1.37.0.tar.bz2",
+      "sha256": "3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4",
+      "bytes": 2565764,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/conntrack-tools/conntrack-tools-1.4.7.tar.bz2",
+      "sha256": "099debcf57e81690ced57f516b493588a73518f48c14d656f823b29b4fc24b5d",
+      "bytes": 539688,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/coreutils/coreutils-9.5.tar.xz",
+      "sha256": "cd328edeac92f6a665de9f323c93b712af1858bc2e0d88f3f7100469470a1b8a",
+      "bytes": 6007136,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/ebtables/ebtables-2.0.11.tar.gz",
+      "sha256": "b71f654784a726329f88b412ef7b96b4e5d786ed2bd28193ed7b4c0d677dfd2a",
+      "bytes": 428411,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/ethtool/ethtool-6.14.tar.xz",
+      "sha256": "9338bb00e492878d3bbe3cd2894e60db35813634c208db0b20f5c7ee84da69b1",
+      "bytes": 371928,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/findutils/findutils-4.10.0.tar.xz",
+      "sha256": "1387e0b67ff247d2abde998f90dfbf70c1491391a59ddfecb8ae698789f0a4f5",
+      "bytes": 2240712,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/fuse-overlayfs/fuse-overlayfs-1.13.tar.gz",
+      "sha256": "96d10344921d5796bcba7a38580ae14a53c4e60399bb90b238ac5a10b3bb65b2",
+      "bytes": 99775,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/gcc-final/gcc-14.4.0.tar.xz",
+      "sha256": "752b6f567beac83159c77a7680b1316bdd784738bff9a9d070112c09da90f6d9",
+      "bytes": 91586872,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/gmp/gmp-6.3.0.tar.xz",
+      "sha256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+      "bytes": 2094196,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/iproute2/iproute2-6.14.0.tar.xz",
+      "sha256": "a6d23588150096591c3d00fc27a324a82ee71d7a1a9eea78df5df17ad9b8461f",
+      "bytes": 929092,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/ipset/ipset-7.16.tar.bz2",
+      "sha256": "87b1d9cdf4a1de3d1d0671e7da33e111eb65087e65ad75268b22bf13f0f296d0",
+      "bytes": 684512,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/iptables/iptables-1.8.11.tar.xz",
+      "sha256": "d87303d55ef8c92bcad4dd3f978b26d272013642b029425775f5bad1009fe7b2",
+      "bytes": 649284,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/jansson/jansson-2.14.tar.bz2",
+      "sha256": "fba956f27c6ae56ce6dfd52fbf9d20254aad42821f74fa52f83957625294afb9",
+      "bytes": 434481,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/libcap/libcap-2.73.tar.xz",
+      "sha256": "6405f6089cf4cdd8c271540cd990654d78dd0b1989b2d9bda20f933a75a795a5",
+      "bytes": 195276,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/libffi/libffi-3.4.6.tar.gz",
+      "sha256": "b0dea9df23c863a7a50e825440f3ebffabd65df1497108e5d437747843895a4e",
+      "bytes": 1391684,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/libfuse3/libfuse3-3.16.2.tar.gz",
+      "sha256": "1bc306be1a1f4f6c8965fbdd79c9ccca021fdc4b277d501483a711cbd7dbcd6c",
+      "bytes": 817044,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/libglib2/glib-2.82.5.tar.xz",
+      "sha256": "05c2031f9bdf6b5aba7a06ca84f0b4aced28b19bf1b50c6ab25cc675277cbc3f",
+      "bytes": 5554704,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/libmnl/libmnl-1.0.5.tar.bz2",
+      "sha256": "274b9b919ef3152bfb3da3a13c950dd60d6e2bcd54230ffeca298d03b40d0525",
+      "bytes": 314791,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/libnetfilter_conntrack/libnetfilter_conntrack-1.0.9.tar.bz2",
+      "sha256": "67bd9df49fe34e8b82144f6dfb93b320f384a8ea59727e92ff8d18b5f4b579a8",
+      "bytes": 373177,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/libnetfilter_cthelper/libnetfilter_cthelper-1.0.1.tar.bz2",
+      "sha256": "14073d5487233897355d3ff04ddc1c8d03cc5ba8d2356236aa88161a9f2dc912",
+      "bytes": 291739,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/libnetfilter_cttimeout/libnetfilter_cttimeout-1.0.1.tar.bz2",
+      "sha256": "0b59da2f3204e1c80cb85d1f6d72285fc07b01a2f5678abf5dccfbbefd650325",
+      "bytes": 292649,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/libnetfilter_queue/libnetfilter_queue-1.0.5.tar.bz2",
+      "sha256": "f9ff3c11305d6e03d81405957bdc11aea18e0d315c3e3f48da53a24ba251b9f5",
+      "bytes": 313856,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/libnfnetlink/libnfnetlink-1.0.2.tar.bz2",
+      "sha256": "b064c7c3d426efb4786e60a8e6859b82ee2f2c5e49ffeea640cfe4fe33cbc376",
+      "bytes": 298844,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/libnftnl/libnftnl-1.2.8.tar.xz",
+      "sha256": "37fea5d6b5c9b08de7920d298de3cdc942e7ae64b1a3e8b880b2d390ae67ad95",
+      "bytes": 343732,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/libseccomp/libseccomp-2.5.5.tar.gz",
+      "sha256": "248a2c8a4d9b9858aa6baf52712c34afefcf9c9e94b76dce02c1c9aa25fb3375",
+      "bytes": 642445,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/libtirpc/libtirpc-1.3.6.tar.bz2",
+      "sha256": "bbd26a8f0df5690a62a47f6aa30f797f3ef8d02560d1bc449a83066b5a1d3508",
+      "bytes": 566384,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/libzlib/zlib-1.3.2.tar.xz",
+      "sha256": "d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3",
+      "bytes": 1320064,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/linenoise/linenoise-e26268de5e56bfaad773786471844578fe9f7f4b.tar.gz",
+      "sha256": "d5e702e7e04f0fcd09393bd4c010ce2bb19b4d137e22f2dd6064e848f4a6b5b2",
+      "bytes": 21505,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/linux-headers/linux-6.6.156.tar.xz",
+      "sha256": "aee2264a4eaf4a14344b47a0469bd42e8b4885b24f110b724262b3da956f411d",
+      "bytes": 140729724,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/musl-compat-headers/queue.h",
+      "sha256": "c13407edd0e33be73cae72514cb234f8612e1c0e54401c9448daffd3a240158b",
+      "bytes": 30075,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/musl/musl-1.2.6.tar.gz",
+      "sha256": "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
+      "bytes": 1082499,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/nftables/nftables-1.1.1.tar.xz",
+      "sha256": "6358830f3a64f31e39b0ad421d7dadcd240b72343ded48d8ef13b8faf204865a",
+      "bytes": 989700,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/pcre2/pcre2-10.46.tar.bz2",
+      "sha256": "15fbc5aba6beee0b17aecb04602ae39432393aba1ebd8e39b7cabf7db883299f",
+      "bytes": 2035354,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/pigz/pigz-2.8.tar.gz",
+      "sha256": "eb872b4f0e1f0ebe59c9f7bd8c506c4204893ba6a8492de31df416f0d5170fd0",
+      "bytes": 121304,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/slirp/libslirp-v4.8.0.tar.bz2",
+      "sha256": "1c2e3d30e41a055ed41f9d0b3234d0d143bc28f5ad84bb101413f830844df757",
+      "bytes": 128898,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/slirp4netns/slirp4netns-1.3.1.tar.gz",
+      "sha256": "a3b7c7b593b279c46d25a48b583371ab762968e98b6a46457d8d52a755852eb9",
+      "bytes": 64653,
+      "kind": "source"
+    },
+    {
+      "path": "userspace/sources/util-linux/util-linux-2.40.4.tar.xz",
+      "sha256": "5c1daf733b04e9859afdc3bd87cc481180ee0f88b5c0946b16fdec931975fb79",
+      "bytes": 8848216,
+      "kind": "source"
+    }
+  ],
+  "groups": {
+    "k3s-root": {
+      "source": [
+        "sources/k3s-root.tar.gz"
+      ],
+      "notices": [
+        "notices/k3s-root/LICENSE"
+      ],
+      "repository": "k3s-io/k3s-root",
+      "revision": "e4facffedba378a1c6da98580a4914c6766df576"
+    },
+    "buildroot": {
+      "source": [
+        "sources/buildroot.tar.gz"
+      ],
+      "notices": [
+        "notices/buildroot/COPYING"
+      ],
+      "repository": "buildroot/buildroot",
+      "revision": "d030e36bbc9669230c015be971b14b6e062cfdde"
+    },
+    "buildroot/busybox": {
+      "source": [
+        "userspace/sources/busybox/busybox-1.37.0.tar.bz2"
+      ],
+      "notices": [
+        "userspace/licenses/busybox/LICENSE",
+        "userspace/licenses/busybox/archival/libarchive/bz/LICENSE"
+      ],
+      "version": "1.37.0",
+      "license_labels_from_buildroot": "GPL-2.0, bzip2-1.0.6",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/conntrack-tools": {
+      "source": [
+        "userspace/sources/conntrack-tools/conntrack-tools-1.4.7.tar.bz2"
+      ],
+      "notices": [
+        "userspace/licenses/conntrack-tools/COPYING"
+      ],
+      "version": "1.4.7",
+      "license_labels_from_buildroot": "GPL-2.0+",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/coreutils": {
+      "source": [
+        "userspace/sources/coreutils/coreutils-9.5.tar.xz"
+      ],
+      "notices": [
+        "userspace/licenses/coreutils/COPYING"
+      ],
+      "version": "9.5",
+      "license_labels_from_buildroot": "GPL-3.0+",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/ebtables": {
+      "source": [
+        "userspace/sources/ebtables/ebtables-2.0.11.tar.gz"
+      ],
+      "notices": [
+        "userspace/licenses/ebtables/COPYING"
+      ],
+      "version": "2.0.11",
+      "license_labels_from_buildroot": "GPL-2.0+",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/ethtool": {
+      "source": [
+        "userspace/sources/ethtool/ethtool-6.14.tar.xz"
+      ],
+      "notices": [
+        "userspace/licenses/ethtool/LICENSE",
+        "userspace/licenses/ethtool/COPYING"
+      ],
+      "version": "6.14",
+      "license_labels_from_buildroot": "GPL-2.0",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/findutils": {
+      "source": [
+        "userspace/sources/findutils/findutils-4.10.0.tar.xz"
+      ],
+      "notices": [
+        "userspace/licenses/findutils/COPYING"
+      ],
+      "version": "4.10.0",
+      "license_labels_from_buildroot": "GPL-3.0+",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/fuse-overlayfs": {
+      "source": [
+        "userspace/sources/fuse-overlayfs/fuse-overlayfs-1.13.tar.gz"
+      ],
+      "notices": [
+        "userspace/licenses/fuse-overlayfs/COPYING"
+      ],
+      "version": "1.13",
+      "license_labels_from_buildroot": "GPL-2.0+",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/gcc-final": {
+      "source": [
+        "userspace/sources/gcc-final/gcc-14.4.0.tar.xz"
+      ],
+      "notices": [
+        "userspace/licenses/gcc-final/COPYING.RUNTIME"
+      ],
+      "version": "14.4.0",
+      "license_labels_from_buildroot": "GPL-3.0-with-GCC-exception",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/gmp": {
+      "source": [
+        "userspace/sources/gmp/gmp-6.3.0.tar.xz"
+      ],
+      "notices": [
+        "userspace/licenses/gmp/COPYING.LESSERv3",
+        "userspace/licenses/gmp/COPYINGv2"
+      ],
+      "version": "6.3.0",
+      "license_labels_from_buildroot": "LGPL-3.0+ or GPL-2.0+",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/iproute2": {
+      "source": [
+        "userspace/sources/iproute2/iproute2-6.14.0.tar.xz"
+      ],
+      "notices": [
+        "userspace/licenses/iproute2/COPYING"
+      ],
+      "version": "6.14.0",
+      "license_labels_from_buildroot": "GPL-2.0+",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/ipset": {
+      "source": [
+        "userspace/sources/ipset/ipset-7.16.tar.bz2"
+      ],
+      "notices": [
+        "userspace/licenses/ipset/COPYING"
+      ],
+      "version": "7.16",
+      "license_labels_from_buildroot": "GPL-2.0",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/iptables": {
+      "source": [
+        "userspace/sources/iptables/iptables-1.8.11.tar.xz"
+      ],
+      "notices": [
+        "userspace/licenses/iptables/COPYING"
+      ],
+      "version": "1.8.11",
+      "license_labels_from_buildroot": "GPL-2.0",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/jansson": {
+      "source": [
+        "userspace/sources/jansson/jansson-2.14.tar.bz2"
+      ],
+      "notices": [
+        "userspace/licenses/jansson/LICENSE"
+      ],
+      "version": "2.14",
+      "license_labels_from_buildroot": "MIT",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/libcap": {
+      "source": [
+        "userspace/sources/libcap/libcap-2.73.tar.xz"
+      ],
+      "notices": [
+        "userspace/licenses/libcap/License"
+      ],
+      "version": "2.73",
+      "license_labels_from_buildroot": "GPL-2.0 or BSD-3-Clause",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/libffi": {
+      "source": [
+        "userspace/sources/libffi/libffi-3.4.6.tar.gz"
+      ],
+      "notices": [
+        "userspace/licenses/libffi/LICENSE"
+      ],
+      "version": "3.4.6",
+      "license_labels_from_buildroot": "MIT",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/libfuse3": {
+      "source": [
+        "userspace/sources/libfuse3/libfuse3-3.16.2.tar.gz"
+      ],
+      "notices": [
+        "userspace/licenses/libfuse3/LICENSE"
+      ],
+      "version": "3.16.2",
+      "license_labels_from_buildroot": "LGPL-2.1",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/libglib2": {
+      "source": [
+        "userspace/sources/libglib2/glib-2.82.5.tar.xz"
+      ],
+      "notices": [
+        "userspace/licenses/libglib2/COPYING"
+      ],
+      "version": "2.82.5",
+      "license_labels_from_buildroot": "LGPL-2.1+",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/libmnl": {
+      "source": [
+        "userspace/sources/libmnl/libmnl-1.0.5.tar.bz2"
+      ],
+      "notices": [
+        "userspace/licenses/libmnl/COPYING"
+      ],
+      "version": "1.0.5",
+      "license_labels_from_buildroot": "LGPL-2.1+",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/libnetfilter_conntrack": {
+      "source": [
+        "userspace/sources/libnetfilter_conntrack/libnetfilter_conntrack-1.0.9.tar.bz2"
+      ],
+      "notices": [
+        "userspace/licenses/libnetfilter_conntrack/COPYING"
+      ],
+      "version": "1.0.9",
+      "license_labels_from_buildroot": "GPL-2.0+",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/libnetfilter_cthelper": {
+      "source": [
+        "userspace/sources/libnetfilter_cthelper/libnetfilter_cthelper-1.0.1.tar.bz2"
+      ],
+      "notices": [
+        "userspace/licenses/libnetfilter_cthelper/COPYING"
+      ],
+      "version": "1.0.1",
+      "license_labels_from_buildroot": "GPL-2.0+",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/libnetfilter_cttimeout": {
+      "source": [
+        "userspace/sources/libnetfilter_cttimeout/libnetfilter_cttimeout-1.0.1.tar.bz2"
+      ],
+      "notices": [
+        "userspace/licenses/libnetfilter_cttimeout/COPYING"
+      ],
+      "version": "1.0.1",
+      "license_labels_from_buildroot": "GPL-2.0+",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/libnetfilter_queue": {
+      "source": [
+        "userspace/sources/libnetfilter_queue/libnetfilter_queue-1.0.5.tar.bz2"
+      ],
+      "notices": [
+        "userspace/licenses/libnetfilter_queue/COPYING"
+      ],
+      "version": "1.0.5",
+      "license_labels_from_buildroot": "GPL-2.0+",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/libnfnetlink": {
+      "source": [
+        "userspace/sources/libnfnetlink/libnfnetlink-1.0.2.tar.bz2"
+      ],
+      "notices": [
+        "userspace/licenses/libnfnetlink/COPYING"
+      ],
+      "version": "1.0.2",
+      "license_labels_from_buildroot": "GPL-2.0",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/libnftnl": {
+      "source": [
+        "userspace/sources/libnftnl/libnftnl-1.2.8.tar.xz"
+      ],
+      "notices": [
+        "userspace/licenses/libnftnl/COPYING"
+      ],
+      "version": "1.2.8",
+      "license_labels_from_buildroot": "GPL-2.0+",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/libseccomp": {
+      "source": [
+        "userspace/sources/libseccomp/libseccomp-2.5.5.tar.gz"
+      ],
+      "notices": [
+        "userspace/licenses/libseccomp/LICENSE"
+      ],
+      "version": "2.5.5",
+      "license_labels_from_buildroot": "LGPL-2.1",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/libtirpc": {
+      "source": [
+        "userspace/sources/libtirpc/libtirpc-1.3.6.tar.bz2"
+      ],
+      "notices": [
+        "userspace/licenses/libtirpc/COPYING"
+      ],
+      "version": "1.3.6",
+      "license_labels_from_buildroot": "BSD-3-Clause",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/libzlib": {
+      "source": [
+        "userspace/sources/libzlib/zlib-1.3.2.tar.xz"
+      ],
+      "notices": [
+        "userspace/licenses/libzlib/LICENSE"
+      ],
+      "version": "1.3.2",
+      "license_labels_from_buildroot": "Zlib",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/linenoise": {
+      "source": [
+        "userspace/sources/linenoise/linenoise-e26268de5e56bfaad773786471844578fe9f7f4b.tar.gz"
+      ],
+      "notices": [
+        "userspace/licenses/linenoise/LICENSE"
+      ],
+      "version": "e26268de5e56bfaad773786471844578fe9f7f4b",
+      "license_labels_from_buildroot": "BSD-2-Clause",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/linux-headers": {
+      "source": [
+        "userspace/sources/linux-headers/linux-6.6.156.tar.xz"
+      ],
+      "notices": [
+        "userspace/licenses/linux-headers/COPYING",
+        "userspace/licenses/linux-headers/LICENSES/preferred/GPL-2.0",
+        "userspace/licenses/linux-headers/LICENSES/exceptions/Linux-syscall-note"
+      ],
+      "version": "6.6.156",
+      "license_labels_from_buildroot": "GPL-2.0",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/musl": {
+      "source": [
+        "userspace/sources/musl/musl-1.2.6.tar.gz"
+      ],
+      "notices": [
+        "userspace/licenses/musl/COPYRIGHT"
+      ],
+      "version": "1.2.6",
+      "license_labels_from_buildroot": "MIT",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/musl-compat-headers": {
+      "source": [
+        "userspace/sources/musl-compat-headers/queue.h"
+      ],
+      "notices": [
+        "userspace/licenses/musl-compat-headers/queue.h"
+      ],
+      "version": "",
+      "license_labels_from_buildroot": "BSD-3-Clause, Public Domain or CC0",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/nftables": {
+      "source": [
+        "userspace/sources/nftables/nftables-1.1.1.tar.xz"
+      ],
+      "notices": [
+        "userspace/licenses/nftables/COPYING"
+      ],
+      "version": "1.1.1",
+      "license_labels_from_buildroot": "GPL-2.0",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/pcre2": {
+      "source": [
+        "userspace/sources/pcre2/pcre2-10.46.tar.bz2"
+      ],
+      "notices": [
+        "userspace/licenses/pcre2/LICENCE.md"
+      ],
+      "version": "10.46",
+      "license_labels_from_buildroot": "BSD-3-Clause",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/pigz": {
+      "source": [
+        "userspace/sources/pigz/pigz-2.8.tar.gz"
+      ],
+      "notices": [
+        "userspace/licenses/pigz/README"
+      ],
+      "version": "2.8",
+      "license_labels_from_buildroot": "Zlib",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/skeleton": {
+      "source": [
+        "sources/buildroot.tar.gz"
+      ],
+      "notices": [
+        "notices/buildroot/COPYING"
+      ],
+      "version": null,
+      "license_labels_from_buildroot": null,
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/skeleton-init-common": {
+      "source": [
+        "sources/buildroot.tar.gz"
+      ],
+      "notices": [
+        "notices/buildroot/COPYING"
+      ],
+      "version": "",
+      "license_labels_from_buildroot": "GPL-2.0-or-later",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/skeleton-init-sysv": {
+      "source": [
+        "sources/buildroot.tar.gz"
+      ],
+      "notices": [
+        "notices/buildroot/COPYING"
+      ],
+      "version": "",
+      "license_labels_from_buildroot": "GPL-2.0-or-later",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/slirp": {
+      "source": [
+        "userspace/sources/slirp/libslirp-v4.8.0.tar.bz2"
+      ],
+      "notices": [
+        "userspace/licenses/slirp/COPYRIGHT"
+      ],
+      "version": "4.8.0",
+      "license_labels_from_buildroot": "BSD-3-Clause",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/slirp4netns": {
+      "source": [
+        "userspace/sources/slirp4netns/slirp4netns-1.3.1.tar.gz"
+      ],
+      "notices": [
+        "userspace/licenses/slirp4netns/COPYING"
+      ],
+      "version": "1.3.1",
+      "license_labels_from_buildroot": "GPL-2.0",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/toolchain": {
+      "source": [
+        "sources/buildroot.tar.gz"
+      ],
+      "notices": [
+        "notices/buildroot/COPYING"
+      ],
+      "version": null,
+      "license_labels_from_buildroot": null,
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/toolchain-buildroot": {
+      "source": [
+        "sources/buildroot.tar.gz"
+      ],
+      "notices": [
+        "notices/buildroot/COPYING"
+      ],
+      "version": null,
+      "license_labels_from_buildroot": null,
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/util-linux": {
+      "source": [
+        "userspace/sources/util-linux/util-linux-2.40.4.tar.xz"
+      ],
+      "notices": [
+        "userspace/licenses/util-linux/README.licensing",
+        "userspace/licenses/util-linux/Documentation/licenses/COPYING.BSD-3-Clause",
+        "userspace/licenses/util-linux/Documentation/licenses/COPYING.BSD-4-Clause-UC",
+        "userspace/licenses/util-linux/Documentation/licenses/COPYING.GPL-2.0-or-later",
+        "userspace/licenses/util-linux/Documentation/licenses/COPYING.ISC",
+        "userspace/licenses/util-linux/Documentation/licenses/COPYING.LGPL-2.1-or-later",
+        "userspace/licenses/util-linux/Documentation/licenses/COPYING.MIT"
+      ],
+      "version": "2.40.4",
+      "license_labels_from_buildroot": "GPL-2.0+, BSD-4-Clause, LGPL-2.1+ (libblkid, libfdisk, libmount), BSD-3-Clause (libuuid), BSD-2-Clause (xxhash), ISC (rfkill), MIT (hardlink, flock)",
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "buildroot/zlib": {
+      "source": [
+        "sources/buildroot.tar.gz"
+      ],
+      "notices": [
+        "notices/buildroot/COPYING"
+      ],
+      "version": null,
+      "license_labels_from_buildroot": null,
+      "recipe_groups": [
+        "buildroot",
+        "k3s-root"
+      ]
+    },
+    "cni": {
+      "source": [
+        "sources/cni.tar.gz"
+      ],
+      "notices": [
+        "notices/cni/LICENSE"
+      ],
+      "repository": "rancher/plugins",
+      "revision": "413c9c219e9021d7bd8ab64a696655ab45382382"
+    },
+    "flannel": {
+      "source": [
+        "sources/flannel.tar.gz"
+      ],
+      "notices": [
+        "notices/flannel/LICENSE"
+      ],
+      "repository": "flannel-io/cni-plugin",
+      "revision": "0940aaf4a0edda6c9bcd9bc34b3466a0d579ddda"
+    },
+    "check-config-moby": {
+      "source": [
+        "sources/check-config-moby.tar.gz"
+      ],
+      "notices": [
+        "notices/check-config-moby/LICENSE",
+        "notices/check-config-moby/NOTICE"
+      ],
+      "repository": "moby/moby",
+      "revision": "c83188248e9c310b766942eac50fc84c533b7abe"
+    },
+    "check-config-lxc": {
+      "source": [
+        "sources/check-config-lxc.tar.gz"
+      ],
+      "notices": [
+        "notices/check-config-lxc/COPYING"
+      ],
+      "repository": "lxc/lxc",
+      "revision": "91a3c828da5a33719753bb205e01f60041ee22ae"
+    },
+    "k3s": {
+      "source": [
+        "sources/k3s.tar.gz"
+      ],
+      "notices": [
+        "notices/k3s/LICENSE"
+      ],
+      "repository": "k3s-io/k3s",
+      "revision": "fa45d6a5ad0c9b8fdf90cf6a2eeeafaccfb60709"
+    },
+    "cni-modules/github.com/alexflint/go-filemutex@v1.3.0": {
+      "source": [
+        "sources/cni-modules/github.com/alexflint/go-filemutex@v1.3.0.zip"
+      ],
+      "notices": [
+        "notices/cni-modules/github.com/alexflint/go-filemutex@v1.3.0/LICENSE"
+      ],
+      "module": "github.com/alexflint/go-filemutex",
+      "version": "v1.3.0"
+    },
+    "cni-modules/github.com/containernetworking/cni@v1.3.0": {
+      "source": [
+        "sources/cni-modules/github.com/containernetworking/cni@v1.3.0.zip"
+      ],
+      "notices": [
+        "notices/cni-modules/github.com/containernetworking/cni@v1.3.0/LICENSE"
+      ],
+      "module": "github.com/containernetworking/cni",
+      "version": "v1.3.0"
+    },
+    "cni-modules/github.com/coreos/go-iptables@v0.8.0": {
+      "source": [
+        "sources/cni-modules/github.com/coreos/go-iptables@v0.8.0.zip"
+      ],
+      "notices": [
+        "notices/cni-modules/github.com/coreos/go-iptables@v0.8.0/LICENSE",
+        "notices/cni-modules/github.com/coreos/go-iptables@v0.8.0/NOTICE"
+      ],
+      "module": "github.com/coreos/go-iptables",
+      "version": "v0.8.0"
+    },
+    "cni-modules/github.com/godbus/dbus/v5@v5.1.0": {
+      "source": [
+        "sources/cni-modules/github.com/godbus/dbus/v5@v5.1.0.zip"
+      ],
+      "notices": [
+        "notices/cni-modules/github.com/godbus/dbus/v5@v5.1.0/LICENSE"
+      ],
+      "module": "github.com/godbus/dbus/v5",
+      "version": "v5.1.0"
+    },
+    "cni-modules/github.com/mattn/go-shellwords@v1.0.12": {
+      "source": [
+        "sources/cni-modules/github.com/mattn/go-shellwords@v1.0.12.zip"
+      ],
+      "notices": [
+        "notices/cni-modules/github.com/mattn/go-shellwords@v1.0.12/LICENSE"
+      ],
+      "module": "github.com/mattn/go-shellwords",
+      "version": "v1.0.12"
+    },
+    "cni-modules/github.com/moby/sys/reexec@v0.1.0": {
+      "source": [
+        "sources/cni-modules/github.com/moby/sys/reexec@v0.1.0.zip"
+      ],
+      "notices": [
+        "notices/cni-modules/github.com/moby/sys/reexec@v0.1.0/LICENSE"
+      ],
+      "module": "github.com/moby/sys/reexec",
+      "version": "v0.1.0"
+    },
+    "cni-modules/github.com/networkplumbing/go-nft@v0.4.0": {
+      "source": [
+        "sources/cni-modules/github.com/networkplumbing/go-nft@v0.4.0.zip"
+      ],
+      "notices": [
+        "notices/cni-modules/github.com/networkplumbing/go-nft@v0.4.0/LICENSE"
+      ],
+      "module": "github.com/networkplumbing/go-nft",
+      "version": "v0.4.0"
+    },
+    "cni-modules/github.com/pkg/errors@v0.9.1": {
+      "source": [
+        "sources/cni-modules/github.com/pkg/errors@v0.9.1.zip"
+      ],
+      "notices": [
+        "notices/cni-modules/github.com/pkg/errors@v0.9.1/LICENSE"
+      ],
+      "module": "github.com/pkg/errors",
+      "version": "v0.9.1"
+    },
+    "cni-modules/github.com/safchain/ethtool@v0.6.2": {
+      "source": [
+        "sources/cni-modules/github.com/safchain/ethtool@v0.6.2.zip"
+      ],
+      "notices": [
+        "notices/cni-modules/github.com/safchain/ethtool@v0.6.2/LICENSE"
+      ],
+      "module": "github.com/safchain/ethtool",
+      "version": "v0.6.2"
+    },
+    "cni-modules/github.com/vishvananda/netlink@v1.3.1": {
+      "source": [
+        "sources/cni-modules/github.com/vishvananda/netlink@v1.3.1.zip"
+      ],
+      "notices": [
+        "notices/cni-modules/github.com/vishvananda/netlink@v1.3.1/LICENSE"
+      ],
+      "module": "github.com/vishvananda/netlink",
+      "version": "v1.3.1"
+    },
+    "cni-modules/github.com/vishvananda/netns@v0.0.5": {
+      "source": [
+        "sources/cni-modules/github.com/vishvananda/netns@v0.0.5.zip"
+      ],
+      "notices": [
+        "notices/cni-modules/github.com/vishvananda/netns@v0.0.5/LICENSE"
+      ],
+      "module": "github.com/vishvananda/netns",
+      "version": "v0.0.5"
+    },
+    "cni-modules/golang.org/x/sys@v0.40.0": {
+      "source": [
+        "sources/cni-modules/golang.org/x/sys@v0.40.0.zip"
+      ],
+      "notices": [
+        "notices/cni-modules/golang.org/x/sys@v0.40.0/LICENSE"
+      ],
+      "module": "golang.org/x/sys",
+      "version": "v0.40.0"
+    },
+    "cni-modules/sigs.k8s.io/knftables@v0.0.18": {
+      "source": [
+        "sources/cni-modules/sigs.k8s.io/knftables@v0.0.18.zip"
+      ],
+      "notices": [
+        "notices/cni-modules/sigs.k8s.io/knftables@v0.0.18/LICENSE"
+      ],
+      "module": "sigs.k8s.io/knftables",
+      "version": "v0.0.18"
+    },
+    "cni-go-stdlib": {
+      "source": [
+        "sources/go1.26.10.src.tar.gz"
+      ],
+      "notices": [
+        "notices/go1.26.10/LICENSE"
+      ],
+      "version": "go1.26.10"
+    }
+  },
+  "coverage": [
+    {
+      "path": "data/.lock",
+      "disposition": "extraction-state"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/.links",
+      "disposition": "generated",
+      "groups": [
+        "k3s"
+      ]
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/.sha256sums",
+      "disposition": "generated",
+      "groups": [
+        "k3s"
+      ]
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/aux/ebtables-legacy",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/ebtables",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/aux/ebtablesd",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/ebtables",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/aux/ebtablesu",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/ebtables",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/aux/iptables-apply",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/iptables",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/aux/iptables-detect.sh",
+      "disposition": "retained",
+      "groups": [
+        "k3s-root",
+        "buildroot"
+      ]
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/aux/nft",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/nftables",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/aux/xtables-legacy-multi",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/iptables",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/aux/xtables-nft-multi",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/iptables",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/aux/xtables-set-mode.sh",
+      "disposition": "retained",
+      "groups": [
+        "k3s-root",
+        "buildroot"
+      ]
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/blkid",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/util-linux",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/busybox",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/busybox",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/check-config",
+      "disposition": "retained",
+      "groups": [
+        "k3s",
+        "check-config-moby",
+        "check-config-lxc"
+      ]
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/cni",
+      "disposition": "retained",
+      "groups": [
+        "cni",
+        "flannel",
+        "cni-go-stdlib",
+        "k3s",
+        "cni-modules/github.com/alexflint/go-filemutex@v1.3.0",
+        "cni-modules/github.com/containernetworking/cni@v1.3.0",
+        "cni-modules/github.com/coreos/go-iptables@v0.8.0",
+        "cni-modules/github.com/godbus/dbus/v5@v5.1.0",
+        "cni-modules/github.com/mattn/go-shellwords@v1.0.12",
+        "cni-modules/github.com/moby/sys/reexec@v0.1.0",
+        "cni-modules/github.com/networkplumbing/go-nft@v0.4.0",
+        "cni-modules/github.com/pkg/errors@v0.9.1",
+        "cni-modules/github.com/safchain/ethtool@v0.6.2",
+        "cni-modules/github.com/vishvananda/netlink@v1.3.1",
+        "cni-modules/github.com/vishvananda/netns@v0.0.5",
+        "cni-modules/golang.org/x/sys@v0.40.0",
+        "cni-modules/sigs.k8s.io/knftables@v0.0.18"
+      ]
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/conntrack",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/conntrack-tools",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/containerd-shim-runc-v2",
+      "disposition": "replaced",
+      "component": "containerd-shim-runc-v2"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/coreutils",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/coreutils",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/ethtool",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/ethtool",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/find",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/findutils",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/fuse-overlayfs",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/fuse-overlayfs",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/ip",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/iproute2",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/ipset",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/ipset",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/k3s",
+      "disposition": "replaced",
+      "component": "k3s"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/losetup",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/util-linux",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/nsenter",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/util-linux",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/pigz",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/pigz",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/runc",
+      "disposition": "replaced",
+      "component": "runc"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/slirp4netns",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/slirp4netns",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    },
+    {
+      "path": "data/cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f/bin/xargs",
+      "disposition": "retained",
+      "groups": [
+        "buildroot/findutils",
+        "k3s-root",
+        "buildroot"
+      ],
+      "dependency_scope": "configured-target-closure"
+    }
+  ],
+  "userspace_dependency_groups": [
+    "buildroot/busybox",
+    "buildroot/conntrack-tools",
+    "buildroot/coreutils",
+    "buildroot/ebtables",
+    "buildroot/ethtool",
+    "buildroot/findutils",
+    "buildroot/fuse-overlayfs",
+    "buildroot/gcc-final",
+    "buildroot/gmp",
+    "buildroot/iproute2",
+    "buildroot/ipset",
+    "buildroot/iptables",
+    "buildroot/jansson",
+    "buildroot/libcap",
+    "buildroot/libffi",
+    "buildroot/libfuse3",
+    "buildroot/libglib2",
+    "buildroot/libmnl",
+    "buildroot/libnetfilter_conntrack",
+    "buildroot/libnetfilter_cthelper",
+    "buildroot/libnetfilter_cttimeout",
+    "buildroot/libnetfilter_queue",
+    "buildroot/libnfnetlink",
+    "buildroot/libnftnl",
+    "buildroot/libseccomp",
+    "buildroot/libtirpc",
+    "buildroot/libzlib",
+    "buildroot/linenoise",
+    "buildroot/linux-headers",
+    "buildroot/musl",
+    "buildroot/musl-compat-headers",
+    "buildroot/nftables",
+    "buildroot/pcre2",
+    "buildroot/pigz",
+    "buildroot/skeleton",
+    "buildroot/skeleton-init-common",
+    "buildroot/skeleton-init-sysv",
+    "buildroot/slirp",
+    "buildroot/slirp4netns",
+    "buildroot/toolchain",
+    "buildroot/toolchain-buildroot",
+    "buildroot/util-linux",
+    "buildroot/zlib"
+  ],
+  "cni_provenance": {
+    "binary_sha256": "47c87c77c0d1572276d33577523c0f177134657f272b0ea87391584bdd101a43",
+    "build_info": "provenance/cni-build-info.txt",
+    "go": "go1.26.10",
+    "revision": "413c9c219e9021d7bd8ab64a696655ab45382382",
+    "modified": true,
+    "modifications_recipe": "scripts/download and scripts/build in pinned K3s source; Flannel overlay, package/function rename, module replacement. Embedded x/sys v0.48.0 is replaced by v0.40.0."
+  },
+  "limitations": [
+    "Source/notice custody and recorded provenance, not legal-completeness certification.",
+    "Configured Buildroot target dependency closure is retained conservatively; this is not a bit-identical rebuild of vendor userspace.",
+    "CNI has its own embedded build graph and upstream overlay recipe; its modified vendor build has not been reproduced bit for bit.",
+    "The three replaced executables have separate source/module/build gates in sources.lock.json.",
+    "No production, Kubernetes, recovery or Portainer acceptance is established."
+  ]
+}

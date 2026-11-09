@@ -1,8 +1,9 @@
 """Reviewed source closure for the explicit frontend shared-account release.
 
-Literal pins bind the already reviewed account implementation and existing NVIDIA
-presentation. A fresh installed main source and retained provider baseline are
-still required. No receipt here is authenticated product acceptance.
+Literal pins bind the reviewed account implementation, explicit Engineering account
+linking and return flow, and existing NVIDIA presentation. A fresh installed main
+source and retained provider baseline are still required. No receipt here is
+authenticated product acceptance.
 """
 
 PREFIX = "onesa-company-portal-frontend/"
@@ -11,7 +12,7 @@ PROFILE = "frontend-identity-v1"
 PINS = {
     "onesa-company-portal-frontend/Dockerfile": "e13d6a1e450723a6d8d6aa64c81504f7aebb4983d3fec01016e88ec6257c7f29",
     "onesa-company-portal-frontend/package-lock.json": "a14df9606964f633c89d4237cb99b182767f6dbd47adfde92835f2b0d96bd4f1",
-    "onesa-company-portal-frontend/package.json": "2c55384c49e7a35743ca807f21dd2de042e907148cc42e16c5e244c59a764c81",
+    "onesa-company-portal-frontend/package.json": "e3cbc621f1713824ec3f621588ac0d13e0c3cd6d6c7688e7d64dfe85aa00774e",
     "onesa-company-portal-frontend/public/brand/icons/v1/onesa-robot.svg": "35fb7e0ac799a345ef567d230ae9e6f07f95f470499af7f4c2e536c57beee771",
     "onesa-company-portal-frontend/public/brand/icons/v1/sources.json": "20a2216e9f4b6f0fcb3e67a1e5fd28757435de7d5a19c0a02eb4481504367179",
     "onesa-company-portal-frontend/public/brand/sources.json": "feacf92edbd620e3c86af5546a5eb7f0df6423af389eb568f1b29735cd3c5e8c",
@@ -35,9 +36,11 @@ PINS = {
     "onesa-company-portal-frontend/public/models/nvidia/nvidia-transfer-conveyor/compact.3f73d759f3f6f233.glb": "3f73d759f3f6f233d5b3196951bf1ade77e163c14576bccdceddebe9e3ebe0f0",
     "onesa-company-portal-frontend/public/models/nvidia/nvidia-transfer-conveyor/preview.png": "920b611de2d96aac5af92e80f2352eda64417abd4a940ac44314de8e8857489a",
     "onesa-company-portal-frontend/scripts/public-shell-ready.mjs": "bd84fdafa98f8f0e59c7955475c58b75d21ad2eef3378a7a80244fde4f12e4c5",
-    "onesa-company-portal-frontend/scripts/test-drone-product.mjs": "3bea2bb2b51e6747df223101970218c080b10fcc3c4d1ac719a61cc164a40d3f",
-    "onesa-company-portal-frontend/scripts/test-nvidia-library.mjs": "fd9b0f8d669554036ba18460d412eb057b45fa4ce99537e9c1d94cbb717da60b",
-    "onesa-company-portal-frontend/scripts/test-onesa-account.mjs": "1de0075eded92a1f7e7cd1e0c92155dc40d6a9b5de19b7a80210af70c3d4793e",
+    "onesa-company-portal-frontend/scripts/drone-product-diagnostics.mjs": "0b3227e7cff9fd89c47cfa69903dcd9ddeac13660b1c04de0533e3d1d9ce96e5",
+    "onesa-company-portal-frontend/scripts/test-drone-product.mjs": "6533b4c8dc26f76bb92848476394a07ccabcca9d78e3935295f2dfbd80cd6d98",
+    "onesa-company-portal-frontend/scripts/test-engineering-sign-in.mjs": "33b6b31a69763986837b3a902328534404e6ceb56ea3e33bb86a9068b85afd1c",  # gitleaks:allow -- SHA-256 of reviewed public source.
+    "onesa-company-portal-frontend/scripts/test-nvidia-library.mjs": "ef7842475ddf585159da65c30d905c9f7e9970094ecdd07942a34c5afc8e72df",
+    "onesa-company-portal-frontend/scripts/test-onesa-account.mjs": "fdd380ccad7ebef858697155c0cd235e8d62d824d54dafcea6ac3edaa24a63e0",
     "onesa-company-portal-frontend/scripts/test-public-loading.mjs": "4a6f3f0f4d0dbdb9f24661152d48a555f078907886cd936d8fc4d1fc8b48fbad",
     "onesa-company-portal-frontend/scripts/validate-nvidia-assets.mjs": "41cc44c7be6fc08e00e85e268742e1740bab1538d3e4d6b86674b4784dda0545",
     "onesa-company-portal-frontend/security/minimatch-callable/README.md": "017d22b9e2057a92eaea7fe84a7d683789b75aa00f3159d8dcb6f688fc5c0ab0",
@@ -75,30 +78,56 @@ PINS = {
     "onesa-company-portal-frontend/src/config/nvidia-reference-assets.json": "f6049c874e1e3f9b5860ca1bf6d5bad22b5176f7282c868253225d80bff94704",
     "onesa-company-portal-frontend/src/config/onesa-applications.json": "0eeccc055f8d6df8662f0763453932e5d55dd5be9530a45a4cd863962f01e635",
     "onesa-company-portal-frontend/src/config/products.ts": "598d187624bc37f4d754e09b426c229a67b6e9c10b24a8aef24a391c57057ee5",
-    "onesa-company-portal-frontend/src/features/access/authenticator-setup.tsx": "dda65bd27cb9ca642ce3020555931f7f11387e05105df5918e4670e011a5cd97",  # gitleaks:allow -- SHA-256 of reviewed public source.
-    "onesa-company-portal-frontend/src/features/account/access-manager.tsx": "f3a5974714f2f1a69d3c87421a8e3ac02d71c280eb88b11aa0b7d9d104cac1e0",  # gitleaks:allow -- SHA-256 of reviewed public source.
+    "onesa-company-portal-frontend/src/features/access/authenticator-setup.tsx": "ba6325d91c1e839f2cf162eb8cdd6a56a32914f538ec7244209bc02cf819cb86",  # gitleaks:allow -- SHA-256 of reviewed public source.
+    "onesa-company-portal-frontend/src/features/account/access-manager.tsx": "24400fcf47357b6e7951a40a36bf3b9c5e28ac6c97099cd837cfe0fe3471f6d4",  # gitleaks:allow -- SHA-256 of reviewed public source.
     "onesa-company-portal-frontend/src/features/account/account.module.css": "d8505f9ea39cb9e505e7c6285c308947d77594c47a167cb709ce6d2880d06ad9",
-    "onesa-company-portal-frontend/src/features/account/account.tsx": "35f3c027d623d0e4af04120537f50c70c8d35b99eccde8470c1e61e3443a0679",
-    "onesa-company-portal-frontend/src/features/account/api.ts": "a33165e1c49aa2cf2607960728ac4bcb7d333ec011425ab6635f032069e6a32d",  # gitleaks:allow -- SHA-256 of reviewed public source.
+    "onesa-company-portal-frontend/src/features/account/account.tsx": "e2352fc9b926dece9de5262f6e1fe02890ceeeb09aa081c598e088a8681027c1",
+    "onesa-company-portal-frontend/src/features/account/api.ts": "b5c768285ed6bfcb68999b48c725a958c0625388da0e87548e6d06cca4ead77f",  # gitleaks:allow -- SHA-256 of reviewed public source.
     "onesa-company-portal-frontend/src/features/account/security.tsx": "bbdeb339758445978c49ae30345424ee487a45e6003617a35de6e59a1102bf83",
     "onesa-company-portal-frontend/src/features/admin/portal.tsx": "deeb9722ccf7434a2835e24f9e2425ea2fcab7c32a46da9dc0306a7621fdcd6e",
-    "onesa-company-portal-frontend/src/lib/api/generated/schema.d.ts": "cc807897d168b53e45f55dab0a497bbaddc1f2d68eb94b98dd1176cd456ed795",
+    "onesa-company-portal-frontend/src/features/engineering/sign-in.tsx": "2c69fe4bc96f695561d8a38493dedd8892bee85e6e2fb218a8db25ab078c7499",  # gitleaks:allow -- SHA-256 of reviewed public source.
+    "onesa-company-portal-frontend/src/lib/account-return.ts": "5094d6ce4bcd29bc05f7d1bc0b6f73666af6406eb6a7b1094f363e1a973a9043",  # gitleaks:allow -- SHA-256 of reviewed public source.
+    "onesa-company-portal-frontend/src/lib/api/generated/schema.d.ts": "e84ad11bf072ba1c2aee94b70af9ea73e98d8dea426979d55e09479d23cf37f8",
     "onesa-company-portal-frontend/src/lib/company-sitemap.ts": "e949ac09c3c3e851a015db461d2c9fe0d5052c708bf530cd019adf49f2f0a5f8",
     "onesa-company-portal-frontend/src/lib/domains.ts": "9cc261a9580b01ffa7215c4db10b6b8ece118e913e06fa4f3f815f0c77916447",
-    "onesa-company-portal-frontend/src/lib/onesa-identity.ts": "51d7eb10a92961e7636c736672e84c810717c0e261b38153752dd4a39800dd59",
+    "onesa-company-portal-frontend/src/lib/engineering-sign-in-errors.ts": "cef6efc4fbad3cb04e67f712ccccc50e57b31827aa55c65262af2e1dfababe6d",  # gitleaks:allow -- SHA-256 of reviewed public source.
+    "onesa-company-portal-frontend/src/lib/onesa-identity.ts": "18d247125da88f2284faaf4075503e508fc62b8e154b0ef4b6ef795e6d29cac8",
     "onesa-company-portal-frontend/src/proxy.ts": "01acb9084f2d2af5610a723896602b1578b83baa59c0fa8e55b0e31add46955f",
     "onesa-company-portal-frontend/tests/product-evidence.spec.ts": "b20e9de5778d825e87c5521c506e243a2c40a67f201776067254a8184915cd36",
+    "onesa-company-portal-frontend/unit/account-return.test.ts": "10a0af98ef261f9b282d039b4a210c8701c6be2ee15b7cf415857dd8380cfa5f",  # gitleaks:allow -- SHA-256 of reviewed public source.
     "onesa-company-portal-frontend/unit/dependency-security.test.mjs": "6385e1186038f6f7eb64f40d42793012d6590bf6785011a79f55798e9f356e4b",
+    "onesa-company-portal-frontend/unit/drone-product-diagnostics.test.mjs": "d275551e151b636a0342f4a2d0264afb4456a587ccf917717388f30c73a38eaf",
+    "onesa-company-portal-frontend/unit/engineering-sign-in-errors.test.ts": "d8638a27e239d3712d2e469635eddae3f0615f9264f2745a04b151e98899aa9f",  # gitleaks:allow -- SHA-256 of reviewed public source.
     "onesa-company-portal-frontend/unit/nvidia-assets.test.mjs": "81483abd13d83e3ddc348cb084411b0c029861738ddb5a432c80f934c5d40bf3",
-    "onesa-company-portal-frontend/unit/onesa-identity.test.ts": "0c136760bc52682184008bee442a1966ac20f907ae9677d32f1082a994ac2ccf",
+    "onesa-company-portal-frontend/unit/onesa-identity.test.ts": "4005525a4cd4b5dc34cb402d12ea8842c6f24e8e6ffc7b2ac5d70e195024e112",
     "onesa-company-portal-frontend/vendor/onesa-portal-minimatch-callable-1.0.0.tgz": "c532a6f7105c1934d4b0852881a59b981dd68217663debdee1a919a9a9de493c"
 }
+
+# The original reviewed source remains valid only as its complete old closure.
+# The new observer, its fixture and package command cannot be mixed with it.
+DIAGNOSTIC_PATHS = (
+    PREFIX + "package.json", PREFIX + "scripts/test-drone-product.mjs",
+    PREFIX + "scripts/drone-product-diagnostics.mjs",
+    PREFIX + "unit/drone-product-diagnostics.test.mjs",
+)
+DIAGNOSTIC_VARIANTS = (
+    tuple((name, PINS[name]) for name in DIAGNOSTIC_PATHS),
+    (
+        (DIAGNOSTIC_PATHS[0], "9c4874f6953dac58774541b216ddc1c8c072cd62d8ebfeb64fe0394d7b43ed48"),
+        (DIAGNOSTIC_PATHS[1], "3bea2bb2b51e6747df223101970218c080b10fcc3c4d1ac719a61cc164a40d3f"),
+        (DIAGNOSTIC_PATHS[2], None), (DIAGNOSTIC_PATHS[3], None),
+    ),
+)
 
 
 def reviewed_delta(old, new):
     if not isinstance(old, dict) or not isinstance(new, dict):
         raise ValueError("IDENTITY_FRONTEND_SOURCE_INVENTORY")
-    if not all(new.get(name) == checksum for name, checksum in PINS.items()):
+    common = all(new.get(name) == checksum for name, checksum in PINS.items()
+                 if name not in DIAGNOSTIC_PATHS)
+    diagnostic = any(all(name not in new if checksum is None else new.get(name) == checksum
+                         for name, checksum in variant) for variant in DIAGNOSTIC_VARIANTS)
+    if not common or not diagnostic:
         raise ValueError("IDENTITY_FRONTEND_REVIEWED_SOURCE_CHANGED")
     changed = {name for name in old.keys() | new.keys()
                if name.startswith(PREFIX) and old.get(name) != new.get(name)}

@@ -6,7 +6,33 @@ import subprocess
 import unittest
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def hosted_job_conditions():
+    """Read actual YAML scalars, including folded billing job conditions."""
+    conditions = []
+    for path in sorted((ROOT / ".github/workflows").glob("*.yml")):
+        for name, job in yaml.safe_load(path.read_text())["jobs"].items():
+            if "runs-on" not in job:
+                continue
+            condition = job.get("if")
+            if not isinstance(condition, str) or not condition.strip():
+                raise AssertionError(f"{path.name}:{name} has no job condition")
+            conditions.append(
+                {
+                    "job": f"{path.name}:{name}",
+                    "name": job.get("name", name),
+                    "condition": condition.strip()
+                    .removeprefix("${{ ")
+                    .removesuffix(" }}"),
+                }
+            )
+    if not conditions:
+        raise AssertionError("No hosted jobs were inspected")
+    return conditions
 
 
 class WorkflowBoundaryTests(unittest.TestCase):
@@ -272,6 +298,14 @@ if __name__ == "__main__":
 
 
 class HostedOnlyRunnerRemovalTests(unittest.TestCase):
+    def test_required_portal_verify_check_has_one_hosted_producer(self):
+        producers = [
+            item["job"]
+            for item in hosted_job_conditions()
+            if item["name"] == "verify"
+        ]
+        self.assertEqual(producers, ["verify.yml:verify"])
+
     def test_removed_runner_has_no_workflow_or_provisioning_consumer(self):
         self.assertFalse((ROOT / "scripts/runner").exists())
         self.assertFalse((ROOT / ".github/workflows/_local-validation.yml").exists())
@@ -280,8 +314,15 @@ class HostedOnlyRunnerRemovalTests(unittest.TestCase):
             self.assertNotIn("self-hosted", text, str(workflow))
             self.assertNotIn("scripts/runner", text, str(workflow))
             self.assertNotIn("_local-validation.yml", text, str(workflow))
-            if "runs-on:" in text:
-                self.assertIn("ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED", text)
+
+    def test_every_hosted_job_has_an_explicit_public_boundary(self):
+        # A public-only job is stricter than private included-allowance opt-in.
+        # Check each job's condition, not the presence of a variable elsewhere.
+        for item in hosted_job_conditions():
+            with self.subTest(job=item["job"]):
+                self.assertIn(
+                    "github.event.repository.private == false", item["condition"]
+                )
 
     def test_hosted_budget_guard_allows_public_and_blocks_private_without_opt_in(self):
         ci = {
@@ -308,26 +349,55 @@ for(const privateRepo of [false,true]) for(const allowance of ['', 'false', 'tru
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_every_hosted_job_denies_private_execution_without_allowance(self):
-        conditions = []
-        for path in (ROOT / ".github/workflows").glob("*.yml"):
-            text = path.read_text().split("jobs:\n", 1)[1]
-            for block in re.split(r"(?m)^  [A-Za-z0-9_-]+:\n", text)[1:]:
-                if "    runs-on:" not in block:
-                    continue
-                match = re.search(r"^    if: (.+)", block, re.MULTILINE)
-                self.assertIsNotNone(match, str(path))
-                conditions.append(
-                    match.group(1).removeprefix("${{ ").removesuffix(" }}")
-                )
+        conditions = hosted_job_conditions()
         program = r"""
-for(const condition of JSON.parse(process.argv[1])) {
- const github={event:{repository:{private:true}}},vars={};
- const result=new Function('github','vars','success','always','return ('+condition+')')(github,vars,()=>true,()=>true);
- if(result!==false)process.exit(1);
+for(const {job,condition} of JSON.parse(process.argv[1])) {
+ for(const allowance of ['', 'false']) {
+  const github={repository:'DruHustle/onesa-company-portal',repository_id:'1412150327',
+   actor:'DruHustle',triggering_actor:'DruHustle',ref:'refs/heads/main',run_attempt:'1',
+   event_name:'workflow_dispatch',event:{repository:{private:true}}};
+  const vars={ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED:allowance};
+  const result=new Function('github','vars','success','always','return ('+condition+')')(github,vars,()=>true,()=>true);
+  if(result!==false)throw new Error(job+' admitted private execution without allowance');
+ }
 }
 """
         result = subprocess.run(
             ["node", "-e", program, json.dumps(conditions)],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_billing_job_guards_preserve_their_distinct_visibility_policies(self):
+        conditions = {
+            item["job"]: item["condition"] for item in hosted_job_conditions()
+        }
+        selected = {
+            "amd64": conditions["onesa-billing-verify.yml:verify"],
+            "arm64": conditions["onesa-billing-arm64.yml:verify"],
+        }
+        program = r"""
+const conditions=JSON.parse(process.argv[1]);
+for(const repository of ['DruHustle/onesa-company-portal','foreign/repository'])
+for(const repository_id of ['1412150327','1444746154'])
+for(const privateRepo of [false,true])
+for(const allowance of ['', 'false', 'true'])
+for(const run_attempt of ['1','2'])
+for(const event_name of ['pull_request','push','workflow_dispatch','pull_request_target','workflow_run','schedule']) {
+ const github={repository,repository_id,run_attempt,event_name,event:{repository:{private:privateRepo}}};
+ const vars={ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED:allowance};
+ const canonical=repository==='DruHustle/onesa-company-portal' && repository_id==='1412150327';
+ const expected={amd64:canonical && (!privateRepo || allowance==='true'),
+  arm64:canonical && !privateRepo && run_attempt==='1' && ['pull_request','push','workflow_dispatch'].includes(event_name)};
+ for(const [architecture,condition] of Object.entries(conditions)) {
+  const actual=new Function('github','vars','return ('+condition+')')(github,vars);
+  if(actual!==expected[architecture])throw new Error(JSON.stringify({architecture,github,allowance,actual}));
+ }
+}
+"""
+        result = subprocess.run(
+            ["node", "-e", program, json.dumps(selected)],
             capture_output=True,
             text=True,
         )

@@ -56,6 +56,12 @@ def metrics(*failed, restarted=()):
 
 class NotificationScopeTests(unittest.TestCase):
     def setUp(self):
+        mail = patch.dict("sys.modules", {"backup": SimpleNamespace(checked_env=lambda: ({
+            "MAIL_PROVIDER": "resend", "NOTIFY_EMAIL": "andrew@onesa.eu",
+            "MAIL_FROM": "synthetic@example.invalid", "RESEND_API_KEY": "synthetic-only",
+        }, None))})
+        mail.start()
+        self.addCleanup(mail.stop)
         temporary = tempfile.TemporaryDirectory(prefix="onesa-notification-scope-")
         self.addCleanup(temporary.cleanup)
         self.state = Path(temporary.name)
@@ -477,20 +483,13 @@ class NotificationScopeTests(unittest.TestCase):
         self.assertEqual(self.read()["notification_pending"], pending)
         self.assertTrue(self.read()["notification_reconciliation_required"])
 
-    def test_eligible_legacy_pending_retries_same_body_reference_and_timestamp(self):
+    def test_eligible_legacy_pending_holds_unknown_sender_and_body(self):
         pending = self.pending(metrics("robot-production"))
         self.tick(metrics("ai-staging"))
-        sent = self.sent[0]
-        for field in [
-            "reference",
-            "kind",
-            "alerts",
-            "metrics",
-            "checked_at",
-            "recovered_backends",
-        ]:
-            self.assertEqual(sent[field], pending[field])
-        self.assertNotIn("notification_pending", self.read())
+        self.assertEqual(self.sent, [])
+        self.assertEqual(self.read()["notification_pending"], pending)
+        self.assertTrue(self.read()["notification_pending_envelope_hold"])
+        self.assertTrue(self.read()["notification_reconciliation_required"])
 
     def test_new_ambiguous_delivery_reuses_identical_scoped_payload_after_mixed_sample(
         self,
@@ -535,16 +534,15 @@ class NotificationScopeTests(unittest.TestCase):
         self.assertEqual(self.sent[0]["metrics"]["worker_health_status"], "unhealthy")
         self.assertEqual(self.sent[0]["alerts"], ["worker-stopped"])
 
-    def test_legacy_worker_pending_does_not_acquire_new_current_fields(self):
+    def test_legacy_worker_pending_holds_without_acquiring_new_current_fields(self):
         value = metrics()
         value["worker_healthy"] = False
         pending = self.pending(value)
         self.tick({**value, "worker_running": True, "worker_health_status": "unhealthy"})
-        self.assertEqual(self.sent[0]["metrics"], pending["metrics"])
-        self.assertEqual(self.sent[0]["reference"], pending["reference"])
-        self.assertNotIn("worker_running", self.sent[0]["metrics"])
-        self.assertEqual(monitor.worker_notification_detail(self.sent[0]["alerts"],
-                                                          self.sent[0]["metrics"]), "")
+        self.assertEqual(self.sent, [])
+        self.assertEqual(self.read()["notification_pending"], pending)
+        self.assertTrue(self.read()["notification_pending_envelope_hold"])
+        self.assertNotIn("worker_running", pending["metrics"])
 
     def test_existing_provider_hold_is_not_released_by_recent_timestamp(self):
         pending = self.pending(metrics("robot-production"), held=True)

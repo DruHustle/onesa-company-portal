@@ -5,6 +5,7 @@ import datetime
 import importlib.util
 import io
 import json
+import os
 import subprocess
 import tempfile
 import threading
@@ -30,6 +31,12 @@ DEPENDENCY_SUCCESS = {
 
 class OperationsGuards(unittest.TestCase):
     def setUp(self):
+        mail = patch.dict("sys.modules", {"backup": SimpleNamespace(checked_env=lambda: ({
+            "MAIL_PROVIDER": "resend", "NOTIFY_EMAIL": "andrew@onesa.eu",
+            "MAIL_FROM": "synthetic@example.invalid", "RESEND_API_KEY": "synthetic-only",
+        }, None))})
+        mail.start()
+        self.addCleanup(mail.stop)
         self.metrics = {
             "worker_required": True,
             "worker_healthy": True,
@@ -228,7 +235,7 @@ class OperationsGuards(unittest.TestCase):
         self.assertNotIn("unapproved-host", str(result) + str(requests))
         self.assertEqual(list(result["affected_backends"]), ["robot-production"])
 
-    def test_worker_detail_preserves_legacy_payload_bytes_and_rejects_unknown_values(self):
+    def test_worker_detail_preserves_text_and_versioned_bytes_and_rejects_unknown_values(self):
         values = {
             "MAIL_PROVIDER": "resend", "NOTIFY_EMAIL": "andrew@onesa.eu",
             "MAIL_FROM": "synthetic@example.invalid", "RESEND_API_KEY": "synthetic-only",
@@ -271,7 +278,14 @@ class OperationsGuards(unittest.TestCase):
                                        checked_at=checked, reference=reference)
                     expected = {**legacy, "text": legacy["text"].replace(
                         "worker-stopped\n", "worker-stopped" + detail + "\n")}
-                    self.assertEqual(requests[-1].data, json.dumps(expected).encode())
+                    actual = json.loads(requests[-1].data)
+                    self.assertEqual(set(actual), set(expected) | {"html"})
+                    self.assertEqual({key: actual[key] for key in expected}, expected)
+                    self.assertIn("Service needs attention", actual["html"])
+                    self.assertIn("Reference: " + reference, actual["html"])
+                    self.assertNotIn("private-provider-detail", actual["html"])
+                    if detail:
+                        self.assertIn(detail.strip(), actual["html"])
                     self.assertEqual(requests[-1].data, requests[-2].data)
                     self.assertEqual(requests[-1].get_header("Idempotency-key"),
                                      "onesa-operations/" + reference)
@@ -353,6 +367,16 @@ class OperationsGuards(unittest.TestCase):
 
 
 class DependencyMonitoring(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        state = patch.object(monitor, "STATE", Path(directory.name))
+        state.start()
+        self.addCleanup(state.stop)
+        cleanup = patch.object(monitor, "cleanup_dependency_probe", return_value=True)
+        self.cleanup = cleanup.start()
+        self.addCleanup(cleanup.stop)
+
     def test_independent_results_need_no_fallback(self):
         for value in (
             DEPENDENCY_SUCCESS,
@@ -367,6 +391,7 @@ class DependencyMonitoring(unittest.TestCase):
                 self.assertEqual(acquire.call_count, 1)
                 self.assertEqual(acquire.call_args.kwargs["timeout"], 20)
                 self.assertNotIn("--scanner-only", acquire.call_args.args[0])
+                self.cleanup.assert_not_called()
 
     def test_invalid_combined_metrics_get_one_typed_scanner_only_fallback(self):
         invalid = [
@@ -391,7 +416,9 @@ class DependencyMonitoring(unittest.TestCase):
                                  {"database_available": False, "scanner_ready": True})
                 self.assertEqual(acquire.call_count, 2)
                 first, second = acquire.call_args_list
-                self.assertEqual(second.args[0], first.args[0] + ["--scanner-only"])
+                self.assertNotEqual(first.args[0][4], second.args[0][4])
+                self.assertEqual(second.args[0][:3] + second.args[0][7:],
+                                 first.args[0][:3] + first.args[0][7:] + ["--scanner-only"])
                 self.assertEqual(second.kwargs["timeout"], 4)
                 self.assertIn("onesa-portal-oracle-staging_scanner_socket:/run/onesa-scanner:ro", second.args[0])
                 self.assertIn("CLAMAV_SOCKET=/run/onesa-scanner/clamd.sock", second.args[0])
@@ -411,6 +438,244 @@ class DependencyMonitoring(unittest.TestCase):
                                  {"database_available": False, "scanner_ready": False})
                 self.assertEqual(acquire.call_count, 2)
                 self.assertEqual([call.kwargs["timeout"] for call in acquire.call_args_list], [20, 4])
+
+
+class DependencyProbeCleanup(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        state = patch.object(monitor, "STATE", Path(directory.name))
+        state.start()
+        self.addCleanup(state.stop)
+        self.owner = "a" * 32
+        self.name = "onesa-metrics-" + self.owner
+        self.identifier = "b" * 64
+        self.image = "synthetic-image"
+        self.command = ["metrics.mjs"]
+        self.row = {
+            "id": self.identifier, "name": "/" + self.name, "owner": self.owner,
+            "image": self.image, "entrypoint": ["node"], "command": self.command,
+            "auto_remove": True, "read_only": True,
+        }
+
+    def result(self, *, row=None, code=0, out=None, error=b""):
+        return SimpleNamespace(returncode=code, stdout=(json.dumps(row).encode()
+                               if row is not None else out or b""), stderr=error)
+
+    def cleanup(self):
+        return monitor.cleanup_dependency_probe(self.name, self.owner, self.image, self.command)
+
+    def test_interrupted_created_probe_is_removed_by_exact_id(self):
+        with patch.object(monitor.subprocess, "run", side_effect=[
+            self.result(row=self.row), self.result(out=self.identifier.encode()),
+        ]) as execute:
+            self.assertTrue(self.cleanup())
+        inspect, remove = execute.call_args_list
+        self.assertEqual(inspect.args[0][-1], self.name)
+        self.assertIn(monitor.PROBE_INSPECT_FORMAT, inspect.args[0])
+        self.assertEqual(remove.args[0], ["docker", "rm", "--force", self.identifier])
+        self.assertEqual([x.kwargs["timeout"] for x in execute.call_args_list], [1, 1])
+        self.assertNotIn(".Env", monitor.PROBE_INSPECT_FORMAT)
+
+    def test_service_or_foreign_probe_identity_never_authorizes_removal(self):
+        cases = [
+            {"id": "short"}, {"name": "/onesa-portal-oracle-production-worker-1"},
+            {"owner": "c" * 32}, {"image": "another-image"}, {"entrypoint": ["sh"]},
+            {"command": ["jobs/worker.js"]}, {"auto_remove": False}, {"read_only": False},
+        ]
+        for changed in cases:
+            with self.subTest(changed=changed), patch.object(monitor.subprocess, "run",
+                    return_value=self.result(row={**self.row, **changed})) as execute:
+                self.assertFalse(self.cleanup())
+                self.assertEqual(execute.call_count, 1)
+        with patch.object(monitor.subprocess, "run") as execute:
+            self.assertFalse(monitor.cleanup_dependency_probe(
+                "onesa-portal-oracle-production-worker-1", self.owner, self.image, self.command))
+            execute.assert_not_called()
+
+    def test_absence_without_a_positive_id_cannot_resolve_creation_custody(self):
+        for message, expected in (
+            (("Error: No such object: " + self.name).encode(), False),
+            (("Error: No such container: " + self.name).encode(), False),
+            (b"Cannot connect to the Docker daemon", False),
+            (b"Error: No such container: unrelated-name", False),
+            (b"permission denied", False),
+        ):
+            with self.subTest(expected=expected, message=message), patch.object(
+                monitor.subprocess, "run", return_value=self.result(code=1, error=message)
+            ) as execute:
+                self.assertEqual(self.cleanup(), expected)
+                self.assertEqual(execute.call_count, 1)
+
+    def test_auto_remove_completion_race_is_accepted_only_for_the_inspected_id(self):
+        for identifier, expected in ((self.identifier, True), ("c" * 64, False)):
+            with self.subTest(expected=expected), patch.object(monitor.subprocess, "run", side_effect=[
+                self.result(row=self.row),
+                self.result(code=1, error=("Error: No such container: " + identifier).encode()),
+            ]):
+                self.assertEqual(self.cleanup(), expected)
+
+    def test_malformed_or_failed_cleanup_remains_unresolved(self):
+        for response in (
+            self.result(out=b"not-json"), self.result(out=b"[]"),
+            self.result(out=b"x" * 4097),
+            subprocess.TimeoutExpired(["docker"], 1), OSError("private-provider-detail"),
+        ):
+            with self.subTest(response=type(response).__name__), patch.object(
+                monitor.subprocess, "run", side_effect=[response]
+            ) as execute:
+                self.assertFalse(self.cleanup())
+                self.assertEqual(execute.call_count, 1)
+        with patch.object(monitor.subprocess, "run", side_effect=[
+            self.result(row=self.row), subprocess.TimeoutExpired(["docker"], 1),
+        ]):
+            self.assertFalse(self.cleanup())
+
+    def test_failed_invocation_owns_cleanup_before_a_distinct_fallback(self):
+        rows = {}
+        calls = []
+
+        def execute(command, *, timeout, **_kwargs):
+            calls.append(command)
+            if command[:2] == ["docker", "run"]:
+                name = command[command.index("--name") + 1]
+                owner = command[command.index("--label") + 1].split("=", 1)[1]
+                self.assertEqual(name, "onesa-metrics-" + owner)
+                if command[-1] == "--scanner-only":
+                    self.assertEqual(rows, {}, "First probe must be removed before the fallback starts")
+                    return self.result(out=b'{"scanner_ready":true}')
+                rows[name] = {**self.row, "name": "/" + name, "owner": owner}
+                raise subprocess.TimeoutExpired(command, timeout)
+            if command[:2] == ["docker", "inspect"]:
+                return self.result(row=rows[command[-1]])
+            self.assertEqual(command, ["docker", "rm", "--force", self.identifier])
+            rows.clear()
+            return self.result(out=self.identifier.encode())
+
+        with patch.object(monitor.subprocess, "run", side_effect=execute):
+            self.assertEqual(monitor.sample_dependencies({"image": self.image}),
+                             {"database_available": False, "scanner_ready": True})
+        self.assertEqual([c[1] for c in calls], ["run", "inspect", "rm", "run"])
+        self.assertNotEqual(calls[0][4], calls[-1][4])
+
+    def test_unknown_cleanup_does_not_start_another_probe_or_report_success(self):
+        with patch.object(monitor, "run", side_effect=subprocess.TimeoutExpired(["docker"], 20)) as acquire, \
+             patch.object(monitor, "cleanup_dependency_probe", return_value=False):
+            self.assertEqual(monitor.sample_dependencies({"image": self.image}), {
+                "database_available": False, "scanner_ready": False,
+                "dependency_probe_cleanup_failed": True,
+            })
+            self.assertEqual(acquire.call_count, 1)
+            self.assertIsNotNone(monitor.read_dependency_probe())
+            self.assertEqual(monitor.sample_dependencies({"image": self.image}), {
+                "database_available": False, "scanner_ready": False,
+                "dependency_probe_cleanup_failed": True,
+            })
+            self.assertEqual(acquire.call_count, 1, "Future ticks must not accumulate unresolved probes")
+
+    def test_late_daemon_registration_remains_owned_across_timer_ticks(self):
+        calls = []
+        current = None
+        visible = False
+        recovered = False
+
+        def execute(command, *, timeout, **_kwargs):
+            nonlocal current, recovered
+            calls.append(command)
+            if command[:2] == ["docker", "run"]:
+                if recovered:
+                    return self.result(out=json.dumps(DEPENDENCY_SUCCESS).encode())
+                name = command[command.index("--name") + 1]
+                owner = command[command.index("--label") + 1].split("=", 1)[1]
+                current = {**self.row, "name": "/" + name, "owner": owner}
+                raise subprocess.TimeoutExpired(command, timeout)
+            if command[:2] == ["docker", "inspect"]:
+                self.assertEqual(command[-1], current["name"].removeprefix("/"))
+                if visible:
+                    return self.result(row=current)
+                return self.result(code=1, error=("Error: No such object: " + command[-1]).encode())
+            self.assertEqual(command, ["docker", "rm", "--force", self.identifier])
+            recovered = True
+            return self.result(out=self.identifier.encode())
+
+        with patch.object(monitor.subprocess, "run", side_effect=execute):
+            self.assertTrue(monitor.sample_dependencies({"image": self.image})["dependency_probe_cleanup_failed"])
+            pending = monitor.read_dependency_probe()
+            self.assertIsNotNone(pending)
+            self.assertTrue(monitor.sample_dependencies({"image": self.image})["dependency_probe_cleanup_failed"])
+            self.assertEqual(monitor.read_dependency_probe(), pending)
+            visible = True
+            self.assertTrue(monitor.sample_dependencies({"image": self.image})["dependency_probe_recovery_only"])
+            self.assertIsNone(monitor.read_dependency_probe())
+            self.assertEqual([command[1] for command in calls], ["run", "inspect", "inspect", "inspect", "rm"])
+            self.assertEqual(monitor.sample_dependencies({"image": self.image}), DEPENDENCY_SUCCESS)
+        self.assertEqual(calls[-1][1], "run")
+        self.assertNotEqual(calls[-1][4], calls[0][4])
+
+    def test_fifo_pending_marker_is_refused_without_blocking_or_docker(self):
+        path = monitor.dependency_probe_marker()
+        os.mkfifo(path, 0o600)
+        with patch.object(monitor, "run") as acquire, \
+             patch.object(monitor, "cleanup_dependency_probe") as cleanup:
+            self.assertTrue(monitor.sample_dependencies({"image": self.image})["dependency_probe_cleanup_failed"])
+            acquire.assert_not_called()
+            cleanup.assert_not_called()
+
+    def test_interrupted_intent_recovers_only_its_retained_probe_before_future_sampling(self):
+        pending = {"schema_version": 1, "name": self.name, "owner": self.owner,
+                   "image": self.image, "command": self.command}
+        monitor.retain_dependency_probe(pending)
+        self.assertEqual(monitor.dependency_probe_marker().stat().st_mode & 0o777, 0o600)
+        with patch.object(monitor, "cleanup_dependency_probe", return_value=True) as cleanup, \
+             patch.object(monitor, "run", return_value=json.dumps(DEPENDENCY_SUCCESS).encode()) as acquire:
+            self.assertEqual(monitor.sample_dependencies({"image": "new-synthetic-image"}), {
+                "database_available": False, "scanner_ready": False,
+                "dependency_probe_recovery_only": True,
+            })
+            cleanup.assert_called_once_with(self.name, self.owner, self.image, self.command)
+            acquire.assert_not_called()
+            self.assertIsNone(monitor.read_dependency_probe())
+            self.assertEqual(monitor.sample_dependencies({"image": "new-synthetic-image"}), DEPENDENCY_SUCCESS)
+            self.assertEqual(acquire.call_count, 1)
+            self.assertIsNone(monitor.read_dependency_probe())
+
+    def test_changed_or_aliased_pending_custody_never_executes_docker(self):
+        path = monitor.dependency_probe_marker()
+        pending = {"schema_version": 1, "name": self.name, "owner": self.owner,
+                   "image": self.image, "command": self.command}
+        monitor.retain_dependency_probe(pending)
+        with self.assertRaises(FileExistsError):
+            monitor.retain_dependency_probe(pending)
+        with self.assertRaises(monitor.ProbeCleanupFailed):
+            monitor.clear_dependency_probe({**pending, "image": "another-image"})
+        original = path.read_bytes()
+        with patch.object(monitor, "run") as acquire, patch.object(monitor, "cleanup_dependency_probe") as cleanup:
+            path.write_bytes(b"malformed-private-state")
+            self.assertTrue(monitor.sample_dependencies({"image": self.image})["dependency_probe_cleanup_failed"])
+            path.unlink()
+            other = monitor.STATE / "unrelated.json"
+            other.write_bytes(original)
+            path.symlink_to(other)
+            self.assertTrue(monitor.sample_dependencies({"image": self.image})["dependency_probe_cleanup_failed"])
+            acquire.assert_not_called()
+            cleanup.assert_not_called()
+
+    def test_concurrent_observer_cannot_clean_up_an_active_invocation(self):
+        pending = {"schema_version": 1, "name": self.name, "owner": self.owner,
+                   "image": self.image, "command": self.command}
+        with monitor.dependency_probe_lock():
+            monitor.retain_dependency_probe(pending)
+            with patch.object(monitor, "run") as acquire, \
+                 patch.object(monitor, "cleanup_dependency_probe") as cleanup:
+                result = monitor.sample_dependencies({"image": self.image})
+                self.assertEqual(result, {"database_available": False, "scanner_ready": False,
+                                          "dependency_probe_busy": True})
+                acquire.assert_not_called()
+                cleanup.assert_not_called()
+        with patch.object(monitor, "run") as acquire, \
+             patch.object(monitor, "cleanup_dependency_probe", return_value=True):
+            self.assertTrue(monitor.sample_dependencies({"image": self.image})["dependency_probe_recovery_only"])
+            acquire.assert_not_called()
 
 
 class BackendMonitoring(unittest.TestCase):
@@ -465,6 +730,8 @@ class BackendMonitoring(unittest.TestCase):
                 serial_timeouts = []
                 database_timeouts = []
                 fallback_timeouts = []
+                cleanup_timeouts = []
+                probe_containers = {}
                 inspect_timeouts = []
                 probe_timeouts = {
                     value["url"]: [] for value in monitor.BACKENDS.values()
@@ -479,6 +746,14 @@ class BackendMonitoring(unittest.TestCase):
 
                 def acquire(command, timeout):
                     if command[1] == "run":
+                        name = command[command.index("--name") + 1]
+                        owner = command[command.index("--label") + 1].split("=", 1)[1]
+                        probe_containers[name] = {
+                            "id": "a" * 64, "name": "/" + name, "owner": owner,
+                            "image": "synthetic-image", "entrypoint": ["node"],
+                            "command": ["metrics.mjs"] + (["--scanner-only"] if command[-1] == "--scanner-only" else []),
+                            "auto_remove": True, "read_only": True,
+                        }
                         if command[-1] == "--scanner-only":
                             fallback_timeouts.append(timeout)
                             if scanner_fallback is None:
@@ -502,6 +777,13 @@ class BackendMonitoring(unittest.TestCase):
                     return b""
 
                 def probe(command, *, timeout, **kwargs):
+                    if command[:3] == ["docker", "inspect", "--type=container"]:
+                        cleanup_timeouts.append(timeout)
+                        return SimpleNamespace(stdout=json.dumps(probe_containers[command[-1]]).encode(),
+                                               stderr=b"", returncode=0)
+                    if command[:3] == ["docker", "rm", "--force"]:
+                        cleanup_timeouts.append(timeout)
+                        return SimpleNamespace(stdout=command[-1].encode(), stderr=b"", returncode=0)
                     if command[:2] == ["docker", "inspect"]:
                         inspect_timeouts.append(timeout)
                         return SimpleNamespace(
@@ -592,7 +874,7 @@ class BackendMonitoring(unittest.TestCase):
                     sum(attempts) for attempts in probe_timeouts.values()
                 )
                 sampling_budget = sum(serial_timeouts) + max(
-                    sum(database_timeouts) + sum(fallback_timeouts), backend_budget
+                    sum(database_timeouts) + sum(fallback_timeouts) + sum(cleanup_timeouts), backend_budget
                 )
                 units = Path(monitor.__file__).parent
                 service = configparser.ConfigParser()
@@ -600,7 +882,7 @@ class BackendMonitoring(unittest.TestCase):
                 deadline = service.getfloat("Service", "TimeoutStartSec")
                 self.assertEqual(deadline, 60)
                 self.assertLess(sampling_budget + sum(delivery_timeouts), deadline)
-                self.assertGreaterEqual(deadline - sampling_budget - sum(delivery_timeouts), 7)
+                self.assertGreaterEqual(deadline - sampling_budget - sum(delivery_timeouts), 3)
 
                 timer = configparser.ConfigParser()
                 timer.read(units / "onesa-portal-monitor.timer")

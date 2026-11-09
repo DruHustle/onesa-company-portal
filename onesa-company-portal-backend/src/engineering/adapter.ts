@@ -1,6 +1,7 @@
 import { errors, type Adapter, type AdapterPayload } from "oidc-provider";
 import { db } from "../services/db.js";
 import { encrypt, decrypt } from "../auth/crypto.js";
+import { liveGrantSession } from "../identity/accounts.js";
 const allowed = new Set([
   "Client",
   "Session",
@@ -57,6 +58,21 @@ export class EngineeringIdentityAdapter implements Adapter {
       };
     if (parsed.model !== this.model || parsed.id !== row.id)
       throw Error("Identity record binding rejected");
+    if (parsed.payload.accountId) {
+      const link = (await db.query(
+        "SELECT l.user_id FROM identity_engineering_links l JOIN engineering_memberships m ON m.id=l.membership_id JOIN users u ON u.id=l.user_id JOIN identity_profiles p ON p.user_id=u.id WHERE l.membership_id=$1 AND m.enabled AND NOT u.disabled AND u.email=m.email AND p.email_verified_at IS NOT NULL",
+        [parsed.payload.accountId],
+      )).rows[0];
+      const linked = link || (await db.query("SELECT user_id FROM identity_engineering_links WHERE membership_id=$1", [parsed.payload.accountId])).rows[0];
+      if (linked) {
+        if (!link || process.env.ONESA_IDENTITY_ENABLED !== "true") return undefined;
+        const authorizations = parsed.payload.authorizations;
+        const grants = this.model === "Grant" ? [row.id] : typeof parsed.payload.grantId === "string" ? [parsed.payload.grantId] :
+          this.model === "Session" && authorizations && typeof authorizations === "object" ?
+            Object.values(authorizations).map((value: unknown) => value && typeof value === "object" && "grantId" in value ? value.grantId : undefined) : [];
+        if (!grants.length || grants.length > 1 || typeof grants[0] !== "string" || !(await liveGrantSession(grants[0], link.user_id))) return undefined;
+      }
+    }
     return {
       ...parsed.payload,
       ...(row.consumed_at === null

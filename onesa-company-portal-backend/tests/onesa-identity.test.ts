@@ -20,7 +20,7 @@ const origin = process.env.PUBLIC_ORIGIN;
 const key = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const config = {
   issuer: origin + "/api/v1/identity",
-  clients: ["ai", "drone", "robot"].map((product) => ({
+  clients: ["ai", "drone", "robot", "mobile"].map((product) => ({
     product,
     clientId: "synthetic_onesa_" + product,
     clientSecret: randomBytes(48).toString("hex") + "+%",
@@ -265,7 +265,19 @@ const inspect = (token: string, index = 0) =>
 
 test("Configuration is opt-in, fixed-client, exact issuer/callback and strong-key only", () => {
   assert.equal(identityConfiguration({}, origin), null);
-  assert.equal(identityConfiguration(process.env, origin)?.clients.length, 3);
+  assert.equal(identityConfiguration(process.env, origin)?.clients.length, 4);
+  assert.equal(
+    identityConfiguration(
+      {
+        ONESA_IDENTITY_ENABLED: "true",
+        ONESA_IDENTITY_CONFIG_B64: Buffer.from(
+          JSON.stringify({ ...config, clients: config.clients.slice(0, 3) }),
+        ).toString("base64"),
+      },
+      origin,
+    )?.clients.length,
+    3,
+  );
   for (const change of [
     { issuer: "https://foreign.invalid/api/v1/identity" },
     { clients: [config.clients[0], config.clients[0]] },
@@ -867,41 +879,80 @@ test("Native Portal logout revokes only grants bound to that native session", as
   const first = await signIn("admin");
   const savedAccountCookie = first.jar.get("onesa_account")!;
   first.jar.delete("onesa_account");
-  const portalGrant = await complete(await authorization("admin", 0, first), true);
+  const portalGrant = await complete(
+    await authorization("admin", 0, first),
+    true,
+  );
   first.jar.set("onesa_account", savedAccountCookie);
   const second = await signIn("admin");
-  const independentGrant = await complete(await authorization("admin", 1, second), true);
+  const independentGrant = await complete(
+    await authorization("admin", 1, second),
+    true,
+  );
   const response = await first.request({
-    method: "POST", url: "/api/v1/auth/logout",
-    headers: { "x-csrf-token": first.session.csrf }, payload: {},
+    method: "POST",
+    url: "/api/v1/auth/logout",
+    headers: { "x-csrf-token": first.session.csrf },
+    payload: {},
   });
   assert.equal(response.statusCode, 200, response.body);
   assert.equal((await inspect(portalGrant.token, 0)).json().active, false);
   assert.equal((await inspect(independentGrant.token, 1)).json().active, true);
-  assert.equal((await first.request({url: "/api/v1/account/me"})).statusCode, 200);
-  assert.equal((await second.request({url: "/api/v1/admin/dashboard"})).statusCode, 200);
+  assert.equal(
+    (await first.request({ url: "/api/v1/account/me" })).statusCode,
+    200,
+  );
+  assert.equal(
+    (await second.request({ url: "/api/v1/admin/dashboard" })).statusCode,
+    200,
+  );
 });
 
-test("Identity-disabled candidate keeps native administration usable with a member on schema 014", async () => {
-  const before = (await db.query("SELECT id,email,password_hash,role,disabled FROM users WHERE id=$1", [member])).rows[0];
+test("Identity-disabled candidate keeps native administration usable with a member on schema 016", async () => {
+  const before = (
+    await db.query(
+      "SELECT id,email,password_hash,role,disabled FROM users WHERE id=$1",
+      [member],
+    )
+  ).rows[0];
   const previous = process.env.ONESA_IDENTITY_ENABLED;
   process.env.ONESA_IDENTITY_ENABLED = "false";
-  const fallback = await buildApp({logging: false});
+  const fallback = await buildApp({ logging: false });
   try {
     await fallback.ready();
-    const login = await fallback.inject({method: "POST", url: "/api/v1/auth/login", headers: proxy,
-      payload: {email: emails.owner, password, code: await factor(owner)}});
+    const login = await fallback.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      headers: proxy,
+      payload: { email: emails.owner, password, code: await factor(owner) },
+    });
     assert.equal(login.statusCode, 200, login.body);
-    const cookie = login.cookies.filter(c => c.value).map(c => c.name + "=" + c.value).join("; ");
-    const list = await fallback.inject({url: "/api/v1/admin/users", headers: {...proxy, cookie}});
+    const cookie = login.cookies
+      .filter((c) => c.value)
+      .map((c) => c.name + "=" + c.value)
+      .join("; ");
+    const list = await fallback.inject({
+      url: "/api/v1/admin/users",
+      headers: { ...proxy, cookie },
+    });
     assert.equal(list.statusCode, 200, list.body);
-    assert.ok(list.json().items.some((user: {id: string}) => user.id === owner));
-    assert.ok(!list.json().items.some((user: {id: string}) => user.id === member));
-    const memberLogin = await fallback.inject({method: "POST", url: "/api/v1/auth/login", headers: proxy,
-      payload: {email: emails.member, password, code: ""}});
+    assert.ok(
+      list.json().items.some((user: { id: string }) => user.id === owner),
+    );
+    assert.ok(
+      !list.json().items.some((user: { id: string }) => user.id === member),
+    );
+    const memberLogin = await fallback.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      headers: proxy,
+      payload: { email: emails.member, password, code: "" },
+    });
     assert.equal(memberLogin.statusCode, 401);
     const configResponse = await fallback.inject({url: "/api/v1/account/config", headers: proxy});
-    assert.deepEqual(configResponse.json(), {enabled: false, applications: []});
+    const configuration=configResponse.json();
+    assert.deepEqual({enabled:configuration.enabled,applications:configuration.applications}, {enabled: false, applications: []});
+    assert.deepEqual(configuration.catalog.map((entry:{product:string;connected:boolean})=>[entry.product,entry.connected]), ["ai","drone","robot","farmer","logistics","factory","pasofi","mobile"].map(product=>[product,false]));
     assert.deepEqual((await db.query("SELECT id,email,password_hash,role,disabled FROM users WHERE id=$1", [member])).rows[0], before);
   } finally {
     process.env.ONESA_IDENTITY_ENABLED = previous;
@@ -1215,4 +1266,219 @@ test("Concurrent all-product sign-outs use one confirmed revocation without pool
     1,
   );
   assert.equal((await inspect(token)).json().active, false);
+});
+
+test("Mobile customer requests remain pending and legacy client claims keep the three-product vocabulary", async () => {
+  const central = await signIn();
+  const requested = await central.request({
+    method: "POST",
+    url: "/api/v1/account/products/mobile/request",
+    headers: { "x-csrf-token": central.session.csrf },
+    payload: {},
+  });
+  assert.equal(requested.statusCode, 200, requested.body);
+  const grant = requested
+    .json()
+    .access.find((item: { product: string }) => item.product === "mobile");
+  assert.equal(grant.role, "customer");
+  assert.equal(grant.status, "pending");
+  const denied = await authorization("member", 3, central);
+  const refused = await denied.request({
+    method: "POST",
+    url: "/api/v1/account/interaction/" + denied.uid + "/continue",
+    payload: { csrf: denied.details.csrf },
+  });
+  assert.equal(refused.statusCode, 403);
+  await db.query(
+    "UPDATE identity_product_access SET status='active',revision=revision+1 WHERE user_id=$1 AND product='mobile'",
+    [member],
+  );
+  const mobileFlow = await authorization("member", 3, central),
+    mobile = await complete(mobileFlow, true);
+  const mobileClaims = (await inspect(mobile.token, 3)).json();
+  assert.equal(mobileClaims.active, true);
+  assert.equal(mobileClaims.onesa_product_roles.mobile, "customer");
+  assert.ok(mobileClaims.onesa_applications.includes("mobile"));
+  assert.equal(mobileClaims.amr.includes("otp"), false);
+  const legacyFlow = await authorization("member", 0, central),
+    legacy = await complete(legacyFlow, true);
+  const legacyClaims = (await inspect(legacy.token, 0)).json();
+  assert.deepEqual(legacyClaims.onesa_applications, ["ai"]);
+  assert.deepEqual(legacyClaims.onesa_product_roles, { ai: "user" });
+  assert.equal((await inspect(mobile.token, 0)).json().active, false);
+});
+
+test("Mobile staff MFA is enforced at login, continuation and every live assertion", async () => {
+  await db.query(
+    "INSERT INTO identity_product_access(user_id,product,role,status) VALUES($1,'mobile','customer','active')",
+    [member],
+  );
+  const central = await signIn(),
+    customerFlow = await authorization("member", 3, central),
+    issued = await complete(customerFlow, true);
+  await db.query(
+    "UPDATE identity_product_access SET role='operations',revision=revision+1 WHERE user_id=$1 AND product='mobile'",
+    [member],
+  );
+  assert.equal((await inspect(issued.token, 3)).json().active, false);
+  const passwordSession = browser();
+  passwordSession.jar.set("onesa_account", central.jar.get("onesa_account")!);
+  const staffFlow = await authorization("member", 3, passwordSession);
+  const continued = await staffFlow.request({
+    method: "POST",
+    url: "/api/v1/account/interaction/" + staffFlow.uid + "/continue",
+    payload: { csrf: staffFlow.details.csrf },
+  });
+  assert.equal(continued.statusCode, 403);
+  assert.equal(continued.json().error.code, "MFA_REQUIRED");
+  const passwordOnly = await browser().request({
+    method: "POST",
+    url: "/api/v1/account/login",
+    payload: { email: emails.member, password },
+  });
+  assert.equal(passwordOnly.statusCode, 403);
+  assert.equal(passwordOnly.json().error.code, "MFA_ENROLLMENT_REQUIRED");
+  await db.query("UPDATE users SET mfa_secret=$2 WHERE id=$1", [
+    member,
+    encrypt("JBSWY3DPEHPK3PXP"),
+  ]);
+  const staffBrowser = browser();
+  const signed = await staffBrowser.request({
+    method: "POST",
+    url: "/api/v1/account/login",
+    payload: { email: emails.member, password, code: await factor(member) },
+  });
+  assert.equal(signed.statusCode, 200, signed.body);
+  const freshFlow = await authorization("member", 3, staffBrowser),
+    staffToken = await complete(freshFlow, true);
+  const claims = (await inspect(staffToken.token, 3)).json();
+  assert.equal(claims.active, true);
+  assert.equal(claims.onesa_product_roles.mobile, "operations");
+  assert.ok(claims.amr.includes("otp"));
+  await db.query(
+    "UPDATE identity_product_access SET status='revoked',revision=revision+1 WHERE user_id=$1 AND product='mobile'",
+    [member],
+  );
+  assert.equal((await inspect(staffToken.token, 3)).json().active, false);
+});
+
+test("Mobile product roles remain scoped in administration and the database", async () => {
+  const administrator = await signIn("admin");
+  const request = (selected: string, role: string, revision = 0) =>
+    administrator.request({
+      method: "PUT",
+      url:
+        "/api/v1/admin/identity/accounts/" + member + "/products/" + selected,
+      headers: { "x-csrf-token": administrator.session.csrf },
+      payload: {
+        role,
+        status: "active",
+        expectedRevision: revision,
+        memberships: [],
+        stepUp: { password, code: "not-a-valid-factor" },
+      },
+    });
+  for (const [selected, role] of [
+    ["ai", "finance"],
+    ["drone", "customer"],
+    ["robot", "support"],
+    ["mobile", "operator"],
+  ]) {
+    const rejected = await request(selected, role);
+    assert.equal(rejected.statusCode, 400);
+    assert.equal(rejected.json().error.code, "PRODUCT_ROLE");
+  }
+  const approved = await administrator.request({
+    method: "PUT",
+    url: "/api/v1/admin/identity/accounts/" + member + "/products/mobile",
+    headers: { "x-csrf-token": administrator.session.csrf },
+    payload: {
+      role: "finance",
+      status: "active",
+      expectedRevision: 0,
+      memberships: [],
+      stepUp: { password, code: await factor(admin) },
+    },
+  });
+  assert.equal(approved.statusCode, 200, approved.body);
+  for (const role of [
+    "admin",
+    "operations",
+    "support",
+    "finance",
+    "agent",
+    "auditor",
+    "customer",
+  ])
+    await db.query(
+      "UPDATE identity_product_access SET role=$2 WHERE user_id=$1 AND product='mobile'",
+      [member, role],
+    );
+  await assert.rejects(
+    db.query(
+      "UPDATE identity_product_access SET role='viewer' WHERE user_id=$1 AND product='mobile'",
+      [member],
+    ),
+    /violates check constraint/,
+  );
+  await assert.rejects(
+    db.query(
+      "UPDATE identity_product_access SET role='customer' WHERE user_id=$1 AND product='ai'",
+      [member],
+    ),
+    /violates check constraint/,
+  );
+});
+
+test("An unconfigured Mobile client does not enable registration, access requests or authorization", async () => {
+  const saved = process.env.ONESA_IDENTITY_CONFIG_B64;
+  process.env.ONESA_IDENTITY_CONFIG_B64 = Buffer.from(
+    JSON.stringify({ ...config, clients: config.clients.slice(0, 3) }),
+  ).toString("base64");
+  let legacyApp: Awaited<ReturnType<typeof buildApp>> | undefined;
+  try {
+    legacyApp = await buildApp({ logging: false });
+    await legacyApp.ready();
+    const settings = await legacyApp.inject({
+      url: "/api/v1/account/config",
+      headers: proxy,
+    });
+    assert.equal(settings.json().applications.length, 3);
+    const registration = await legacyApp.inject({
+      method: "POST",
+      url: "/api/v1/account/register",
+      headers: { ...proxy, origin },
+      payload: {
+        email: "mobile-unconfigured@example.invalid",
+        name: "Synthetic",
+        products: ["mobile"],
+      },
+    });
+    assert.equal(registration.statusCode, 503);
+    assert.equal(registration.json().error.code, "PRODUCT_UNAVAILABLE");
+    const request = await legacyApp.inject({
+      method: "POST",
+      url: "/api/v1/account/products/mobile/request",
+      headers: { ...proxy, origin },
+      payload: {},
+    });
+    assert.equal(request.statusCode, 503);
+    const authorization = await legacyApp.inject({
+      url:
+        "/api/v1/identity/auth?" +
+        new URLSearchParams({
+          client_id: config.clients[3].clientId,
+          redirect_uri: config.clients[3].redirectUri,
+          response_type: "code",
+          scope: "openid",
+          code_challenge_method: "S256",
+          code_challenge: randomBytes(32).toString("base64url"),
+        }),
+      headers: proxy,
+    });
+    assert.equal(authorization.statusCode, 400);
+  } finally {
+    await legacyApp?.close();
+    process.env.ONESA_IDENTITY_CONFIG_B64 = saved;
+  }
 });

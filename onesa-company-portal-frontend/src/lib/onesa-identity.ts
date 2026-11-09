@@ -10,7 +10,7 @@ export function identityRedirectLocation(value: string | null, origin: string, e
     if (url.username || url.password || url.hash) return null;
     if (url.origin === origin && !url.search && (new RegExp("^" + identityPath + "/auth/[A-Za-z0-9_-]{8,128}$").test(url.pathname) || /^\/account\/sign-in\/[A-Za-z0-9_-]{8,128}$/.test(url.pathname))) return url.href;
     const callbacks: unknown = JSON.parse(encodedCallbacks || "[]");
-    if (!Array.isArray(callbacks) || callbacks.length > 3) return null;
+    if (!Array.isArray(callbacks) || callbacks.length > 4) return null;
     const exact = callbacks.some(value => {
       if (typeof value !== "string") return false;
       const allowed = new URL(value);
