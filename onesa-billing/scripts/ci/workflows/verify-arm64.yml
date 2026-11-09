@@ -20,6 +20,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   verify:
+    name: company-billing-arm64
     if: >-
       github.repository == 'DruHustle/onesa-company-portal' && github.repository_id == '1412150327' &&
       github.event.repository.private == false && github.run_attempt == '1' &&

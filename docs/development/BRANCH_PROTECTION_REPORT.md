@@ -11,6 +11,11 @@ Classic branch protection is active; no ruleset or paid plan was added.
   resolved review conversations. No permanent bypass allowance is configured.
 - Required checks: `changes`, `ci-summary`, `image-security (clamav)`, `image-security (onesa-company-portal-backend)`, `image-security (onesa-company-portal-frontend)`, `pipeline-security / workflow-security`, `publication-hygiene`, `verify`.
 
+The restored independent billing workflows use `company-billing-amd64` and
+`company-billing-arm64` display names. Portal verification remains the sole producer
+of the required `verify` context; these names do not change protection settings or
+grant billing release authority.
+
 Path-selected jobs can legitimately be skipped on unrelated PRs. The unconditional
 summary verifies the selection and requires every selected job to succeed, including
 aggregate matrix results. A cancelled, failed or unexpectedly skipped selected job

@@ -6,8 +6,9 @@
   CI retains the shared Mobile identity PostgreSQL regression and bundles exact
   reviewed public frontend fixtures independently of source ancestry. Workflow
   boundary tests parse folded conditions and retain billing's stricter public-only
-  native ARM64 guard. Deployment and provider source cutover require their own
-  exact-source verification.
+  native ARM64 guard. Billing jobs have distinct display names, preserving Portal's
+  required `verify` check without ambiguous producers. Deployment and provider
+  source cutover require their own exact-source verification.
 
 - Add separately pinned canonical source consumers for Portal API, worker, scanner,
   identity migration and identity acceptance. Preserve one component/context per

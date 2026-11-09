@@ -24,6 +24,7 @@ def hosted_job_conditions():
             conditions.append(
                 {
                     "job": f"{path.name}:{name}",
+                    "name": job.get("name", name),
                     "condition": condition.strip()
                     .removeprefix("${{ ")
                     .removesuffix(" }}"),
@@ -297,6 +298,14 @@ if __name__ == "__main__":
 
 
 class HostedOnlyRunnerRemovalTests(unittest.TestCase):
+    def test_required_portal_verify_check_has_one_hosted_producer(self):
+        producers = [
+            item["job"]
+            for item in hosted_job_conditions()
+            if item["name"] == "verify"
+        ]
+        self.assertEqual(producers, ["verify.yml:verify"])
+
     def test_removed_runner_has_no_workflow_or_provisioning_consumer(self):
         self.assertFalse((ROOT / "scripts/runner").exists())
         self.assertFalse((ROOT / ".github/workflows/_local-validation.yml").exists())
