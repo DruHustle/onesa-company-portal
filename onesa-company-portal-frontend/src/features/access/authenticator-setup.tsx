@@ -2,17 +2,19 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiError } from "@/lib/api/client";
 import type { operations } from "@/lib/api/generated/schema";
+import { accountSetupReturnPath } from "@/lib/account-return";
 import styles from "./registration.module.css";
 
 type Enrollment = operations["startMfaEnrollment"]["responses"][200]["content"]["application/json"];
 
 export function AuthenticatorSetup({ sharedAccount = false }: { sharedAccount?: boolean }) {
-  const returnPath = () => { const value = new URLSearchParams(window.location.search).get("returnTo"); return sharedAccount && value && /^\/account\/sign-in\/[A-Za-z0-9_-]{8,128}$/.test(value) ? value : sharedAccount ? "/account" : "/admin"; };
+  const [returnPath, setReturnPath] = useState(sharedAccount ? "/account" : "/admin");
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [codes, setCodes] = useState<string[]>([]);
   const [saved, setSaved] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const pending = useRef(false), heading = useRef<HTMLHeadingElement>(null);
   const step = codes.length ? 3 : enrollment ? 2 : 1;
+  useEffect(() => { setReturnPath(sharedAccount ? accountSetupReturnPath(window.location.search) : "/admin"); }, [sharedAccount]);
   useEffect(() => { if (step > 1) heading.current?.focus(); }, [step]);
   useEffect(() => {
     if (!codes.length || saved) return;
@@ -67,12 +69,12 @@ export function AuthenticatorSetup({ sharedAccount = false }: { sharedAccount?: 
     {step === 3 && <>
       <ul className={styles.recoveryCodes} aria-label="One-use recovery codes">{codes.map(code => <li key={code}><code>{code}</code></li>)}</ul>
       <label className="check"><input type="checkbox" checked={saved} onChange={event => setSaved(event.target.checked)} />I have saved my recovery codes securely.</label>
-      <button className="button" disabled={!saved} onClick={() => { setCodes([]); window.location.replace(returnPath()); }}>{sharedAccount ? "Continue to Onesa sign-in" : "Continue to administrator sign-in"}</button>
+      <button className="button" disabled={!saved} onClick={() => { setCodes([]); window.location.replace(returnPath); }}>{sharedAccount ? "Continue to Onesa sign-in" : "Continue to administrator sign-in"}</button>
       <p className={styles.intro}>Wait for your authenticator’s next code, or use a saved recovery code to sign in. Setup does not sign you in automatically.</p>
     </>}
     {error && <p role="alert" className={styles.notice}>{error}</p>}
     <div className={styles.support}>
-      {step !== 3 && <a href={sharedAccount ? "/account" : "/admin"}>Already enrolled? Sign in</a>}
+      {step !== 3 && <a href={returnPath}>Already enrolled? Sign in</a>}
       <details><summary>Help with setup</summary><p>{sharedAccount ? "Use your verified Onesa account and its password. Setup adds MFA for all your products; it does not grant additional product access or replace an existing authenticator." : "You need an approved administrator account and its registered password. This page cannot replace existing MFA or reset your account. Engineering Docs has a separate sign-in flow."}</p><a href={sharedAccount ? "/account/register" : "/access/register?audience=admin"}>{sharedAccount ? "Create your Onesa account" : "Register for administrator access"}</a><p><a href="https://onesa.eu/en/contact">Contact Onesa</a></p></details>
     </div>
   </section></main>;

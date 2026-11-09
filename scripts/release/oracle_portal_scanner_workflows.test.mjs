@@ -167,3 +167,15 @@ test('Worker/scanner observations cannot be converted into API evidence',async()
 test('Missing failed or skipped idle-recovery check cannot qualify the API',async()=>{
  for(const value of [undefined,false,'SKIP']){const request=apiInput(),observed=apiResult();if(value===undefined)delete observed.checks.api_idle_connection_recovery_with_saved_sessions;else observed.checks.api_idle_connection_recovery_with_saved_sessions=value;const ops=operations(observed);await assert.rejects(observe(request.request,request.raw,request.values,ops));assert.equal(ops.calls.at(-1).action,'cleanup');}
 });
+
+test('Canonical scanner and dependent application cannot substitute any independent source dimension',()=>{
+ const value=input(),source={repository:'DruHustle/onesa-ug',schema_version:2,repository_id:1444746154,product:'portal',source_path:'onesa-company-portal',product_source_tree:'9'.repeat(40),branch:'main'};
+ Object.assign(value.request.scanner_binding,source);Object.assign(value.request.worker_probe.binding,source);
+ validate(value.request,value.raw,value.values);
+ for(const key of Object.keys(source)){
+  const changed=structuredClone(value.request);changed.worker_probe.binding[key]=key==='product_source_tree'?'8'.repeat(40):'foreign';
+  assert.throws(()=>validate(changed,value.raw,value.values));
+ }
+ const wrong=structuredClone(value.request);wrong.scanner_binding.release_authorized=true;
+ assert.throws(()=>validate(wrong,value.raw,value.values));
+});

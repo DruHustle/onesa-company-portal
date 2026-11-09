@@ -3,7 +3,6 @@ import {db,transaction,audit} from '../services/db.js';
 import {env,emailConfig,workerIdleMaxMs} from '../config/env.js';
 import {createMailer} from '../services/mail.js';
 import {claimMailJob} from '../services/mail-claim.js';
-import {decrypt} from '../auth/crypto.js';
 import {enqueue,notify,publicationEnabled} from '../services/workflows.js';
 import {retrieve,scan,remove} from '../services/storage.js';
 import {applicationRoleSafe} from '../services/database-role.js';
@@ -36,7 +35,7 @@ export async function tick(progress:()=>void=()=>{}){
 
  progress();
  await db.query("UPDATE jobs SET status=CASE WHEN attempts>=5 THEN 'failed' ELSE 'pending' END,locked_at=NULL,last_error=CASE WHEN attempts>=5 THEN 'Email retry limit exhausted; reconcile provider acceptance before retry' ELSE last_error END WHERE kind='email' AND ((status='running' AND locked_at<now()-interval '5 minutes') OR (status='pending' AND attempts>=5))");
- if(sendMail){const job=await transaction(claimMailJob);if(job){worked=true;try{await sendMail({id:job.id,to:job.payload.to,subject:job.payload.subject,text:job.payload.encryptedText?decrypt(job.payload.encryptedText):job.payload.text,presentation:job.payload.mailPresentation??'plain-v0'});await db.query("UPDATE jobs SET status='accepted',last_error=NULL WHERE id=$1 AND status='running' AND attempts=$2",[job.id,job.attempts]);}catch{await db.query("UPDATE jobs SET status=CASE WHEN attempts>=5 THEN 'failed' ELSE 'pending' END,run_at=now()+power(2,attempts)*interval '1 minute',last_error='Email provider delivery not accepted' WHERE id=$1 AND status='running' AND attempts=$2",[job.id,job.attempts]);}}}
+ if(sendMail){const job=await transaction(c=>claimMailJob(c,sendMail));if(job){worked=true;try{await sendMail.deliver(job.mailAttempt);await db.query("UPDATE jobs SET status='accepted',last_error=NULL WHERE id=$1 AND status='running' AND attempts=$2",[job.id,job.attempts]);}catch{await db.query("UPDATE jobs SET status=CASE WHEN attempts>=5 THEN 'failed' ELSE 'pending' END,run_at=now()+power(2,attempts)*interval '1 minute',last_error='Email provider delivery not accepted' WHERE id=$1 AND status='running' AND attempts=$2",[job.id,job.attempts]);}}}
  progress();
  const reminders=await db.query("SELECT id,follow_up_at FROM enquiries WHERE status<>'closed' AND follow_up_at<=now() AND follow_up_at>now()-interval '1 day'");for(const r of reminders.rows){progress();await transaction(async c=>{await c.query("SELECT pg_advisory_xact_lock(hashtextextended('privacy:enquiry:'||$1::uuid::text,0))",[r.id]);const current=(await c.query("SELECT follow_up_at FROM enquiries WHERE id=$1 AND status<>'closed' AND follow_up_at<=now() AND follow_up_at>now()-interval '1 day' FOR KEY SHARE",[r.id])).rows[0];if(current)await enqueue(c,'reminder-due:'+r.id+':'+current.follow_up_at.toISOString(),notify('Enquiry follow-up due',`Review record ${r.id}`));});}
  progress();

@@ -1,0 +1,62 @@
+{
+  "name": "onesa-company-portal-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24.12.0 <25"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=../.env node_modules/next/dist/bin/next dev --hostname 127.0.0.1 -p ${FRONTEND_PORT:-3300}",
+    "build": "node scripts/validate-nvidia-assets.mjs && next build --webpack",
+    "start": "node --env-file-if-exists=../.env ../scripts/start-frontend.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test:e2e": "playwright test",
+    "api:generate": "openapi-typescript ../onesa-company-portal-backend/openapi/openapi.json -o src/lib/api/generated/schema.d.ts",
+    "api:check": "python3 ../scripts/check-contracts.py",
+    "test:contracts": "python3 ../scripts/test-contract-break.py",
+    "test:domains": "node --test unit/domains.test.ts unit/onesa-identity.test.ts unit/engineering-identity.test.ts unit/engineering-sign-in-errors.test.ts unit/account-return.test.ts",
+    "test:domain-http": "node scripts/test-domain-routing.mjs",
+    "test:homepage-loading": "node scripts/test-homepage-loading.mjs",
+    "test:public-loading": "node scripts/test-public-loading.mjs",
+    "test:public-fetch": "node --test unit/public-fetch.test.ts",
+    "test:onesa-account": "node scripts/test-onesa-account.mjs",
+    "test:engineering-sign-in": "node scripts/test-engineering-sign-in.mjs && ONESA_TEST_ACCESS_MODE=disabled node scripts/test-engineering-sign-in.mjs",
+    "test:workspace-drafts": "node --test unit/draft-history.test.ts",
+    "test:hero-motion": "node --test unit/hero-motion.test.ts && node scripts/test-hero-motion.mjs",
+    "test:drone-product": "node --test unit/drone-product-diagnostics.test.mjs && node scripts/test-drone-product.mjs",
+    "test:nvidia-assets": "node scripts/validate-nvidia-assets.mjs && node --test unit/nvidia-assets.test.mjs",
+    "test:nvidia-browser": "node scripts/test-nvidia-library.mjs",
+    "test:dependency-security": "node --test unit/dependency-security.test.mjs"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
+    "next": "16.4.2",
+    "openapi-fetch": "^0.17.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.1.17",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^22.19.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/three": "0.186.0",
+    "eslint": "9.39.5",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.48.0",
+    "minimatch": "file:vendor/onesa-portal-minimatch-callable-1.0.0.tgz"
+  },
+  "overrides": {
+    "eslint@9.39.5": { "minimatch": "$minimatch" },
+    "@eslint/config-array@0.21.2": { "minimatch": "$minimatch" },
+    "@eslint/eslintrc@3.3.7": { "minimatch": "$minimatch" },
+    "@redocly/openapi-core@1.34.20": { "minimatch": "$minimatch" },
+    "@typescript-eslint/typescript-estree@8.71.1": { "minimatch": "11.0.1" }
+  }
+}

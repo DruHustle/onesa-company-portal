@@ -64,24 +64,37 @@ privilege is introduced. Restore lockdown removes every restored sign-in/registr
 link while preserving approval evidence and inert password hashes. This source change
 is not a claim that migration 011 or the new login options are deployed.
 
-The existing `jobs.payload` also carries an optional, nonsecret `mailPresentation`
-version. The worker locks the job and records `branded-v1` atomically on its first
-claim, before delivery. Previously attempted unversioned jobs retain `plain-v0`;
-retries retain their selected version and existing provider idempotency key.
-Encrypted message text remains encrypted in the outbox. No column or migration is
-added. Keep a deployed renderer version immutable; future designs need a new version.
-An ambiguous delivery must be reconciled, never rekeyed or reset to obtain a new
-design. A worker rollback must account for pending versioned deliveries through the
-protected release procedure; an older renderer cannot safely rewrite those requests.
+The existing `jobs.payload` carries a `mailPresentation` version and an encrypted
+`mailAttempt` custody envelope. Before the first external submission, one locked
+transaction renders the complete request and commits its exact bytes, message/job
+identity, recipient/input digest, provider and sending-configuration fingerprint,
+and first-attempt timestamp. Resend JSON and SMTP MIME (including Date, boundaries
+and inline attachments) are compiled once. Credentials are not stored; their
+fingerprint stays inside the encrypted envelope under the existing encryption key.
+No column, migration or additional database privilege is added. Queue diagnostics
+continue to exclude payloads and recipients.
 
-Automatic mail retries stop 23 hours after `jobs.created_at`. Creation is a
-conservative lower bound on the first possible attempt, including legacy jobs;
-the schema needs no new column. Previously attempted pending jobs outside that
-window, or with a future creation time, become failed without changing their
-identity, payload or attempt count. Provider reconciliation is required before any
-further action. Never-attempted queued mail can still receive its first attempt.
-This bounds restart recovery before Resend's 24-hour idempotency expiry; SMTP
-acceptance and Message-ID alone do not guarantee exactly-once inbox delivery.
+Resend retries require the same input and effective sender/provider/credential
+binding and replay the saved bytes with the original job idempotency key. Changed
+configuration, invalid custody and legacy attempted jobs without custody become
+`failed` for reconciliation, preserving their payload and attempt count. A legacy
+never-attempted job may receive its first frozen request. SMTP has no provider
+idempotency guarantee: a committed SMTP attempt is held for reconciliation rather
+than automatically replayed after an ambiguous outcome. Message-ID alone does not
+prove deduplication. No transport requirement is weakened.
+
+Automatic Resend retries retain the conservative 23-hour bound from job creation
+and additionally enforce the saved first-attempt time. Future timestamps fail
+closed. Existing cooldowns, five-attempt limit, row locks and acceptance-status
+semantics remain; provider acceptance is not inbox delivery.
+
+Rollout and rollback require quiescing the old worker and reconciling all attempted
+legacy messages before enabling the new worker. Do not run old and new workers
+concurrently: old workers do not enforce custody. Existing API producers remain
+compatible. Keep the custody-aware worker during an API/frontend rollback; an older
+worker must not resume versioned attempts. Preserve encrypted envelopes and their
+key in private backups; never reset attempts, rekey messages or reconstruct proof
+from current configuration. This is source behavior, not a deployment claim.
 
 ## Editorial publication snapshots (prepared migration 012)
 
@@ -138,13 +151,87 @@ Isolated restore quarantine clears all shared sessions, grants and verification
 links, including optional migration 014 artifacts, while preserving account and
 approval records. Activation still requires the existing restore/release controls.
 
-The dedicated shared-identity release adapter serializes the existing 012-to-014
+The dedicated shared-identity release adapter serializes the reviewed 012, 014 or
+published Mobile 015 transition to 016
 transition with the same migration advisory lock. It refuses partial or unknown
-schema histories and compares all applied checksums before writing. Both additive
-migrations and restricted grants commit together; a completed 014 database is
-idempotent. Existing account IDs, email addresses, credential fields, MFA, role
-and disablement are checked under the transaction's account-table lock. A failed
+schema histories and compares all applied checksums before writing. The pending
+additive migrations and restricted grants commit together; a completed 016 database is
+idempotent. Existing account IDs, email addresses, credential fields, MFA, role,
+disablement and all Engineering membership, credential and registration records
+are compared under transaction locks. A failed
 post-commit runtime-readiness observation is an uncertain release outcome requiring
 inspection, never an instruction to replay or reverse the migration. The ordinary
 API profile remains unable to apply it. See the
 [release adapter tests](../engineering/BUILD_AND_TEST.md#shared-identity-release-adapters).
+
+
+## Optional Mobile identity vocabulary (prepared migration 015)
+
+`015_mobile_identity.sql` expands only the product and product-specific role
+constraints in `identity_product_access`. Mobile permits `customer`, `agent`,
+`support`, `operations`, `finance`, `auditor` and `admin`; the role sets for AI,
+Drone and Robot remain unchanged. No rows, credentials, client configurations,
+access approvals or workspace memberships are created or changed by this migration.
+A Mobile client remains unavailable unless explicitly provisioned in issuer config.
+
+The migration is transactional with bounded lock/statement timeouts. Keep this
+additive schema if reverting application code; do not drop approved Mobile access
+records to satisfy an older image. The prepared shared-identity profile pins these
+published 015 bytes before Engineering migration 016; it refuses an earlier
+unshipped `015_engineering_account_links.sql` history instead of renaming or
+adopting it. Qualify the complete Portal release/migration path and fallback before
+deployment. Local generated contracts and isolated tests
+are source verification, not evidence of a live migration or client registration.
+
+## Prepared Engineering account links (migration 016)
+
+`identity_engineering_links` stores one immutable central user ID for one existing
+Engineering membership ID. The migration creates no links or users and changes no
+password, MFA, approval or product entitlement. Link creation requires an explicit
+user choice, a live verified central session and the existing Docs password or
+one-use approved mailbox proof in one transaction. A conflicting identity cannot
+replace the recorded link, including after an email-address change. Hard deletion
+of a linked central user is restricted so it cannot silently restore independent
+Docs authentication; ordinary disablement preserves the membership and link. Any
+future deliberate account erasure must coordinate the linked identities explicitly,
+without automatic unlinking or credential fallback. Protocol records retain their
+server creation time so a forced fresh request can compare it with the actual
+central authentication time on the same database clock, including within one second.
+
+Linked Engineering grants reuse `identity_grant_sessions` and remain subordinate
+to the exact central source session. The encrypted Engineering adapter rejects
+late records after source revocation, including writes completing after logout.
+Credential/MFA/role/disable changes and central global logout remove linked issuer
+artifacts. Existing Docs passwords stay stored without replacement but cannot
+independently authenticate a linked identity. Exact membership and Cloudflare Access
+authorization remain separate; existing Access cookies are not revoked by deleting
+issuer records. Restore quarantine retains link and approval evidence while clearing
+the existing capability tables. Keep additive schema during rollback, and do not
+use feature disablement as permission to reactivate separate linked credentials.
+
+## Company billing bridge data boundary (prepared)
+
+The Portal billing bridge adds no Portal migration or payment ledger. It reuses
+the current `users`, identity profiles and account/native session custody through
+`requireAccount`, `lockAccountSession` and `identityAccount`. Before issuing each
+short-lived billing assertion, the transaction rechecks the same immutable user,
+session expiry and verified email under the existing locks. Revoked, disabled or
+unverified identities cannot acquire a billing assertion. The matching prepared
+Portal identity schema is a prerequisite even when the shared-identity issuer is
+disabled; enabling the bridge does not apply migrations or provision memberships.
+
+Company billing accounts, explicit owner/payer/viewer memberships, Stripe customer
+bindings, immutable commercial intents, operation journals, webhook reconciliation
+and Metronome usage outboxes belong to the independent `onesa-billing` database.
+That service has its own migration and separate API, webhook, meter and dispatcher
+runtime grants. The Portal process neither receives those database credentials
+nor shares its application role with billing. Portal, Docs and product permissions
+are not copied into billing membership, and no account is granted a billing role
+merely because its Portal role is administrative.
+
+Billing history and original request identities must remain available across
+uncertain provider outcomes. Disabling the bridge changes access to the Portal
+entry point; it does not cancel charges, delete financial records, revoke other
+provider sessions or undo the independent service's data. Qualification and
+recovery must preserve both services' original identity and operation records.
+This source boundary supplies no live migration, restore or payment acceptance.

@@ -173,7 +173,8 @@ def profile(row):
 def configuration(plan, environment):
     r.require(environment in {"staging", "production"}, "SCANNER_ENVIRONMENT")
     return {
-        "schema_version": 1,
+        "schema_version": plan["schema_version"],
+        **({"source_binding": plan["source_binding"]} if plan["schema_version"] == 2 else {}),
         "component": "scanner",
         "environment": environment,
         "baseline": plan["baseline"],
@@ -192,7 +193,7 @@ def configuration(plan, environment):
 def validate_plan(binding, plan):
     exact(
         plan,
-        [
+        r.component_plan_fields(binding, [
             "schema_version",
             "verifier_store",
             "baseline",
@@ -201,12 +202,11 @@ def validate_plan(binding, plan):
             "rollback",
             "legacy_backup",
             "workflow",
-        ],
+        ]),
         "SCANNER_PLAN_SCHEMA",
     )
     r.require(
-        plan["schema_version"] == 1
-        and binding["repository"] == REPOSITORY
+        r.component_plan_source(binding, plan, "scanner")
         and binding["component"] == "scanner"
         and binding["target_environment"] == "production"
         and re.fullmatch(r"[a-f0-9]{40}", binding["source_tree"])
@@ -243,7 +243,7 @@ def validate_plan(binding, plan):
         "PRIVATE_SCANNER_RUNTIME_REQUIRED",
     )
     recipe = plan["recipe"]
-    artifact_folder = ROOT / "artifacts" / binding["source_tree"]
+    artifact_folder = r.component_artifact_folder(ROOT, binding)
     exact(recipe, ["project", "directory", "files"], "SCANNER_RECIPE_SCHEMA")
     r.require(
         recipe["project"] == "onesa-portal-oracle-staging"
@@ -314,14 +314,7 @@ def image(binding, folder):
     r.require(
         all(
             build.get(k) == binding[k]
-            for k in [
-                "repository",
-                "component",
-                "candidate_commit",
-                "source_tree",
-                "source_sha256",
-                "artifact_digest",
-            ]
+            for k in r.build_source_fields(binding)
         )
         and build.get("architecture") == "arm64"
         and build.get("dockerfile_sha256") == files[PREFIX + "Dockerfile"],
@@ -923,10 +916,13 @@ def acknowledged_completed_request(path, request, next_binding):
     Missing, failed and interrupted provider outcomes remain blocking.
     """
     binding = request["binding"]
+    try:
+        r.portal_component_scope(next_binding, "scanner")
+    except (r.Refused, AttributeError, TypeError):
+        return False
     result_path = path / "provider-command-result.json"
     if (
         not next_binding
-        or next_binding.get("repository") != REPOSITORY
         or next_binding.get("component") != "scanner"
         or next_binding.get("target_environment") != "production"
         or next_binding["candidate_commit"] == binding["candidate_commit"]
@@ -943,11 +939,8 @@ def acknowledged_completed_request(path, request, next_binding):
         and result["automatic_retry"] is False,
         "PREVIOUS_SCANNER_PROVIDER_OUTCOME_UNRESOLVED",
     )
-    records = r.verify_invocation(
-        binding,
-        {"operation_id": path.name, "read_only": True},
-        "production",
-        {"verifier_store": request["verifier_store"]},
+    records = r.verify_historical_operation(
+        binding, path.name, request["verifier_store"], require_accepted=False,
     )
     intent = next(item for item in records if item["id"] == path.name)
     r.require(
@@ -962,7 +955,7 @@ def acknowledged_completed_request(path, request, next_binding):
     store = r.private(Path(request["verifier_store"]), directory=True)
     trust = r.read(
         store / "trust.json"
-    )  # Invocation above checked the external anchor.
+    )  # The historical reader above checked the original external anchor.
     with closing(
         sqlite3.connect("file:" + str(store / "records.sqlite") + "?mode=ro", uri=True)
     ) as db:
@@ -1051,20 +1044,15 @@ def previous_operations(next_binding=None):
         request = r.read(path / "request.json")
         binding = request["binding"]
         r.require(
-            binding["repository"] == REPOSITORY
+            bool(r.portal_component_scope(binding, "scanner"))
             and binding["component"] == "scanner"
             and request["context"]["operation_id"] == path.name,
             "SCANNER_PREVIOUS_OPERATION_SCOPE",
         )
         # Verify the signature chain, binding, revocations and accepted index.
         try:
-            r.verify_invocation(
-                binding,
-                {"operation_id": path.name, "read_only": True},
-                "production",
-                {"verifier_store": request["verifier_store"]},
-                dependency=True,
-            )
+            r.verify_historical_operation(binding, path.name, request["verifier_store"],
+                                          require_accepted=True)
         except r.Refused:
             if not acknowledged_completed_request(path, request, next_binding):
                 raise
@@ -1272,9 +1260,10 @@ def production(binding, plan, context):
 
 def runner(phase, binding, context):
     r.require(phase in CHECKS, "SCANNER_PHASE_SCOPE")
-    plan = r.read(PLAN)
+    plan = r.read(r.component_plan_path(binding, PLAN))
     folder = validate_plan(binding, plan)
     records = r.verify_invocation(binding, context, phase, plan)
+    r.verify_canonical_component_custody(binding, plan, CHECKS)
     if phase == "staging":
         details = staging(binding, plan, context, folder, records)
     elif phase == "operations":
@@ -1304,7 +1293,7 @@ def record_failure(phase, request, error, *, component="scanner"):
         r.require(
             component in {"scanner", "api", "worker"}
             and phase in CHECKS
-            and binding["repository"] == REPOSITORY
+            and bool(r.portal_component_scope(binding, component))
             and binding["component"] == component
             and re.fullmatch(r"[a-f0-9]{40}", binding["candidate_commit"]),
             "SCANNER_DIAGNOSTIC_SCOPE",

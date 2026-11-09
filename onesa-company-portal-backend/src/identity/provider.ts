@@ -3,7 +3,7 @@ import { IdentityAdapter } from "./adapter.js";
 import { identityAccount } from "./accounts.js";
 import type { IdentityConfig } from "./config.js";
 
-/** One established protocol implementation, three fixed confidential product clients. */
+/** One established protocol implementation, explicitly configured confidential product clients. */
 export function createIdentityProvider(config: IdentityConfig) {
   const options: Configuration = {
     adapter: IdentityAdapter,

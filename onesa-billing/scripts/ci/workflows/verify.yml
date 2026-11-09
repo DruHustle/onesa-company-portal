@@ -1,0 +1,108 @@
+name: Company billing verification
+'on':
+  pull_request:
+    branches: [dev, staging, main]
+    paths:
+    - onesa-billing/**
+    - onesa-company-portal-frontend/src/styles/onesa-foundation.css
+    - .github/workflows/onesa-billing-verify.yml
+  push:
+    branches: [dev, staging, main]
+    paths:
+    - onesa-billing/**
+    - onesa-company-portal-frontend/src/styles/onesa-foundation.css
+    - .github/workflows/onesa-billing-verify.yml
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: onesa-billing-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  verify:
+    name: company-billing-amd64
+    if: >-
+      github.repository == 'DruHustle/onesa-company-portal' && github.repository_id == '1412150327' &&
+      (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        # Reuse the immutable PostgreSQL image already qualified by Portal's
+        # isolated worker/identity fixtures; this is a separate disposable DB.
+        image: postgres@sha256:2ad58d61b036d41f2613302e8c0fee03f6fe51e94d68087327ac45d1cebd4b5e
+        env:
+          POSTGRES_DB: onesa_billing_test
+          POSTGRES_USER: billing_test_admin
+          POSTGRES_PASSWORD: ci-only-billing-test-password
+        ports:
+        - 5432/tcp
+        options: --health-cmd "pg_isready -U billing_test_admin -d onesa_billing_test" --health-interval 5s --health-timeout 3s --health-retries 15
+    steps:
+    - name: Verify hosted execution and actual repository visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        PRIVATE_VALIDATION_ENABLED: ${{ vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED }}
+      run: |
+        test "$RUNNER_ENVIRONMENT" = github-hosted
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+        test "$actual" = "$EXPECTED_PRIVATE"
+        if [ "$actual" = true ] && [ "$PRIVATE_VALIDATION_ENABLED" != true ]; then
+          echo "Private hosted verification requires explicit included-allowance opt-in"
+          exit 1
+        fi
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+      with:
+        node-version: '24.22.1'
+        cache: npm
+        cache-dependency-path: onesa-billing/backend/package-lock.json
+    - name: Configure the fresh local billing test database
+      env:
+        POSTGRES_PORT: ${{ job.services.postgres.ports['5432'] }}
+      run: |
+        test -n "$POSTGRES_PORT"
+        printf 'BILLING_TEST_DATABASE_URL=postgresql://billing_test_admin:ci-only-billing-test-password@127.0.0.1:%s/onesa_billing_test\n' "$POSTGRES_PORT" >> "$GITHUB_ENV"
+    - name: Install locked company billing dependencies
+      working-directory: onesa-billing/backend
+      run: npm ci
+    - name: Typecheck and build the independent billing backend
+      working-directory: onesa-billing/backend
+      run: |
+        npm run typecheck
+        npm run build
+    - name: Verify auth, provider mocks, PostgreSQL isolation, concurrency and recovery
+      working-directory: onesa-billing/backend
+      run: |
+        test -n "$BILLING_TEST_DATABASE_URL"
+        npm test
+        python3 -m unittest discover -s ../scripts/ci/test -p 'test_*.py'
+        node --test ../scripts/ci/test/runtime_fixture.test.cjs
+        python3 ../scripts/ci/runtime_acceptance.py --output "$RUNNER_TEMP/onesa-company-billing-runtime"
+    - name: Verify browser client boundaries and exact currency presentation
+      run: node --test onesa-billing/web/test/client.test.mjs onesa-billing/web/test/money.test.mjs
+    - name: Verify the actual browser journey with synthetic same-origin APIs
+      env:
+        BILLING_CHROMIUM_EXECUTABLE: /usr/bin/google-chrome
+        BILLING_BROWSER_RECEIPT: ${{ runner.temp }}/onesa-billing-browser.json
+      run: |
+        test -x "$BILLING_CHROMIUM_EXECUTABLE"
+        "$BILLING_CHROMIUM_EXECUTABLE" --version
+        node --test onesa-billing/web/test/browser.test.mjs
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      if: always()
+      with:
+        name: company-billing-browser-${{ github.run_id }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/onesa-billing-browser.json
+        retention-days: 3
+        if-no-files-found: error
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      if: always()
+      with:
+        name: company-billing-runtime-${{ github.run_id }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/onesa-company-billing-runtime/*.json
+        retention-days: 3
+        if-no-files-found: error

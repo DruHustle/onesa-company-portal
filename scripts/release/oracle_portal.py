@@ -26,6 +26,7 @@ from pathlib import Path
 from uuid import UUID
 
 ROOT = Path("/var/lib/onesa/release-verification/portal")
+INSTALL_PARENT = Path("/usr/local/lib/onesa-release")
 PLAN = Path("/etc/onesa/oracle-portal-frontend-release.json")
 ENV = {
     env: Path("/etc/onesa/backends/portal-" + env + ".env")
@@ -55,6 +56,190 @@ def canonical(value):
     return json.dumps(
         value, sort_keys=True, separators=(",", ":"), allow_nan=False
     ).encode()
+
+
+CANONICAL_REPOSITORY = "DruHustle/onesa-ug"
+PORTAL_SOURCE_FIELDS = {
+    "schema_version", "repository", "repository_id", "product", "source_path",
+    "candidate_commit", "source_tree", "product_source_tree", "branch",
+}
+PORTAL_COMPONENTS = {"frontend", "api", "worker", "scanner", "identity", "identity-acceptance"}
+SOURCE_ARCHIVES = {
+    "portal-runtime-onesa-company-portal-backend",
+    "portal-runtime-onesa-company-portal-frontend", "portal-runtime-clamav",
+}
+
+
+def portal_source_binding(binding):
+    # The credential-free tar reader never loads an owner module or private Store.
+    require(isinstance(binding, dict) and PORTAL_SOURCE_FIELDS <= set(binding),
+            "COMPLETE_CANONICAL_PORTAL_SOURCE_REQUIRED")
+    source = {key: binding[key] for key in PORTAL_SOURCE_FIELDS}
+    require(type(source["schema_version"]) is int and source["schema_version"] == 2
+            and source["repository"] == CANONICAL_REPOSITORY
+            and type(source["repository_id"]) is int and source["repository_id"] == 1444746154
+            and source["product"] == "portal" and source["source_path"] == "onesa-company-portal"
+            and source["branch"] == "main" and binding.get("component", "frontend") in PORTAL_COMPONENTS
+            and all(isinstance(source[key], str) and re.fullmatch(r"[a-f0-9]{40}", source[key])
+                    for key in ("candidate_commit", "source_tree", "product_source_tree")),
+            "CANONICAL_PORTAL_COMPONENT_SOURCE_SCOPE")
+    return source
+
+
+def portal_component_scope(binding, component=None):
+    selected = binding.get("component")
+    require(selected in PORTAL_COMPONENTS and (component is None or selected == component),
+            "PORTAL_COMPONENT_SCOPE")
+    if binding.get("repository") == CANONICAL_REPOSITORY:
+        portal_source_binding(binding)
+        return CANONICAL_REPOSITORY + ":portal:" + selected
+    require(binding.get("repository") == "DruHustle/onesa-company-portal",
+            "PORTAL_COMPONENT_REPOSITORY")
+    return binding["repository"] + ":" + selected
+
+
+def component_plan_path(binding, legacy_path):
+    portal_component_scope(binding)
+    if binding["repository"] == CANONICAL_REPOSITORY:
+        return legacy_path.with_name(legacy_path.stem + "-canonical.json")
+    return legacy_path
+
+
+def component_plan_fields(binding, fields):
+    return [*fields, *(["source_binding"] if binding.get("repository") == CANONICAL_REPOSITORY else [])]
+
+
+def component_plan_source(binding, plan, component):
+    portal_component_scope(binding, component)
+    consolidated = binding["repository"] == CANONICAL_REPOSITORY
+    require(type(plan.get("schema_version")) is int
+            and plan["schema_version"] == (2 if consolidated else 1), "PORTAL_COMPONENT_PLAN_VERSION")
+    if consolidated:
+        require(plan.get("source_binding") == portal_source_binding(binding),
+                "CANONICAL_COMPONENT_PLAN_SOURCE")
+    return True
+
+
+def component_artifact_folder(root, binding):
+    portal_component_scope(binding)
+    if binding["repository"] == CANONICAL_REPOSITORY:
+        root /= "canonical-portal"
+    return root / "artifacts" / binding["source_tree"]
+
+
+def build_source_fields(binding):
+    fields = {"repository", "component", "candidate_commit", "source_tree", "source_sha256", "artifact_digest"}
+    if binding.get("repository") == CANONICAL_REPOSITORY:
+        portal_source_binding(binding)
+        fields |= PORTAL_SOURCE_FIELDS
+    return fields
+
+
+def canonical_install_files(component):
+    """Fixed backend closures mirror the independently source-checked installer."""
+    require(component in PORTAL_COMPONENTS - {"frontend"}, "CANONICAL_BACKEND_COMPONENT_SCOPE")
+    names = {"oracle_portal.py", "oracle_backup_store.mjs", "oracle_portal_frontend.py",
+             "oracle_portal_browser.mjs", "oracle_portal_browser_session.mjs",
+             "oracle_frontend_build.py", "oracle_vercel_transport_guard.cjs",
+             "oracle_portal_scanner.py", "oracle_portal_scanner_workflow.py",
+             "oracle_portal_scanner_workflows.mjs", "oracle_portal_worker_fixture.mjs",
+             "oracle_portal_worker_probe.mjs", "oracle_portal_worker_smtp.mjs"}
+    if component in {"worker", "identity", "identity-acceptance"}:
+        names |= {"oracle_portal_worker.py", "oracle_portal_worker_production.mjs"}
+    if component in {"api", "identity", "identity-acceptance"}:
+        names |= {"oracle_portal_api.py", "oracle_portal_api_production.mjs",
+                  "oracle_portal_api_recovery.py", "oracle_portal_worker_production.mjs"}
+    if component in {"identity", "identity-acceptance"}:
+        names |= {"oracle_portal_identity.py", "oracle_portal_identity_migrate.mjs",
+                  "oracle_portal_identity_restore.py", "oracle_portal_identity_acceptance.py",
+                  "oracle_portal_identity_browser.mjs", "oracle_portal_identity_mail.mjs",
+                  "restore_lockdown.py", "restore_replay.py", "oracle_backup_open.mjs"}
+    result = {name: "scripts/release/" + name for name in
+              ("oracle_owner.py", "runtime_lifecycle.py", "oracle_install.py")}
+    result.update({"runners/" + name:
+                   ("scripts/" if name in {"oracle_backup_store.mjs", "oracle_backup_open.mjs"}
+                    else "scripts/release/") + name for name in names})
+    return result
+
+
+def verify_canonical_component_custody(binding, plan, checks):
+    """A new source identity cannot inherit a legacy installation or its runners."""
+    if binding.get("repository") != CANONICAL_REPOSITORY:
+        return
+    source = portal_source_binding(binding)
+    scope = portal_component_scope(binding)
+    component = binding["component"]
+    files = canonical_install_files(component)
+    directory = VERIFIER.parent
+    require(directory == INSTALL_PARENT /
+            ("portal-" + component + "-canonical-" + source["source_tree"]),
+            "CANONICAL_COMPONENT_INSTALLATION_PATH")
+    store = private(Path(plan["verifier_store"]), directory=True)
+    trust = read(store / "trust.json")
+    require(sha(private(store / "policy.json")) == trust["policy_sha256"], "CANONICAL_POLICY_CHANGED")
+    policy = read(store / "policy.json")
+    tool = policy["toolchain"]
+    receipt = read(private(directory / "installation.json"))
+    require(type(policy.get("schema_version")) is int and policy["schema_version"] == 2
+            and set(policy["components"]) == {scope}
+            and tool.get("source_binding") == source
+            and tool.get("source_commit") == source["candidate_commit"]
+            and tool.get("source_tree") == source["source_tree"]
+            and tool.get("source_sha256") == binding["source_sha256"]
+            and receipt.get("source_binding") == source
+            and receipt.get("state") == "INSTALLED_NOT_COMMISSIONED"
+            and receipt.get("source") == source["candidate_commit"]
+            and receipt.get("source_tree") == source["source_tree"]
+            and receipt.get("policy_sha256") == trust["policy_sha256"]
+            and set(receipt.get("files", {})) == set(files),
+            "CANONICAL_COMPONENT_INSTALLATION_CUSTODY")
+    profile = policy["components"][scope]
+    require(type(profile.get("qualification_attempt_limit")) is int
+            and profile["qualification_attempt_limit"] == 1
+            and set(profile["runners"]) == set(checks)
+            and all(set(required) <= set(profile["required_checks"][phase])
+                    for phase, required in checks.items()), "CANONICAL_COMPONENT_CHECKS_REQUIRED")
+    script = "oracle_portal_" + component.replace("-", "_") + ".py"
+    path = directory / "runners" / script
+    require(all(item["path"] == str(path) and item["sha256"] == receipt["files"]["runners/" + script]
+                for item in profile["runners"].values()), "CANONICAL_COMPONENT_RUNNER_PIN")
+    archive = private(directory / "tool-source.tar")
+    require(sha(archive) == tool["source_sha256"], "CANONICAL_TOOL_SOURCE_CHANGED")
+    _, upstream = source_inventory(archive, source)
+    for local, original in files.items():
+        require(receipt["files"][local] == upstream[original]
+                and sha(private(directory / local)) == upstream[original],
+                "CANONICAL_COMPONENT_HELPER_CHANGED")
+    pins = tool.get("source_archives")
+    require(isinstance(pins, dict) and set(pins) == SOURCE_ARCHIVES,
+            "CANONICAL_COMPONENT_CI_ARCHIVES_REQUIRED")
+    for name, pin in pins.items():
+        artifact = private(directory / "source-artifacts" / (name + ".zip"))
+        require(0 < artifact.stat().st_size <= 24 * 1024
+                and isinstance(pin, str) and re.fullmatch(r"[a-f0-9]{64}", pin)
+                and sha(artifact) == pin, "CANONICAL_COMPONENT_CI_ARCHIVE_CHANGED")
+
+
+def frontend_component_scope(binding):
+    require(binding.get("component") == "frontend"
+            and binding.get("repository") in {CANONICAL_REPOSITORY, "DruHustle/onesa-company-portal"},
+            "PORTAL_FRONTEND_COMPONENT_SCOPE")
+    return portal_component_scope(binding, "frontend")
+
+
+def frontend_provider_root(binding=None):
+    if binding and binding.get("repository") == CANONICAL_REPOSITORY:
+        frontend_component_scope(binding)
+        return "onesa-company-portal/onesa-company-portal-frontend"
+    return "onesa-company-portal-frontend"
+
+
+def frontend_source_identity(binding):
+    fields = {"repository", "candidate_commit", "source_tree", "source_sha256"}
+    if binding.get("repository") == CANONICAL_REPOSITORY:
+        frontend_component_scope(binding)
+        fields |= PORTAL_SOURCE_FIELDS | {"component", "target_environment"}
+    return {key: binding[key] for key in fields}
 
 
 def sha(path):
@@ -338,7 +523,102 @@ def image_security(scan, identity, architecture="arm64"):
     )
 
 
+def historical_verifier(binding, store, trust):
+    """Read the original installation; never load its code or open its Store."""
+    scope = portal_component_scope(binding)
+    component = binding["component"]
+    require(component in {"api", "worker", "scanner"}
+            and binding.get("target_environment") == "production",
+            "HISTORICAL_PORTAL_JOURNAL_SCOPE")
+    policy = read(store / "policy.json")
+    tool = policy.get("toolchain")
+    require(isinstance(tool, dict) and isinstance(policy.get("components"), dict),
+            "HISTORICAL_COMPONENT_POLICY_REQUIRED")
+    consolidated = binding["repository"] == CANONICAL_REPOSITORY
+    require(type(policy.get("schema_version")) is int
+            and policy["schema_version"] == (2 if consolidated else 1)
+            and set(policy["components"]) == {scope}
+            and all(isinstance(tool.get(key), str)
+                    and re.fullmatch(r"[a-f0-9]{40}", tool[key])
+                    for key in ("source_commit", "source_tree"))
+            and isinstance(tool.get("source_sha256"), str)
+            and re.fullmatch(r"[a-f0-9]{64}", tool["source_sha256"]),
+            "HISTORICAL_COMPONENT_POLICY_SCOPE")
+    source = {"repository": binding["repository"],
+              "candidate_commit": tool["source_commit"], "source_tree": tool["source_tree"]}
+    if consolidated:
+        source = portal_source_binding(binding)
+        require(tool.get("source_binding") == source
+                and tool["source_commit"] == source["candidate_commit"]
+                and tool["source_tree"] == source["source_tree"]
+                and tool["source_sha256"] == binding["source_sha256"],
+                "HISTORICAL_CANONICAL_SOURCE_CHANGED")
+    directory = private(INSTALL_PARENT / ("portal-" + component
+                        + ("-canonical-" if consolidated else "-")
+                        + tool["source_tree"]), directory=True)
+    require(trust.get("runner_root") == str(directory / "runners")
+            and sha(private(directory / "policy.json")) == trust["policy_sha256"],
+            "HISTORICAL_INSTALLATION_POLICY_CHANGED")
+    receipt = read(directory / "installation.json")
+    mapping = canonical_install_files(component)
+    files = receipt.get("files")
+    required = {"oracle_owner.py", "oracle_install.py", "runners/oracle_portal.py",
+                "runners/oracle_portal_" + component + ".py"}
+    require(receipt.get("state") == "INSTALLED_NOT_COMMISSIONED"
+            and receipt.get("repository") == binding["repository"]
+            and receipt.get("source") == tool["source_commit"]
+            and receipt.get("source_tree") == tool["source_tree"]
+            and receipt.get("policy_sha256") == trust["policy_sha256"]
+            and type(receipt.get("provider_requests")) is int
+            and receipt["provider_requests"] == 0
+            and (not consolidated or receipt.get("source_binding") == source)
+            and isinstance(files, dict) and required <= set(files) <= set(mapping),
+            "HISTORICAL_INSTALLATION_RECEIPT_CHANGED")
+    profile = policy["components"][scope]
+    script = "runners/oracle_portal_" + component + ".py"
+    require(set(profile["runners"]) == set(CHECKS)
+            and all(item["path"] == str(directory / script)
+                    and item["sha256"] == files[script]
+                    for item in profile["runners"].values()),
+            "HISTORICAL_COMPONENT_RUNNER_CHANGED")
+    archive = private(directory / "tool-source.tar")
+    require(sha(archive) == tool["source_sha256"], "HISTORICAL_TOOL_SOURCE_CHANGED")
+    _, upstream = source_inventory(archive, source)
+    # Older installations retain their own closure. They need not contain
+    # helpers added later, and no retained helper is imported or executed here.
+    for local, pin in files.items():
+        require(isinstance(pin, str) and re.fullmatch(r"[a-f0-9]{64}", pin)
+                and pin == upstream.get(mapping[local])
+                and sha(private(directory / local)) == pin,
+                "HISTORICAL_INSTALLED_HELPER_CHANGED")
+    verifier = private(directory / "oracle_owner.py")
+    require(files["oracle_owner.py"] == trust["verifier_sha256"],
+            "HISTORICAL_VERIFIER_CUSTODY_CHANGED")
+    return verifier
+
+
+def verify_historical_operation(binding, operation_id, store, *, require_accepted=True):
+    """Only inspect retained shared journals; this entry point issues no authority.
+
+    The scanner alone may inspect a completed, explicitly revoked request before
+    its separate exact provider-result and signed-revocation checks. Current
+    staging/deployment invocations always retain the current verifier pin.
+    """
+    require(type(require_accepted) is bool
+            and (require_accepted or binding.get("component") == "scanner"),
+            "HISTORICAL_ACCEPTANCE_SCOPE")
+    return _verify_invocation(
+        binding, {"operation_id": operation_id, "read_only": True}, "production",
+        {"verifier_store": store}, dependency=require_accepted, historical_custody=True,
+    )
+
+
 def verify_invocation(binding, context, phase, plan, *, dependency=False):
+    return _verify_invocation(binding, context, phase, plan, dependency=dependency)
+
+
+def _verify_invocation(binding, context, phase, plan, *, dependency=False,
+                       historical_custody=False):
     if phase == "staging":
         require(set(context) == {"context_id"}, "STAGING_SIGNED_CONTEXT_ONLY")
     elif phase == "deploy":
@@ -380,10 +660,11 @@ def verify_invocation(binding, context, phase, plan, *, dependency=False):
     )
     require(
         sha(store / "public.pem") == trust["key_id"]
-        and sha(store / "policy.json") == trust["policy_sha256"]
-        and sha(VERIFIER) == trust["verifier_sha256"],
+        and sha(store / "policy.json") == trust["policy_sha256"],
         "ISSUER_CUSTODY_PIN_CHANGED",
     )
+    verifier = historical_verifier(binding, store, trust) if historical_custody else VERIFIER
+    require(sha(verifier) == trust["verifier_sha256"], "ISSUER_CUSTODY_PIN_CHANGED")
     require(sha(OPENSSL) == trust["openssl_sha256"], "SIGNATURE_TOOL_CHANGED")
     db = sqlite3.connect(
         "file:" + str(store / "records.sqlite") + "?mode=ro", uri=True, timeout=20
@@ -587,8 +868,11 @@ def source_inventory(archive_path, binding):
             b"tree " + str(len(value)).encode() + b"\0" + value
         ).digest()
 
+    expected_tree = binding["source_tree"]
+    if binding.get("repository") == CANONICAL_REPOSITORY:
+        expected_tree = portal_source_binding(binding)["product_source_tree"]
     require(
-        git_tree(tree).hex() == binding["source_tree"],
+        git_tree(tree).hex() == expected_tree,
         "ARCHIVE_DIFFERS_FROM_QUALIFIED_GIT_TREE",
     )
     require(
@@ -650,10 +934,9 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def verify_toolchain(plan, binding):
+    scope = frontend_component_scope(binding)
     require(
-        binding["repository"] == "DruHustle/onesa-company-portal"
-        and binding["component"] == "frontend"
-        and binding["target_environment"] == "production",
+        binding["target_environment"] == "production",
         "PORTAL_FRONTEND_COMPONENT_SCOPE",
     )
     store = private(Path(plan["verifier_store"]), directory=True)
@@ -677,9 +960,7 @@ def verify_toolchain(plan, binding):
         "COMMISSIONED_TOOLCHAIN_CHANGED",
     )
     policy = read(store / "policy.json")
-    profile = policy["components"].get(
-        binding["repository"] + ":" + binding["component"]
-    )
+    profile = policy["components"].get(scope)
     require(
         profile and profile["qualification_attempt_limit"] == 1,
         "COMPONENT_NOT_COMMISSIONED_WITH_ONE_CONTEXT",
@@ -701,6 +982,14 @@ def verify_toolchain(plan, binding):
         and installation["source"] == policy["toolchain"]["source_commit"],
         "INSTALLED_SOURCE_IDENTITY",
     )
+    if binding["repository"] == CANONICAL_REPOSITORY:
+        source = portal_source_binding(binding)
+        require(policy.get("schema_version") == 2
+                and policy["toolchain"].get("source_binding") == source
+                and installation.get("source_binding") == source
+                and policy["toolchain"]["source_tree"] == binding["source_tree"]
+                and policy["toolchain"]["source_sha256"] == binding["source_sha256"],
+                "CANONICAL_COMPONENT_SOURCE_NOT_COMMISSIONED")
     for name, pin in installation["files"].items():
         p = private(VERIFIER.parent / name)
         require(sha(p) == pin, "INSTALLED_EXECUTABLE_CHANGED")
@@ -730,6 +1019,9 @@ def validate_frontend_builds(folder, binding, plan):
         for name in ["archive", "receipt"]:
             require(Path(build[name]).name == build[name], "BUILD_RECEIPT_PATH_SCOPE")
         receipt = read(folder / build["receipt"])
+        if binding.get("repository") == CANONICAL_REPOSITORY:
+            require(frontend_source_identity(receipt["binding"]) == frontend_source_identity(binding),
+                    "CANONICAL_BUILD_SOURCE_IDENTITY")
         require(
             sha(private(folder / build["receipt"])) == build["receipt_sha256"]
             and receipt["binding"]["candidate_commit"] == binding["candidate_commit"]
@@ -865,15 +1157,15 @@ PUBLIC_SERVER_KEYS = {
 
 
 def component_folder(binding):
+    frontend_component_scope(binding)
     require(
-        binding["repository"] == "DruHustle/onesa-company-portal"
-        and binding["component"] == "frontend"
-        and re.fullmatch("[a-f0-9]{40}", binding["candidate_commit"]),
+        re.fullmatch("[a-f0-9]{40}", binding["candidate_commit"]),
         "PORTAL_FRONTEND_COMPONENT_SCOPE",
     )
-    return private(
-        ROOT / "frontend" / "artifacts" / binding["candidate_commit"], directory=True
-    )
+    directory = ROOT / "frontend"
+    if binding["repository"] == CANONICAL_REPOSITORY:
+        directory /= "canonical-portal"
+    return private(directory / "artifacts" / binding["candidate_commit"], directory=True)
 
 
 PRESENTATION_PROFILE = "presentation-v1"
@@ -905,6 +1197,23 @@ NVIDIA_DRONE_LAYOUT = NVIDIA_PREFIX + "src/components/drone-product.module.css"
 NVIDIA_DRONE_LAYOUT_SHA256 = "4bac1e38ccf8f481005de7143f1c1a89f21b0a5b49c34c192a348e6cb912beb7"
 NVIDIA_DRONE_DIAGNOSTIC_TEST = NVIDIA_PREFIX + "scripts/test-drone-product.mjs"
 NVIDIA_DRONE_DIAGNOSTIC_TEST_SHA256 = "3bea2bb2b51e6747df223101970218c080b10fcc3c4d1ac719a61cc164a40d3f"
+NVIDIA_DRONE_DIAGNOSTIC_HELPER = NVIDIA_PREFIX + "scripts/drone-product-diagnostics.mjs"
+NVIDIA_DRONE_DIAGNOSTIC_UNIT = NVIDIA_PREFIX + "unit/drone-product-diagnostics.test.mjs"
+# Two complete reviewed variants, not independent per-file alternatives. Keep
+# these local: NVIDIA installations do not import the identity-profile helper.
+NVIDIA_DRONE_DIAGNOSTIC_VARIANTS = (
+    (
+        "node scripts/test-drone-product.mjs",
+        ((NVIDIA_DRONE_DIAGNOSTIC_TEST, NVIDIA_DRONE_DIAGNOSTIC_TEST_SHA256),
+         (NVIDIA_DRONE_DIAGNOSTIC_HELPER, None), (NVIDIA_DRONE_DIAGNOSTIC_UNIT, None)),
+    ),
+    (
+        "node --test unit/drone-product-diagnostics.test.mjs && node scripts/test-drone-product.mjs",
+        ((NVIDIA_DRONE_DIAGNOSTIC_TEST, "6533b4c8dc26f76bb92848476394a07ccabcca9d78e3935295f2dfbd80cd6d98"),
+         (NVIDIA_DRONE_DIAGNOSTIC_HELPER, "0b3227e7cff9fd89c47cfa69903dcd9ddeac13660b1c04de0533e3d1d9ce96e5"),
+         (NVIDIA_DRONE_DIAGNOSTIC_UNIT, "d275551e151b636a0342f4a2d0264afb4456a587ccf917717388f30c73a38eaf")),
+    ),
+)
 NVIDIA_ASSET_IDS = [
     "nvidia-transfer-conveyor",
     "nvidia-mobile-cart",
@@ -978,6 +1287,8 @@ def probe_source_files(files, selected=PRESENTATION_PROFILE):
 def configuration_value(binding, plan, env):
     require(env in ENV, "FRONTEND_CONFIGURATION_SCOPE")
     return {
+        **({"source_binding": portal_source_binding(binding)}
+           if binding.get("repository") == CANONICAL_REPOSITORY else {}),
         **(
             {
                 "qualification_profile": qualification_profile(plan),
@@ -1225,6 +1536,14 @@ def nvidia_dependency_pins(files):
     )
 
 
+def nvidia_drone_diagnostic_command(files):
+    for command, pins in NVIDIA_DRONE_DIAGNOSTIC_VARIANTS:
+        if all(name not in files if digest is None else files.get(name) == digest
+               for name, digest in pins):
+            return command
+    require(False, "NVIDIA_REVIEWED_DRONE_DIAGNOSTICS_ONLY")
+
+
 def source_scope(folder, binding, plan):
     # No fallback: absence of an explicitly commissioned new profile keeps the
     # original presentation dependency/build/auth/hero gate exactly as before.
@@ -1278,10 +1597,7 @@ def source_scope(folder, binding, plan):
         new.get(NVIDIA_DRONE_LAYOUT) == NVIDIA_DRONE_LAYOUT_SHA256,
         "NVIDIA_REVIEWED_DRONE_REFLOW_ONLY",
     )
-    require(
-        new.get(NVIDIA_DRONE_DIAGNOSTIC_TEST) == NVIDIA_DRONE_DIAGNOSTIC_TEST_SHA256,
-        "NVIDIA_REVIEWED_DRONE_DIAGNOSTICS_ONLY",
-    )
+    diagnostic_command = nvidia_drone_diagnostic_command(new)
     metadata = nvidia_source_metadata(folder / "source.tar", new)
     require(
         all(new.get(name) == digest for name, digest in tool["probe_files"].items()),
@@ -1302,7 +1618,8 @@ def source_scope(folder, binding, plan):
             "public/brand/sources.json", "public/images/drone-cargo-1280.webp",
             "public/images/drone-cargo-640.webp", "public/images/drone-flight-1280.webp",
             "public/images/drone-flight-640.webp", "public/media/onesa-drone-concept.mp4",
-            "scripts/test-drone-product.mjs", "src/app/[locale]/products/onesa-ai-drone/page.tsx",
+            "scripts/test-drone-product.mjs", "scripts/drone-product-diagnostics.mjs",
+            "unit/drone-product-diagnostics.test.mjs", "src/app/[locale]/products/onesa-ai-drone/page.tsx",
             "src/app/[locale]/products/onesa-drone/page.tsx", "src/components/drone-film.tsx",
             "src/components/drone-image.tsx", "src/components/drone-product.module.css",
             "src/components/drone-product.tsx", "src/components/drone-visual.tsx",
@@ -1332,7 +1649,7 @@ def source_scope(folder, binding, plan):
         expected = json.loads(json.dumps(previous))
         expected["scripts"].update({
             "build": "node scripts/validate-nvidia-assets.mjs && next build --webpack",
-            "test:drone-product": "node scripts/test-drone-product.mjs",
+            "test:drone-product": diagnostic_command,
             "test:nvidia-assets": "node scripts/validate-nvidia-assets.mjs && node --test unit/nvidia-assets.test.mjs",
             "test:nvidia-browser": "node scripts/test-nvidia-library.mjs",
             "test:dependency-security": "node --test unit/dependency-security.test.mjs",
@@ -1713,7 +2030,7 @@ def preflight(binding):
     retained_services(plan)
     import oracle_portal_frontend as frontend
 
-    project = frontend.protection(plan)
+    project = frontend.protection(plan, binding)
     require(
         project["targets"]["production"]["id"]
         == plan["retained_frontend"]["deployment_id"],

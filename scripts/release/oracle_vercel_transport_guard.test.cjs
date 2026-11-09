@@ -18,8 +18,9 @@ for(const kind of ['fetch','http'])test(`${kind} transport cannot send a second 
  }finally{await new Promise(resolve=>server.close(resolve));fs.rmSync(p,{recursive:true});}
 });
 
-async function serverFixture(first,action,{interrupt=false,repeatMissing=false}={}){
+async function serverFixture(first,action,{interrupt=false,repeatMissing=false,scopeUpdates={}}={}){
  const p=fixture();let count=0;
+ const scopePath=path.join(p,'scope.json');fs.writeFileSync(scopePath,JSON.stringify({...JSON.parse(fs.readFileSync(scopePath)),...scopeUpdates}));
  const server=http.createServer((req,res)=>{req.resume();if(req.url.startsWith('/v2/files')){res.writeHead(200);res.end('{}');return;}count++;
   if(interrupt){res.writeHead(400,{'Content-Type':'application/json','Content-Length':'500'});res.write('{"error":');setTimeout(()=>res.destroy(),20);return;}
   res.writeHead(count===1||repeatMissing?first.status:201,{'Content-Type':'application/json'});res.end(count===1||repeatMissing?first.body:'{"id":"dpl_fixture"}');
@@ -30,6 +31,30 @@ async function serverFixture(first,action,{interrupt=false,repeatMissing=false}=
  try{return await action({p,origin,setup,request,count:()=>count});}
  finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));fs.rmSync(p,{recursive:true});}
 }
+const canonicalScope={schema_version:2,repository:'DruHustle/onesa-ug',repository_id:1444746154,product:'portal',source_path:'onesa-company-portal',branch:'main',candidate_commit:'a'.repeat(40),source_tree:'b'.repeat(40),product_source_tree:'c'.repeat(40)};
+test('canonical transport accepts only the explicit Portal frontend identity',()=>{
+ const p=fixture();try{
+  const original={...JSON.parse(fs.readFileSync(path.join(p,'scope.json'))),...canonicalScope};
+  for(const [key,value] of Object.entries({schema_version:1,repository_id:1,product:'platform',source_path:'onesa-robot',branch:'staging',component:'api',source_tree:'unbound',product_source_tree:'unbound'})){
+   fs.writeFileSync(path.join(p,'scope.json'),JSON.stringify({...original,[key]:value}));assert.throws(()=>createGuard(p));
+  }
+  assert.equal(fs.existsSync(path.join(p,'create-request.json')),false);
+  fs.writeFileSync(path.join(p,'scope.json'),JSON.stringify(original));createGuard(p)('https://api.vercel.com','POST','/v13/deployments');
+  const receipt=JSON.parse(fs.readFileSync(path.join(p,'create-request.json')));for(const [key,value] of Object.entries(canonicalScope))assert.equal(receipt[key],value);
+  assert.throws(()=>createGuard(p)('https://api.vercel.com','POST','/v13/deployments'));
+ }finally{fs.rmSync(p,{recursive:true});}
+});
+test('canonical create binds all source metadata before the single provider request',async()=>{
+ const meta={githubCommitSha:canonicalScope.candidate_commit,githubCommitRef:'main',onesaSourceSchema:'2',onesaSourceRepository:canonicalScope.repository,onesaSourceRepositoryId:String(canonicalScope.repository_id),onesaSourceProduct:'portal',onesaSourcePath:canonicalScope.source_path,onesaSourceRootTree:canonicalScope.source_tree,onesaSourceProductTree:canonicalScope.product_source_tree,onesaSourceBranch:'main'};
+ await serverFixture({status:201,body:'{"id":"dpl_fixture"}'},async({p,setup,request,count})=>{
+  for(const key of Object.keys(meta)){
+   const code=setup+`(async()=>{${request(JSON.stringify({meta:{...meta,[key]:'different'}}))};process.exit(0)})().catch(()=>process.exit(2));`;
+   assert.equal(await child(code),73);assert.equal(count(),0);assert.equal(fs.existsSync(path.join(p,'create-request.json')),false);
+  }
+  const code=setup+`(async()=>{${request(JSON.stringify({meta}))};process.exit(0)})().catch(()=>process.exit(2));`;
+  assert.equal(await child(code),0);assert.equal(count(),1);assert.equal(await child(code),73);assert.equal(count(),1);
+ },{scopeUpdates:canonicalScope});
+});
 const missing={status:400,body:JSON.stringify({error:{code:'missing_files',missing:['a'.repeat(40)]}})};
 test('a complete non-creating missing-file response permits one identical continuation, never a third create',async()=>{
  await serverFixture(missing,async({p,origin,setup,request,count})=>{

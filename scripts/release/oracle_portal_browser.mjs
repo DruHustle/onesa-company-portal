@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {chromium,firefox,webkit,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import {assertExactOrigin,establishPreviewSession} from './oracle_portal_browser_session.mjs';
+import {assertExactOrigin,establishPreviewSession,assertFrontendSourceBinding} from './oracle_portal_browser_session.mjs';
 export {assertExactOrigin,establishPreviewSession} from './oracle_portal_browser_session.mjs';
 export async function visitHome(page,origin,locale){
  assert.ok(['en','de'].includes(locale));
@@ -78,8 +78,7 @@ export async function checkDroneRoutes(page,origin,locale){
  await expect(page.locator('select[name="topic"]')).toHaveValue('drone');
 }
 async function observeUI(request,directory,engines,status){
- assert.equal(request.binding.repository,'DruHustle/onesa-company-portal');
- assert.equal(request.binding.component,'frontend');
+ assertFrontendSourceBinding(request.binding);
  assert.equal(request.provider_token_included,false);
  assert.ok(['staging','production'].includes(request.environment));
  assert.ok([undefined,'presentation-v1','frontend-nvidia-v1'].includes(request.qualification_profile));

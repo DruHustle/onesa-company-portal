@@ -1,0 +1,27 @@
+{
+  "name": "onesa-company-billing-web",
+  "version": "0.1.0",
+  "source": "onesa-billing/web",
+  "files": {
+    "client.mjs": {
+      "sha256": "b411b13c1b69123817e7f049e85573a037cbf90d30410dd8d2264ef007ff7e93",
+      "bytes": 13354
+    },
+    "mount.mjs": {
+      "sha256": "9b3d86eecc500eaa80e555f617328579a630667a10144a4a6a2c66a6e8ba7116",
+      "bytes": 15024
+    },
+    "money.mjs": {
+      "sha256": "71cb3eb8d31b32c88757759b8f550cdc5341187652062d316f93b4ddc63a0dc7",
+      "bytes": 1604
+    },
+    "mount.d.mts": {
+      "sha256": "29ca670622ccb349dec7b03e7d58d46d10dc3b00db0867464ebb40434068f07b",
+      "bytes": 391
+    },
+    "billing.css": {
+      "sha256": "8ce9e317d74ee34d368267ee214d58fbe50869cc7176edf02f78f3d1504e2a53",
+      "bytes": 3286
+    }
+  }
+}

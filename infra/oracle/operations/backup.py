@@ -13,6 +13,8 @@ import uuid
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
+import database_target
+
 STATE = Path("/var/lib/onesa/operations")
 ENV = Path("/etc/onesa/portal-production.env")
 PG = "postgres@sha256:89f747171c4b0af0eacf5984550060be79786dbe286eb60cfa691d79d1e8b23f"
@@ -23,7 +25,11 @@ def require(value):
         raise ValueError("Production backup guard rejected")
 
 
-def checked_env(path=ENV):
+def checked_env(path=ENV, *, target=database_target.UNSET):
+    if target is database_target.UNSET:
+        target = database_target.load()
+    if target is not None:
+        return database_target.checked_runtime(target, path)
     require(
         path.is_file()
         and not path.is_symlink()
@@ -43,9 +49,9 @@ def checked_env(path=ENV):
     return values, u
 
 
-def run(command, data=None):
+def run(command, data=None, *, env=None):
     r = subprocess.run(
-        command, input=data, capture_output=True, timeout=180, check=False
+        command, input=data, capture_output=True, timeout=180, check=False, env=env
     )
     require(r.returncode == 0)
     return r.stdout
@@ -57,33 +63,41 @@ def backup():
     with (STATE / "backup.lock").open("w") as lock:
         os.chmod(lock.name, 0o600)
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        _values, u = checked_env()
+        target = database_target.load()
+        _values, u = checked_env(target=target)
+        binding = database_target.backup_binding(target) if target is not None else None
+        docker = database_target.DOCKER if binding else ["docker"]
+        process_env = database_target.PROCESS_ENV if binding else None
         config = json.loads(Path("/etc/onesa/operations.json").read_text())
         require(re.fullmatch(r"onesa-portal-worker:[a-f0-9]{40}", config["image"]))
         service = STATE / ("pg-" + uuid.uuid4().hex + ".conf")
+        certificate = service.with_suffix(".crt") if binding else None
         fields = {
             "host": u.hostname,
             "user": u.username,
             "password": unquote(u.password),
-            "dbname": "neondb",
+            "dbname": target["database"]["name"] if target else "neondb",
             "sslmode": "verify-full",
-            "sslrootcert": "/etc/ssl/certs/ca-certificates.crt",
+            "sslrootcert": "/secrets/database-ca.crt" if binding else "/etc/ssl/certs/ca-certificates.crt",
             "channel_binding": "require",
         }
         require(all(not any(c in v for c in "\n\r\x00") for v in fields.values()))
-        descriptor = os.open(service, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(descriptor, "w") as f:
-            f.write(
-                "[production]\n"
-                + "\n".join(k + "=" + v for k, v in fields.items())
-                + "\n"
-            )
         client = "onesa-scheduled-backup-" + uuid.uuid4().hex
         pipe = None
         try:
+            descriptor = os.open(service, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(descriptor, "w") as f:
+                f.write("[production]\n" + "\n".join(k + "=" + v for k, v in fields.items()) + "\n")
+            network_arguments = []
+            if binding:
+                with os.fdopen(os.open(certificate, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                                      0o600), "wb") as f:
+                    f.write(binding["ca"])
+                network_arguments = ["--network", binding["network_id"],
+                                     "-v", str(certificate) + ":/secrets/database-ca.crt:ro"]
             run(
                 [
-                    "docker",
+                    *docker,
                     "run",
                     "-d",
                     "--rm",
@@ -97,6 +111,7 @@ def backup():
                     "ALL",
                     "--security-opt",
                     "no-new-privileges",
+                    *network_arguments,
                     "-v",
                     str(service) + ":/secrets/pg.conf:ro",
                     "-e",
@@ -107,11 +122,12 @@ def backup():
                     "sleep",
                     PG,
                     "180",
-                ]
+                ],
+                env=process_env,
             )
             pipe = subprocess.Popen(
                 [
-                    "docker",
+                    *docker,
                     "exec",
                     "-i",
                     client,
@@ -124,6 +140,7 @@ def backup():
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 bufsize=0,
+                env=process_env,
             )
 
             def line():
@@ -154,7 +171,7 @@ def backup():
             files = json.loads(line())
             dump = run(
                 [
-                    "docker",
+                    *docker,
                     "exec",
                     client,
                     "pg_dump",
@@ -162,7 +179,8 @@ def backup():
                     "--no-owner",
                     "--no-acl",
                     "--snapshot=" + snapshot,
-                ]
+                ],
+                env=process_env,
             )
             require(dump.startswith(b"PGDMP") and len(dump) < 64 * 1024 * 1024)
             payload = json.dumps(
@@ -174,9 +192,14 @@ def backup():
                     "manifest": manifest,
                 }
             ).encode()
+            if target is not None:
+                # Refuse configuration or enrolled-resource drift before uploading.
+                require(database_target.load() == target)
+                checked_env(target=target)
+                require(database_target.backup_binding(target) == binding)
             result = run(
                 [
-                    "docker",
+                    *docker,
                     "run",
                     "--rm",
                     "-i",
@@ -204,6 +227,7 @@ def backup():
                     "backup.mjs",
                 ],
                 payload,
+                env=process_env,
             )
             receipt = json.loads(result)
             require(receipt["passed"])
@@ -217,6 +241,14 @@ def backup():
                 consistent_snapshot=True,
                 scheduled=True,
             )
+            if binding:
+                receipt.update(database_source="container-primary",
+                               database_target_sha256=binding["profile_sha256"])
+                # Upload/readback can span a cutover. Keep the prior success receipt
+                # unless the runtime and enrolled resources still match afterward.
+                require(database_target.load() == target)
+                checked_env(target=target)
+                require(database_target.backup_binding(target) == binding)
             temporary = STATE / "backup-success.tmp"
             temporary.write_text(json.dumps(receipt, indent=2) + "\n")
             temporary.chmod(0o600)
@@ -235,13 +267,16 @@ def backup():
             finally:
                 try:
                     subprocess.run(
-                        ["docker", "rm", "-f", "--volumes", client],
+                        [*docker, "rm", "-f", "--volumes", client],
                         capture_output=True,
                         timeout=20,
                         check=False,
+                        env=process_env,
                     )
                 finally:
                     service.unlink(missing_ok=True)
+                    if certificate is not None:
+                        certificate.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

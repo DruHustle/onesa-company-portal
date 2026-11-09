@@ -20,17 +20,24 @@ export const requiredChecks=Object.freeze([
 ]);
 export const apiRequiredChecks=Object.freeze([...requiredChecks,'api_idle_connection_recovery_with_saved_sessions']);
 
+const sourceFields=['schema_version','repository_id','product','source_path','product_source_tree','branch'];
+function canonicalSource(b){
+ return b.repository==='DruHustle/onesa-ug'&&b.schema_version===2&&b.repository_id===1444746154&&
+  b.product==='portal'&&b.source_path==='onesa-company-portal'&&b.branch==='main'&&
+  typeof b.product_source_tree==='string'&&/^[a-f0-9]{40}$/.test(b.product_source_tree);
+}
+
 export function validate(input,raw,actual,now=Date.now()){
  const key=Object.hasOwn(input||{},'api_binding')?'api_binding':Object.hasOwn(input||{},'scanner_binding')?'scanner_binding':'worker_binding';
  need(keys(input,[key,'fixture','worker_probe']));
  const binding=input[key],probe=input.worker_probe,worker=key==='worker_binding',api=key==='api_binding',application=worker||api;
- need(keys(binding,fields)&&binding.repository==='DruHustle/onesa-company-portal'&&binding.component===(api?'api':worker?'worker':'scanner')&&binding.target_environment==='production');
+ need(keys(binding,[...fields,...(binding.repository==='DruHustle/onesa-ug'?sourceFields:[])])&&(binding.repository==='DruHustle/onesa-company-portal'||canonicalSource(binding))&&binding.component===(api?'api':worker?'worker':'scanner')&&binding.target_environment==='production');
  const checked=workerPlan(probe,raw,actual,now),fixture=fixturePlan(input.fixture,now);
  need(probe.binding.component===(api?'api':'worker'));
  need(probe.environment==='staging'&&input.fixture.action==='provision');
  // The dependent worker image has its own real build/image identity. No scanner
  // approval is changed into a worker approval, and no dummy CI ID is generated.
- for(const field of ['repository','candidate_commit','source_tree','source_sha256','target_environment'])need(binding[field]===probe.binding[field]);
+ for(const field of ['repository','candidate_commit','source_tree','source_sha256','target_environment',...(binding.repository==='DruHustle/onesa-ug'?sourceFields:[])])need(binding[field]===probe.binding[field]);
  need(/^[a-f0-9]{64}$/.test(binding.build_sha256)&&(application?binding.build_sha256===probe.binding.build_sha256:binding.build_sha256!==probe.binding.build_sha256));
  need(/^sha256:[a-f0-9]{64}$/.test(binding.artifact_digest)&&(application?binding.artifact_digest===probe.binding.artifact_digest:binding.artifact_digest!==probe.binding.artifact_digest));
  need(keys(binding.configuration_sha256,['staging','production'])&&Object.values(binding.configuration_sha256).every(value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value)));

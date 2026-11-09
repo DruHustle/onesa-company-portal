@@ -70,11 +70,11 @@ export function createEngineeringProvider(config: EngineeringIdentityConfig) {
         return undefined;
       const row = (
         await db.query(
-          "SELECT id,email FROM engineering_memberships WHERE id=$1 AND enabled",
+          "SELECT m.id,m.email,l.user_id FROM engineering_memberships m LEFT JOIN identity_engineering_links l ON l.membership_id=m.id LEFT JOIN users u ON u.id=l.user_id LEFT JOIN identity_profiles p ON p.user_id=u.id WHERE m.id=$1 AND m.enabled AND (l.user_id IS NULL OR (NOT u.disabled AND p.email_verified_at IS NOT NULL AND u.email=m.email))",
           [id],
         )
       ).rows[0];
-      if (!row || !engineeringEmailAllowed(row.email, config.externalEmails))
+      if (!row || (row.user_id && process.env.ONESA_IDENTITY_ENABLED !== "true") || !engineeringEmailAllowed(row.email, config.externalEmails))
         return undefined;
       return {
         accountId: row.id,
