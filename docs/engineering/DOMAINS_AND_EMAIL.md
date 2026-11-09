@@ -1,5 +1,10 @@
 # Onesa domains and transactional email
 
+The maintained cross-product sender and operations-mail policy is
+[Email domain and senders](shared-operations/EMAIL_DOMAIN_AND_SENDERS.md).
+Provider observations below retain their original dates; read current DNS,
+provider and deployed-worker state before applying a future cutover.
+
 Owner-requested mapping (2026-10-10). This configuration is prepared locally;
 provider assignments, DNS changes, TLS and real delivery are not yet completed.
 
