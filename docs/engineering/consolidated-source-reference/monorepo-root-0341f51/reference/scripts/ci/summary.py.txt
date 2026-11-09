@@ -1,0 +1,52 @@
+"""Require successful root checks and every selected product, including skipped jobs."""
+
+import json
+import os
+
+from config import VERIFICATION_COMPONENTS
+
+
+def check(results):
+    failures = []
+    for name in ("prepare", "pipeline-security", "publication-hygiene"):
+        state = results.get(name, {}).get("result", "missing")
+        if state != "success":
+            failures.append(name + ": " + state)
+    selection = results.get("prepare", {}).get("outputs", {})
+    for product in VERIFICATION_COMPONENTS:
+        selected = selection.get(product)
+        state = results.get(product, {}).get("result", "missing")
+        if selected not in {"true", "false"}:
+            failures.append(product + ": missing or invalid selection")
+        elif (
+            selected == "true"
+            and state != "success"
+            or selected == "false"
+            and state not in {"skipped", "success"}
+        ):
+            failures.append(product + ": " + state)
+    return failures
+
+
+def main():
+    try:
+        results = json.loads(os.environ["CI_RESULTS"])
+        if not isinstance(results, dict):
+            raise TypeError("Expected job result map")
+        failures = check(results)
+    except (KeyError, TypeError, ValueError, AttributeError):
+        failures = ["Missing or malformed CI result evidence"]
+    message = (
+        "Onesa verification failed: " + "; ".join(failures)
+        if failures
+        else "Every selected Onesa product and repository check passed."
+    )
+    print(message)
+    if os.getenv("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
+            output.write("\n" + message + "\n")
+    return int(bool(failures))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,628 @@
+"""The consolidation must retain every original verification job and safety gate."""
+
+import copy
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+import generate_workflows as workflows
+from config import (
+    BILLING_ARM64_WORKFLOW_SOURCE,
+    BILLING_WORKFLOW_SOURCE,
+    FIELDS,
+    MOBILE_WORKFLOW_SOURCES,
+    PRODUCTS,
+    ROOT,
+    SOURCE_WORKFLOWS,
+    VERIFICATION_COMPONENTS,
+)
+
+
+class WorkflowTests(unittest.TestCase):
+    def test_additional_active_workflows_are_rejected_for_both_extensions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in ("verify.yml", "unexpected.yaml", "other.yml", "inactive.txt"):
+                (root / name).write_text("synthetic fixture\n")
+            self.assertEqual(
+                workflows.unexpected_workflows(root, {"verify.yml": "expected"}),
+                {"unexpected.yaml", "other.yml"},
+            )
+
+    def test_protected_docs_metadata_has_only_read_permissions_and_fixed_data_output(
+        self,
+    ):
+        value = workflows.protected_docs_metadata()
+        self.assertEqual(set(value["on"]), {"workflow_dispatch"})
+        self.assertEqual(
+            value["permissions"],
+            {"contents": "read", "actions": "read", "pull-requests": "read"},
+        )
+        job = value["jobs"]["metadata"]
+        for boundary in (
+            "github.repository_id == '1444746154'",
+            "github.ref == 'refs/heads/main'",
+            "github.actor == 'DruHustle'",
+            "github.triggering_actor == 'DruHustle'",
+            "github.run_attempt == 1",
+        ):
+            self.assertIn(boundary, job["if"])
+        self.assertEqual(job["steps"][0], workflows.hosted_policy_step())
+        self.assertFalse(value["concurrency"]["cancel-in-progress"])
+        self.assertEqual(
+            value["on"]["workflow_dispatch"]["inputs"]["action"]["default"], "revoke"
+        )
+        uploads = [
+            s["with"]
+            for s in job["steps"]
+            if s.get("uses") == workflows.UPLOAD_ARTIFACT
+        ]
+        self.assertEqual(
+            uploads,
+            [
+                {
+                    "name": "onesa-protected-docs-metadata",
+                    "path": "${{ runner.temp }}/protected-docs-metadata/record.json",
+                    "if-no-files-found": "error",
+                    "retention-days": 7,
+                }
+            ],
+        )
+        text = workflows.yaml.dump(value)
+        for forbidden in (
+            "secrets.",
+            "${{ inputs.",
+            "deploy --",
+            "signing.pem",
+            "build:internal",
+            "self-hosted",
+            "contents: write",
+            "actions: write",
+        ):
+            self.assertNotIn(forbidden, text)
+
+
+    def test_generated_files_match_reviewed_inputs(self):
+        expected = workflows.rendered()
+        self.assertEqual(len(expected), 15)
+        for name, text in expected.items():
+            self.assertEqual((ROOT / ".github/workflows" / name).read_text(), text)
+
+    def test_docs_manual_build_preserves_classified_checks_without_provider_capability(self):
+        source = workflows.load(ROOT / workflows.DOCS_BUILD_SOURCE)
+        before = copy.deepcopy(source)
+        result = workflows.docs_build_workflow(source)
+        self.assertEqual(source, before)
+        self.assertEqual(result["on"], {"workflow_dispatch": {}})
+        self.assertEqual(result["permissions"], {"contents": "read", "actions": "read"})
+        job = result["jobs"]["documentation"]
+        self.assertIn("github.repository_id == '1444746154'", job["if"])
+        self.assertIn("github.ref == 'refs/heads/main'", job["if"])
+        self.assertIn("github.triggering_actor == 'DruHustle'", job["if"])
+        self.assertIn("github.run_attempt == '1'", job["if"])
+        text = workflows.yaml.dump(result)
+        for forbidden in ("secrets.", "inputs.", "deploy --", "prepare-preview-access", "documentation-qualification"):
+            self.assertNotIn(forbidden, text)
+        named = {step.get("name"): step for step in job["steps"]}
+        self.assertFalse(workflows.DOCS_PROVIDER_NAMES.intersection(named))
+        for step in source["jobs"]["documentation"]["steps"]:
+            name = step.get("name")
+            if name in workflows.DOCS_BUILD_NAMES and "run" in step:
+                self.assertEqual(named[name]["run"], step["run"])
+                self.assertEqual(named[name]["working-directory"], "." if name.startswith("Verify GitHub-hosted") else PRODUCTS["platform"])
+        uploads = [step["with"] for step in job["steps"] if step.get("uses") == workflows.UPLOAD_ARTIFACT]
+        self.assertEqual({row["name"] for row in uploads}, {
+            "onesa-public-docs-staging", "onesa-public-docs-production", "onesa-public-docs-local-build-checks",
+        })
+        self.assertFalse(any("internal" in row["path"] for row in uploads))
+        checkouts = [step for step in job["steps"] if step.get("uses", "").startswith("actions/checkout@")]
+        self.assertEqual(len(checkouts), 1)
+        self.assertEqual(checkouts[0]["with"]["fetch-depth"], 0)
+        self.assertIs(checkouts[0]["with"]["persist-credentials"], False)
+        for peer in ("portal", "robot"):
+            self.assertEqual(named[f"Materialize pinned {peer} contracts from imported history"]["run"], f"python3 ../scripts/ci/materialize_docs_source.py --source {peer}")
+
+    def test_docs_workflow_refuses_new_authority_steps_artifacts_or_classification(self):
+        original = workflows.load(ROOT / workflows.DOCS_BUILD_SOURCE)
+        for mutate in [
+            lambda s: s.update(permissions={"contents": "write"}),
+            lambda s: s["jobs"]["documentation"]["steps"].append({"name": "Unreviewed action", "run": "true"}),
+            lambda s: s["jobs"]["documentation"]["env"].update(ONESA_DOCS_SCOPE="internal"),
+            lambda s: next(x for x in s["jobs"]["documentation"]["steps"] if x.get("name") == "Upload public site only")["with"].update(name="protected-docs"),
+            lambda s: next(x for x in s["jobs"]["documentation"]["steps"] if x.get("name") == "Record local public build checks without hosted authority").update(**{"if": "always() && inputs.force"}),
+        ]:
+            source = copy.deepcopy(original)
+            mutate(source)
+            with self.subTest(mutate=mutate), self.assertRaises(ValueError):
+                workflows.docs_build_workflow(source)
+
+    def test_mobile_sources_preserve_every_job_and_trigger_with_only_shared_guard(self):
+        generated = workflows.rendered()
+        for filename, source_path in MOBILE_WORKFLOW_SOURCES.items():
+            source = workflows.load(ROOT / source_path)
+            before = copy.deepcopy(source)
+            result = workflows.mobile_workflow(source)
+            for job in result["jobs"].values():
+                self.assertEqual(
+                    job["steps"].pop(0),
+                    {**workflows.hosted_policy_step(), "working-directory": "."},
+                )
+            self.assertEqual(result, source)
+            self.assertEqual(source, before, "Generating workflows must not mutate source")
+            self.assertIn("# Source: " + source_path.as_posix(), generated[filename])
+            self.assertIn(
+                "# Source SHA256: " + hashlib.sha256((ROOT / source_path).read_bytes()).hexdigest(),
+                generated[filename],
+            )
+
+    def test_mobile_requires_review_for_new_authority_or_reusable_jobs(self):
+        source = workflows.load(ROOT / MOBILE_WORKFLOW_SOURCES["onesa-mobile-ci.yml"])
+        source["permissions"] = {"contents": "write"}
+        with self.assertRaises(ValueError):
+            workflows.mobile_workflow(source)
+        source["permissions"] = {"contents": "read"}
+        source["jobs"]["verify"] = {"uses": "./.github/workflows/unreviewed.yml"}
+        with self.assertRaises(ValueError):
+            workflows.mobile_workflow(source)
+
+    def test_billing_source_keeps_real_database_and_browser_checks_without_credentials(self):
+        source = workflows.load(ROOT / BILLING_WORKFLOW_SOURCE)
+        before = copy.deepcopy(source)
+        result = workflows.billing_workflow(source)
+        self.assertEqual(result["jobs"]["verify"]["steps"].pop(0), workflows.hosted_policy_step())
+        self.assertEqual(result, source)
+        self.assertEqual(source, before)
+        generated = workflows.rendered()["_verify-billing.yml"]
+        self.assertIn("# Source: " + BILLING_WORKFLOW_SOURCE.as_posix(), generated)
+        self.assertIn(hashlib.sha256((ROOT / BILLING_WORKFLOW_SOURCE).read_bytes()).hexdigest(), generated)
+        job = source["jobs"]["verify"]
+        postgres = job["services"]["postgres"]
+        self.assertEqual(postgres["image"], "postgres@sha256:2ad58d61b036d41f2613302e8c0fee03f6fe51e94d68087327ac45d1cebd4b5e")
+        self.assertEqual(postgres["env"]["POSTGRES_DB"], "onesa_billing_test")
+        self.assertEqual(postgres["ports"], ["5432/tcp"])
+        steps = {step["name"]: step for step in job["steps"] if "name" in step}
+        tests = steps["Verify auth, provider mocks, PostgreSQL isolation, concurrency and recovery"]
+        self.assertEqual(tests["working-directory"], "onesa-billing/backend")
+        self.assertEqual(tests["run"], 'test -n "$BILLING_TEST_DATABASE_URL"\nnpm test\n'
+                         "python3 -m unittest discover -s ../scripts/ci/test -p 'test_*.py'\n"
+                         'node --test ../scripts/ci/test/runtime_fixture.test.cjs\n'
+                         'python3 ../scripts/ci/runtime_acceptance.py --output "$RUNNER_TEMP/onesa-company-billing-runtime"\n')
+        runtime_artifact = next(step for step in job["steps"]
+                                if step.get("with", {}).get("name", "").startswith("company-billing-runtime-"))
+        self.assertEqual(runtime_artifact["uses"], "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9")
+        self.assertEqual(runtime_artifact["with"]["path"], "${{ runner.temp }}/onesa-company-billing-runtime/*.json")
+        self.assertEqual(runtime_artifact["with"]["if-no-files-found"], "error")
+        browser = steps["Verify the actual browser journey with synthetic same-origin APIs"]
+        self.assertEqual(browser["env"]["BILLING_CHROMIUM_EXECUTABLE"], "/usr/bin/google-chrome")
+        self.assertIn("node --test onesa-billing/web/test/browser.test.mjs", browser["run"])
+        self.assertIn("node --test onesa-billing/web/test/client.test.mjs onesa-billing/web/test/money.test.mjs", generated)
+        self.assertIn("npm run typecheck\n", generated)
+        self.assertIn("npm run build\n", generated)
+        self.assertTrue(any(step.get("run") == "npm ci" for step in job["steps"]))
+        node = next(step for step in job["steps"] if step.get("uses", "").startswith("actions/setup-node@"))
+        self.assertEqual(node["uses"], "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1")
+        self.assertEqual(node["with"]["node-version"], "24.22.1")
+        for step in job["steps"]:
+            self.assertNotIn("continue-on-error", step)
+            if "run" in step:
+                self.assertNotIn("if", step)
+        for forbidden in ("STRIPE_SECRET_KEY", "METRONOME_API_KEY", "secrets.", "self-hosted", "dom-acceptance.mjs"):
+            self.assertNotIn(forbidden, generated)
+        root_job = workflows.orchestrator()["jobs"]["billing"]
+        self.assertEqual(root_job["permissions"], {"contents": "read"})
+        self.assertEqual(root_job["uses"], "./.github/workflows/_verify-billing.yml")
+
+    def test_billing_requires_review_for_added_authority_or_alternative_entrypoints(self):
+        original = workflows.load(ROOT / BILLING_WORKFLOW_SOURCE)
+        for mutate in (
+            lambda source: source.update(permissions={"contents": "write"}),
+            lambda source: source["on"].update(pull_request_target={}),
+            lambda source: source["jobs"].update(deploy={"uses": "./other.yml"}),
+            lambda source: source["jobs"]["verify"].update(environment="production"),
+            lambda source: source["jobs"]["verify"].update(**{"runs-on": "self-hosted"}),
+        ):
+            source = copy.deepcopy(original)
+            mutate(source)
+            with self.subTest(mutate=mutate), self.assertRaises(ValueError):
+                workflows.billing_workflow(source)
+
+    def test_billing_arm64_is_separate_native_public_only_verification(self):
+        source = workflows.load(ROOT / BILLING_ARM64_WORKFLOW_SOURCE)
+        before = copy.deepcopy(source)
+        result = workflows.billing_arm64_workflow(source)
+        guard = result["jobs"]["verify"]["steps"].pop(0)
+        self.assertEqual(guard, workflows.billing_arm64_policy_step())
+        self.assertEqual(result, source)
+        self.assertEqual(source, before)
+        job = source["jobs"]["verify"]
+        self.assertEqual(job["runs-on"], "ubuntu-24.04-arm")
+        self.assertEqual(source["permissions"], {"contents": "read"})
+        self.assertEqual(
+            set(source["on"]), {"pull_request", "push", "workflow_dispatch"}
+        )
+        self.assertEqual(source["on"]["workflow_dispatch"], {})
+        self.assertNotIn("env", job)
+        self.assertIn("github.event.repository.private == false", job["if"])
+        self.assertIn("github.repository_id == '1444746154'", job["if"])
+        self.assertIn("github.run_attempt == '1'", job["if"])
+        self.assertIn("--native-architecture arm64", job["steps"][-2]["run"])
+        artifact = job["steps"][-1]
+        self.assertEqual(artifact["uses"], workflows.UPLOAD_ARTIFACT)
+        self.assertEqual(
+            artifact["with"]["path"],
+            "${{ runner.temp }}/onesa-company-billing-arm64-runtime/*.json",
+        )
+        self.assertEqual(artifact["with"]["if-no-files-found"], "error")
+        self.assertNotIn("arm64", workflows.orchestrator()["jobs"])
+        generated = workflows.rendered()["onesa-billing-arm64.yml"]
+        self.assertIn(
+            "# Source: " + BILLING_ARM64_WORKFLOW_SOURCE.as_posix(), generated
+        )
+        self.assertIn(
+            hashlib.sha256(
+                (ROOT / BILLING_ARM64_WORKFLOW_SOURCE).read_bytes()
+            ).hexdigest(),
+            generated,
+        )
+        for forbidden in (
+            "secrets.",
+            "self-hosted",
+            "qemu",
+            "buildx",
+            "continue-on-error",
+            "inputs.",
+            "PRIVATE_VALIDATION_ENABLED",
+        ):
+            self.assertNotIn(forbidden, generated)
+
+    def test_billing_arm64_refuses_changed_authority_profile_or_proof(self):
+        original = workflows.load(ROOT / BILLING_ARM64_WORKFLOW_SOURCE)
+        for mutate in (
+            lambda value: value.update(permissions={"contents": "write"}),
+            lambda value: value["on"].update(pull_request_target={}),
+            lambda value: value["on"]["workflow_dispatch"].update(
+                inputs={"runner": {"type": "string"}}
+            ),
+            lambda value: value["jobs"].update(deploy={"runs-on": "ubuntu-latest"}),
+            lambda value: value["jobs"]["verify"].update(**{"runs-on": "ubuntu-24.04"}),
+            lambda value: value["jobs"]["verify"].update(
+                **{"runs-on": ["self-hosted", "ARM64"]}
+            ),
+            lambda value: value["jobs"]["verify"].update(**{"if": "always()"}),
+            lambda value: value["jobs"]["verify"].update(
+                env={"BILLING_REPOSITORY_VISIBILITY": "public"}
+            ),
+            lambda value: value["jobs"]["verify"]["steps"].insert(
+                0, {"uses": "docker/setup-qemu-action@v3"}
+            ),
+            lambda value: value["jobs"]["verify"]["steps"][0]["with"].update(
+                **{"persist-credentials": True}
+            ),
+            lambda value: value["jobs"]["verify"]["steps"][1]["with"].update(
+                architecture="x64"
+            ),
+            lambda value: value["jobs"]["verify"]["steps"][-2].update(
+                run="echo skipped"
+            ),
+            lambda value: value["jobs"]["verify"]["steps"][-2].update(
+                **{"continue-on-error": True}
+            ),
+            lambda value: value["jobs"]["verify"]["steps"][-1]["with"].update(
+                path="${{ runner.temp }}/**"
+            ),
+        ):
+            value = copy.deepcopy(original)
+            mutate(value)
+            with self.subTest(mutate=mutate), self.assertRaises(ValueError):
+                workflows.billing_arm64_workflow(value)
+
+    def test_billing_arm64_visibility_marker_requires_live_public_native_checks(self):
+        guard = workflows.billing_arm64_policy_step()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for command, variable in (
+                ("gh", "FIXTURE_PRIVATE"),
+                ("uname", "FIXTURE_MACHINE"),
+            ):
+                script = root / command
+                script.write_text('#!/bin/sh\nprintf "%s\\n" "$' + variable + '"\n')
+                script.chmod(0o700)
+            environment = {
+                **os.environ,
+                "PATH": str(root) + os.pathsep + os.environ["PATH"],
+                "RUNNER_ENVIRONMENT": "github-hosted",
+                "RUNNER_OS": "Linux",
+                "RUNNER_ARCH": "ARM64",
+                "GITHUB_REPOSITORY": "DruHustle/onesa-ug",
+                "GITHUB_REPOSITORY_ID": "1444746154",
+                "GITHUB_RUN_ATTEMPT": "1",
+                "EXPECTED_PRIVATE": "false",
+                "FIXTURE_PRIVATE": "false",
+                "FIXTURE_MACHINE": "aarch64",
+                "GITHUB_ENV": str(root / "environment"),
+            }
+            cases = (
+                {},
+                {"FIXTURE_PRIVATE": "true"},
+                {"EXPECTED_PRIVATE": "true"},
+                {"FIXTURE_PRIVATE": ""},
+                {"RUNNER_ENVIRONMENT": "self-hosted"},
+                {"RUNNER_ARCH": "X64"},
+                {"FIXTURE_MACHINE": "x86_64"},
+                {"GITHUB_REPOSITORY": "elsewhere/onesa-ug"},
+                {"GITHUB_REPOSITORY_ID": "1"},
+                {"GITHUB_RUN_ATTEMPT": "2"},
+            )
+            for changed in cases:
+                with self.subTest(changed=changed):
+                    marker = root / "environment"
+                    marker.unlink(missing_ok=True)
+                    completed = subprocess.run(
+                        ["bash", "-e", "-c", guard["run"]],
+                        env={**environment, **changed},
+                        cwd=root,
+                        capture_output=True,
+                        timeout=5,
+                        check=False,
+                    )
+                    if changed:
+                        self.assertNotEqual(completed.returncode, 0)
+                        self.assertFalse(marker.exists())
+                    else:
+                        self.assertEqual(completed.returncode, 0, completed.stderr)
+                        self.assertEqual(
+                            marker.read_text(), "BILLING_REPOSITORY_VISIBILITY=public\n"
+                        )
+
+    def test_mobile_xcode_template_is_materialized_without_replacing_local_configuration(self):
+        native = ROOT / "onesa-mobile/onesa-mobile-frontend/mobile"
+        scripts = json.loads((native / "package.json").read_text())["scripts"]
+        self.assertEqual(scripts["preios"], "npm run prepare:ios")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "ios").mkdir()
+            template = (native / "ios/.xcode.env.example").read_bytes()
+            (root / "ios/.xcode.env.example").write_bytes(template)
+            subprocess.run(["sh", "-ec", scripts["prepare:ios"]], cwd=root, check=True)
+            destination = root / "ios/.xcode.env"
+            self.assertEqual(destination.read_bytes(), template)
+            destination.write_text("# Existing local Node configuration\n")
+            subprocess.run(["sh", "-ec", scripts["prepare:ios"]], cwd=root, check=True)
+            self.assertEqual(destination.read_text(), "# Existing local Node configuration\n")
+        source = workflows.load(ROOT / MOBILE_WORKFLOW_SOURCES["onesa-mobile-native-compile.yml"])
+        steps = source["jobs"]["ios"]["steps"]
+        prepare = next(i for i, step in enumerate(steps) if step.get("run") == "npm run prepare:ios")
+        pods = next(i for i, step in enumerate(steps) if step.get("run") == "pod install --project-directory=ios")
+        self.assertLess(prepare, pods)
+
+    def test_all_original_jobs_dependencies_conditions_and_steps_survive(self):
+        for key, product in PRODUCTS.items():
+            source = workflows.load(
+                ROOT / product / ".github/workflows" / SOURCE_WORKFLOWS[key]
+            )
+            result = workflows.adapt(source, key)
+            self.assertEqual(set(source["jobs"]), set(result["jobs"]))
+            self.assertEqual(result["on"], {"workflow_call": {}})
+            self.assertNotIn("concurrency", result)
+            for name, original in source["jobs"].items():
+                adapted = result["jobs"][name]
+                for field in (
+                    "needs",
+                    "if",
+                    "timeout-minutes",
+                    "runs-on",
+                    "strategy",
+                    "permissions",
+                    "services",
+                ):
+                    self.assertEqual(
+                        adapted.get(field),
+                        workflows.workspace_strings(original.get(field), product),
+                    )
+                if "steps" in original:
+                    self.assertEqual(len(original["steps"]), len(adapted["steps"]))
+                    for before, after in zip(original["steps"], adapted["steps"]):
+                        for field in ("if", "continue-on-error", "timeout-minutes"):
+                            expected = before.get(field)
+                            if (
+                                key == "platform" and name == "tls-acceptance"
+                                and before is original["steps"][-1] and field == "if"
+                            ):
+                                expected = "always() && hashFiles('onesa-ai-platform/data/acceptance-005/staging.env') != ''"
+                            self.assertEqual(expected, after.get(field))
+
+    def test_drone_native_compilation_preserves_visibility_and_simulator_boundaries(self):
+        workflow = workflows.load(ROOT / ".github/workflows/_verify-drone.yml")
+        for job_id, runner in (("mobile-android", "ubuntu-24.04"), ("mobile-ios", "macos-26")):
+            job = workflow["jobs"][job_id]
+            self.assertEqual(job["needs"], "mobile")
+            self.assertEqual(job["runs-on"], runner)
+            self.assertEqual(job["steps"][0], {**workflows.hosted_policy_step(), "working-directory": "."})
+            prepare = next(step for step in job["steps"] if "mobile_native_compile prepare" in step.get("run", ""))
+            self.assertEqual(prepare["working-directory"], "onesa-drone")
+            self.assertIn("--output \"$RUNNER_TEMP/drone-native-", prepare["run"])
+            install = next(step for step in job["steps"] if step.get("name") == "Install locked mobile dependencies")
+            self.assertEqual(install["run"], "npm ci --ignore-scripts --no-audit --no-fund")
+            uploads = [step for step in job["steps"] if step.get("uses", "").startswith("actions/upload-artifact@")]
+            self.assertEqual(len(uploads), 1)
+            self.assertEqual(uploads[0]["with"]["if-no-files-found"], "error")
+            self.assertNotIn("prepared.json", uploads[0]["with"]["path"])
+            self.assertNotIn("**", uploads[0]["with"]["path"])
+        ios = next(step["run"] for step in workflow["jobs"]["mobile-ios"]["steps"]
+                   if step.get("name", "").startswith("Release requirement: Compile"))
+        for boundary in ("-sdk iphonesimulator", "ARCHS=arm64", "CODE_SIGNING_ALLOWED=NO", "ENABLE_DEBUG_DYLIB=NO"):
+            self.assertIn(boundary, ios)
+        self.assertNotIn("-allowProvisioning", ios)
+        pods = next(step for step in workflow["jobs"]["mobile-ios"]["steps"]
+                    if step.get("name") == "Record native toolchain and resolve local module pods")
+        self.assertEqual(pods["working-directory"], "onesa-drone/frontend/drone/mobile")
+        self.assertIn("pod install --project-directory=ios", pods["run"])
+
+    def test_tls_cleanup_guard_resolves_only_the_product_environment(self):
+        source = workflows.load(
+            ROOT / PRODUCTS["platform"] / ".github/workflows" / SOURCE_WORKFLOWS["platform"]
+        )
+        original = copy.deepcopy(source)
+        cleanup = workflows.adapt(source, "platform")["jobs"]["tls-acceptance"]["steps"][-1]
+        match = re.fullmatch(r"always\(\) && hashFiles\('([^']+)'\) != ''", cleanup["if"])
+        self.assertIsNotNone(match, "Teardown must retain always() and its file-existence guard")
+        self.assertEqual(cleanup["run"], original["jobs"]["tls-acceptance"]["steps"][-1]["run"])
+        self.assertEqual(cleanup["working-directory"], PRODUCTS["platform"])
+        self.assertEqual(source, original, "The product workflow input must not be rewritten")
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            misplaced = workspace / "data/acceptance-005/staging.env"
+            misplaced.parent.mkdir(parents=True)
+            misplaced.write_text("synthetic root configuration\n")
+            self.assertEqual(list(workspace.glob(match.group(1))), [])
+            actual = workspace / PRODUCTS["platform"] / "data/acceptance-005/staging.env"
+            actual.parent.mkdir(parents=True)
+            actual.write_text("synthetic product configuration\n")
+            self.assertEqual(list(workspace.glob(match.group(1))), [actual])
+            actual.unlink()
+            self.assertEqual(list(workspace.glob(match.group(1))), [])
+
+    def test_no_precheckout_step_uses_missing_product_directory(self):
+        for key, product in PRODUCTS.items():
+            source = workflows.load(
+                ROOT / product / ".github/workflows" / SOURCE_WORKFLOWS[key]
+            )
+            for job in workflows.adapt(source, key)["jobs"].values():
+                checkout = False
+                for step in job.get("steps", []):
+                    if step.get("uses", "").startswith("actions/checkout@"):
+                        self.assertNotIn("repository", step.get("with", {}))
+                        self.assertIs(step["with"]["persist-credentials"], False)
+                        checkout = True
+                    elif "run" in step:
+                        self.assertEqual(
+                            step["working-directory"].split("/")[0],
+                            product if checkout else ".",
+                        )
+
+    def test_root_summary_is_always_required_and_secret_free(self):
+        root = workflows.orchestrator()
+        summary = root["jobs"]["ci-summary"]
+        self.assertEqual(summary["if"], "always()")
+        self.assertEqual(
+            set(summary["needs"]),
+            {"prepare", "pipeline-security", "publication-hygiene", *VERIFICATION_COMPONENTS},
+        )
+        self.assertEqual(summary["name"], "Onesa required verification")
+        for text in workflows.rendered().values():
+            document = workflows.yaml.load(text, Loader=workflows.WorkflowLoader)
+            self.assertNotIn("pull_request_target", document["on"])
+            self.assertNotRegex(text, r"\$\{\{[^}]*\bsecrets\.")
+            self.assertNotIn("secrets: inherit", text)
+            for job in document["jobs"].values():
+                for step in job.get("steps", []):
+                    uses = step.get("uses")
+                    if uses:
+                        self.assertRegex(uses, r"^[^@]+@[a-f0-9]{40}$")
+
+    def test_selected_products_cannot_skip_internal_suites(self):
+        for key in PRODUCTS:
+            result = subprocess.check_output(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts/ci/selection.py"),
+                    "--product",
+                    key,
+                ],
+                text=True,
+            )
+            for field in FIELDS:
+                self.assertIn('"' + field + '": true', result)
+            self.assertIn('"applications": ["frontend", "backend"]', result)
+
+    def test_product_paths_caches_and_artifacts_are_translated_once(self):
+        steps = [
+            {"run": "echo policy"},
+            {"uses": "actions/checkout@" + "a" * 40},
+            {
+                "uses": "actions/setup-node@" + "b" * 40,
+                "with": {
+                    "cache-dependency-path": "frontend/package-lock.json\nbackend/package-lock.json\n"
+                },
+            },
+            {
+                "run": 'echo "$GITHUB_WORKSPACE/x" "${GITHUB_WORKSPACE}/y" "${{ github.workspace }}/z"',
+                "working-directory": "frontend",
+            },
+            {
+                "uses": "actions/upload-artifact@" + "c" * 40,
+                "with": {
+                    "name": "evidence",
+                    "path": "data/report.json\n!data/private.json\n${{ runner.temp }}/safe.json\n",
+                },
+            },
+        ]
+        result = workflows.adapt_steps(steps, "robot")
+        self.assertEqual(result[0]["working-directory"], ".")
+        self.assertEqual(result[3]["working-directory"], "onesa-robot/frontend")
+        self.assertEqual(
+            result[2]["with"]["cache-dependency-path"].count("onesa-robot/"), 2
+        )
+        self.assertEqual(result[3]["run"].count("/onesa-robot/"), 3)
+        self.assertEqual(result[4]["with"]["name"], "robot-evidence")
+        self.assertIn("!onesa-robot/data/private.json", result[4]["with"]["path"])
+        self.assertIn("${{ runner.temp }}/safe.json", result[4]["with"]["path"])
+
+    def test_contract_sources_remain_pinned_without_old_repo_checkout(self):
+        text = workflows.rendered()["_verify-platform.yml"]
+        self.assertEqual(text.count("materialize_docs_source.py --source"), 2)
+        self.assertNotIn("repository: DruHustle/onesa-company-portal", text)
+        self.assertNotIn("repository: DruHustle/onesa-ai-robot", text)
+        self.assertNotIn("scripts/release/evidence.py manifest", text)
+        self.assertIn("runtime_manifest.py --product platform", text)
+
+    def test_pipeline_security_and_negative_tests_keep_product_namespace(self):
+        generated = workflows.rendered()
+        for key in ("portal", "platform", "robot"):
+            text = generated["_pipeline-" + key + ".yml"]
+            self.assertIn("product_security.py --product " + key + " --output", text)
+            self.assertIn("product_security.py --product " + key + " --tests", text)
+
+    def test_independent_history_and_documentation_gates_remain_required(self):
+        job = workflows.orchestrator()["jobs"]["publication-hygiene"]
+        self.assertEqual(job["permissions"], {"contents": "read"})
+        self.assertEqual(job["timeout-minutes"], 45)
+        self.assertNotIn("needs", job)
+        scans = [
+            step
+            for step in job["steps"]
+            if "repository_hygiene.py" in step.get("run", "")
+        ]
+        self.assertEqual(len(scans), 1)
+        self.assertEqual(
+            scans[0]["run"], "python3 scripts/repository_hygiene.py --history"
+        )
+        self.assertEqual(scans[0]["working-directory"], ".")
+        for key in ("portal", "platform", "robot"):
+            source = workflows.load(
+                ROOT / PRODUCTS[key] / ".github/workflows/repository-hygiene.yml"
+            )
+            original = source["jobs"]["publication-hygiene"]
+            for field in ("if", "runs-on", "timeout-minutes"):
+                self.assertEqual(job[field], original[field])
+            for step in workflows.adapt_steps(original["steps"], key):
+                if "run" in step and "repository_hygiene.py" not in step["run"]:
+                    self.assertIn(
+                        step,
+                        job["steps"],
+                        "A source publication policy or documentation test was dropped",
+                    )
+        self.assertIn(
+            "publication-hygiene",
+            workflows.orchestrator()["jobs"]["ci-summary"]["needs"],
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
