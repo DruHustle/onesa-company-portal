@@ -731,14 +731,16 @@ def observe(binding, plan, operation, target):
             name for name in files if name.startswith(identity.PREFIX + "migrations/")
         )
         r.require(
-            len(rows) in {12, 14}
+            len(rows) in {12, 14, 15, 16}
             and {row["name"]: row["checksum"] for row in rows}
             == {Path(name).name: files[name] for name in migration_names[: len(rows)]},
             "IDENTITY_RESTORE_MIGRATION_BASELINE",
         )
-        if len(rows) == 12:
+        if len(rows) < 16:
             transaction = "BEGIN;\nSELECT pg_advisory_xact_lock(757830);\n"
-            for name, checksum in identity.MIGRATIONS.items():
+            for migration_name, checksum in identity.MIGRATIONS.items():
+                if int(migration_name[:3]) <= len(rows):
+                    continue
                 raw = r.docker(
                     "run",
                     "--rm",
@@ -749,7 +751,7 @@ def observe(binding, plan, operation, target):
                     "--entrypoint",
                     "cat",
                     binding["artifact_digest"],
-                    "/app/migrations/" + name,
+                    "/app/migrations/" + migration_name,
                 )
                 r.require(
                     hashlib.sha256(raw).hexdigest() == checksum,
@@ -758,7 +760,7 @@ def observe(binding, plan, operation, target):
                 transaction += (
                     raw.decode()
                     + "\nINSERT INTO schema_migrations(name,checksum) VALUES('"
-                    + name
+                    + migration_name
                     + "','"
                     + checksum
                     + "');\n"
@@ -766,8 +768,8 @@ def observe(binding, plan, operation, target):
             sql(container, database, transaction + "COMMIT;\n")
         r.require(
             sql(container, database, "SELECT count(*) FROM schema_migrations;").strip()
-            == b"14",
-            "IDENTITY_RESTORED_SCHEMA_NOT_014",
+            == b"16",
+            "IDENTITY_RESTORED_SCHEMA_NOT_016",
         )
         lockdown = sql(
             container, database, restore_replay.replay_sql(ledger, restore_lockdown.SQL)
@@ -789,7 +791,7 @@ def observe(binding, plan, operation, target):
             "database_contents_match": True,
             "database_tables_restored": len(manifest),
             "objects_verified": len(payload["objects"]),
-            "schema_014_rehearsed": True,
+            "schema_016_rehearsed": True,
             "capability_lockdown": True,
             "compatible_fallback": fallback,
             "off_instance_readback": readback,

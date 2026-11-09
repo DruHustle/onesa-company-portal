@@ -87,6 +87,39 @@ Repository code or an unsigned JSON file supplies no release authority.
 The protected guide contains installation, qualification and recovery instructions;
 source implementation alone does not establish commissioning or deployment.
 
+The current source repository is `DruHustle/onesa-company-portal`. Standalone
+releases use the existing schema-1 repository and component bindings, with
+`onesa-company-portal-frontend` as the frontend provider root. Requalification
+must use the new exact standalone commit and its own hosted verification;
+repository movement does not relabel earlier artifacts or signed records.
+
+The frontend installer retains compatibility with an explicit historical
+consolidated Portal schema-2 profile. It binds `DruHustle/onesa-ug` by numeric
+repository ID, exact current-main commit,
+root tree and `onesa-company-portal` subtree. The separately pinned component
+policy retains all three original source-verification ZIPs; each existing CI
+recheck verifies their private installed bytes against the current hosted run.
+This does not turn an unsigned source proof into release authority. The original
+schema-1 path, historical baseline pins and signed records remain unchanged.
+
+That consolidated frontend build uses the exact product subtree archive while binding
+the full root source identity. Its provider root is fixed to
+`onesa-company-portal/onesa-company-portal-frontend`; complete source identity is
+checked in build, preview and provider observations. Optional Git integration is
+not inferred from an explicit prebuilt CLI deployment. Existing Git-triggered
+workflows and provider bindings need their own cutover readback.
+
+Source qualification and normal promotion produce the reviewed exact-main input
+required by this installer. Actual hosted preview qualification follows immutable
+installation and separate owner commissioning, and remains mandatory before
+runtime production authorization. API, worker, scanner and identity controllers
+are not enabled by the canonical frontend profile. Their retained live snapshots,
+readiness, backup and rollback checks remain in force. The canonical record
+namespace is separate; its lifecycle resource remains the existing Portal
+frontend, preserving earlier holds and revocations. Before changing controllers,
+the owner must inspect retained operations and commission new custody; this source
+change does not deactivate, replace or relabel an existing installation.
+
 The independent shared-scanner adapter is new source. Its installation profile
 retains the existing verifier and separate owner commissioning. It requires exact
 source, image bytes and current security evidence, isolated streaming/access and
@@ -129,3 +162,186 @@ The API and worker adapters explicitly select each retained service's existing
 Compose profile for rendering and deployment. Identity-file pins and independent
 service targeting remain mandatory. New source still requires its own checks,
 commissioned installation and hosted qualification.
+
+## Private Kubernetes first-install source
+
+`infra/oracle/kubernetes_preflight.py` and `portainer_private.py` preserve the
+read-only host assessment and manifest observer. The separate
+`infra/oracle/k3s_first_install.py` implements an owner-run first installation;
+its `check` action remains read-only. Source tests and a merged change do not
+establish installation, owner commissioning or acceptance on a real host. The
+existing protected release and maintenance procedures still govern execution.
+
+The installer requires an explicit private plan and verifies selected OCI
+IMDSv2 instance identity, the approved destination name and the host fingerprint.
+It requires an already enrolled shared-host lifecycle interlock before mutation,
+retains its durable maintenance hold after interruption, and does not enable or
+replace the existing recovery controller. An existing cluster, partial installation,
+unrelated hold, systemd override, missing capacity or overlapping network blocks
+the first-install path. Repeating a completed install performs verification only.
+Before completion, service children require the matching maintenance hold and
+active ownership of both existing lifecycle and installer locks; a saved hold
+alone cannot authorize a restart. The readiness receipt is durable before service
+enablement, and normal ready-state restarts refuse any remaining maintenance hold.
+
+`k3s_release_lock.json` binds the stable K3s release binary and packaged images
+for the observed architecture, and the compatible Portainer CE image by digest.
+The exact copied artifact bytes are checked through one protected file descriptor.
+K3s uses its own containerd, an explicit private node/API address, single-node
+host-gw networking and private kubeconfig. The locked release uses the standard
+`proxy-mode=nftables` kube-proxy implementation; its native base chains cannot
+override a rejection in another base chain. The installer requires a supported
+kernel and nftables userspace, verifies the live native proxy table, and refuses
+the broad iptables `KUBE-FORWARD` proxy. Traefik, ServiceLB and the default local
+storage provisioner are disabled before startup.
+
+An independent native guard rejects spoofed pod sources, pod traffic to retained
+Docker/router/host networks and metadata HTTP, untrusted cluster ingress, and
+IPv6 CNI traffic. It permits the configured private API/kubelet path from local
+pods and conntrack-bound replies to approved pod egress. The bundled network
+policy controller's exact pod selectors and parent-chain mark accepts are
+verified separately. Its accept bit is cleared only for unrelated INPUT/FORWARD
+traffic after routing; other bits and OUTPUT marks are unchanged. First install
+refuses a preexisting netfilter mark writer/consumer or restrictive OUTPUT policy
+that would invalidate this integration. Existing policy-routing selectors are
+retained and compared, including Tailscale's masked mark rules. No Tailscale mask,
+existing owner guard or Docker-generated rule is rewritten.
+
+The private plan includes the observed non-loopback upstream DNS addresses.
+The installer compares them with the system resolver's actual upstream and writes
+a private pod resolver file; it does not choose another DNS provider. Native
+exceptions permit only TCP/UDP port 53 to those addresses. Initial management
+namespaces receive default-deny egress policies, with the upstream exception
+restricted to CoreDNS in `kube-system`. Portainer can reach the Kubernetes API and
+cluster DNS; the metrics service can reach the API and kubelet. Namespace and pod
+selectors are combined, and extra additive policies or workload namespaces fail
+verification until their networking is reviewed. API service endpoints must point
+to the private node address, and CoreDNS must be available with its expected
+service account. Existing Docker applications are not restarted or migrated.
+
+Portainer has HTTPS-only ClusterIP access, denied pod ingress, one observed node,
+and an explicit local PV/PVC and storage class with `Retain`. Its data directory
+is separate from the K3s datastore. The declared PV size is not a filesystem quota
+or a backup. Portainer initially manages Kubernetes only: existing Docker Compose
+applications need a separately registered, authenticated private Docker environment
+and actual readback before their visualization can be claimed. This installer
+does not mount the Docker socket or expose an agent port.
+
+The management path is the existing authenticated SSH connection followed by
+`kubectl port-forward --address=127.0.0.1 --namespace=portainer service/portainer
+19443:9443` using the private K3s kubeconfig, with the same loopback port forwarded
+through SSH to the owner's computer. No NodePort is required. The locked nftables
+proxy does not support localhost NodePorts: the loopback-only address selection
+has no eligible NodePort addresses and must not be described as a working local
+NodePort service. Owner initialization, authenticated environment readback and
+backup/restore qualification remain explicit commissioning steps.
+
+`scripts/oracle_k3s_network_acceptance.py` is a separate, bounded packet diagnostic
+for reviewed root-owned source. Its parent reads host fingerprints and source
+hashes. Before creating namespaces, it requires the existing IPv4 and IPv6
+bridge-filter sysctls to be readable and enabled. A missing, disabled, invalid or
+unreadable value has a distinct refusal code and named phase; the receipt states
+whether namespace creation was attempted and packet cases began. The child
+rechecks this prerequisite before its first mutation. The diagnostic never loads
+`br_netfilter` or changes bridge-filter sysctls. Mutations run only after fresh
+network, mount and PID namespace identities and private PID 1 are verified.
+It uses private `/run` mounts and synthetic
+addresses. The fixture first reproduces the old established-flow bypass, then
+checks the standard proxy design, policy-routing mark behavior in both IP
+families, CoreDNS versus other pod egress, metadata denial, bridged pod policy,
+retained owner/service paths and controller/guard reconciliation. It compares
+IPv4/IPv6 rules and routes and source custody before and after. Passing this
+fixture does not claim a running K3s cluster, authenticated service-account API
+traffic, a real reboot, owner UI access or live application qualification.
+
+### Bridge filtering maintenance qualification
+
+The locked K3s agent loads `br_netfilter` and enables IPv4 bridge filtering when
+its bundled proxy or Flannel is used. Linux initializes the IPv4 and IPv6 bridge
+filter switches to enabled when this module is loaded. Loading it on an existing
+Docker host therefore changes the paths traversed by already running bridged
+traffic. A missing prerequisite is a maintenance dependency, not permission for
+the installer or packet diagnostic to load the module. A read-only sysctl mount,
+custom node namespace or per-bridge workaround is not part of this deployment.
+
+The supported qualification sequence is:
+
+1. Verify source-VM and destination access, the actual remaining consumers and
+   their data, canonical source/artifact custody, current backups and tested
+   recovery. Complete the required migrations before source-VM retirement or
+   destination resizing. Confirm tenancy-wide free allowance and measured CPU,
+   available memory and disk after the approved resize; a source check or a
+   repository archive does not establish any of these facts. Retain the failed
+   packet attempt and its exact sources without overwriting or relabeling it.
+2. Through the protected operating procedure, retain the exact pre-maintenance
+   bridge topology, per-bridge settings, IPv4/IPv6 filtering and NAT rules, native
+   guards, policy routes, effective Docker network options and existing startup
+   configuration. Determine Docker's actual inter-container and userland-proxy
+   settings; its bridge driver can also enable this module. Record approved
+   positive and negative application paths, including same-bridge service/data
+   access, Docker isolation, public HTTPS, database denial, owner management and
+   router/RADIUS traffic. Do not infer coverage from unchanged rule text alone.
+3. Prepare the existing authenticated recovery path, exact previous boot
+   configuration and a rollback window before entering shared host maintenance.
+   Keep the new K3s service unstarted. Qualify the standard module and enabled
+   bridge filtering at the controlled reboot boundary, with the reviewed module
+   and sysctl startup configuration applied before Docker creates live bridges.
+   Verify the actual systemd ordering and boot readback. This is a shared host
+   interruption governed by the protected service recovery procedure; it is not
+   an isolated Kubernetes restart or a routine live `modprobe` operation.
+4. Before any K3s install, verify all retained applications, databases, workers,
+   ingress and tunnel guards against the recorded paths. Include same-bridge,
+   cross-bridge, DNS and hairpin flows where existing consumers use them, and
+   check new connections as well as established-flow revocation. Retain the
+   actual rules, bridge values and application results. If any required path or
+   denial changes, keep the maintenance hold and use the rollback below.
+5. Only after these checks pass, run the revised disposable packet diagnostic
+   from a new root-owned source directory and retain its new receipt. An earlier
+   prerequisite refusal does not count as a packet pass. The exact pinned K3s
+   and Portainer artifacts still need their separate security, runtime and
+   recovery qualification before installation. During that qualification verify
+   real controller convergence, CoreDNS identity and upstream DNS, authenticated
+   pod-to-API traffic, metadata denial, private owner access and retained Docker
+   paths. Repeat the required preservation checks after controller/owner-guard
+   reconciliation and a controlled reboot before accepting the deployment.
+
+If global filtering changes a required existing path, do not start K3s or mark
+the fixture accepted. Retain the hold and both before/after evidence. Use the
+verified recovery access to restore the exact previous boot configuration,
+removing only the newly owned module/sysctl startup additions, then perform a
+controlled reboot and verify the original module/bridge state and all protected
+service paths. Do not unload a shared module while live bridges use it. If K3s
+has subsequently been started, first use its ownership-checked recovery path;
+retained containerd workloads require explicit recovery accounting before the
+reboot. No broad uninstall, Docker cleanup, database recreation or deletion of
+K3s/Portainer recovery data is part of this rollback. Failure to verify the
+original service state keeps the maintenance hold in place.
+
+Failure handling stops only the installer-owned service when its file and effective
+systemd identity still match. A receipt-write failure does not suppress that stop
+attempt. Data, private firewall rules and recovery evidence are retained; remaining
+containerd workloads or uncertain ownership require the protected recovery review.
+It never invokes the upstream broad uninstall or kill-all scripts. An interrupted
+receipt cannot silently restart or authorize reinstallation.
+
+Real host acceptance still requires measured capacity and tenancy-wide cost/quota
+headroom, the existing applications' health and preservation checks, actual
+CNI/Docker traffic and firewall-order observations, private owner sign-in, external
+negative reachability checks, an independently verified datastore/token and
+Portainer-data restore, and a controlled reboot/recovery exercise. The existing
+2 GiB K3s, 512 MiB UI, 1 GiB host-headroom and 10 GiB disk preparation reserves
+exclude additional application workloads. The installer does not resize OCI,
+reduce the existing host memory/storage, migrate databases or qualify hardware.
+
+Primary references: [K3s configuration](https://docs.k3s.io/installation/configuration),
+[network services](https://docs.k3s.io/networking/networking-services),
+[Kubernetes 1.36 nftables proxy](https://v1-36.docs.kubernetes.io/docs/reference/networking/virtual-ips/#proxy-mode-nftables),
+[locked K3s proxy arguments](https://github.com/k3s-io/k3s/blob/v1.36.5%2Bk3s1/pkg/daemons/agent/agent.go),
+[locked K3s kernel setup](https://github.com/k3s-io/k3s/blob/v1.36.5%2Bk3s1/pkg/agent/syssetup/setup.go),
+[Linux 7.0 bridge filtering](https://github.com/torvalds/linux/blob/v7.0/net/bridge/br_netfilter_hooks.c),
+[Docker 29.1.3 bridge setup](https://github.com/moby/moby/blob/docker-v29.1.3/daemon/libnetwork/drivers/bridge/bridge_linux.go),
+[locked network-policy controller](https://github.com/k3s-io/kube-router/blob/v2.6.3-k3s1/pkg/controllers/netpol/network_policy_controller.go),
+[datastore backup](https://docs.k3s.io/datastore/backup-restore),
+[Portainer compatibility](https://docs.portainer.io/start/requirements-and-prerequisites),
+[Docker firewall policy](https://docs.docker.com/engine/network/firewall-iptables/),
+and [OCI IMDSv2](https://docs.oracle.com/en-us/iaas/Content/Compute/Tasks/gettingmetadata.htm).

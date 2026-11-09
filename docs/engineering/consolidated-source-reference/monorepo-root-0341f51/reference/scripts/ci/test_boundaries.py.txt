@@ -1,0 +1,244 @@
+"""Regression tests for scope selection and required-check failure semantics."""
+
+import copy
+import importlib.util
+import os
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from config import PRODUCTS, ROOT, VERIFICATION_COMPONENTS
+from selection import changed_files, classify
+from summary import check
+
+
+def command(root, *args):
+    return (
+        subprocess.check_output(["git", "-C", str(root), *args], stderr=subprocess.PIPE)
+        .decode()
+        .strip()
+    )
+
+
+def initialize(root):
+    command(root, "init", "--quiet")
+    command(root, "config", "user.name", "Synthetic verification")
+    command(root, "config", "user.email", "fixture@example.invalid")
+
+
+def commit(root):
+    command(root, "add", "--all")
+    command(root, "commit", "--quiet", "-m", "Synthetic fixture")
+    return command(root, "rev-parse", "HEAD")
+
+
+def module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    loaded = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(loaded)
+    return loaded
+
+
+class SelectionTests(unittest.TestCase):
+    def test_unknown_missing_or_shared_evidence_runs_all_products(self):
+        for paths in (
+            None,
+            ["README.md"],
+            ["new-product/src/main.py"],
+            ["onesa-robot/../onesa-drone/main.py"],
+            ["/onesa-robot/a"],
+            ["onesa-robot//main.py"],
+            ["onesa-robot/a\nb"],
+            ["onesa-robot/scripts/check.py"],
+            ["onesa-robot/docs/identity.md"],
+            ["onesa-ai-platform/contracts/shared.json"],
+        ):
+            with self.subTest(paths=paths):
+                self.assertTrue(all(classify(paths).values()))
+        self.assertTrue(all(classify([], full=True).values()))
+        self.assertFalse(any(classify([]).values()))
+
+    def test_product_only_changes_select_complete_affected_products(self):
+        result = classify(
+            ["onesa-robot/frontend/src/App.tsx", "onesa-drone/backend/app/main.py"]
+        )
+        self.assertEqual(
+            {key for key, value in result.items() if value}, {"robot", "drone"}
+        )
+
+    def test_company_billing_selection_does_not_expand_imported_release_authority(self):
+        self.assertEqual(set(PRODUCTS), {"portal", "platform", "robot", "drone"})
+        for path in (
+            "onesa-billing/backend/src/store.ts",
+            "onesa-billing/web/mount.mjs",
+            "onesa-billing/backend/package-lock.json",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(
+                    {key for key, value in classify([path]).items() if value},
+                    {"billing"},
+                )
+        for path in (
+            "onesa-company-portal/onesa-company-portal-frontend/src/styles/onesa-foundation.css",
+            "onesa-company-portal/onesa-company-portal-backend/src/billing/bridge.ts",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(
+                    {key for key, value in classify([path]).items() if value},
+                    {"portal", "billing"},
+                )
+        for path in (
+            "onesa-billing/backend/migrations/001_company_billing.sql",
+            "onesa-billing/scripts/ci/workflows/verify.yml",
+            "scripts/ci/summary.py",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(
+                    {key for key, value in classify([path]).items() if value},
+                    set(VERIFICATION_COMPONENTS),
+                )
+
+    def test_cross_product_rename_selects_both_sides_using_real_git(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            initialize(root)
+            old = root / "onesa-robot/frontend/source.txt"
+            old.parent.mkdir(parents=True)
+            old.write_text("synthetic source\n")
+            base = commit(root)
+            new = root / "onesa-drone/frontend/source.txt"
+            new.parent.mkdir(parents=True)
+            old.rename(new)
+            commit(root)
+            result = classify(changed_files(base, root))
+            self.assertTrue(result["robot"] and result["drone"])
+            self.assertFalse(result["portal"] or result["platform"])
+            for invalid in ("", "main", "0" * 40, "f" * 40):
+                self.assertTrue(all(classify(changed_files(invalid, root)).values()))
+
+
+class RequiredSummaryTests(unittest.TestCase):
+    def setUp(self):
+        self.results = {
+            "prepare": {
+                "result": "success",
+                "outputs": {key: "true" for key in VERIFICATION_COMPONENTS},
+            },
+            "pipeline-security": {"result": "success"},
+            "publication-hygiene": {"result": "success"},
+            **{key: {"result": "success"} for key in VERIFICATION_COMPONENTS},
+        }
+
+    def test_requires_every_selected_product_and_root_gate(self):
+        self.assertEqual(check(self.results), [])
+        for name in self.results:
+            for state in ("failure", "cancelled", "skipped", "missing", "pending"):
+                with self.subTest(name=name, state=state):
+                    results = copy.deepcopy(self.results)
+                    results[name]["result"] = state
+                    self.assertTrue(check(results))
+            results = copy.deepcopy(self.results)
+            del results[name]
+            self.assertTrue(check(results))
+
+    def test_only_explicit_unselected_products_may_be_skipped(self):
+        self.results["prepare"]["outputs"]["robot"] = "false"
+        self.results["robot"]["result"] = "skipped"
+        self.assertEqual(check(self.results), [])
+        self.results["robot"]["result"] = "failure"
+        self.assertTrue(check(self.results))
+        for value in (None, "", "False", True, "unexpected"):
+            self.results["prepare"]["outputs"]["robot"] = value
+            self.assertTrue(check(self.results))
+
+    def test_billing_is_required_when_selected_and_only_explicitly_may_be_skipped(self):
+        self.results["billing"]["result"] = "skipped"
+        self.assertTrue(check(self.results))
+        self.results["prepare"]["outputs"]["billing"] = "false"
+        self.assertEqual(check(self.results), [])
+        del self.results["prepare"]["outputs"]["billing"]
+        self.assertTrue(check(self.results))
+
+
+class HostedFixtureGuardTests(unittest.TestCase):
+    def test_browser_setup_accepts_exact_monorepo_without_expanding_runner_access(self):
+        values = {
+            "GITHUB_ACTIONS": "true",
+            "RUNNER_ENVIRONMENT": "github-hosted",
+            "RUNNER_OS": "Linux",
+            "GITHUB_REPOSITORY": "DruHustle/onesa-ug",
+        }
+        for key in ("portal", "platform", "robot"):
+            browser = module(
+                ROOT / PRODUCTS[key] / "scripts/ci/browser_dependencies.py",
+                "browser_" + key,
+            )
+            with (
+                patch.dict(os.environ, values, clear=True),
+                patch.object(browser.platform, "system", return_value="Linux"),
+                patch.object(browser.os, "geteuid", return_value=0),
+            ):
+                browser.require_runner()
+                for name, value in (
+                    ("GITHUB_REPOSITORY", "someone/onesa-ug"),
+                    ("GITHUB_REPOSITORY", "DruHustle/onesa-ug-other"),
+                    ("RUNNER_ENVIRONMENT", "self-hosted"),
+                    ("GITHUB_ACTIONS", "false"),
+                    ("RUNNER_OS", "Windows"),
+                ):
+                    with (
+                        patch.dict(os.environ, {name: value}),
+                        self.assertRaises(ValueError),
+                    ):
+                        browser.require_runner()
+                with (
+                    patch.object(browser.os, "geteuid", return_value=1000),
+                    self.assertRaises(ValueError),
+                ):
+                    browser.require_runner()
+
+    def test_recovery_fixture_keeps_host_image_and_revision_guards(self):
+        recovery = module(
+            ROOT / PRODUCTS["portal"] / "scripts/oracle_recovery_smoke.py",
+            "recovery_guard",
+        )
+        values = {
+            "GITHUB_ACTIONS": "true",
+            "RUNNER_ENVIRONMENT": "github-hosted",
+            "RUNNER_OS": "Linux",
+            "GITHUB_REPOSITORY": "DruHustle/onesa-ug",
+            "GITHUB_SHA": "a" * 40,
+        }
+        image = "sha256:" + "b" * 64
+        with (
+            patch.dict(os.environ, values, clear=True),
+            patch.object(recovery.os, "geteuid", return_value=0),
+            patch.object(recovery.sys, "platform", "linux"),
+            patch.object(recovery.os, "pidfd_open", create=True),
+            patch.object(recovery.signal, "pidfd_send_signal", create=True),
+            patch.object(recovery.Path, "exists", return_value=False),
+        ):
+            recovery.runner_guard(image)
+            for key, value in (
+                ("GITHUB_REPOSITORY", "someone/onesa-ug"),
+                ("RUNNER_ENVIRONMENT", "self-hosted"),
+                ("GITHUB_SHA", "main"),
+            ):
+                with (
+                    patch.dict(os.environ, {key: value}),
+                    self.assertRaises(ValueError),
+                ):
+                    recovery.runner_guard(image)
+            with (
+                patch.object(recovery.Path, "exists", return_value=True),
+                self.assertRaises(ValueError),
+            ):
+                recovery.runner_guard(image)
+            with self.assertRaises(ValueError):
+                recovery.runner_guard("backend:latest")
+
+
+if __name__ == "__main__":
+    unittest.main()

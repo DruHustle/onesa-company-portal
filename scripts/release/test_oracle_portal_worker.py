@@ -367,11 +367,11 @@ class JournalTests(unittest.TestCase):
             )
         )
         with patch.object(
-            r, "verify_invocation", side_effect=r.Refused("PREVIOUS_NOT_ACCEPTED")
+            r, "verify_historical_operation", side_effect=r.Refused("PREVIOUS_NOT_ACCEPTED")
         ) as verify:
             with self.assertRaisesRegex(r.Refused, "PREVIOUS_NOT_ACCEPTED"):
                 worker.previous_operations()
-            self.assertTrue(verify.call_args.kwargs["dependency"])
+            self.assertTrue(verify.call_args.kwargs["require_accepted"])
 
 
 if __name__ == "__main__":

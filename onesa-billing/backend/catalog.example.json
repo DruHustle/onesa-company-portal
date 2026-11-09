@@ -1,0 +1,13 @@
+[
+  {
+    "sku": "example-service",
+    "title": "Example service — replace before use",
+    "version": "example-1",
+    "kind": "one_off",
+    "priceId": "price_REPLACE",
+    "currency": "eur",
+    "unitAmount": 1000,
+    "taxBehavior": "exclusive",
+    "maxQuantity": 1
+  }
+]

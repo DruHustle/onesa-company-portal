@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "node --env-file-if-exists=../.env node_modules/next/dist/bin/next dev --hostname 127.0.0.1 -p ${FRONTEND_PORT:-3300}",
-    "build": "node scripts/validate-nvidia-assets.mjs && next build --webpack",
+    "build": "node scripts/check-billing-bundle.mjs && node scripts/validate-nvidia-assets.mjs && next build --webpack",
     "start": "node --env-file-if-exists=../.env ../scripts/start-frontend.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
@@ -16,7 +16,7 @@
     "api:generate": "openapi-typescript ../onesa-company-portal-backend/openapi/openapi.json -o src/lib/api/generated/schema.d.ts",
     "api:check": "python3 ../scripts/check-contracts.py",
     "test:contracts": "python3 ../scripts/test-contract-break.py",
-    "test:domains": "node --test unit/domains.test.ts unit/onesa-identity.test.ts unit/engineering-identity.test.ts unit/engineering-sign-in-errors.test.ts",
+    "test:domains": "node --test unit/domains.test.ts unit/onesa-identity.test.ts unit/engineering-identity.test.ts unit/engineering-sign-in-errors.test.ts unit/account-return.test.ts",
     "test:domain-http": "node scripts/test-domain-routing.mjs",
     "test:homepage-loading": "node scripts/test-homepage-loading.mjs",
     "test:public-loading": "node scripts/test-public-loading.mjs",
@@ -25,7 +25,7 @@
     "test:engineering-sign-in": "node scripts/test-engineering-sign-in.mjs && ONESA_TEST_ACCESS_MODE=disabled node scripts/test-engineering-sign-in.mjs",
     "test:workspace-drafts": "node --test unit/draft-history.test.ts",
     "test:hero-motion": "node --test unit/hero-motion.test.ts && node scripts/test-hero-motion.mjs",
-    "test:drone-product": "node scripts/test-drone-product.mjs",
+    "test:drone-product": "node --test unit/drone-product-diagnostics.test.mjs && node scripts/test-drone-product.mjs",
     "test:nvidia-assets": "node scripts/validate-nvidia-assets.mjs && node --test unit/nvidia-assets.test.mjs",
     "test:nvidia-browser": "node scripts/test-nvidia-library.mjs",
     "test:dependency-security": "node --test unit/dependency-security.test.mjs"

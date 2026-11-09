@@ -44,6 +44,17 @@ test("Origin/proof failures require a fresh trusted sign-in page", () => {
     assert.match(value.message, /page could not be verified/);
   }
 });
+test("Shared-account proof and freshness failures never report an incorrect Docs password", () => {
+  for (const code of ["ACCOUNT_REQUIRED", "ONESA_SESSION_REQUIRED", "ONESA_REAUTH_REQUIRED", "ENGINEERING_ACCOUNT_PROOF", "ENGINEERING_ACCOUNT_CONFLICT"]) {
+    for (const action of ["session", "password", "handoff-verify"] as const) {
+      const value = engineeringSignInError(code === "ONESA_SESSION_REQUIRED" ? 401 : 403, code, action);
+      assert.match(value.message, /Onesa account|Onesa again/);
+      assert.doesNotMatch(value.message, /password is incorrect|registration/i);
+      assert.equal(value.restart, code === "ONESA_SESSION_REQUIRED" || code === "ACCOUNT_REQUIRED");
+      assert.equal(value.registration, false);
+    }
+  }
+});
 test("Unexpected backend errors do not copy private error text into the page", () => {
   const value = engineeringSignInError(400, "synthetic-private-server-detail", "link");
   assert.equal(value.message.includes("synthetic-private-server-detail"), false);

@@ -2,7 +2,8 @@ import '../security/tls-trust.js';
 import pg from 'pg';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import { env } from '../config/env.js';
-const pool = new pg.Pool({ connectionString:env.DATABASE_URL, max:10, connectionTimeoutMillis:5000, statement_timeout:10000 });
+import {databaseConnection} from './database-tls.js';
+const pool = new pg.Pool({ ...databaseConnection(env.DATABASE_URL,process.env.ONESA_DATABASE_CA_PEM_B64), max:10, connectionTimeoutMillis:5000, statement_timeout:10000 });
 // pg-pool removes the failed idle client before emitting. Without a listener,
 // a provider suspend/resize terminates Node instead of reconnecting on demand.
 pool.on('error',()=>console.error(JSON.stringify({event:'database_idle_connection_failed'})));

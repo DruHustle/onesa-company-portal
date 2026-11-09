@@ -38,6 +38,9 @@ jobs:
       PUBLIC_ORIGIN: http://localhost:3300
       BACKEND_URL: http://127.0.0.1:8300
       NODE_ENV: test
+      # Keep synthetic browser rendering independent of runner GPU discovery.
+      LIBGL_ALWAYS_SOFTWARE: 'true'
+      GALLIUM_DRIVER: llvmpipe
       STORAGE_DIR: ${{ github.workspace }}/.test-storage
       REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
       REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
@@ -103,6 +106,8 @@ jobs:
     - run: python3 -m unittest discover -s scripts -p test_inspect_hosting.py
     - name: Verify Oracle staging and production preparation guards
       run: python3 -m unittest discover -s scripts -p 'test_oracle*.py'
+    - name: Verify runtime source archive and license custody boundaries
+      run: python3 -m unittest discover -s infra/oracle/runtime_builds -p 'test_*.py'
     - name: Verify database snapshot encryption and tamper rejection
       run: node --test scripts/test_oracle_backup_payload.mjs
     - name: Check Oracle host-hardening script syntax
@@ -112,7 +117,8 @@ jobs:
         sh -n infra/oracle/install-tailscale.sh
         sh -n infra/oracle/clamav/start.sh
         sh -n infra/oracle/clamav/health.sh
-    - run: python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src tests && python3 ../scripts/ci/analyze.py
+    - name: Verify backend and shared Mobile identity with disposable PostgreSQL
+      run: python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src tests && python3 ../scripts/ci/analyze.py
         tsc -- node_modules/.bin/tsc --pretty false && npm test && npm audit --audit-level=high
       working-directory: onesa-company-portal-backend
     - run: python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src && python3 ../scripts/ci/analyze.py

@@ -1,0 +1,273 @@
+"""Locked review-tool transport recovery; no real downloads or installed execution."""
+
+import contextlib
+import hashlib
+import http.client
+import importlib.util
+import io
+import json
+import signal
+import socket
+import ssl
+import tarfile
+import tempfile
+import threading
+import time
+import unittest
+import urllib.error
+from pathlib import Path
+from unittest.mock import patch
+
+ROOT = Path(__file__).resolve().parents[2]
+PRODUCTS = ("onesa-company-portal", "onesa-ai-platform", "onesa-robot")
+SPEC = importlib.util.spec_from_file_location(
+    "reviewed_tool_download", ROOT / PRODUCTS[0] / "scripts/ci/install_tools.py"
+)
+tool = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(tool)
+URL = "https://github.com/reviewdog/reviewdog/releases/download/test/tool.tar.gz"
+
+
+class ToolDownloadTests(unittest.TestCase):
+    def setUp(self):
+        self.output = io.StringIO()
+        capture = contextlib.redirect_stdout(self.output)
+        capture.__enter__()
+        self.addCleanup(capture.__exit__, None, None, None)
+
+    def fixture(self, *, archive=None, binary_hash=None):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        root = Path(folder.name)
+        binary = b"synthetic locked binary; never executed\n"
+        if archive is None:
+            stream = io.BytesIO()
+            with tarfile.open(fileobj=stream, mode="w:gz") as package:
+                member = tarfile.TarInfo("nested/reviewdog")
+                member.size = len(binary)
+                package.addfile(member, io.BytesIO(binary))
+            archive = stream.getvalue()
+        (root / "scripts/ci").mkdir(parents=True)
+        (root / "scripts/ci/tools.lock.json").write_text(json.dumps({
+            "reviewdog": {"assets": {"linux-amd64": {
+                "url": URL,
+                "sha256": hashlib.sha256(archive).hexdigest(),
+                "binary_sha256": binary_hash or hashlib.sha256(binary).hexdigest(),
+            }}}
+        }))
+        return root, archive, binary
+
+    def install(self, root):
+        with (patch.object(tool, "ROOT", root),
+              patch.object(tool.platform, "system", return_value="Linux"),
+              patch.object(tool.platform, "machine", return_value="x86_64")):
+            return tool.install(root / "bin", ["reviewdog"])
+
+    def test_shared_copies_and_original_asset_pins_are_exact(self):
+        sources = [(ROOT / name / "scripts/ci/install_tools.py").read_bytes()
+                   for name in PRODUCTS]
+        locks = [(ROOT / name / "scripts/ci/tools.lock.json").read_bytes()
+                 for name in PRODUCTS]
+        self.assertTrue(all(value == sources[0] for value in sources))
+        self.assertTrue(all(value == locks[0] for value in locks))
+        self.assertEqual(hashlib.sha256(locks[0]).hexdigest(),
+                         "190c9e1780969efc0c3678e3f35d8efed790607880e44f2fbcb8d19bc8660f77")
+
+    def test_header_timeout_recovers_only_same_locked_get_then_cache_needs_no_get(self):
+        root, archive, binary = self.fixture()
+        error = urllib.error.URLError(TimeoutError("withheld transport detail"))
+        with (patch.object(tool.urllib.request, "urlopen",
+                           side_effect=[error, io.BytesIO(archive)]) as request,
+              patch.object(tool.time, "sleep") as sleep):
+            self.install(root)
+        self.assertEqual(request.call_count, 2)
+        for call in request.call_args_list:
+            self.assertEqual(call.args, (URL,))
+            self.assertGreater(call.kwargs["timeout"], 0)
+            self.assertLessEqual(call.kwargs["timeout"], 30)
+        sleep.assert_called_once_with(1.0)
+        self.assertEqual((root / "bin/reviewdog").read_bytes(), binary)
+        with patch.object(tool.urllib.request, "urlopen") as request:
+            self.install(root)
+            request.assert_not_called()
+
+    def test_partial_body_is_discarded_and_closed_before_same_get(self):
+        class BrokenBody(io.BytesIO):
+            def read(self, _limit):
+                raise http.client.IncompleteRead(b"withheld partial bytes", 20)
+
+        root, archive, binary = self.fixture()
+        response = BrokenBody()
+        with (patch.object(tool.urllib.request, "urlopen",
+                           side_effect=[response, io.BytesIO(archive)]) as request,
+              patch.object(tool.time, "sleep")):
+            self.install(root)
+        self.assertTrue(response.closed)
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual((root / "bin/reviewdog").read_bytes(), binary)
+        self.assertNotIn("withheld", self.output.getvalue())
+
+    def test_exact_transient_http_codes_retry_and_close_error_response(self):
+        for code in (408, 429, 500, 502, 503, 504):
+            with self.subTest(code=code):
+                body = io.BytesIO(b"withheld error response")
+                error = urllib.error.HTTPError(URL, code, "withheld", {}, body)
+                with (patch.object(tool.urllib.request, "urlopen",
+                                   side_effect=[error, io.BytesIO(b"body")]) as request,
+                      patch.object(tool.time, "sleep")):
+                    self.assertEqual(tool.download("reviewdog", URL), b"body")
+                self.assertTrue(body.closed)
+                self.assertEqual(request.call_count, 2)
+
+    def test_certificate_permanent_http_dns_and_protocol_fail_without_retry(self):
+        errors = [
+            urllib.error.HTTPError(URL, 404, "withheld", {}, io.BytesIO()),
+            urllib.error.HTTPError(URL, 401, "withheld", {}, io.BytesIO()),
+            urllib.error.URLError(ssl.SSLCertVerificationError(1, "withheld")),
+            urllib.error.URLError(socket.gaierror(socket.EAI_NONAME, "withheld")),
+            http.client.BadStatusLine("withheld"),
+        ]
+        for error in errors:
+            with (self.subTest(error=type(error).__name__),
+                  patch.object(tool.urllib.request, "urlopen", side_effect=error) as request,
+                  patch.object(tool.time, "sleep") as sleep):
+                with self.assertRaisesRegex(ValueError, "download failed"):
+                    tool.download("reviewdog", URL)
+                request.assert_called_once()
+                sleep.assert_not_called()
+        self.assertNotIn("withheld", self.output.getvalue())
+        self.assertNotIn(URL, self.output.getvalue())
+
+    def test_repeated_transient_failures_stop_after_three_gets(self):
+        with (patch.object(tool.urllib.request, "urlopen",
+                           side_effect=ConnectionResetError()) as request,
+              patch.object(tool.time, "sleep") as sleep):
+            with self.assertRaisesRegex(ValueError, "download failed"):
+                tool.download("reviewdog", URL)
+        self.assertEqual(request.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1.0, 2.0])
+
+    def test_header_reads_backoff_and_last_socket_share_ninety_second_budget(self):
+        clock = [0.0]
+        timeouts = []
+
+        def request(_url, *, timeout):
+            timeouts.append(timeout)
+            clock[0] += timeout
+            raise TimeoutError()
+
+        def sleep(seconds):
+            clock[0] += seconds
+
+        with (patch.object(tool.urllib.request, "urlopen", side_effect=request),
+              patch.object(tool.time, "monotonic", side_effect=lambda: clock[0]),
+              patch.object(tool.time, "sleep", side_effect=sleep),
+              patch.object(tool.signal, "setitimer") as timer):
+            with self.assertRaisesRegex(ValueError, "budget exhausted"):
+                tool.download("reviewdog", URL)
+        self.assertEqual(timeouts, [30.0, 30.0, 27.0])
+        self.assertEqual(clock[0], 90.0)
+        self.assertEqual(timer.call_args_list[0].args, (signal.ITIMER_REAL, 90.0))
+        self.assertEqual(timer.call_args_list[-1].args, (signal.ITIMER_REAL, 0))
+
+    def test_real_alarm_interrupts_both_header_and_body_and_restores_handler(self):
+        class SlowBody(io.BytesIO):
+            def read(self, _limit):
+                time.sleep(1)
+                raise AssertionError("body escaped hard budget")
+
+        def headers(*_args, **_kwargs):
+            time.sleep(1)
+            raise AssertionError("headers escaped hard budget")
+
+        previous = signal.getsignal(signal.SIGALRM)
+        for response in (headers, lambda *_a, **_kw: SlowBody()):
+            with (self.subTest(phase=response.__name__),
+                  patch.object(tool, "DOWNLOAD_BUDGET_SECONDS", 0.03),
+                  patch.object(tool.urllib.request, "urlopen", side_effect=response)):
+                with self.assertRaisesRegex(ValueError, "budget exhausted"):
+                    tool.download("reviewdog", URL)
+                self.assertIs(signal.getsignal(signal.SIGALRM), previous)
+                self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
+
+    def test_existing_alarm_is_not_replaced_or_extended(self):
+        for active in ((1.0, 0.0), (0.0, 1.0)):
+            with (self.subTest(timer=active),
+                  patch.object(tool.signal, "getitimer", return_value=active),
+                  patch.object(tool.signal, "signal") as handler,
+                  patch.object(tool.signal, "setitimer") as timer,
+                  patch.object(tool.urllib.request, "urlopen") as request):
+                with self.assertRaisesRegex(ValueError, "deadline already active"):
+                    tool.download("reviewdog", URL)
+                handler.assert_not_called()
+                timer.assert_not_called()
+                request.assert_not_called()
+
+    def test_thread_and_unsupported_platform_refuse_before_network(self):
+        errors = []
+
+        def caller():
+            try:
+                tool.download("reviewdog", URL)
+            except ValueError as error:
+                errors.append(str(error))
+
+        with patch.object(tool.urllib.request, "urlopen") as request:
+            worker = threading.Thread(target=caller)
+            worker.start()
+            worker.join(1)
+            self.assertFalse(worker.is_alive())
+            self.assertEqual(errors, ["Review tool download deadline unavailable"])
+            request.assert_not_called()
+            with patch.object(tool.platform, "system", return_value="Windows"):
+                with self.assertRaisesRegex(ValueError, "deadline unavailable"):
+                    tool.download("reviewdog", URL)
+            request.assert_not_called()
+
+    def test_integrity_size_and_archive_failures_never_retry_or_install(self):
+        cases = [
+            (None, None, b"wrong checksum", ValueError),
+            (None, "0" * 64, None, ValueError),
+            (b"not a gzip archive", None, None, tarfile.ReadError),
+        ]
+        for archive, binary_hash, returned, error in cases:
+            root, payload, _binary = self.fixture(archive=archive, binary_hash=binary_hash)
+            with (self.subTest(error=error.__name__),
+                  patch.object(tool.urllib.request, "urlopen",
+                               return_value=io.BytesIO(returned or payload)) as request,
+                  patch.object(tool.time, "sleep") as sleep):
+                with self.assertRaises(error):
+                    self.install(root)
+                request.assert_called_once()
+                sleep.assert_not_called()
+                self.assertFalse((root / "bin/reviewdog").exists())
+                self.assertFalse((root / "bin/reviewdog.tmp").exists())
+        root, _payload, _binary = self.fixture(archive=b"x" * 9)
+        with (patch.object(tool, "MAX_ARCHIVE_BYTES", 8),
+              patch.object(tool.urllib.request, "urlopen",
+                           return_value=io.BytesIO(b"x" * 9)) as request):
+            with self.assertRaisesRegex(ValueError, "checksum/size"):
+                self.install(root)
+            request.assert_called_once()
+            self.assertFalse((root / "bin/reviewdog").exists())
+
+    def test_endpoint_policy_and_fixed_diagnostics_do_not_disclose_inputs(self):
+        with patch.object(tool.urllib.request, "urlopen") as request:
+            with self.assertRaisesRegex(ValueError, "pinned official GitHub"):
+                tool.download("reviewdog", "http://github.com/reviewdog/tool")
+            request.assert_not_called()
+        with patch.object(tool.urllib.request, "urlopen",
+                          side_effect=urllib.error.URLError("withheld detail")):
+            with self.assertRaisesRegex(ValueError, "transport_terminal"):
+                tool.download("withheld name", URL)
+        rows = [json.loads(line) for line in self.output.getvalue().splitlines()]
+        self.assertTrue(rows)
+        self.assertTrue(all(row["tool"] == "unknown" for row in rows))
+        self.assertTrue(all(set(row) <= {"tool", "phase", "attempt", "category"}
+                            for row in rows))
+        self.assertNotIn("withheld", self.output.getvalue())
+        self.assertNotIn(URL, self.output.getvalue())
+
+
+if __name__ == "__main__":
+    unittest.main()

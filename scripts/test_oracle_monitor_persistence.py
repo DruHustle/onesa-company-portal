@@ -8,6 +8,7 @@ import stat
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,6 +77,12 @@ class MonitorPersistenceTests(unittest.TestCase):
         self.stack = contextlib.ExitStack()
         self.addCleanup(self.stack.close)
         self.stack.enter_context(patch.object(monitor, "STATE", self.state))
+        self.stack.enter_context(patch.dict("sys.modules", {
+            "backup": SimpleNamespace(checked_env=lambda: ({
+                "MAIL_PROVIDER": "resend", "NOTIFY_EMAIL": "andrew@onesa.eu",
+                "MAIL_FROM": "synthetic@example.invalid", "RESEND_API_KEY": "synthetic-only",
+            }, None)),
+        }))
         self.stack.enter_context(patch.object(monitor.os, "geteuid", return_value=0))
         self.stack.enter_context(
             patch.object(monitor, "sample", side_effect=lambda _: dict(self.metrics))
@@ -104,21 +111,29 @@ class MonitorPersistenceTests(unittest.TestCase):
 
     @contextlib.contextmanager
     def interrupt_state_write(self, *, simulation=False, after_notification=False):
-        original_write = Path.write_text
+        original_temporary = monitor.tempfile.NamedTemporaryFile
         target = "simulation.json" if simulation else "metrics.json"
 
-        def write(path, text, *args, **kwargs):
-            matches = path.parent == self.state and path.name in {
-                target,
-                target + ".tmp",
-            }
-            completed = not after_notification or "notification" in json.loads(text)
-            if matches and completed:
-                original_write(path, text[:17], *args, **kwargs)
-                raise OSError("Injected interrupted state write")
-            return original_write(path, text, *args, **kwargs)
+        @contextlib.contextmanager
+        def temporary(*args, **kwargs):
+            with original_temporary(*args, **kwargs) as output:
+                matches = kwargs.get("dir") == self.state and kwargs.get("prefix") == target + "."
 
-        with patch.object(Path, "write_text", write):
+                class InterruptedWriter:
+                    def __getattr__(self, name):
+                        return getattr(output, name)
+
+                    def write(self, text):
+                        completed = not after_notification or "notification" in json.loads(text)
+                        if matches and completed:
+                            output.write(text[:17])
+                            output.flush()
+                            raise OSError("Injected interrupted state write")
+                        return output.write(text)
+
+                yield InterruptedWriter()
+
+        with patch.object(monitor.tempfile, "NamedTemporaryFile", temporary):
             yield
 
     def test_interrupted_healthy_sample_preserves_previous_readable_state(self):
@@ -160,7 +175,9 @@ class MonitorPersistenceTests(unittest.TestCase):
         with patch.object(Path, "replace", replace):
             self.run_monitor()
         self.assertEqual(len(replacements), 1)
-        self.assertEqual(replacements[0].name, "metrics.json.tmp")
+        self.assertTrue(replacements[0].name.startswith("metrics.json."))
+        self.assertTrue(replacements[0].name.endswith(".tmp"))
+        self.assertFalse(replacements[0].exists())
 
     def test_interrupted_post_delivery_save_preserves_pending_identity(self):
         self.metrics["backend_api_healthy"] = False

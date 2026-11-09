@@ -88,7 +88,7 @@ def provider(path, *, data=None):
         return json.loads(raw)
 
 
-def protection(plan):
+def protection(plan, binding=None):
     r.require(
         plan["api_origins"] == API_ORIGINS, "CANONICAL_PORTAL_API_ORIGINS_REQUIRED"
     )
@@ -114,7 +114,7 @@ def protection(plan):
 
     r.require(
         project["id"] == plan["project_id"]
-        and project.get("rootDirectory") == APP_ROOT
+        and project.get("rootDirectory") == r.frontend_provider_root(binding)
         and project.get("framework") == "nextjs"
         and project.get("nodeVersion") == "24.x"
         and project.get("serverlessFunctionRegion") == plan["project_default_region"]
@@ -255,12 +255,15 @@ def protection(plan):
 def validate(binding):
     folder, plan = r.validate_plan(binding)
     r.require(binding["component"] == "frontend", "FRONTEND_COMPONENT_SCOPE")
-    protection(plan)
+    protection(plan, binding)
     return folder, plan
 
 
-def unpack(folder, build, destination, plan):
+def unpack(folder, build, destination, plan, binding=None):
     receipt = r.read(folder / build["receipt"])
+    if binding and binding.get("repository") == r.CANONICAL_REPOSITORY:
+        r.require(r.frontend_source_identity(receipt["binding"]) == r.frontend_source_identity(binding),
+                  "CANONICAL_BUILD_SOURCE_IDENTITY")
     expected = receipt["files"]
     seen = {}
     links = {}
@@ -359,7 +362,7 @@ def unpack(folder, build, destination, plan):
         "PREBUILT_PROJECT_SCOPE",
     )
     r.require(
-        project.get("settings", {}).get("rootDirectory") == APP_ROOT,
+        project.get("settings", {}).get("rootDirectory") == r.frontend_provider_root(binding),
         "PREBUILT_APPLICATION_ROOT_SCOPE",
     )
     r.require(
@@ -369,7 +372,20 @@ def unpack(folder, build, destination, plan):
     )
     # The CLI resolves the provider's monorepo root even for --prebuilt.
     # Only its empty directory is needed; candidate source is never executed.
-    (destination / APP_ROOT).mkdir(mode=0o700, parents=True, exist_ok=False)
+    (destination / r.frontend_provider_root(binding)).mkdir(mode=0o700, parents=True, exist_ok=False)
+
+
+def source_metadata(binding):
+    if binding.get("repository") != r.CANONICAL_REPOSITORY:
+        return {}
+    r.frontend_component_scope(binding)
+    source = r.portal_source_binding(binding)
+    return {"onesaSource" + suffix: str(source[key]) for suffix, key in [
+        ("Schema", "schema_version"), ("Repository", "repository"),
+        ("RepositoryId", "repository_id"), ("Product", "product"),
+        ("Path", "source_path"), ("RootTree", "source_tree"),
+        ("ProductTree", "product_source_tree"), ("Branch", "branch"),
+    ]}
 
 
 def deployments_for(operation, plan):
@@ -399,6 +415,9 @@ def check_deployment(identifier, binding, env, plan):
         and row.get("regions") == [plan["serverless_function_region"]],
         "ACTUAL_FRONTEND_DEPLOYMENT_BINDING",
     )
+    r.require(all(row.get("meta", {}).get(key) == value
+                  for key, value in source_metadata(binding).items()),
+              "CANONICAL_PROVIDER_SOURCE_IDENTITY")
     return row
 
 
@@ -407,9 +426,12 @@ def observe_provider(binding, env, plan, operation):
     # only bounded metadata plus the existing Preview protection bypass, never
     # a provider API token or deployment credential.
     cfg = r.read(PROVIDER)
-    project = protection(plan)
+    project = protection(plan, binding)
     if env == "staging":
         preview = r.read(Path(plan["preview_receipt_path"]))
+        if binding.get("repository") == r.CANONICAL_REPOSITORY:
+            r.require(r.frontend_source_identity(preview["binding"]) == r.frontend_source_identity(binding),
+                      "CANONICAL_PREVIEW_SOURCE_IDENTITY")
         r.require(
             preview["environment"] == "staging"
             and all(
@@ -450,6 +472,9 @@ def observe_provider(binding, env, plan, operation):
         and dep.get("target") == ("production" if env == "production" else None),
         "ACTUAL_PROVIDER_READBACK_MISMATCH",
     )
+    r.require(all(dep.get("meta", {}).get(key) == value
+                  for key, value in source_metadata(binding).items()),
+              "CANONICAL_PROVIDER_SOURCE_IDENTITY")
     alias = provider("/v4/aliases/" + origin.removeprefix("https://"))
     r.require(
         alias["deployment"]["id"] == identifier
@@ -500,8 +525,8 @@ def create(binding, env, operation, folder, plan):
     )
     workspace = op / "prebuilt"
     workspace.mkdir(mode=0o700)
-    unpack(folder, plan["builds"][env], workspace, plan)
-    before = protection(plan)
+    unpack(folder, plan["builds"][env], workspace, plan, binding)
+    before = protection(plan, binding)
     if env == "production":
         r.require(
             before["targets"]["production"]["id"]
@@ -532,6 +557,8 @@ def create(binding, env, operation, folder, plan):
     r.write(
         transport / "scope.json",
         {
+            **(r.portal_source_binding(binding)
+               if binding.get("repository") == r.CANONICAL_REPOSITORY else {}),
             "repository": binding["repository"],
             "component": "frontend",
             "candidate_commit": binding["candidate_commit"],
@@ -613,11 +640,14 @@ def create(binding, env, operation, folder, plan):
         ),
         *(["--env", "PROXY_SHARED_KEY"] if env == "staging" else []),
         "--meta",
-        "githubCommitRef=" + ("main" if env == "production" else "staging"),
+        "githubCommitRef=" + (binding["branch"] if binding.get("repository") == r.CANONICAL_REPOSITORY
+                              else "main" if env == "production" else "staging"),
         "--meta",
         "githubCommitSha=" + binding["candidate_commit"],
         "--meta",
         "onesaOracleOperation=" + operation,
+        *[item for key, value in sorted(source_metadata(binding).items())
+          for item in ["--meta", key + "=" + value]],
         *(["--prod"] if env == "production" else ["--target=preview"]),
     ]
     try:
@@ -680,7 +710,7 @@ def create(binding, env, operation, folder, plan):
         if stage_environment:
             stage_environment.unlink(missing_ok=True)
     r.write(op / "provider-receipt.json", receipt)
-    protection(plan)
+    protection(plan, binding)
     r.require(before["id"] == plan["project_id"], "PROJECT_PRESERVATION")
     deadline = time.monotonic() + 600
     while dep["readyState"] not in ["READY", "ERROR", "CANCELED"]:

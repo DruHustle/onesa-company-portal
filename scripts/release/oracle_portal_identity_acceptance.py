@@ -47,6 +47,68 @@ for phase in CHECKS:
     CHECKS[phase] |= {"independent_product_acceptance", "exact_served_revisions"}
 
 
+def dependency_scope(binding, product=None, kind=None):
+    """Read a dependency under its original signed namespace; never relabel it."""
+    if binding.get("repository") != r.CANONICAL_REPOSITORY:
+        selected = next((name for name, repository in REPOSITORIES.items()
+                         if binding.get("repository") == repository), None)
+        r.require(selected is not None, "IDENTITY_DEPENDENCY_REPOSITORY")
+        scope = binding["repository"] + ":" + binding["component"]
+    else:
+        paths = {"portal": "onesa-company-portal", "platform": "onesa-ai-platform",
+                 "robot": "onesa-robot", "drone": "onesa-drone"}
+        source = binding.get("product")
+        selected = "ai" if source == "platform" else source
+        r.require(type(binding.get("schema_version")) is int and binding["schema_version"] == 2
+                  and type(binding.get("repository_id")) is int and binding["repository_id"] == 1444746154
+                  and source in paths and binding.get("source_path") == paths[source]
+                  and binding.get("branch") == "main"
+                  and all(isinstance(binding.get(key), str) and re.fullmatch(r"[a-f0-9]{40}", binding[key])
+                          for key in ("candidate_commit", "source_tree", "product_source_tree")),
+                  "IDENTITY_CANONICAL_DEPENDENCY_SOURCE")
+        allowed = {"portal": {"identity", "frontend"}, "ai": {"api", "frontend"},
+                   "robot": {"api", "frontend"}, "drone": {"backend", "frontend"}}
+        r.require(binding.get("component") in allowed[selected], "IDENTITY_CANONICAL_DEPENDENCY_COMPONENT")
+        scope = r.CANONICAL_REPOSITORY + ":" + source + ":" + binding["component"]
+    r.require(product is None or selected == product, "IDENTITY_DEPENDENCY_PRODUCT")
+    if kind is not None:
+        allowed = COMPONENTS[selected] if kind == "backend" else {"frontend", "identity-frontend"}
+        r.require(binding.get("component") in allowed, "IDENTITY_DEPENDENCY_COMPONENT_SCOPE")
+    return scope
+
+
+def dependency_binding_valid(binding, policy):
+    if binding.get("repository") != r.CANONICAL_REPOSITORY:
+        return owner.binding_valid(binding, policy)
+    scope = dependency_scope(binding)
+    fields = r.PORTAL_SOURCE_FIELDS | {"component", "source_sha256", "build_sha256",
+              "artifact_digest", "configuration_sha256", "target_environment"}
+    r.require(set(binding) == fields and binding["target_environment"] == "production"
+              and all(isinstance(binding[key], str) and re.fullmatch(r"[a-f0-9]{64}", binding[key])
+                      for key in ("source_sha256", "build_sha256"))
+              and isinstance(binding["artifact_digest"], str)
+              and re.fullmatch(r"sha256:[a-f0-9]{64}", binding["artifact_digest"])
+              and set(binding["configuration_sha256"]) == {"staging", "production"}
+              and all(isinstance(value, str) and re.fullmatch(r"[a-f0-9]{64}", value)
+                      for value in binding["configuration_sha256"].values()),
+              "IDENTITY_CANONICAL_DEPENDENCY_BINDING")
+    tool = policy.get("toolchain", {})
+    source = {key: binding[key] for key in r.PORTAL_SOURCE_FIELDS}
+    profile = policy.get("components", {}).get(scope)
+    r.require(type(policy.get("schema_version")) is int and policy["schema_version"] == 2
+              and tool.get("source_binding") == source
+              and tool.get("source_commit") == source["candidate_commit"]
+              and tool.get("source_tree") == source["source_tree"]
+              and tool.get("source_sha256") == binding["source_sha256"]
+              and isinstance(profile, dict)
+              and type(profile.get("qualification_attempt_limit")) is int
+              and profile["qualification_attempt_limit"] == 1
+              and set(profile["runners"]) == set(owner.PHASES)
+              and all(owner.REQUIRED_CHECKS[phase] <= set(profile["required_checks"][phase])
+                      for phase in owner.PHASES), "IDENTITY_CANONICAL_DEPENDENCY_POLICY")
+    return profile
+
+
 def configuration(plan, env):
     return {
         "component": "identity-acceptance",
@@ -60,19 +122,18 @@ def configuration(plan, env):
 def validate_plan(binding, plan):
     identity.exact(
         plan,
-        [
+        r.component_plan_fields(binding, [
             "schema_version",
             "qualification_profile",
             "verifier_store",
             "environments",
             "application_scan_sha256",
-        ],
+        ]),
         "IDENTITY_ACCEPTANCE_PLAN_SCHEMA",
     )
     r.require(
-        plan["schema_version"] == 1
+        r.component_plan_source(binding, plan, "identity-acceptance")
         and plan["qualification_profile"] == PROFILE
-        and binding["repository"] == REPOSITORIES["portal"]
         and binding["component"] == "identity-acceptance"
         and binding["target_environment"] == "production",
         "IDENTITY_ACCEPTANCE_SCOPE",
@@ -124,16 +185,7 @@ def validate_plan(binding, plan):
                     "IDENTITY_DEPENDENCY_STORE_SCOPE",
                 )
                 accepted = reference["binding"]
-                allowed = (
-                    COMPONENTS[product]
-                    if kind == "backend"
-                    else {"frontend", "identity-frontend"}
-                )
-                r.require(
-                    accepted["repository"] == REPOSITORIES[product]
-                    and accepted["component"] in allowed,
-                    "IDENTITY_DEPENDENCY_COMPONENT_SCOPE",
-                )
+                dependency_scope(accepted, product, kind)
             origin = urllib.parse.urlsplit(selected["origins"][product])
             r.require(
                 origin.scheme == "https"
@@ -161,7 +213,7 @@ def validate_plan(binding, plan):
         ),
         "IDENTITY_ACCEPTANCE_ORIGIN_ISOLATION",
     )
-    return ROOT / "artifacts" / binding["source_tree"]
+    return r.component_artifact_folder(ROOT, binding)
 
 
 def signed_dependency(reference, env):
@@ -183,7 +235,7 @@ def signed_dependency(reference, env):
         and r.sha(Path(owner.OPENSSL)) == trust["openssl_sha256"],
         "IDENTITY_DEPENDENCY_CUSTODY_CHANGED",
     )
-    owner.binding_valid(reference["binding"], policy)
+    dependency_binding_valid(reference["binding"], policy)
     conn = sqlite3.connect(
         "file:" + str(path / "records.sqlite") + "?mode=ro", uri=True, timeout=20
     )
@@ -221,7 +273,7 @@ def signed_dependency(reference, env):
             and record["issued_at"] == row[5]
             and record["binding"] == reference["binding"]
             and row[4]
-            == record["binding"]["repository"] + ":" + record["binding"]["component"]
+            == dependency_scope(record["binding"])
             and dt.timedelta() < expiry - issued <= dt.timedelta(hours=24)
             and dt.timedelta() <= r.now() - issued <= dt.timedelta(hours=24)
             and record["workflow_run_id"] == 0
@@ -291,6 +343,15 @@ def signed_dependency(reference, env):
         ),
         "IDENTITY_DEPENDENCY_NATIVE_CI_REQUIRED",
     )
+    if reference["binding"].get("repository") == r.CANONICAL_REPOSITORY:
+        source = {key: reference["binding"][key] for key in r.PORTAL_SOURCE_FIELDS}
+        ci = root_context["details"]["ci"]
+        r.require(len(ci) == 1 and ci[0].get("source") == source
+                  and type(ci[0].get("run_attempt")) is int and ci[0]["run_attempt"] == 1
+                  and ci[0].get("workflow") == ".github/workflows/verify.yml"
+                  and ci[0].get("verification_only") is True
+                  and ci[0].get("release_authorized") is False,
+                  "IDENTITY_CANONICAL_DEPENDENCY_CI_SCOPE")
     observation = (
         chain[0]["details"]["staging"]["observations"]
         if env == "staging"
@@ -526,9 +587,10 @@ def operations(binding, plan, records):
 
 def runner(phase, binding, context):
     r.require(phase in CHECKS, "IDENTITY_INTEGRATION_PHASE")
-    plan = r.read(PLAN)
+    plan = r.read(r.component_plan_path(binding, PLAN))
     folder = validate_plan(binding, plan)
     records = r.verify_invocation(binding, context, phase, plan)
+    r.verify_canonical_component_custody(binding, plan, CHECKS)
     identity.source_and_image(binding, plan, folder)
     if phase == "operations":
         value = operations(binding, plan, records)

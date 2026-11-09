@@ -10,10 +10,12 @@ import type { IncomingMessage } from "node:http";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { env } from "../config/env.js";
-import { db, transaction } from "../services/db.js";
+import { db, transaction, inTransaction } from "../services/db.js";
 import { HttpError } from "../services/workflows.js";
 import { reauthenticate } from "../auth/reauthenticate.js";
 import { onesaSession } from "../auth/onesa-session.js";
+import { lockAccountSession, type AccountSession } from "../identity/accounts.js";
+import { engineeringCentralAccount, engineeringLinkChoice, engineeringProofSession, linkedEngineeringSession, sharedEngineeringEnabled } from "./onesa-account.js";
 import type { Role } from "../access/roles.js";
 import { error } from "../api/contracts.js";
 import { createEngineeringProvider } from "./provider.js";
@@ -180,7 +182,7 @@ export async function registerEngineeringIdentity(
         ...meta("engineeringSignInDetails"),
         params,
         response: {
-          200: z.object({ csrf: proof, emailSent: z.boolean(), linkResendSeconds: z.number().int().min(0).max(30), linkEmail: z.email().optional(), onesaAccount: z.object({email:z.email()}).optional() }),
+          200: z.object({ csrf: proof, emailSent: z.boolean(), linkResendSeconds: z.number().int().min(0).max(30), linkEmail: z.email().optional(), onesaAccount: z.object({email:z.email()}).optional(), onesaLink:z.object({email:z.email()}).optional(), onesaSignInPath:z.string().optional(), onesaReauthRequired:z.literal(true).optional() }),
           ...errors,
         },
       },
@@ -190,6 +192,9 @@ export async function registerEngineeringIdentity(
       const details = await interaction(req, reply);
       const { config } = configured();
       const session = await approvedOnesaSession(req, details);
+      const linkChoice = await engineeringLinkChoice(req, config.externalEmails);
+      const linked = sharedEngineeringEnabled() ? await linkedEngineeringSession(req, config.externalEmails) : null;
+      const reauthRequired = Boolean(linked && !(await centralSessionFresh(details,linked.session)));
       const cookie = req.cookies[engineeringHandoffCookie];
       let linkEmail: string | undefined;
       if (cookie) {
@@ -202,6 +207,9 @@ export async function registerEngineeringIdentity(
         linkResendSeconds: await engineeringLinkResendSeconds(req.params.uid),
         ...(linkEmail ? { linkEmail } : {}),
         ...(session ? { onesaAccount: {email:session.email} } : {}),
+        ...(linkChoice ? { onesaLink:linkChoice } : {}),
+        ...(reauthRequired ? {onesaReauthRequired:true as const} : {}),
+        ...(sharedEngineeringEnabled() ? { onesaSignInPath:"/account?returnTo="+encodeURIComponent("/engineering/sign-in/"+req.params.uid) } : {}),
       };
     },
   );
@@ -239,6 +247,11 @@ export async function registerEngineeringIdentity(
     return {...configured(), details};
   };
   async function approvedOnesaSession(req: FastifyRequest, details: Awaited<ReturnType<NonNullable<typeof provider>["interactionDetails"]>>) {
+    if (sharedEngineeringEnabled()) {
+      const linked = config ? await linkedEngineeringSession(req, config.externalEmails) : null;
+      if (!linked || !(await centralSessionFresh(details, linked.session))) return null;
+      return {id:linked.session.account.id,email:linked.session.account.email,authenticated_at:new Date(linked.session.authenticatedAt*1000),membershipId:linked.membershipId,central:linked.session};
+    }
     const session = await onesaSession(req);
     if (!session || !config || !engineeringEmailAllowed(session.email, config.externalEmails)) return null;
     // A forced reauthentication cannot be satisfied by a previously established session.
@@ -249,8 +262,24 @@ export async function registerEngineeringIdentity(
       const maxAge = Number(details.params.max_age);
       if (!Number.isFinite(maxAge) || maxAge < 0 || (Date.now() - authenticatedAt) / 1000 >= maxAge) return null;
     }
-    const membership = (await db.query<{id:string}>("SELECT id FROM engineering_memberships WHERE email=$1 AND enabled", [session.email])).rows[0];
-    return membership ? {...session, membershipId:membership.id} : null;
+    const membership = (await db.query<{id:string}>("SELECT m.id FROM engineering_memberships m WHERE m.email=$1 AND m.enabled AND NOT EXISTS(SELECT 1 FROM identity_engineering_links l WHERE l.membership_id=m.id)", [session.email])).rows[0];
+    return membership ? {...session, membershipId:membership.id,central:null} : null;
+  }
+  async function centralSessionFresh(details: Awaited<ReturnType<NonNullable<typeof provider>["interactionDetails"]>>, session:AccountSession) {
+    const now=Math.floor(Date.now()/1000),auth=session.authenticatedAt;
+    if(!Number.isInteger(auth)||auth>now)return false;
+    const forced=String(details.params.prompt??"").split(" ").includes("login");
+    const maxAge=details.params.max_age===undefined?null:Number(details.params.max_age);
+    if(maxAge!==null&&(!Number.isFinite(maxAge)||maxAge<0))return false;
+    if(forced||maxAge===0){
+      if(session.source!=="account")return false;
+      // Compare actual proof and interaction times on one clock, never rounded JWT seconds.
+      return Boolean((await db.query(
+        "SELECT 1 FROM identity_sessions s JOIN engineering_identity_records i ON i.model='Interaction' AND i.id=$3 WHERE s.token_hash=$1 AND s.user_id=$2 AND s.expires_at>now() AND i.expires_at>now() AND s.authenticated_at>i.created_at",
+        [session.sourceHash,session.account.id,details.uid],
+      )).rowCount);
+    }
+    return maxAge===null||now-auth<maxAge;
   }
   api.post("/api/v1/engineering-sign-in/:uid/session", {
     logLevel: "silent",
@@ -258,9 +287,13 @@ export async function registerEngineeringIdentity(
   }, async (req, reply) => {
     const {details} = await verifiedInteraction(req,reply,req.body.csrf);
     await limits.limit("engineering-session:"+limits.address(req),10,900);
-    const session=await approvedOnesaSession(req,details);
-    if(!session)throw new HttpError(401,"ONESA_SESSION_REQUIRED","Sign in to your approved Onesa account to continue. Engineering membership is required.");
-    return finish(req,reply,session.membershipId,"mfa",Math.floor(new Date(session.authenticated_at).getTime()/1000),req.body.rememberBrowser);
+    return transaction(c=>inTransaction(c,async()=>{
+      const linked=sharedEngineeringEnabled()&&config?await linkedEngineeringSession(req,config.externalEmails):null;
+      if(linked&&!(await centralSessionFresh(details,linked.session)))throw new HttpError(403,"ONESA_REAUTH_REQUIRED","Sign in again to your Onesa account to confirm this request.");
+      const session=await approvedOnesaSession(req,details);
+      if(!session)throw new HttpError(401,"ONESA_SESSION_REQUIRED","Sign in to your approved Onesa account to continue. Engineering membership is required.");
+      return finish(req,reply,session.membershipId,"mfa",Math.floor(new Date(session.authenticated_at).getTime()/1000),req.body.rememberBrowser,session.central);
+    }));
   });
   api.post(
     "/api/v1/engineering-sign-in/:uid/start",
@@ -304,12 +337,9 @@ export async function registerEngineeringIdentity(
     async (req, reply) => {
       const { config } = await verifiedInteraction(req, reply, req.body.csrf);
       await limits.limit("engineering-code:" + limits.address(req), 30, 900);
-      const accountId = await consumeEngineeringChallenge(
-        config,
-        req.params.uid,
-        req.body.code,
-      );
-      return finish(req, reply, accountId, "otp", undefined, req.body.rememberBrowser);
+      return finishProof(req, reply, () => consumeEngineeringChallenge(
+        config, req.params.uid, req.body.code,
+      ), "otp", req.body.rememberBrowser);
     },
   );
   async function finish(
@@ -319,11 +349,23 @@ export async function registerEngineeringIdentity(
     method = "otp",
     authenticatedAt?: number,
     rememberBrowser = false,
+    central: AccountSession | null = null,
   ) {
     const { config, provider } = configured();
+    const sourceExpires=central?await lockAccountSession(db,central):null;
+    const membership=(await db.query("SELECT enabled FROM engineering_memberships WHERE id=$1 FOR SHARE",[accountId])).rows[0];
+    if(!membership?.enabled)throw new HttpError(403,"ENGINEERING_ACCOUNT_PROOF","Engineering membership is required.");
+    if(central){
+      method=central.amr.includes("otp")?"mfa":"pwd";
+      authenticatedAt=central.authenticatedAt;
+    }
     const grant = new provider.Grant({ accountId, clientId: config.clientId });
     grant.addOIDCScope("openid email profile");
     const grantId = await grant.save();
+    if(central)await db.query(
+      "INSERT INTO identity_grant_sessions(grant_id,user_id,source_token_hash,source_kind,authenticated_at,amr,expires_at) VALUES($1,$2,$3,$4,to_timestamp($5),$6,$7)",
+      [grantId,central.account.id,central.sourceHash,central.source,central.authenticatedAt,central.amr,sourceExpires],
+    );
     const next = new URL(
       await provider.interactionResult(
         req.raw,
@@ -346,6 +388,18 @@ export async function registerEngineeringIdentity(
         "Sign-in could not be completed.",
       );
     return { continuePath: next.pathname };
+  }
+  async function finishProof(req:FastifyRequest,reply:FastifyReply,proofAccount:()=>Promise<string>,method:string,rememberBrowser:boolean,linkRequested=false){
+    return transaction(c=>inTransaction(c,async()=>{
+      // Keep account-before-membership ordering, including concurrent link redemption.
+      const source=await engineeringCentralAccount(req);
+      if(source)await lockAccountSession(c,source);
+      const accountId=await proofAccount();
+      const {config}=configured();
+      const central=await engineeringProofSession(req,c,accountId,config.externalEmails,linkRequested);
+      if(central&&!(await centralSessionFresh(await interaction(req,reply),central)))throw new HttpError(403,"ONESA_REAUTH_REQUIRED","Sign in again to your Onesa account to confirm this request.");
+      return finish(req,reply,accountId,method,undefined,rememberBrowser,central);
+    }));
   }
   for (const action of ["link", "link-verify", "handoff-verify", "password"] as const) {
     const body =
@@ -379,7 +433,7 @@ export async function registerEngineeringIdentity(
             }[action],
           ),
           params,
-          body: body.extend({rememberBrowser:z.boolean().default(false)}),
+          body: body.extend({rememberBrowser:z.boolean().default(false),...(action==="link"?{}:{linkOnesaAccount:z.boolean().default(false)})}),
           response: {
             200: z.union([
               z.object({ ok: z.literal(true) }),
@@ -396,6 +450,7 @@ export async function registerEngineeringIdentity(
           password?: string;
           token?: string;
           rememberBrowser: boolean;
+          linkOnesaAccount?: boolean;
         };
         const { config } = await verifiedInteraction(req, reply, input.csrf);
         await limits.limit(
@@ -424,35 +479,39 @@ export async function registerEngineeringIdentity(
             5,
             900,
           );
-          return finish(
+          return finishProof(
             req,
             reply,
-            await engineeringPasswordAccount(
+            () => engineeringPasswordAccount(
               email,
               input.password!,
               config.externalEmails,
             ),
             "pwd",
-            undefined, input.rememberBrowser,
+            input.rememberBrowser,input.linkOnesaAccount,
           );
         }
         if (action === "handoff-verify") {
           const cookie = req.cookies[engineeringHandoffCookie];
-          reply.clearCookie(engineeringHandoffCookie, engineeringHandoffOptions);
           if (!cookie) throw new HttpError(401, "ACCESS_LINK", "Open your latest sign-in email link again.");
-          const target = await readEngineeringHandoff(cookie, env.PUBLIC_ORIGIN, config.externalEmails);
-          return finish(req, reply, await consumeEngineeringLink(target.token, target.interaction, config.externalEmails), "email_link", undefined, input.rememberBrowser);
+          let target:Awaited<ReturnType<typeof readEngineeringHandoff>>;
+          try {target=await readEngineeringHandoff(cookie, env.PUBLIC_ORIGIN, config.externalEmails);}
+          catch(error){reply.clearCookie(engineeringHandoffCookie, engineeringHandoffOptions);throw error;}
+          // Keep the original bounded proof while central sign-in/freshness is recovered.
+          const result=await finishProof(req, reply, () => consumeEngineeringLink(target.token, target.interaction, config.externalEmails), "email_link", input.rememberBrowser,input.linkOnesaAccount);
+          reply.clearCookie(engineeringHandoffCookie, engineeringHandoffOptions);
+          return result;
         }
-        return finish(
+        return finishProof(
           req,
           reply,
-          await consumeEngineeringLink(
+          () => consumeEngineeringLink(
             input.token!,
             req.params.uid,
             config.externalEmails,
           ),
           "email_link",
-          undefined, input.rememberBrowser,
+          input.rememberBrowser,input.linkOnesaAccount,
         );
       },
     );

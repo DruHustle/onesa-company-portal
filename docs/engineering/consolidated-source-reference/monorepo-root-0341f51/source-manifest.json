@@ -1,0 +1,339 @@
+{
+  "schema_version": 1,
+  "source_repository": "DruHustle/onesa-ug",
+  "source_commit": "0341f51dfc6bf41ee84bedb0dbac4de40f2725b5",
+  "original_file_count": 41,
+  "original_source_bytes": 468875,
+  "maintenance_repository": "DruHustle/onesa-company-portal",
+  "scope": "Byte-exact historical root source/protocol/regression reference; no active CI workflow or trust policy migration. Original files use a .txt suffix so they cannot enter Python test discovery or GitHub Actions execution.",
+  "files": [
+    {
+      "original_path": ".github/workflows/_pipeline-platform.yml",
+      "reference_path": "reference/.github/workflows/_pipeline-platform.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "464da841df51a743e85c72ae1c3dd8ea7fa7418d",
+      "bytes": 1681,
+      "sha256": "45683b087dd6ddf81c2795e7047ddfb90221ee3c150ff7ed7fe693558f143e83"
+    },
+    {
+      "original_path": ".github/workflows/_pipeline-portal.yml",
+      "reference_path": "reference/.github/workflows/_pipeline-portal.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "1b7f0dfeb550619b82b65153b300932270624988",
+      "bytes": 1685,
+      "sha256": "959cb769aa22c0355ddfba6f98c9c597bfdd12e0d3924edbf823d1a9e7ce5c2b"
+    },
+    {
+      "original_path": ".github/workflows/_pipeline-robot.yml",
+      "reference_path": "reference/.github/workflows/_pipeline-robot.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "a390156a05672c68540cc60175dacb2071013729",
+      "bytes": 1645,
+      "sha256": "c3171b0866c5d419bfc1ad31fb01e84ef8b0fdd605d61289a7f19e22058e5ffa"
+    },
+    {
+      "original_path": ".github/workflows/_verify-billing.yml",
+      "reference_path": "reference/.github/workflows/_verify-billing.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "bc366439193424a48d528c5fb2624bc082df0ddb",
+      "bytes": 4208,
+      "sha256": "a3f2fe56ed65956c9b9d60945e3f919591e54be05b4cef392d9d726fafcf8cad"
+    },
+    {
+      "original_path": ".github/workflows/_verify-drone.yml",
+      "reference_path": "reference/.github/workflows/_verify-drone.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "e3f3fba89a624f321d49139507e6165da118785b",
+      "bytes": 12397,
+      "sha256": "bcd89bc9e6ee411bce8877229c620d216396f092d3081b5f14d3976d79bc8c8d"
+    },
+    {
+      "original_path": ".github/workflows/_verify-platform.yml",
+      "reference_path": "reference/.github/workflows/_verify-platform.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "8109ba09c6a532ac3d415f0e25df8fd2f00af872",
+      "bytes": 37192,
+      "sha256": "08ced722779243815597af59c1168ff0e78d9b79d3bc77b8a046f93ecc0f77ab"
+    },
+    {
+      "original_path": ".github/workflows/_verify-portal.yml",
+      "reference_path": "reference/.github/workflows/_verify-portal.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "c8ce1c3b9efa2bba9cc619905e0cd729e946a804",
+      "bytes": 20758,
+      "sha256": "a1ee6c0a9a9d1d03ebbe415d64473e67bd6677c9837611dac4dfb2530a7b96ba"
+    },
+    {
+      "original_path": ".github/workflows/_verify-robot.yml",
+      "reference_path": "reference/.github/workflows/_verify-robot.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "4f794a5047f65d4f2c594a2f84a23afa6d8e09cb",
+      "bytes": 13706,
+      "sha256": "aaa8a51c245404e6bff63a69f0c63b21ce8c36460cf838881c5864407dbc9635"
+    },
+    {
+      "original_path": ".github/workflows/onesa-billing-arm64.yml",
+      "reference_path": "reference/.github/workflows/onesa-billing-arm64.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "1bceda993368f9f9f69892b1f33bd76a30f08872",
+      "bytes": 3119,
+      "sha256": "8e2bed4a08a98735c8d324fe8f3869903413c8bdcd61c502ba28d01bfb319a35"
+    },
+    {
+      "original_path": ".github/workflows/onesa-mobile-ci.yml",
+      "reference_path": "reference/.github/workflows/onesa-mobile-ci.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "683339daca41961a45c95fe394ab1087851ad4fd",
+      "bytes": 10128,
+      "sha256": "f1e844230b0ff3b3620d24606319ceda04051b4284972dde19c62533148088ba"
+    },
+    {
+      "original_path": ".github/workflows/onesa-mobile-native-compile.yml",
+      "reference_path": "reference/.github/workflows/onesa-mobile-native-compile.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "7477d0244bd5a893230320507e8b51471f936087",
+      "bytes": 6521,
+      "sha256": "232518a592f9305b6c9adc66a9200a32efdffb4a8bb28e55dbdfe4d8b2c73e87"
+    },
+    {
+      "original_path": ".github/workflows/onesa-protected-docs-metadata.yml",
+      "reference_path": "reference/.github/workflows/onesa-protected-docs-metadata.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "bd845e9ac2bab5e367170e57863b2adbb7eccd52",
+      "bytes": 3242,
+      "sha256": "bff551333f585a576bb15a5d660a7efb54ac16b87c820e10fda367b8195e01b5"
+    },
+    {
+      "original_path": ".github/workflows/onesa-public-docs-build.yml",
+      "reference_path": "reference/.github/workflows/onesa-public-docs-build.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "50090d095b00fa7591f2110f067a877a4ae9a1ab",
+      "bytes": 7675,
+      "sha256": "f6eb9b9b577c75197bfb55c1f7ad78bf03e3f5e231da957980a02b05128aa514"
+    },
+    {
+      "original_path": ".github/workflows/oracle-capability-request.yml",
+      "reference_path": "reference/.github/workflows/oracle-capability-request.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "cb2aeb0f57c593d36ac5a63b39aa77a30ab95fa2",
+      "bytes": 2180,
+      "sha256": "3228d16fc4b5f0491a6ddb6e9549a850cd47d50c3e937d54aff11ac649b62c87"
+    },
+    {
+      "original_path": ".github/workflows/verify.yml",
+      "reference_path": "reference/.github/workflows/verify.yml.txt",
+      "git_mode": "100644",
+      "git_blob": "282809305d4f620f2999295008eaf2d7db1aa477",
+      "bytes": 8158,
+      "sha256": "9234494a83db43ca217bcc01db82af3fab71e0cfac5199736abd800f88750af4"
+    },
+    {
+      "original_path": ".gitignore",
+      "reference_path": "reference/.gitignore.txt",
+      "git_mode": "100644",
+      "git_blob": "f336cdb1ac883910de2c9512951dfb43afd9636b",
+      "bytes": 76,
+      "sha256": "c115716a600d88c2502c7ef60bf44cb7116460ea6e2604b665a00c7388a21d52"
+    },
+    {
+      "original_path": "README.md",
+      "reference_path": "reference/README.md.txt",
+      "git_mode": "100644",
+      "git_blob": "4d4eb4cf9d7779d8d08c70ccd222773a22d59cf4",
+      "bytes": 7442,
+      "sha256": "d485d293e5983074bbf0222c7c44e4e7fbcf6fc6fa62b630b07750e779490a14"
+    },
+    {
+      "original_path": "docs/email-domain.md",
+      "reference_path": "reference/docs/email-domain.md.txt",
+      "git_mode": "100644",
+      "git_blob": "0bf956594689cfe672ed494f3916eb822aa45c8b",
+      "bytes": 14896,
+      "sha256": "605e18f0111e9dfcf27598145c1dcf37958434e9572ca35376f09f5c39799ccc"
+    },
+    {
+      "original_path": "docs/repository-migration.md",
+      "reference_path": "reference/docs/repository-migration.md.txt",
+      "git_mode": "100644",
+      "git_blob": "79d40ed0a09bfd71618812cead54f027c5af97d7",
+      "bytes": 21598,
+      "sha256": "7258db982efb8b4c46574d75e86bd971ec6cced267e34070a29d914042570bdd"
+    },
+    {
+      "original_path": "docs/software-readiness.md",
+      "reference_path": "reference/docs/software-readiness.md.txt",
+      "git_mode": "100644",
+      "git_blob": "92a305f54751f5fc04fa5aad413d831ab66947dc",
+      "bytes": 8000,
+      "sha256": "2e1563a3674ffe14df9e8ac90f4f8fc3411fa7072a31164fcde523b98dbeed5b"
+    },
+    {
+      "original_path": "scripts/ci/config.py",
+      "reference_path": "reference/scripts/ci/config.py.txt",
+      "git_mode": "100644",
+      "git_blob": "1bfa92651233ddc614c3327f825f5fab7c6ee934",
+      "bytes": 2125,
+      "sha256": "7d1db1d79b2a8c359156134fbcdbf4e5f47594c592412aedd794a5f2ed21d7bb"
+    },
+    {
+      "original_path": "scripts/ci/generate_workflows.py",
+      "reference_path": "reference/scripts/ci/generate_workflows.py.txt",
+      "git_mode": "100644",
+      "git_blob": "402c40fa4dd258710fc707d36df94024f90c1979",
+      "bytes": 37670,
+      "sha256": "3ec1a225e7df4aec215431623c317a16866081f62ab90d22b20a509d02404080"
+    },
+    {
+      "original_path": "scripts/ci/materialize_docs_source.py",
+      "reference_path": "reference/scripts/ci/materialize_docs_source.py.txt",
+      "git_mode": "100644",
+      "git_blob": "0daaaf43052a54e70a011626722e0e8ff076368d",
+      "bytes": 3582,
+      "sha256": "b18a3d43c19f10f8d0cfe2972ed8e5fa3701d5aab15bfcabc45241322cbe5a7a"
+    },
+    {
+      "original_path": "scripts/ci/oracle_request.py",
+      "reference_path": "reference/scripts/ci/oracle_request.py.txt",
+      "git_mode": "100644",
+      "git_blob": "79ce62369b2bb1cfc65666b96eda5ae90c252788",
+      "bytes": 8012,
+      "sha256": "fecf645050d7dd6655e1e9d9d97643ef6758afc58f4b5d9d0a3314a5f96c3d89"
+    },
+    {
+      "original_path": "scripts/ci/product_security.py",
+      "reference_path": "reference/scripts/ci/product_security.py.txt",
+      "git_mode": "100644",
+      "git_blob": "34d98246b4b6ff18a444831731177ab37ad77558",
+      "bytes": 3740,
+      "sha256": "9f45f2aded14771b850eeffa7d7e69cfcc5368ca801b25d6bd47012fd32d25eb"
+    },
+    {
+      "original_path": "scripts/ci/requirements.lock",
+      "reference_path": "reference/scripts/ci/requirements.lock.txt",
+      "git_mode": "100644",
+      "git_blob": "3830fb4a9f6a7ecdf01b49d39ac53cdbaecbb78c",
+      "bytes": 6472,
+      "sha256": "06cd7a2223977eef0cff5e30f3843380a946c05b8690f06887c300d81c6fcd9d"
+    },
+    {
+      "original_path": "scripts/ci/runtime_manifest.py",
+      "reference_path": "reference/scripts/ci/runtime_manifest.py.txt",
+      "git_mode": "100644",
+      "git_blob": "c835c9233643b0918df5ef98d4883645dd838619",
+      "bytes": 2658,
+      "sha256": "e35d56bbb7d7795271ce8a71e1d50365216bb12c0d37d0694cbaaaa788ee1771"
+    },
+    {
+      "original_path": "scripts/ci/security.py",
+      "reference_path": "reference/scripts/ci/security.py.txt",
+      "git_mode": "100644",
+      "git_blob": "02afbd7725de39178612cc83808968a6805a0018",
+      "bytes": 5047,
+      "sha256": "91f1d65f9063a8acbda0306615ba4e9f4423647d12855eb0bc7852ed2c3b05ec"
+    },
+    {
+      "original_path": "scripts/ci/selection.py",
+      "reference_path": "reference/scripts/ci/selection.py.txt",
+      "git_mode": "100644",
+      "git_blob": "3633f9dc5931c28eb17895851ae981a8395ec684",
+      "bytes": 3500,
+      "sha256": "294dc4478aa1d9190fbb5a43bd8e0e1705878c70975ad9c55cda979cee1dcb5d"
+    },
+    {
+      "original_path": "scripts/ci/summary.py",
+      "reference_path": "reference/scripts/ci/summary.py.txt",
+      "git_mode": "100644",
+      "git_blob": "39143ba7fd388bc272c289fd3595b2d903e4b7e1",
+      "bytes": 1788,
+      "sha256": "5f51c5ca7b1f3d760c53cac76c13982dff3a5c0dd838bc06e31acb54d0568007"
+    },
+    {
+      "original_path": "scripts/ci/test_boundaries.py",
+      "reference_path": "reference/scripts/ci/test_boundaries.py.txt",
+      "git_mode": "100644",
+      "git_blob": "8ef0d7c222ac41a908e298951c6a2ad369664ce0",
+      "bytes": 9735,
+      "sha256": "564c3c765aceb2451dd38e4bf993847416c24a9a280c1429fe6a6d559d213015"
+    },
+    {
+      "original_path": "scripts/ci/test_docs_build_consumer.py",
+      "reference_path": "reference/scripts/ci/test_docs_build_consumer.py.txt",
+      "git_mode": "100644",
+      "git_blob": "e50ddd706b2671613d67fd826999e55ef94c2b07",
+      "bytes": 11554,
+      "sha256": "eef9a8f6cec8a8ad5d684a5eff6a40452d409dbb361b7a19daa1a818d20fe189"
+    },
+    {
+      "original_path": "scripts/ci/test_historical_bootstrap.py",
+      "reference_path": "reference/scripts/ci/test_historical_bootstrap.py.txt",
+      "git_mode": "100644",
+      "git_blob": "a2e3d06c439d89d7d4206f0440a4266231f69536",
+      "bytes": 2900,
+      "sha256": "7a2047c436109c6fd39136c08f31c3324cbb74f104c3502bd3b7bc2cd83b74a7"
+    },
+    {
+      "original_path": "scripts/ci/test_oracle_request.py",
+      "reference_path": "reference/scripts/ci/test_oracle_request.py.txt",
+      "git_mode": "100644",
+      "git_blob": "be766e0527cec73f2b8c8e38169848f40f84a794",
+      "bytes": 9471,
+      "sha256": "97638d7db3b11483957895cbce27d8e001fa0856d38e3d5e1ea347407617350d"
+    },
+    {
+      "original_path": "scripts/ci/test_portal_component_consumer.py",
+      "reference_path": "reference/scripts/ci/test_portal_component_consumer.py.txt",
+      "git_mode": "100644",
+      "git_blob": "21ca57d53d068b2fd4e548ef7a4df801a2557009",
+      "bytes": 48263,
+      "sha256": "5eaa6929a384ae055f236dd04dd6cd673b03135bb3c85bc6b2ef12d8b80d147c"
+    },
+    {
+      "original_path": "scripts/ci/test_portal_historical_journals.py",
+      "reference_path": "reference/scripts/ci/test_portal_historical_journals.py.txt",
+      "git_mode": "100644",
+      "git_blob": "37164acc6365aa1d09df60461a48060c442830cc",
+      "bytes": 18576,
+      "sha256": "58ffc7710bc98d703da91335054ea490b9c267d3250819794c660f5ddffe9658"
+    },
+    {
+      "original_path": "scripts/ci/test_source_consumer.py",
+      "reference_path": "reference/scripts/ci/test_source_consumer.py.txt",
+      "git_mode": "100644",
+      "git_blob": "7e9917ef7c4c5487ae03b57a70941542c6be3a08",
+      "bytes": 42385,
+      "sha256": "07b00aa81171868454d88111fe0d693ea32c4b8e96498cd604e6295d92cb78af"
+    },
+    {
+      "original_path": "scripts/ci/test_source_provenance.py",
+      "reference_path": "reference/scripts/ci/test_source_provenance.py.txt",
+      "git_mode": "100644",
+      "git_blob": "2c7b0885cdedc6fec3a614c5285b8cb2e8282ee5",
+      "bytes": 10362,
+      "sha256": "23d5717132835b77e485e48a760e9b0e8e690d4f6f65ad0c184d367c2e8ec548"
+    },
+    {
+      "original_path": "scripts/ci/test_tool_downloads.py",
+      "reference_path": "reference/scripts/ci/test_tool_downloads.py.txt",
+      "git_mode": "100644",
+      "git_blob": "12977f9982a53dcfe11363e87bec0d9fab840394",
+      "bytes": 13063,
+      "sha256": "bf79edbb9888961c623d3c6e71a2e7782718aaca9634956c9c474b4d1e04d453"
+    },
+    {
+      "original_path": "scripts/ci/test_workflows.py",
+      "reference_path": "reference/scripts/ci/test_workflows.py.txt",
+      "git_mode": "100644",
+      "git_blob": "b410209c44463004ea0c55e677933e100e838f24",
+      "bytes": 32631,
+      "sha256": "2556bf76fa68d8038b5e6b3066d169afec55977743a55f93e22b425b3b796aef"
+    },
+    {
+      "original_path": "scripts/repository_hygiene.py",
+      "reference_path": "reference/scripts/repository_hygiene.py.txt",
+      "git_mode": "100644",
+      "git_blob": "717447b63adcc3ed0c04e1695b218fa9e4f20434",
+      "bytes": 9034,
+      "sha256": "4de337e8094171eeef33da165ebf9f122072ee55eeeb3f9497a81cf4b984b127"
+    }
+  ]
+}

@@ -92,6 +92,24 @@ expected revision and access-policy evidence. An engineering identity has no Por
 role. The exact Cloudflare email policy remains an independent requirement. See
 [Engineering Docs access](../engineering/ENGINEERING_DOCS_IDENTITY.md).
 
+## Prepared common-account Docs link
+
+Prepared additive account-link fields preserve older clients: current Docs details
+may include `onesaSignInPath` with only the fixed central-account return to the
+current `/engineering/sign-in/{uid}`, and `onesaLink:{email}` when the central
+account is eligible to prove its existing Docs identity. Password, link-verify and
+handoff-verify accept `linkOnesaAccount`, default false. The request-link operation
+does not link accounts. The opt-in operation requires both the live central session
+and the existing approved Docs proof, with immutable-ID collision and one-use-link
+checks in the same transaction. `ENGINEERING_ACCOUNT_PROOF` and
+`ENGINEERING_ACCOUNT_CONFLICT` refuse mismatches; `ONESA_SESSION_REQUIRED` and
+`ONESA_REAUTH_REQUIRED` route the user through central sign-in without accepting an
+unapproved identity or bypassing MFA. Linked membership UUIDs remain the Docs OIDC
+subjects; no Cloudflare identity or allowlist is silently replaced.
+For an already proven linked account that needs fresh authentication, details
+include `onesaReauthRequired:true`; the fixed account return then presents central
+password/MFA again. Rounded OIDC timestamps do not permit reuse within the same second.
+
 ## Cross-browser Engineering email links (accepted 2026-10-21)
 
 Independently accepted API `cfe0d43e7032dabc83be8e49dba340660e1975e0` has the identical reviewed tree to
@@ -153,6 +171,16 @@ The change uses schema 012 and retains the worker's existing publication postcon
 
 ## Shared Onesa account and product access (prepared, default off)
 
+The public account configuration and authenticated account snapshots now include
+an additive `catalog` of `{product,name,connected}` entries. AI, Drone and Robot
+and optional Mobile are connected only when their fixed confidential client is configured.
+Farmer, Logistics, Factory and PasoFi remain unconnected recognition entries:
+they accept no registration request, callback or token and receive no entitlement.
+The existing `applications` response and legacy audience-bound three-product claims remain
+compatible; Mobile keeps its separately configured vocabulary and client boundaries.
+Future commissioning requires an independently reviewed client and its
+own scoped data/action authorization; appearing in the catalog grants nothing.
+
 The existing Portal hosts the independent `/api/v1/identity` issuer using its
 locked OpenID Connect provider. Fixed confidential clients use authorization code
 flow with mandatory S256 PKCE and exact HTTPS callbacks. Protocol routes remain
@@ -164,7 +192,8 @@ matching grant and its exact source session are required before revoking that
 account across products. `all_sessions_revoked` is true only after that transaction
 commits; an idempotent `ok` alone never proves global sign-out.
 
-`/account/register` accepts a name, email and one to three requested products.
+`/account/register` accepts a name, email and one to four requested products.
+Mobile requests are accepted only when a Mobile client is explicitly configured.
 One-use mailbox verification creates a `member`, with pending product access and
 no Portal administration authority. Connecting an existing Portal account requires
 its current password and a verification link bound to its immutable user ID. It
@@ -173,7 +202,13 @@ requests use host-only cookies, exact Origin and CSRF on authenticated mutations
 Identity artifacts stay encrypted server-side. Email uses the existing encrypted
 outbox; queue success does not establish delivery.
 
-Owner and Administrator roles administer Company Portal, AI, Drone and Robot.
+Owner and Administrator roles administer Company Portal and configured Onesa products.
+The optional Mobile client uses `customer`, `agent`, `support`, `operations`,
+`finance`, `auditor` and `admin` roles. New Mobile requests default to pending
+`customer` access. Every Mobile staff role requires MFA at sign-in, continuation
+and live assertion; existing AI/Drone/Robot role rules remain unchanged.
+Mobile claims are returned to the Mobile client only. Legacy client assertions
+retain their three-product vocabulary even when Mobile is configured.
 Assigning or removing an Onesa Administrator requires fresh owner password/MFA
 proof; existing administrative routes enforce the same rule in shared mode.
 `/admin/identity/accounts` provides bounded account search. Product-access updates
@@ -200,3 +235,58 @@ product grants to its replacement. Each carried grant retains its original
 authentication time, factors and expiry; confirming MFA in one product cannot
 freshen another product's sensitive-action proof. Switching accounts instead
 revokes the previous account's bindings in that browser.
+
+## Company billing bridge (prepared, default off)
+
+The authenticated browser prefix is `/api/v1/account/billing`. The backend maps
+only the fixed routes below to the private billing service's `/v1` prefix; the
+browser must not add another `/v1` after `billing`. The existing company hostname
+still serves only `/api/v1/public/*`; `/account/billing` belongs on the protected
+Portal hostname. The bridge is unavailable until `BILLING_BRIDGE_ENABLED=true`
+and its dedicated backend configuration is valid.
+
+Every request requires an existing verified Onesa account or MFA Portal session.
+The backend locks and rechecks the current account, session expiry and verified
+email before forwarding. Mutations additionally require the exact Portal Origin
+and `X-CSRF-Token`; cross-site requests are refused. The backend signs a short-lived
+Ed25519 assertion for audience `onesa-billing`, the current immutable user ID and
+scope `billing:account`. It contains no Portal or product role. The billing service
+independently enforces its account membership and operation ownership.
+The session bootstrap works with an existing native MFA Portal session while the
+separate shared-identity issuer remains disabled.
+
+All paths in this table are relative to `/api/v1/account/billing`. Identifiers are
+UUIDs, bodies are strict, and query parameters are refused. Responses and current
+field types are generated in OpenAPI and the frontend client contract.
+
+| Method and path | Contract |
+| --- | --- |
+| `GET /session` | Returns only `{csrf, displayName}` from the locked current session; it makes no billing-provider request. |
+| `GET /catalog` | Current mode, sales availability and bounded server-owned one-off catalog. |
+| `GET /accounts` | Current actor's billing accounts and billing roles. |
+| `POST /accounts` | Creates a billing account from `{displayName}`; billing owns the membership. |
+| `GET /accounts/{accountId}` | Reads one authorized account. |
+| `GET /accounts/{accountId}/operations` | Reads up to 50 current account operations for status and recovery. |
+| `POST /accounts/{accountId}/customer` | Takes `{}` and prepares or recovers the account's stable customer operation. |
+| `PATCH /accounts/{accountId}/members` | Takes `expectedRevision`, `subject`, `role` and `status`; current billing owner authority and membership constraints apply. |
+| `POST /accounts/{accountId}/intents` | Takes `{kind, items}` with `kind` equal to `checkout` or `invoice`; items contain server catalog SKUs and integer quantities. Requires `Idempotency-Key`. |
+| `POST /accounts/{accountId}/intents/{intentId}/submit` | Takes `{}` and submits the saved intent. Requires `Idempotency-Key`. |
+| `POST /accounts/{accountId}/invoices/finalize` | Takes `{draftOperationId}` for a separately verified draft. Requires `Idempotency-Key`. |
+| `POST /accounts/{accountId}/portal` | Takes `{}` for the dedicated customer-portal flow. Requires `Idempotency-Key`. |
+| `GET /operations/{operationId}` | Reads an owned operation and, where available, its freshly verified payment status or hosted redirect. |
+
+Intent creation does not accept `kind: "portal"`; the dedicated portal route keeps
+that operation separate. Stable request keys are retained across uncertain
+responses. The frontend proxy forwards the header only for the billing prefix,
+and the bridge validates it before forwarding. Operation states include
+`prepared`, `dispatched`, `succeeded`, `failed` and `unknown`; a successful creation
+or redirect alone is not a payment confirmation. The account page shows a paid
+state only from `paymentConfirmed: true` on the verified operation.
+
+The bridge limits requests to 16 KiB and responses to 64 KiB, with an eight-second
+upstream deadline, no redirects and private/no-store responses. It accepts hosted
+links only on the exact HTTPS Stripe Checkout, Invoice and Billing hostnames.
+It exposes no arbitrary upstream path, usage-ingestion endpoint or webhook proxy.
+The page starts catalog Checkout and reads invoice status; direct invoice creation
+and finalization remain explicit authorized API operations. Metronome usage and
+Stripe webhook processing stay in the independent billing service.

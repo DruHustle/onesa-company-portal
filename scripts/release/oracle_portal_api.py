@@ -64,7 +64,7 @@ def configuration(plan, environment):
 def validate_plan(binding, plan):
     common.exact(
         plan,
-        [
+        r.component_plan_fields(binding, [
             "schema_version",
             "verifier_store",
             "baseline",
@@ -74,12 +74,11 @@ def validate_plan(binding, plan):
             "legacy_backup",
             "workflow",
             "production_probe",
-        ],
+        ]),
         "API_PLAN_SCHEMA",
     )
     r.require(
-        plan["schema_version"] == 1
-        and binding["repository"] == common.REPOSITORY
+        r.component_plan_source(binding, plan, "api")
         and binding["component"] == "api"
         and binding["target_environment"] == "production"
         and re.fullmatch(r"[a-f0-9]{40}", binding["candidate_commit"])
@@ -169,7 +168,7 @@ def validate_plan(binding, plan):
             == binding["configuration_sha256"][environment],
             "API_CONFIGURATION_CHANGED",
         )
-    return ROOT / "artifacts" / binding["source_tree"]
+    return r.component_artifact_folder(ROOT, binding)
 
 
 def source_equivalence(folder, binding, plan):
@@ -591,17 +590,12 @@ def previous_operations():
         request = r.read(path / "request.json")
         r.require(
             request["binding"]["component"] == "api"
-            and request["binding"]["repository"] == common.REPOSITORY
+            and bool(r.portal_component_scope(request["binding"], "api"))
             and request["context"]["operation_id"] == path.name,
             "API_PREVIOUS_OPERATION_SCOPE",
         )
-        r.verify_invocation(
-            request["binding"],
-            {"operation_id": path.name, "read_only": True},
-            "production",
-            {"verifier_store": request["verifier_store"]},
-            dependency=True,
-        )
+        r.verify_historical_operation(request["binding"], path.name,
+                                      request["verifier_store"], require_accepted=True)
 
 
 def production_probe(binding, plan, context, records, target, observer_tool=None):
@@ -821,10 +815,11 @@ def runner(phase, binding, context, *, observer_tool=None, independent=None):
         independent is None or (phase == "production" and observer_tool is not None),
         "INDEPENDENT_RECONCILIATION_IS_COMMISSIONED_READ_ONLY_ONLY",
     )
-    plan = r.read(PLAN)
+    plan = r.read(r.component_plan_path(binding, PLAN))
     folder = validate_plan(binding, plan)
     source_equivalence(folder, binding, plan)
     records = r.verify_invocation(binding, context, phase, plan)
+    r.verify_canonical_component_custody(binding, plan, CHECKS)
     if phase == "staging":
         details = staging(binding, plan, context, folder, records)
     elif phase == "operations":

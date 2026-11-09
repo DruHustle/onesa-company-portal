@@ -43,7 +43,26 @@ export function validateRequest(value) {
   require(value.schema_version === 1 && ['account', 'integrated'].includes(value.scope) &&
     ['staging', 'production'].includes(value.environment) && UUID.test(value.operation_id), 'IDENTITY_REQUEST_SCOPE');
   const binding = value.binding;
-  require(binding && binding.repository === 'DruHustle/onesa-company-portal' &&
+  if (binding?.repository === 'DruHustle/onesa-ug') {
+    keys(binding, ['schema_version', 'repository', 'repository_id', 'product', 'source_path',
+      'candidate_commit', 'source_tree', 'product_source_tree', 'branch', 'component',
+      'source_sha256', 'build_sha256', 'artifact_digest', 'configuration_sha256',
+      'target_environment'], 'IDENTITY_CANONICAL_BINDING_SCHEMA');
+    require(['candidate_commit', 'source_tree', 'product_source_tree'].every(key =>
+      typeof binding[key] === 'string' && /^[a-f0-9]{40}$/.test(binding[key])) &&
+      ['source_sha256', 'build_sha256'].every(key => typeof binding[key] === 'string' &&
+        /^[a-f0-9]{64}$/.test(binding[key])) && typeof binding.artifact_digest === 'string' &&
+      /^sha256:[a-f0-9]{64}$/.test(binding.artifact_digest), 'IDENTITY_CANONICAL_ARTIFACT_BINDING');
+    keys(binding.configuration_sha256, ['staging', 'production'], 'IDENTITY_CANONICAL_CONFIGURATION');
+    require(Object.values(binding.configuration_sha256).every(pin => typeof pin === 'string' &&
+      /^[a-f0-9]{64}$/.test(pin)), 'IDENTITY_CANONICAL_CONFIGURATION');
+  }
+  require(binding && (binding.repository === 'DruHustle/onesa-company-portal' ||
+    binding.repository === 'DruHustle/onesa-ug' && binding.schema_version === 2 &&
+    binding.repository_id === 1444746154 && binding.product === 'portal' &&
+    binding.source_path === 'onesa-company-portal' && binding.branch === 'main' &&
+    binding.target_environment === 'production' && typeof binding.product_source_tree === 'string' &&
+    /^[a-f0-9]{40}$/.test(binding.product_source_tree)) &&
     binding.component === (value.scope === 'account' ? 'identity' : 'identity-acceptance') &&
     /^[a-f0-9]{40}$/.test(binding.candidate_commit) && /^[a-f0-9]{40}$/.test(binding.source_tree), 'IDENTITY_SOURCE_BINDING');
   keys(value.origins, ['portal', ...PRODUCTS], 'IDENTITY_ORIGIN_SCHEMA');
@@ -348,6 +367,23 @@ export function verifyCallback(raw, binding, portal) {
   'PRODUCT_CALLBACK_BINDING');
 }
 
+// This path has already proved the central principal. A new password/MFA login
+// would demonstrate a separate sign-in, not reuse of that browser's session.
+// Explicit protected-action step-up is observed separately.
+export async function continueExistingProductSession(page, email) {
+  const current = page.url();
+  const continuation = page.getByRole('button', {name: 'Continue as ' + email, exact: true});
+  if (await continuation.isVisible()) {
+    await continuation.click();
+    await page.waitForURL(url => url.href !== current, {timeout: 20000});
+    return;
+  }
+  require(!await page.getByRole('button', {name: /^Continue as /}).isVisible(), 'PRODUCT_SSO_PRINCIPAL_MISMATCH');
+  const credentialFields = await Promise.all(['email', 'password', 'code'].map(name =>
+    page.locator('input[name="' + name + '"]').isVisible()));
+  require(!credentialFields.some(Boolean), 'PRODUCT_SSO_REAUTHENTICATION_REQUIRED');
+}
+
 async function productSignIn(context, request, product, fixture, expect) {
   checkpoint(context);
   const origin = request.origins[product], page = await context.newPage();
@@ -360,10 +396,13 @@ async function productSignIn(context, request, product, fixture, expect) {
   if (product !== 'drone') require(config.account_url === request.origins.portal + '/account', 'PRODUCT_ISSUER_MISMATCH');
   await page.goto(origin + (product === 'robot' ? '/console' : '/'), {waitUntil: 'domcontentloaded'});
   const callbacks = [];
+  let credentialReentry = false;
   const callbackPath = product === 'ai' ? '/api/v1/auth/onesa/callback' : '/api/v1/auth/identity/callback';
   const callbackObserver = resource => {
     const url = new URL(resource.url());
     if (url.origin === origin && url.pathname === callbackPath && callbacks.length < 3) callbacks.push(url.href);
+    if (url.origin === request.origins.portal && resource.method() === 'POST' &&
+      (url.pathname === '/api/v1/account/login' || /^\/api\/v1\/account\/interaction\/[^/]+\/login$/.test(url.pathname))) credentialReentry = true;
   };
   page.on('request', callbackObserver);
   const startPath = product === 'ai' ? '/api/v1/auth/onesa/start' : '/api/v1/auth/identity/start';
@@ -379,14 +418,7 @@ async function productSignIn(context, request, product, fixture, expect) {
     require([origin, request.origins.portal].includes(current.origin), 'PRODUCT_REDIRECT_ORIGIN');
     if (current.origin === request.origins.portal) {
       require(current.pathname.startsWith('/account/sign-in/') || current.pathname.startsWith('/api/v1/identity/'), 'PRODUCT_INTERACTION_PATH');
-      const continuation = page.getByRole('button', {name: /^Continue as /});
-      if (await continuation.isVisible()) {
-        await continuation.click();
-        await page.waitForURL(url => url.href !== current.href, {timeout: 20000});
-      } else if (await page.locator('input[name="email"]').isVisible()) {
-        await portalLogin(page, request, fixture, expect);
-        await page.waitForURL(url => url.href !== current.href, {timeout: 20000});
-      }
+      await continueExistingProductSession(page, fixture.email);
     } else {
       const result = await context.request.get(origin + '/api/v1/auth/me', {maxRedirects: 0, timeout: 15000});
       if (result.status() === 200) { session = await responseJSON(result, [200], 'PRODUCT_SESSION'); break; }
@@ -395,6 +427,7 @@ async function productSignIn(context, request, product, fixture, expect) {
     await delay(200);
   }
   page.off('request', callbackObserver);
+  require(!credentialReentry, 'PRODUCT_SSO_CREDENTIAL_REENTRY');
   require(session, 'PRODUCT_SIGN_IN_NOT_OBSERVED');
   require(callbacks.length === 1, 'EXACT_PRODUCT_CALLBACK_REQUIRED');
   verifyCallback(callbacks[0], authorization, request.origins.portal);

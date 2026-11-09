@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "platform": "linux/arm64",
+  "version": "v1.36.6+k3s1-onesa.2",
+  "builder_base": "golang@sha256:2920bb124f1a2e12a1d39f0cab756ae0068441ee1da7655dec7f5e374944095b",
+  "components": {
+    "k3s": {
+      "repository": "k3s-io/k3s",
+      "commit": "fa45d6a5ad0c9b8fdf90cf6a2eeeafaccfb60709",
+      "archive_url": "https://codeload.github.com/k3s-io/k3s/tar.gz/fa45d6a5ad0c9b8fdf90cf6a2eeeafaccfb60709",
+      "archive_sha256": "8152853bb3f1e351bdea07429268cd3a04041fe534e6ca119b0414eac0133241",
+      "archive_type": "tar",
+      "archive_prefix": "k3s-fa45d6a5ad0c9b8fdf90cf6a2eeeafaccfb60709",
+      "original_module_hashes": {
+        "go.mod": "35735faecb428fe5a4fcc498c9163cb27a9052e025ecb46b785a164d3bd8b415",
+        "go.sum": "8310d75c85a3ecd01c6674944666c6e81f9ca68e92be65aecdfe36c4cc3699e4"
+      },
+      "package": "./cmd/server",
+      "tags": "ctrd netcgo osusergo providerless urfave_cli_no_docs sqlite_omit_load_extension static_build apparmor seccomp selinux no_cri_dockerd",
+      "ldflags": "-X github.com/k3s-io/k3s/pkg/version.Version=v1.36.6+k3s1-onesa.2 -X github.com/k3s-io/k3s/pkg/version.GitCommit=fa45d6a5ad0c9b8fdf90cf6a2eeeafaccfb60709-onesa.2 -X github.com/containerd/containerd/v2/version.Version=v2.3.7-k3s1.36-onesa.1 -X github.com/containerd/containerd/v2/version.Package=github.com/k3s-io/containerd/v2 -X sigs.k8s.io/cri-tools/pkg/version.Version=v1.36.0-k3s1 -X github.com/cloudnativelabs/kube-router/v2/pkg/version.Version=v2.11.1-k3s1 -X github.com/cloudnativelabs/kube-router/v2/pkg/version.BuildDate=2026-11-05T00:00:00Z -X github.com/k3s-io/helm-controller/pkg/controllers/chart.DefaultJobImage=rancher/klipper-helm:v0.13.3-build20261021 -X k8s.io/component-base/version.gitVersion=v1.36.6+k3s1-onesa.2 -X k8s.io/component-base/version.gitCommit=fa45d6a5ad0c9b8fdf90cf6a2eeeafaccfb60709-onesa.2 -X k8s.io/component-base/version.gitTreeState=dirty -X k8s.io/component-base/version.buildDate=2026-11-05T00:00:00Z -X k8s.io/client-go/pkg/version.gitVersion=v1.36.6+k3s1-onesa.2 -X k8s.io/client-go/pkg/version.gitCommit=fa45d6a5ad0c9b8fdf90cf6a2eeeafaccfb60709-onesa.2 -X k8s.io/client-go/pkg/version.gitTreeState=dirty -X k8s.io/client-go/pkg/version.buildDate=2026-11-05T00:00:00Z -w -s -extldflags '-static -lm -ldl -lz -lpthread'",
+      "cgo_cflags": "-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_USE_ALLOCA=1",
+      "tests": [
+        "./pkg/cli/cmds",
+        "./pkg/util",
+        "./pkg/agent/containerd"
+      ],
+      "charts": {
+        "traefik-crd-40.1.7+up40.1.0.tgz": {
+          "url": "https://k3s.io/k3s-charts/assets/traefik-crd/traefik-crd-40.1.7+up40.1.0.tgz",
+          "sha256": "0e44007bf57bb3c73ba0b5dce173cc6531680db78a39e1aedd50458c1420b040",
+          "bytes": 214792
+        },
+        "traefik-40.1.7+up40.1.0.tgz": {
+          "url": "https://k3s.io/k3s-charts/assets/traefik/traefik-40.1.7+up40.1.0.tgz",
+          "sha256": "8654335db2e588475491de290b1f0b55d21db149cfdbbdce7590a0c928145ae4",
+          "bytes": 174761
+        }
+      },
+      "module_hashes": {
+        "go.mod": "faaba665d0e47eac7f6dd8d5271c70d6890623849a5fd0a8a66ff132939d28cd",
+        "go.sum": "5e702f94d71917cd8dc9d5418a71c4886fa3e9b8dc428d2ce7a3e9ed5e603bcc"
+      },
+      "binary_sha256": "32e05d00f3e32cd0c5c5f599330646db5da31ef482e2747f60aa7c3d551d6d0a"
+    },
+    "runc": {
+      "repository": "opencontainers/runc",
+      "archive_url": "https://proxy.golang.org/github.com/opencontainers/runc/@v/v1.4.3.zip",
+      "archive_sha256": "938452f98de3bdb68440bef67535147439058577a9ac23d2887efb0b2545e123",
+      "archive_type": "zip",
+      "archive_prefix": "github.com/opencontainers/runc@v1.4.3",
+      "original_module_hashes": {
+        "go.mod": "056b29512b78cfd3a2581ce18f86f65f1ab87a80be0c1000cffa66e6307459b5",
+        "go.sum": "99caefebdf1bc1795d89e26b316e2d8e71c10d025b9c05ca7bc20029b417d80c"
+      },
+      "package": ".",
+      "tags": "seccomp apparmor selinux urfave_cli_no_docs netgo osusergo",
+      "ldflags": "-X main.gitCommit=bb14dabeb7185bb72c8c86735d090dcb20f36587-onesa.1 -X main.extraVersion=onesa.1 -w -s -linkmode external -extldflags -static",
+      "tests": [
+        "./libcontainer/configs/...",
+        "./libcontainer/specconv"
+      ],
+      "module_hashes": {
+        "go.mod": "88573ac4fe02440ce9ef2f7a8bb5a06b3bc55c887918105865fdbe581257bb6f",
+        "go.sum": "ddf9459a51fe61d3dad20f93748307603c8f3f0836290d6e811163dfa8aafa6a"
+      },
+      "binary_sha256": "d81163fea3822da9f484c08195236fce963416b166d470f5026f95d9942c43f0"
+    },
+    "containerd-shim-runc-v2": {
+      "repository": "k3s-io/containerd/v2",
+      "archive_url": "https://proxy.golang.org/github.com/k3s-io/containerd/v2/@v/v2.3.7-k3s1.36.zip",
+      "archive_sha256": "b299c5b57d11348126d6a4a566859b06a56bc0f7c6b52fcb5f70fc2ed4a72433",
+      "archive_type": "zip",
+      "archive_prefix": "github.com/k3s-io/containerd/v2@v2.3.7-k3s1.36",
+      "original_module_hashes": {
+        "go.mod": "90c9cd384720c9fad7960cfdf01725ca8ed7e86caf1c295e0f3ed8a5ee9e3b61",
+        "go.sum": "df3a87647a6d7a3bce86356386a20b6059a642860ab50bac1113da241619e461"
+      },
+      "package": "./cmd/containerd-shim-runc-v2",
+      "tags": "seccomp apparmor selinux netgo osusergo",
+      "ldflags": "-X github.com/containerd/containerd/v2/version.Version=v2.3.7-k3s1.36-onesa.1 -X github.com/containerd/containerd/v2/version.Package=github.com/k3s-io/containerd/v2 -w -s -linkmode external -extldflags -static",
+      "tests": [
+        "./pkg/oci",
+        "./core/images"
+      ],
+      "module_hashes": {
+        "go.mod": "2328b5576186645a05f6f92a2ba3dd2d80a134721bf5a4c9c211102170a4ba45",
+        "go.sum": "de2716b5cc180e141c34e4a42e21f3ddbf8338200c1672cc1fa51f0f4661c684"
+      },
+      "binary_sha256": "f2f998da13644c9f01b483b5174d79f2be959014f9aee4f59f6d79ad35dca7e3"
+    }
+  },
+  "vendor_runtime": {
+    "url": "https://github.com/k3s-io/k3s/releases/download/v1.36.6%2Bk3s1/k3s-arm64",
+    "sha256": "49dcecdb4f64f5e92bdc52d204d407fb39729e492f09074488125ee58b6f2895",
+    "payload": "cfb1b5dbac8211acac48301921a9b1a9466dac1ace58a4d84d93a5ca404dff6f"
+  },
+  "candidate_wrapper_sha256": "3ad54ea272b17cdd257558d69d7d29132714e7000534a45ab9a0539be7727de3",
+  "candidate_payload_sha256": "b221de240152ba42ed1a3e00a2483952dbe64916174711433465d82224bf9135",
+  "wrapper_ldflags": "-X github.com/k3s-io/k3s/pkg/version.Version=v1.36.6+k3s1-onesa.2 -X github.com/k3s-io/k3s/pkg/version.GitCommit=fa45d6a5-onesa.2 -w -s",
+  "operational_qualification": false,
+  "builder_dockerfile_sha256": "f1595dc632a876207ad3112491c8be1f6424071af6a42def5ec4942581121497",
+  "vendor_inventory_sha256": "8053e99626239741fe01d32346faa99a96a93bea5ca318790162b0f02d004a70",
+  "containerd_test_patch_sha256": "b855899757057c39b0c5726f079831831f93b1b911a73bac343d841772b9cf0e",
+  "builder_packages_sha256": "3aab96c97844c68261e4714870d18d1b4da1c55283b9cb96981f9f167e44a6bf",
+  "vendor_custody_sha256": "5e1c0292223db2c81bf501f0a3934f340f62bf4b65fcd8202ea67e267254dac8"
+}

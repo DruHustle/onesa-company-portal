@@ -1,5 +1,119 @@
 # Separate application builds and tests
 
+## ARM64 runtime candidate build
+
+`infra/oracle/runtime_builds/build.py` rebuilds a pinned, containerd-only K3s
+candidate in an unprivileged Linux ARM64 Docker builder. The lock binds upstream
+archives, module locks, compiler packages, runtime payload and expected executable
+hashes. Before executing a builder or vendor client, it also requires the private
+inputs pinned by `vendor-custody.lock.json`. That manifest covers every regular
+vendor runtime file: copied userspace tools, their configured Buildroot dependency
+closure, the separately built CNI and its embedded Go module graph, and the
+attributed `check-config` script. The three replaced executables, generated metadata
+and empty extraction lock have explicit, checked dispositions.
+
+The gate retains original source archives, notices, upstream recipes, configuration,
+patches and provenance in `vendor-custody.tar.gz`. It rejects missing or altered
+bytes, symlink/file-type/path substitutions and incomplete coverage, then reads back
+every archive member before accepting the bundle. Original package archives remain
+opaque; the gate never extracts or executes them. Source archives and operational
+evidence stay in private custody; only hashes and public provenance are tracked.
+
+The build also collects original rebuilt-component dependency notices and fails on
+missing notices, changed sources or different output bytes. At least 24 GiB of free local
+space is required; source/module downloads need HTTPS access. The final builds
+and vendor-client extraction run without network access.
+
+From this product directory:
+
+```sh
+python3 -m unittest discover -s infra/oracle/runtime_builds -p 'test_*.py'
+python3 infra/oracle/runtime_builds/build.py \
+  --output /absolute/new/runtime-build \
+  --cache /absolute/private/runtime-module-cache \
+  --vendor-custody /absolute/private/vendor-custody-inputs
+```
+
+The custody gate can be checked independently without Docker, network access or a
+runtime rebuild. The output directory must be new:
+
+```sh
+python3 infra/oracle/runtime_builds/custody.py \
+  --inputs /absolute/private/vendor-custody-inputs \
+  --output /absolute/new/vendor-custody-check
+```
+
+Arrange original inputs using the manifest's relative paths and verify their hashes;
+do not substitute reconstructed notices or grant a missing source an exception.
+The bundle preserves the 43 configured target packages conservatively, including
+the pinned Buildroot and K3s-root archives and overlay recipes. CNI custody follows
+its own embedded revision, Go version, module versions and Flannel overlay, not the
+separately rebuilt K3s module graph. Its recorded dirty build is not claimed to have
+been reproduced bit for bit. The `check-config` custody includes its exact K3s source
+and the explicitly attributed Moby/LXC sources. Source/notice coverage is not a legal
+completeness certification; redistribution review remains separate.
+
+An existing exact builder can be supplied with `--builder-image sha256:...`;
+architecture and compiler-package hashes are still checked. `--retained-inputs`
+accepts a directory containing the three component `.archive` files,
+`vendor-k3s-arm64`, and the two chart filenames from the lock. Their original
+hashes remain mandatory. Preserve `build-result.json`, `build.log`, both locks,
+source inputs, `licenses/` and the hash-bound `vendor-custody.tar.gz` with the
+candidate. The custody archive is separate from the runtime payload, preserving
+the reviewed payload and wrapper hashes. A wrapper alone is not a complete retained
+build result. The custody-only command records archive/readback results separately;
+it does not certify a rebuild or change an earlier build record.
+
+The recipe runs selected upstream tests. Its containerd test-only fixture separates
+the file-size and line-size limits and adds explicit oversized-line rejection;
+production Go source hashes and module locks must remain unchanged. These checks
+do not cover a running cluster or all upstream tests. The result remains
+`BUILT_NOT_INSTALL_QUALIFIED`: no installation, publication, owner-policy update or
+deployment authorization occurs. Security assessment, independent review, disabled
+embedded registry and vendor add-ons, real workload/network/storage acceptance,
+Portainer compatibility and VM recovery remain separate requirements.
+
+## Dependency-patched Kubernetes component builds
+
+`infra/oracle/component_builds/build.py` prepares local ARM64 runtime images for
+the reviewed upstream CoreDNS, Metrics Server and Local Path Provisioner sources.
+Its lock binds the exact upstream archive, original and resolved Go module locks, Go builder,
+certificate image, patch versions and reproducible binary hashes. It runs upstream
+race tests and retains source/module license notices in non-root scratch images.
+The builder uses no provider credentials or Docker socket inside the build container,
+and does not install, publish, modify a cluster or grant deployment authority.
+
+Run the archive-custody refusal tests with:
+
+```sh
+python3 -m unittest discover -s scripts -p test_oracle_component_sources.py
+```
+
+After retaining the exact builder and certificate image from `sources.lock.json`,
+run a component with a new absolute private output directory:
+
+```sh
+python3 infra/oracle/component_builds/build.py coredns --output /absolute/private/new-dns-build
+python3 infra/oracle/component_builds/build.py metrics-server --output /absolute/private/new-metrics-build
+python3 infra/oracle/component_builds/build.py local-path-provisioner --output /absolute/private/new-storage-build
+```
+
+`--source-archive` accepts a retained archive only when its SHA-256 matches the lock.
+`--cache` may reuse a dedicated absolute public Go-module cache. Existing output
+directories are refused. Only the three exact CoreDNS document aliases listed in
+the source lock may be materialized as regular copies of their reviewed in-archive
+files. All other links, link chains and traversal remain refused; no archive link
+is created on disk. Upstream and resolved module hashes, package checksums,
+binary bytes and actual runtime version must all match; a changed graph requires
+reviewed source updates. Local logs, images and build results remain private.
+
+Scan the resulting exact image IDs with the reviewed vulnerability tool and database.
+Retain raw findings and package-level applicability evidence; do not suppress a
+whole advisory because another image was reviewed. These builds do not change
+`k3s_release_lock.json` or the installed component manifests. Actual cluster DNS,
+storage retention/recovery, metrics TLS and resource behavior must be qualified
+before adopting an image. Command-line version/help checks are not that acceptance.
+
 ## NVIDIA reference asset gallery
 
 The product index and Drone product page contain three browser derivatives from
@@ -141,7 +255,14 @@ and accessibility checks to retain their scrolling and theme-transition regressi
 The mandatory CI run uses a 1920×1080, 24-bit Xvfb display and
 `NVIDIA_FIREFOX_HEADED=true` to exercise
 Firefox's real WebGL renderer on the Linux runner; Chromium and WebKit stay
-headless. All three engines retain every rendering and recovery assertion.
+headless. The synthetic Linux verification job selects Mesa software rendering
+with `LIBGL_ALWAYS_SOFTWARE=true` and `GALLIUM_DRIVER=llvmpipe`, using the
+[documented Mesa renderer selection](https://docs.mesa3d.org/envvars.html).
+Before gallery acceptance, each browser must create a real WebGL2 context,
+clear and read back a known pixel without a GL error or lost context. A missing
+renderer fails this prerequisite; it cannot pass as the expected model-download
+failure. All three engines retain every rendering and recovery assertion,
+including the separate deliberately unavailable-WebGL fallback scenario.
 A `LOCAL_NVIDIA_CHROMIUM_EXECUTABLE` run is explicitly reported
 as supplemental local evidence and does not satisfy the pinned-engine or hosted
 release requirements. No provider request or production data is used by these tests.
@@ -842,6 +963,50 @@ configuration, keys, receipts and timers, and never rerun the bootstrap installe
 Observe the next normal scheduled backup rather than triggering a production backup
 to test cleanup.
 
+## Private PostgreSQL target preparation
+
+Run the credential-free target and backup regressions from the Portal directory:
+
+```sh
+python3 -m unittest discover -s scripts -p 'test_oracle_database_target.py'
+python3 -m unittest discover -s scripts -p 'test_oracle_backup*.py'
+python3 -m unittest discover -s scripts -p 'test_oracle_database_snapshots.py'
+node --test scripts/test_oracle_backup_payload.mjs
+```
+
+The target tests use synthetic environment files, resource observations and a public
+certificate fixture. They reject changed source/role/database/TLS settings, unequal
+API/worker credentials, unreviewed runtime hashes, duplicate keys, unsafe file custody,
+mutable/wrong-architecture images, recreated volumes, changed bridge IDs, exposed
+ports, foreign mounts, unsafe HBA rules and an unenrolled primary. They also exercise
+the actual backup failure cleanup with a temporary CA and prove that local inspection
+and execution select the same local Docker daemon. No test connects to a provider,
+starts a database, sends email or changes application data.
+
+`infra/oracle/operations/database_target.py` has only read-only `render` and `check`
+actions. Rendering reads the ignored extension from the complete qualified source
+tree and validates existing resource/TLS custody before emitting a separate Compose
+model. It never invokes Compose or initializes a cluster. A missing optional profile
+retains the existing Neon behavior; a present invalid profile fails closed. The
+profile contains digests and target identities, not database passwords. Runtime
+files and the CA remain root-private; server certificate/key/HBA mounts are
+root-owned, readable by the pinned PostgreSQL group and inaccessible to others.
+
+The ordinary Compose model has no new active service or top-level network/volume.
+The rendered model requires its explicit `container-primary` profile, immutable
+ARM64 image, existing external volume/bridges and private read-only TLS mounts.
+Its direct PostgreSQL entrypoint deliberately cannot bootstrap an empty volume.
+Backup encryption, off-instance readback, existing retention and restore quarantine
+are retained; no second application writer or automatic recovery actuator is added.
+
+Real Docker Compose rendering/startup, initialized-volume ownership, certificate
+hostname/expiry, PostgreSQL major-version compatibility, restart persistence,
+restricted-role readiness, snapshot/restore and private-network reachability still
+require the approved isolated host and protected procedure. Unit success is not
+live database acceptance. An eventual cutover must stop all writers, preserve a
+verified recovery snapshot, coordinate both private runtime files and the backup
+binding, and retain the old primary fenced until recovery is resolved.
+
 ## Operations notification regression
 
 ### Bounded process recovery
@@ -959,17 +1124,45 @@ scanner marker mount. Only a failed, malformed or timed-out combined client perm
 one scanner-only fallback, bounded to four seconds. It calls the same consumer
 readiness function; it does not execute the scanner health script or substitute
 Docker health for marker access. An unavailable fallback remains a failed readiness
-observation. The exercised worst-case I/O path includes both client failures,
-retried public probes and notification delivery: 53 seconds against the unchanged
-60-second service deadline, leaving seven seconds of nominal overhead allowance.
+observation. Every disposable client has a fresh invocation name and ownership
+label. A failed or timed-out Docker client must positively identify and remove its
+own exact container ID before starting the fallback; an automatic-removal race is
+accepted only for that already inspected ID. An absent name does not prove that an
+interrupted create request cannot appear later, so it retains unresolved custody.
+The private pending-probe record is exclusively created and flushed before Docker
+runs, and cleared durably after completion. A later timer tick reconciles only
+that retained invocation after interruption; it does not start another probe in
+the same recovery tick. A nonblocking kernel lock prevents a concurrent observer
+from treating a running invocation as interrupted; process exit releases the lock.
+Changed, malformed, aliased or unresolved custody holds
+future probe creation, preserving the record for owner inspection.
+An interrupted invocation that never becomes visible stays held for explicit
+reconciliation; repeated absence is never recorded as successful cleanup.
+The inspection also requires the expected image, Node metrics command, read-only
+root and automatic-removal flag. Foreign names, changed identities, daemon errors
+and ambiguous cleanup never authorize removal. Normal exits retain Docker's
+existing automatic removal; historical containers and application services are
+never enumerated or adopted for cleanup. An unresolved cleanup is retained as
+`dependency_probe_cleanup_failed` in private metrics and cannot report a successful
+database/scanner observation or start another probe while its retained outcome
+is unresolved.
+
+The exercised worst-case I/O path includes both client failures, up to two
+one-second cleanup commands per failed client, retried public probes and
+notification delivery: 57 seconds against the unchanged 60-second service
+deadline, leaving three seconds of nominal overhead allowance. The existing
+twenty-second combined probe, four-second fallback and notification timeouts
+remain unchanged. Focused ownership, interruption, removal-race and failure tests
+run with `python3 -m unittest discover -s scripts -p test_oracle_operations.py`.
 This budget test is not a hosted latency guarantee or a reason to extend the service
 deadline. The healthy path adds no container or database query.
 
 New worker metrics include typed running/health status. The stable `worker-stopped`
 rule also covers unhealthy workers, so new email payloads explain the observed state.
-Both fields must be present and valid in the stored pending metrics before adding
-that detail. Existing pending payloads without them follow the byte-identical legacy
-format; retries never replace their observation with a new sample. Regressions compare
+Both fields must be present and valid in the event's metrics before adding that
+detail. New pending events retain the complete serialized request, so retries never
+rebuild their body or replace their observation with a new sample. Legacy pending
+events without a saved request remain held for reconciliation. Regressions compare
 the complete serialized provider payload and idempotency key and retain all existing
 incident, cooldown, reconciliation and recovery behavior. No test email is sent.
 
@@ -1006,6 +1199,37 @@ cover interrupted final writes, failed replacement, the next normal sample,
 pending delivery identity, restart counters, private file modes and simulation
 separation. Delivery is mocked; no production state or mail is used.
 
+`scripts/test_oracle_monitor_envelope.py` exercises exact body/idempotency reuse
+after sender, recipient and template changes, credential binding without saved
+keys, legacy/malformed request holds and conservative product sender routing.
+It also checks file-sync/rename/directory-sync ordering before the fake provider
+and refuses delivery when durable persistence fails. All recipients and credentials
+are existing approved names or synthetic fixtures; no test message is sent.
+
+The approved infrastructure destination is `it-infrastructure@onesa.eu`, selected
+with `OPERATIONS_NOTIFY_EMAIL` independently of application `NOTIFY_EMAIL`. An
+unset operations setting preserves the legacy fallback; an invalid or empty
+explicit value fails closed. The
+mail-envelope regressions check a fresh request to that mailbox, rejection of
+unapproved addresses, and exact-byte replay of a historical attempted request
+after the configured recipient changes. Runtime migration must first quiesce or
+reconcile pending attempts; source approval alone does not redirect deployed
+alerts or establish mailbox delivery. Staging operational mail remains disabled.
+
+`scripts/test_oracle_drone_monitoring.py` adds real Ed25519 signatures over a
+disposable synthetic issuer ledger and mocked operational observations. It checks
+the optional Drone route's default-off behavior, commissioned accepted source and
+runtime binding, actual staging/operations observations and their chronology,
+live revocation/supersession readback, custody rejection, simulation
+and loopback identity, unchanged six-slot monitoring, sender selection and retained
+pending-envelope holds. Real on-disk SQLite checks cover the owner's DELETE journal
+mode, committed WAL data and fresh snapshots, descriptor/path replacement refusal,
+record limits before materialization and deadline-interrupted queries. A private
+operator selection alone cannot pass acceptance.
+No real host, signing custody, Drone service, mailbox or provider is used. Existing
+records without the signed backend runtime snapshot remain held; these tests do not
+qualify or activate a deployment.
+
 The notification controls additionally cover
 synthetic incident transitions, immediate initial alerts, thirty-minute grouping of
 new failure rules/services and six-hour reminders for all unchanged incidents.
@@ -1037,10 +1261,13 @@ expires. Metric sampling and failure records continue; no new key is created to
 re-send an ambiguously accepted event. Healthy legacy installations do not receive
 a retrospective recovery email when this policy is first installed.
 
-The final snapshot adds restart baselines before one call to the existing atomic
-record writer. A failed temporary write or replacement retains the previous complete
-record, including a pending notification identity. This does not establish fsync,
-power-loss durability or concurrent-writer safety. Before installation, read back
+The final snapshot adds restart baselines before one call to the atomic record
+writer. A private unique temporary file is flushed and synced before replacement;
+the containing directory is then synced before any provider call. A failed temporary
+write or replacement retains the previous complete record. A directory-sync failure
+prevents sending even if the renamed record is already visible. These regressions
+do not simulate a physical power loss or establish concurrent-writer safety.
+Before installation, read back
 the actual singleton systemd oneshot unit/timer and check for duplicate schedulers;
 do not start a second monitor to test concurrency. Preserve real pending delivery
 and reconciliation records. Qualify interruption cases only with disposable state
@@ -1054,13 +1281,20 @@ escaping, trusted-origin buttons, malformed-link rejection, embedded owner artwo
 secret-free preheaders, stable Resend retry bodies and actual text/HTML/inline-image
 SMTP MIME. They send no email. `tests/mail-claim.test.ts` uses the guarded disposable
 PostgreSQL database in the full backend suite to exercise real row locks, competing
-workers, commit/rollback, interrupted claims and legacy/versioned retries. A first
-claim persists the presentation before any provider request; existing attempted jobs
-stay plain. No schema migration, remote font, image tracker or external dependency
-is needed. Browser previews establish layout only; inbox/client acceptance and the
-independently released worker need genuine hosted evidence. Retain the deployed
-renderer for versioned retries during upgrades or rollback; never reset attempts or
-change provider keys to obtain a new design.
+workers, commit/rollback, interrupted claims and immutable encrypted request custody.
+It checks byte-identical replay through a new client/transport, sender/recipient/key
+drift, legacy-attempt reconciliation, expiry, clock rollback, independent queued
+jobs, and SMTP ambiguity. `tests/mail-worker.test.ts` exercises the actual worker
+against the guarded disposable database with a synthetic provider callback: that
+callback verifies committed custody through an independent database read before
+returning an ambiguous outcome. The recovered worker claim replays exactly the same
+bytes/key, preserves retry cooldown and marks acceptance only after a valid receipt.
+All delivery is synthetic; no provider credential, mailbox or production database
+is used. Run the ordinary Node 24 backend `npm test`, lint, typecheck and build.
+No schema migration, remote font, tracker or new dependency is needed. Hosted worker
+qualification and inbox/client acceptance remain separate release requirements.
+Custody-aware workers must be retained when rolling back other components; reconcile
+legacy or ambiguous attempts without resetting counts, bytes or provider keys.
 
 The maintained `test:engineering-sign-in` renderer suite checks that no MFA field
 appears before credential proof, enrolled accounts receive the factor step and
@@ -1103,6 +1337,48 @@ socket access for atomic request-budget and real transport failure cases.
 The separate pinned CLI protocol fixture requires the credential-free disposable
 CLI image and synthetic custody/workspaces; the protected guide specifies that
 fixture arrangement. It never accepts provider credentials or authorizes a release.
+
+From the consolidated repository root, run
+`python3 -m unittest discover -s scripts/ci -p 'test_portal_component_consumer.py'`
+for the canonical component transitions. These tests reuse the original disposable
+installer and Ed25519 Store fixtures with the strict consolidated source API
+fixture. They check root/subtree archive separation, exact-main promotion,
+fixed private artifact pins at all four CI rechecks, source-only refusal,
+unchanged finite contexts, the separate record namespace and retained lifecycle
+holds. They also exercise complete build/preview/provider source identities and
+the canonical provider root without inventing a mandatory Git integration.
+The build protocol fixture writes real Git/tar artifacts with a synthetic
+container response; it does not claim an actual image build or hosted acceptance.
+The existing real loopback transport suite additionally rejects mismatched
+canonical source metadata before the sole provider request. Legacy source,
+signature, custody, uncertain-operation and rollback suites remain required.
+
+The backend transition covers the independent API, worker, scanner, identity
+migration and identity acceptance profiles. It compares complete immutable helper
+closures to their actual source tar, retains the legacy API comparison baseline,
+refuses extra components or renewed contexts, and binds every private plan to the
+root/product source. Adverse cases change installed executable/source/CI bytes,
+substitute source dimensions, preserve old lifecycle holds, and verify real
+Ed25519 dependency records with revocation and signed CI-source mismatch cases.
+The Node worker/API/scanner and identity-browser suites also exercise canonical
+source input without changing their original component/environment limits.
+The historical-journal suite uses real disposable Ed25519 stores and reconstructed
+Git archives to read an accepted old installation while a different verifier is
+currently installed. It exercises all three shared backend journals, unchanged
+current invocation refusal, original custody/source tampering, revoked chains,
+unresolved requests, and the scanner's completed, explicitly revoked exception.
+The reader validates the retained closure against its own source; it never
+imports that code, opens an issuing Store, or rewrites the old ledger/trust.
+
+Run the complete release suite and the five affected Node suites:
+`oracle_portal_worker_probe.test.mjs`, `oracle_portal_worker_production.test.mjs`,
+`oracle_portal_api_production.test.mjs`, `oracle_portal_scanner_workflows.test.mjs`,
+and `oracle_portal_identity_browser.test.mjs`. The actual Compose interpolation
+case requires the real Compose CLI; an unreachable daemon socket is sufficient
+because the test performs only configuration rendering. Local fixtures do not
+commission a controller, migrate a hosted database, connect Mobile, or establish
+hosted component/identity acceptance. Existing issuer/recovery history and
+exclusive controller handoff remain required before a legacy repository retires.
 
 The anonymous Portal browser probe checks EN/DE presentation, mobile and desktop,
 system appearance, reduced motion, accessibility, existing contact navigation and
@@ -1162,6 +1438,17 @@ AI-generated concept stills; it is not footage of aircraft, simulation or a work
 product. Prompts, image/video hashes and processing are in
 `onesa-company-portal-frontend/public/brand/sources.json`.
 It does not submit a live enquiry or establish hosted publication approval.
+
+If the product interaction fails, its existing optional diagnostic also retains
+bounded native summary/input, gallery-state and scroll observations collected in
+Node before any failed post-timeout DOM read. Passive listeners only read fixed
+numeric geometry and state enums; they add no wait before the original click.
+Per-document sampling and the retained queue are bounded, and the diagnostic keeps
+its 8 KiB limit and exclusive output file. The last observation's type and time
+remain explicit: absent or stale data does not prove a renderer or layout cause.
+The original click timeout, actionability and product assertions remain required.
+The recorder's privacy, ownership and resource bounds run before the browser
+fixture; `node --test unit/drone-product-diagnostics.test.mjs` runs them separately.
 
 Worker process regressions use `node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs scripts/release/oracle_portal_worker_probe.test.mjs`.
 The backend image-security job additionally runs `sudo -n python3 scripts/release/worker_fixture_smoke.py "$image" --worker-workflows --synthetic-scanner` on the disposable GitHub-hosted runner. It uses an internal Docker network, temporary PostgreSQL/TLS, loopback S3/SMTP protocol fixtures, and a synthetic scanner protocol fixture. The original seven-case database fixture test remains separate.
@@ -1275,6 +1562,23 @@ An explicitly supplied `ONESA_TEST_CHROMIUM_EXECUTABLE` with
 `ONESA_TEST_BROWSERS=chromium` supports a supplemental local engine when the pinned
 browser download is unavailable. That run is labeled supplemental and never
 substitutes for native three-engine CI or hosted end-to-end acceptance.
+The Engineering sign-in renderer also accepts `ONESA_TEST_CHROMIUM_EXECUTABLE`
+and reports the actual browser version and supplemental status; its default
+continues to use the pinned Chromium installation.
+`ONESA_SIGNIN_BROWSER=firefox` or `webkit` selects that pinned engine explicitly
+for additional local coverage; it does not change the default Chromium CI gate.
+
+Account renderer regressions keep unconnected catalog entries out of registration,
+access requests and launch links, including for administrators. The current
+three-product claims remain unchanged. Docs can return from central sign-in only
+to a validated local Engineering interaction; a fresh sign-in request uses the
+existing password/MFA flow. Linking an existing Docs identity requires an unchecked
+opt-in with its password or confirmed emailed-link proof. Email-link requests do
+not perform that link. If MFA enrollment is required, the same validated Docs return
+survives setup and routes through fresh central login; enrollment creates no session.
+Local renderer fixtures verify these controls without mail,
+database or provider requests; backend approval, identity-binding and concurrency
+tests remain separate.
 
 The feature remains off until complete owner-held issuer/client configuration,
 additive migrations, restricted grants, exact frontend callback allowlisting and
@@ -1302,6 +1606,18 @@ cookie scope, bounded IMAP literal parsing, MIME transfer encoding, exact delive
 recipient/time/link checks and redacted refusal output. These are local regression
 tests, not evidence that a provider or hosted interface accepted the release.
 
+The optional Zoho EU observer uses only fixed `mail.zoho.eu` GET endpoints and a
+pre-provisioned dedicated acceptance account with read-only account/message
+scopes. It verifies the actual member account, folder, lossless message IDs and
+delivered MIME message, preserving the blocked-certificate trust policy. It does
+not create an account, grant OAuth scope, send mail or change message flags.
+The freshness check binds to observation admission, with one 90-second deadline;
+a legitimate delivery after the first minute remains observable. Live GET starts
+are paced at least 2.2 seconds apart, including sequential observations. Offline
+regressions simulate late delivery, stale admission, deadline exhaustion, request
+pacing, malformed/oversized responses, foreign identities and redirect/TLS refusal.
+Account entitlement, private credentials and hosted qualification remain separate.
+
 The separately installed hosted helper consumes private stdin only. Its account
 scope observes real registration, verification delivery, member/administrator UI
 and API access, fresh MFA, password-reset delivery and sign-out. Its integrated
@@ -1311,6 +1627,12 @@ simulation workspace and Robot's read-only simulator, then observes permission
 and global-session revocation. Each product's own complete workflow qualification
 remains required; this combined check neither starts physical operations nor
 substitutes read-only identity results for simulation or AI workflow tests.
+Those product journeys must reuse the already verified central browser session:
+only the matching account continuation or an automatic protocol continuation is
+accepted. A password/MFA prompt or central login POST fails the SSO observation;
+the helper never re-enters fixture credentials to conceal lost session recognition.
+Separate denial observations still require an unapproved product to refuse access,
+and explicit protected-action MFA remains a distinct observation.
 
 The owner-held fixtures contain an existing owner credential, two operation-unique
 synthetic email aliases/passwords, an approved Drone workspace and a TLS IMAP inbox
@@ -1340,11 +1662,16 @@ Portal API and worker. Installation compares the complete backend source closure
 including authentication, migrations, dependency locks and build inputs, with the
 reviewed current-main tree. The existing narrow API and worker profiles retain
 their original rejection of authentication and migration changes. The new profile
-admits only the checksummed 012-to-014 additive migration, grants the existing
+admits only the checksummed 012, 014 or published Mobile 015 transition to 016, grants the existing
 restricted runtime role without creating or rotating credentials, and keeps schema
-014 during the staged compatible fallback and candidate reapplication. The fallback
+016 during the staged compatible fallback and candidate reapplication. Published
+Mobile migration 015 retains its exact bytes; migration 016 adds immutable Docs
+account links and linked-grant revocation while preserving
+existing credentials and approvals. The fallback
 uses the exact candidate image with identity disabled; historical images are not
-qualified merely because they start or can read the additive schema.
+qualified merely because they start or can read the additive schema. An unshipped
+Engineering migration recorded under number 015 fails the exact baseline checks;
+the adapter never infers its equivalence or rewrites migration history.
 
 Its restore observation reads the actual encrypted off-instance backup and escrow,
 compares every restored table with the original snapshot manifest, rehearses the
@@ -1389,3 +1716,130 @@ real signature verification and revocation, interruption without retry, atomic
 migration failure, checksum drift, idempotence, credential preservation, recovered
 archive integrity and read-only production inspection. These tests use disposable
 fixtures and do not issue live release records.
+
+
+The release profile tests bundle the original reviewed public frontend bytes in
+`scripts/release/fixtures/portal_frontend_v1`, identified by original Git blob,
+byte count and SHA-256. They work from a standalone snapshot without fetching
+`onesa-ug` or depending on its ancestry. Missing or changed fixtures fail closed;
+the current billing source and production qualification pins remain distinct.
+
+### Onesa Mobile identity regression
+
+The Mobile product extension adds `tests/identity-mobile-policy.test.ts` and
+Mobile cases to `tests/onesa-identity.test.ts`. With an isolated loopback
+`TEST_DATABASE_URL` whose database name ends `_test`, run from the backend:
+
+```sh
+node --import tsx --import ./tests/local-environment.ts --test --test-concurrency=1 tests/identity-mobile-policy.test.ts tests/onesa-identity.test.ts
+```
+
+The suite runs all migrations, including 015, against disposable data. It verifies
+pending customer defaults, all Mobile role constraints, staff MFA at login and
+continuation, live revocation, absence of implicit client enablement and unchanged
+three-product assertions for existing consumers. The frontend domain tests also
+cover the optional fourth exact callback and rejection of absent/extra callbacks.
+Run backend typecheck/build/lint/contracts and frontend API generation/typecheck/
+lint with these changes. The standalone Portal verification workflow runs both
+files through the backend's `tests/*.test.ts` suite with its disposable PostgreSQL
+service. This preserves the shared-identity regression when the repositories are
+separated. Local PGlite results do not replace PostgreSQL concurrency or separate
+hosted release qualification.
+
+## Company billing bridge and account page
+
+The prepared `/account/billing` page mounts the reviewed company billing web
+module through the Portal's same-origin API. `src/features/account/billing/vendor`
+contains version `0.1.0`, its five source files and an exact SHA-256/byte-count
+manifest. The frontend build runs `scripts/check-billing-bundle.mjs` before Next.
+Updating the vendor requires reviewing the canonical `onesa-billing/web` source
+and replacing its exact versioned bytes and manifest together; there is no runtime
+import of an unversioned sibling directory.
+
+### Backend configuration
+
+The root and backend `.env.example` files keep the bridge disabled. The following
+settings belong only to the Portal backend; the frontend receives no assertion
+key, Stripe key or Metronome credential.
+
+| Setting | Implemented contract |
+| --- | --- |
+| `BILLING_BRIDGE_ENABLED` | Absent or `false` disables the bridge without loading a key. Only exact `true` enables configuration validation. |
+| `BILLING_PRIVATE_ORIGIN` | Exact HTTP(S) origin of the private billing service, with no path, credentials, query or fragment. Accepted hosts are `localhost`, `127.0.0.1`, `[::1]`, RFC 1918 IPv4, ULA IPv6 and the fixed `onesa-billing` / `onesa-billing-api` names. The port must match that service. |
+| `BILLING_ASSERTION_ISSUER` | Dedicated issuer URL on the exact existing `PUBLIC_ORIGIN`, with no credentials, query, fragment or whitespace. Billing must configure this same issuer and its public verification key. |
+| `BILLING_ASSERTION_KID` | Explicit key identifier matching that public key; 1–128 characters, starting with an ASCII letter or digit and followed only by letters, digits, `.`, `_`, `:` or `-`. |
+| `BILLING_ASSERTION_PRIVATE_KEY_FILE` | Preferred absolute path to a dedicated Ed25519 PKCS#8 PEM. The final file must be regular, non-symlink, single-link, 1–16,384 bytes, owned by root or the runtime user, with no group/other permissions. Reads require stable file metadata. |
+| `BILLING_ASSERTION_PRIVATE_KEY_B64` | Alternative canonical base64 of the same PEM, at most 24,000 encoded characters and 16,384 decoded bytes. Set exactly one nonempty key input. |
+
+Existing `PUBLIC_ORIGIN` must be the Portal origin, using HTTPS except for local
+loopback development. Preserve the existing `SITE_URL` / `PORTAL_URL` host split,
+cookie/Origin/CSRF controls and company-host public API restriction. The bridge
+rechecks the current verified account under its session lock and signs only a
+60-second-or-shorter `billing:account` assertion. Billing resolves membership
+independently; Portal and product roles never become billing roles. This does not
+enable the separate shared-identity issuer. The private service, matching Portal
+schema, separate billing database, current verification key and independent
+release qualifications are prerequisites to activation.
+
+### Source and contract checks
+
+From this Portal product directory after the locked installs:
+
+```sh
+node onesa-company-portal-frontend/scripts/check-billing-bundle.mjs
+npm --prefix onesa-company-portal-backend run api:export
+npm --prefix onesa-company-portal-frontend run api:generate
+python3 scripts/check-contracts.py
+python3 scripts/test-contract-break.py
+npm --prefix onesa-company-portal-backend run typecheck
+npm --prefix onesa-company-portal-frontend run typecheck
+python3 scripts/validate-docs.py
+python3 scripts/repository_hygiene.py
+```
+
+API export and local fixture setup clear inherited `BILLING_` configuration before
+runtime imports. From the backend directory, the isolated bridge and environment
+regressions use generated fixture keys and synthetic transport only:
+
+```sh
+node --import tsx --test --test-concurrency=1 tests/billing-bridge.test.ts tests/local-environment.test.ts
+```
+
+For the separate actual PostgreSQL session-lock regression, first supply an
+isolated loopback `TEST_DATABASE_URL` whose database name ends `_test`, then run
+from the backend directory:
+
+```sh
+node --import tsx --import ./tests/local-environment.ts --test --test-concurrency=1 tests/billing-bridge.integration.test.ts
+```
+
+That fixture applies the Portal migrations to disposable data and checks native
+MFA-session reuse, current email verification, same-origin CSRF, disablement and
+a request admitted before concurrent session revocation. Missing test database
+configuration skips this fixture and cannot qualify the SQL boundary. It does not
+call Stripe or Metronome. Never supply an application database or provider secrets.
+
+From the canonical repository root, the independent web checks are:
+
+```sh
+node --test onesa-billing/web/test/client.test.mjs onesa-billing/web/test/money.test.mjs
+node --test onesa-billing/web/test/browser.test.mjs
+```
+
+The browser fixture owns its loopback server and Chromium child in one process.
+`BILLING_CHROMIUM_EXECUTABLE` may select an absolute reviewed browser executable;
+the default is `/usr/bin/chromium`, while the hosted billing job selects
+`/usr/bin/google-chrome`. `BILLING_BROWSER_RECEIPT` optionally names a new output
+file, written exclusively. The fixture uses synthetic same-origin API responses
+to exercise checkout recovery, history, invoice state, session expiry, keyboard
+focus and narrow-screen layout, with external name resolution blocked. It never
+supplies a provider credential or performs an actual payment. A browser startup
+failure leaves its UI cases unperformed. The optional `test/dom-acceptance.mjs`
+helper requires a separately reviewed test-only `jsdom` harness through
+`BILLING_DOM_HARNESS`; DOM results do not establish browser rendering acceptance.
+
+The root required verification includes the new company billing job. Portal and
+billing source checks, actual SQL/browser results and the normal `dev → staging →
+main` release gates remain separate from merchant configuration, hosted Checkout
+acceptance, invoice collection, Tax activation and live usage billing. These
+commands create no production release or external business configuration.

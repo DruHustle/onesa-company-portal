@@ -1,6 +1,6 @@
 """Source-bound shared identity release through the commissioned owner verifier.
 
-This separate profile may migrate 012 -> 014 and replace the existing Portal API
+This separate profile may migrate 012, 014 or published Mobile 015 -> 016 and replace the existing Portal API
 and worker together. The narrow API/worker profiles keep their original scope.
 Every write has a durable, single-use intent. An interrupted operation is inspected,
 never retried automatically. No supplied receipt creates release authority.
@@ -31,6 +31,8 @@ PREFIX = "onesa-company-portal-backend/"
 MIGRATIONS = {
     "013_onesa_identity.sql": "ce7f4ab09f7fafb915b4a4e8b1657ef1e6520494bd28a0492fc3d46d0f4d79e7",
     "014_identity_grant_sessions.sql": "a45640fc7a946f410033c0cc9cd666bfcb2e6a8e02a4f5a200bc2b548f7ce03f",
+    "015_mobile_identity.sql": "424c55596b0a3ee98330a2b2cd9171ab9dd2b23b8b20961a5f4b16b59f9867df",
+    "016_engineering_account_links.sql": "37416e013033aedfc54478f569ccc2b0eb8b0bf67e32bc76e13ae4fec24b5577",
 }
 ENVIRONMENTS = ("staging", "production")
 TARGETS = {
@@ -142,13 +144,13 @@ def identity_source_files(files):
         if name.startswith(PREFIX + "migrations/")
     }
     r.require(
-        len(migrations) == 14
+        len(migrations) == 16
         and all(
             re.fullmatch(r"%03d_[a-z_]+\.sql" % (i + 1), name)
             for i, name in enumerate(sorted(migrations))
         )
         and all(migrations.get(name) == value for name, value in MIGRATIONS.items()),
-        "IDENTITY_REVIEWED_012_TO_014_ONLY",
+        "IDENTITY_REVIEWED_012_014_OR_015_TO_016_ONLY",
     )
     return selected
 
@@ -205,7 +207,7 @@ def validate_recipe(value, env, kind):
 def validate_plan(binding, plan):
     exact(
         plan,
-        [
+        r.component_plan_fields(binding, [
             "schema_version",
             "qualification_profile",
             "verifier_store",
@@ -215,13 +217,12 @@ def validate_plan(binding, plan):
             "legacy_backup",
             "restore",
             "privacy_decision",
-        ],
+        ]),
         "IDENTITY_PLAN_SCHEMA",
     )
     r.require(
-        plan["schema_version"] == 1
+        r.component_plan_source(binding, plan, "identity")
         and plan["qualification_profile"] == PROFILE
-        and binding["repository"] == common.REPOSITORY
         and binding["component"] == "identity"
         and binding["target_environment"] == "production"
         and re.fullmatch(r"[a-f0-9]{40}", binding["candidate_commit"])
@@ -307,7 +308,7 @@ def validate_plan(binding, plan):
             digest(configuration(plan, env)) == binding["configuration_sha256"][env],
             "IDENTITY_CONFIGURATION_CHANGED",
         )
-    return ROOT / "artifacts" / binding["source_tree"]
+    return r.component_artifact_folder(ROOT, binding)
 
 
 def stable_profile(row):
@@ -414,14 +415,7 @@ def source_and_image(binding, plan, folder):
         r.sha(folder / "build.json") == binding["build_sha256"]
         and all(
             build.get(key) == binding[key]
-            for key in [
-                "repository",
-                "component",
-                "candidate_commit",
-                "source_tree",
-                "source_sha256",
-                "artifact_digest",
-            ]
+            for key in r.build_source_fields(binding)
         )
         and build.get("architecture") == "arm64"
         and build.get("dockerfile_sha256") == files[PREFIX + "Dockerfile"],
@@ -594,13 +588,28 @@ def identity_values(binding, plan, env):
     return values
 
 
+def database_custody(pointer):
+    """Read the pinned owner custody; a private CA is optional and never logged."""
+    custody = json.loads(private_bytes(pointer))
+    fields = ["database", "owner_uri"]
+    if isinstance(custody, dict) and "database_ca_pem" in custody:
+        fields.append("database_ca_pem")
+    exact(custody, fields, "IDENTITY_DATABASE_CUSTODY_SCHEMA")
+    if "database_ca_pem" in custody:
+        ca = custody["database_ca_pem"]
+        r.require(
+            isinstance(ca, str) and 0 < len(ca.encode("utf-8")) <= 8192,
+            "IDENTITY_DATABASE_CA_INVALID",
+        )
+    return custody
+
+
 def validate_custody(plan):
     """Cross-check the existing API/worker credentials without exposing values."""
     databases = []
     for env in ENVIRONMENTS:
         selected = plan["environments"][env]
-        custody = json.loads(private_bytes(selected["database_file"]))
-        exact(custody, ["database", "owner_uri"], "IDENTITY_DATABASE_CUSTODY_SCHEMA")
+        custody = database_custody(selected["database_file"])
         database = custody["database"]
         exact(
             database,
@@ -612,6 +621,12 @@ def validate_custody(plan):
             pointer = selected[kind]["runtime_file"]
             private_bytes(pointer, pointer["path"])
             values = r.runtime_values(Path(pointer["path"]))
+            ca = custody.get("database_ca_pem")
+            expected_ca = base64.b64encode(ca.encode("utf-8")).decode("ascii") if ca else None
+            r.require(
+                values.get("ONESA_DATABASE_CA_PEM_B64") == expected_ca,
+                "IDENTITY_RUNTIME_DATABASE_CA_MISMATCH",
+            )
             r.require(
                 not IDENTITY_KEYS & set(values),
                 "IDENTITY_BASELINE_MUST_BE_FEATURE_DISABLED",
@@ -646,8 +661,7 @@ def validate_custody(plan):
 
 def migration(binding, plan, env, operation, migrations, action, target):
     selected = plan["environments"][env]
-    custody = json.loads(private_bytes(selected["database_file"]))
-    exact(custody, ["database", "owner_uri"], "IDENTITY_DATABASE_CUSTODY_SCHEMA")
+    custody = database_custody(selected["database_file"])
     runtime = selected["api"]["runtime_file"]
     private_bytes(runtime, runtime["path"])
     values = r.runtime_values(Path(runtime["path"]))
@@ -661,6 +675,8 @@ def migration(binding, plan, env, operation, migrations, action, target):
         "runtime_uri": values["DATABASE_URL"],
         "migrations": migrations,
     }
+    if "database_ca_pem" in custody:
+        request["database_ca_pem"] = custody["database_ca_pem"]
     program = Path(__file__).with_name("oracle_portal_identity_migrate.mjs").read_text()
     program += "\nimport fs from 'node:fs';try{console.log(JSON.stringify(await live(JSON.parse(fs.readFileSync(0,'utf8')))));}catch{console.log(JSON.stringify({state:'IDENTITY_MIGRATION_REFUSED_INSPECT_WITHOUT_RETRY'}));process.exitCode=1;}\n"
     row = json.loads(r.docker("inspect", TARGETS[env]["api"]))[0]
@@ -712,15 +728,16 @@ def migration(binding, plan, env, operation, migrations, action, target):
         and result["environment"] == env
         and result["state"]
         == (
-            "IDENTITY_SCHEMA_014_APPLIED_NOT_AUTHORIZATION"
+            "IDENTITY_SCHEMA_016_APPLIED_NOT_AUTHORIZATION"
             if action == "apply"
             else "IDENTITY_SCHEMA_INSPECTED_NOT_AUTHORIZATION"
         )
         and result["credential_changes"] == 0
         and result["down_migrations"] == 0
         and result["existing_accounts_preserved"] is True
+        and result["schema_version"] in {12, 14, 15, 16}
         and result["schema_version"]
-        == (14 if action == "apply" else result["schema_version"]),
+        == (16 if action == "apply" else result["schema_version"]),
         "IDENTITY_MIGRATION_READBACK",
     )
     r.write(target / ("migration-" + action + ".json"), result)
@@ -884,7 +901,7 @@ def verify_probe_image(plan):
     r.require(
         r.sha(source) == tool["source_sha256"], "IDENTITY_PROBE_SOURCE_ARCHIVE_CHANGED"
     )
-    _, files = r.source_inventory(source, {"source_tree": tool["source_tree"]})
+    _, files = r.source_inventory(source, tool.get("source_binding") or {"source_tree": tool["source_tree"]})
     image = json.loads(r.docker("image", "inspect", tool["probe_image"]))[0]
     labels = image["Config"].get("Labels") or {}
     r.require(
@@ -1297,9 +1314,10 @@ def production(binding, plan, context, folder, records):
 
 def runner(phase, binding, context):
     r.require(phase in CHECKS, "IDENTITY_PHASE_SCOPE")
-    plan = r.read(PLAN)
+    plan = r.read(r.component_plan_path(binding, PLAN))
     folder = validate_plan(binding, plan)
     records = r.verify_invocation(binding, context, phase, plan)
+    r.verify_canonical_component_custody(binding, plan, CHECKS)
     if phase == "staging":
         observed = staging(binding, plan, context, folder, records)
     elif phase == "operations":
@@ -1325,7 +1343,7 @@ def record_failure(phase, request, error, *, component="identity"):
             and phase in CHECKS
             and isinstance(request, dict)
             and request["binding"]["component"] == component
-            and request["binding"]["repository"] == common.REPOSITORY,
+            and bool(r.portal_component_scope(request["binding"], component)),
             "IDENTITY_DIAGNOSTIC_SCOPE",
         )
         root = r.private(ROOT.parent / component, directory=True)

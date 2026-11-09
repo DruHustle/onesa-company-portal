@@ -12,9 +12,16 @@ export async function accountRequest<T>(path: string, input?: unknown, csrf?: st
   if (!response.ok) throw new AccountError(body?.error?.message || "The request could not be completed. Please try again.", body?.error?.code || "REQUEST_FAILED", response.status);
   return body as T;
 }
-export const productNames = { ai: "Onesa AI", drone: "Onesa Drone", robot: "Onesa Robot" };
+export const productNames = { ai: "Onesa AI", drone: "Onesa Drone", robot: "Onesa Robot", mobile: "Onesa Mobile" };
 export type Product = keyof typeof productNames;
+export function enabledProducts(applications: { product: Product }[]): Product[] {
+  return (Object.keys(productNames) as Product[]).filter(product => product !== "mobile" || applications.some(application => application.product === "mobile"));
+}
+
+export const futureProductNames = { farmer: "Smart Farmer", logistics: "Smart Logistics", factory: "Smart Factory", pasofi: "PasoFi", mobile: "Onesa Mobile" };
+export type ProductCatalog = { product: Product | keyof typeof futureProductNames; name: string; connected: boolean }[];
+export type AccountConfig = { enabled: boolean; applications?: { product: Product }[]; catalog?: ProductCatalog };
 export type Account = { id: string; email: string; name: string; globalAdmin: boolean; owner: boolean; portalAccess: boolean; emailVerified: boolean; mfaEnrolled: boolean };
 export type Access = { product: Product; role: string; status: "pending" | "active" | "revoked" | "rejected"; revision: number };
 export type Membership = { tenant_id: string; role: "viewer" | "operator" | "admin"; label: string };
-export type AccountSession = { account: Account; csrf: string; access: Access[]; memberships: Membership[]; applications: { product: Product; url: string }[] };
+export type AccountSession = { account: Account; csrf: string; access: Access[]; memberships: Membership[]; applications: { product: Product; url: string }[]; catalog?: ProductCatalog };
