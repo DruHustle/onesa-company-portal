@@ -30,7 +30,7 @@ REVIEWED_BLOBS = {
     PREFIX + "package.json": "63c3ba4fafad01f84071c7590034710017d7f2b5",
     PREFIX + "src/app/api/v1/[...path]/route.ts": "5271c8e0089adc388805172f47a955787a856be8",
     PREFIX + "src/features/account/account.tsx": "5aec07bad5bfbc5383c0fc7b0088359360aa908a",
-    PREFIX + "src/features/account/api.ts": "7268598ce90253c1b4c350f2e9ac4c947e16edcf",
+    PREFIX + "src/features/account/api.ts": "7268598ce90253c1b4c350f2e9ac4c947e16edcf",  # gitleaks:allow -- Git blob ID of immutable public source fixture.
     PREFIX + "src/lib/api/generated/schema.d.ts": "1492ca47347c04ccb2d6b3fc439d2f09f3e40c75",
 }
 
