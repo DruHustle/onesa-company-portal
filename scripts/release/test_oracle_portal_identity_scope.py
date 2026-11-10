@@ -22,7 +22,7 @@ class FrontendIdentityScopeTests(unittest.TestCase):
         old[identity.PREFIX + "src/features/account/account.tsx"] = "1" * 64
         return old, new
 
-    def test_current_billing_and_catalog_source_are_not_accepted_by_legacy_identity_profile(self):
+    def test_current_billing_catalog_and_browser_source_are_not_accepted_by_legacy_identity_profile(self):
         old, _ = self.inventories()
         current = {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
                    for name in identity.PINS}
@@ -33,14 +33,15 @@ class FrontendIdentityScopeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "IDENTITY_FRONTEND_REVIEWED_SOURCE_CHANGED"):
             identity.reviewed_delta(old, current)
 
-    def test_catalog_label_update_does_not_repin_the_legacy_identity_profile(self):
+    def test_catalog_and_browser_label_updates_do_not_repin_the_legacy_identity_profile(self):
         old, reviewed = self.inventories()
-        name = identity.PREFIX + "src/features/account/api.ts"
-        current = dict(reviewed)
-        current[name] = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        self.assertNotEqual(current[name], reviewed[name])
-        with self.assertRaisesRegex(ValueError, "IDENTITY_FRONTEND_REVIEWED_SOURCE_CHANGED"):
-            identity.reviewed_delta(old, current)
+        for path in ["src/features/account/api.ts", "scripts/test-onesa-account.mjs"]:
+            name = identity.PREFIX + path
+            current = dict(reviewed)
+            current[name] = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+            self.assertNotEqual(current[name], reviewed[name])
+            with self.subTest(path=path), self.assertRaisesRegex(ValueError, "IDENTITY_FRONTEND_REVIEWED_SOURCE_CHANGED"):
+                identity.reviewed_delta(old, current)
 
     def test_legacy_fixture_reads_fail_closed_without_exact_original_bytes(self):
         name = identity.PREFIX + "package.json"
@@ -69,6 +70,7 @@ class FrontendIdentityScopeTests(unittest.TestCase):
 
     def test_account_proxy_or_manifest_changes_require_an_explicit_new_review(self):
         for name in ["src/features/account/account.tsx", "src/features/account/api.ts", "src/lib/domains.ts",
+                     "scripts/test-onesa-account.mjs",
                      "src/features/engineering/sign-in.tsx", "src/lib/account-return.ts",
                      "src/lib/engineering-sign-in-errors.ts",
                      "src/app/api/v1/[...path]/route.ts", "package.json", "package-lock.json",
