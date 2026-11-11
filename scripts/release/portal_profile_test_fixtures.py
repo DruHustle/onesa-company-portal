@@ -39,7 +39,7 @@ REVIEWED_FILES = {
     PREFIX + "src/lib/api/generated/schema.d.ts": (787032, "e84ad11bf072ba1c2aee94b70af9ea73e98d8dea426979d55e09479d23cf37f8"),
 }
 REVIEWED_BLOBS = {
-    PREFIX + "src/features/account/access-manager.tsx": "f84c3503551a5897befac16730895a59bd26effb",
+    PREFIX + "src/features/account/access-manager.tsx": "f84c3503551a5897befac16730895a59bd26effb",  # gitleaks:allow -- Git blob ID of the reviewed public account access editor.
     PREFIX + "src/features/engineering/sign-in.tsx": "ed871e21ef90c4be1e214cc3d1a75a968216cb76",
     PREFIX + "src/lib/engineering-sign-in-errors.ts": "3f024f195f0a8fcb8432d5629b3b231c88d2606b",
     PREFIX + "src/lib/onesa-identity.ts": "9388e8e4b3f558ef3955d2624f55dc318d861848",
@@ -82,7 +82,7 @@ SCHEMA_016 = {
     "008_privacy_governance.sql": "c016c076686dfcb2982c743359ad94bfa24fca71bc1250e20fc3b7c655df02e3",
     "009_privacy_lifecycle.sql": "8d066d911d17dd5aec1cc89915037bfb5f158afa069e381e4fb42976348877a5",
     "010_engineering_identity.sql": "11f4cb0d0fb2de052c31583a35d72b68f4ed288b155196e6cee9cf56010f5c86",
-    "011_access_registration.sql": "11ee7bd502a78ee876f1634edf34dc626d3a3b9c7417646427abe03607e0e297",
+    "011_access_registration.sql": "11ee7bd502a78ee876f1634edf34dc626d3a3b9c7417646427abe03607e0e297",  # gitleaks:allow -- SHA-256 of immutable public migration SQL.
     "012_editorial_publications.sql": "8da498b00c9eef6e9cdd4bf4299d2ffa7a890e5d936fc23c6f37e9398b54608c",
     "013_onesa_identity.sql": "ce7f4ab09f7fafb915b4a4e8b1657ef1e6520494bd28a0492fc3d46d0f4d79e7",
     "014_identity_grant_sessions.sql": "a45640fc7a946f410033c0cc9cd666bfcb2e6a8e02a4f5a200bc2b548f7ce03f",
