@@ -40,6 +40,10 @@ IDENTITY_FRONTEND_ALLOWED = {
     **NVIDIA_ALLOWED,
     "runners/oracle_portal_identity_scope.py": "scripts/release/oracle_portal_identity_scope.py",
 }
+IDENTITY_FRONTEND_V2_ALLOWED = {
+    **NVIDIA_ALLOWED,
+    "runners/oracle_portal_frontend_identity_v2.py": "scripts/release/oracle_portal_frontend_identity_v2.py",
+}
 SCANNER_ALLOWED = {
     **ALLOWED,
     "runners/oracle_portal_scanner.py": "scripts/release/oracle_portal_scanner.py",
@@ -153,6 +157,13 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     elif set(m["files"]) == set(IDENTITY_FRONTEND_ALLOWED):
         allowed, component, script, prefix = (
             IDENTITY_FRONTEND_ALLOWED,
+            "frontend",
+            "oracle_portal_frontend.py",
+            "portal-",
+        )
+    elif set(m["files"]) == set(IDENTITY_FRONTEND_V2_ALLOWED):
+        allowed, component, script, prefix = (
+            IDENTITY_FRONTEND_V2_ALLOWED,
             "frontend",
             "oracle_portal_frontend.py",
             "portal-",
@@ -289,6 +300,11 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "Shared identity frontend requires its complete reviewed installation",
         )
         require(
+            (allowed is IDENTITY_FRONTEND_V2_ALLOWED)
+            == (selected == getattr(module, "IDENTITY_PROFILE_V2", None)),
+            "Seven-client frontend requires its complete reviewed installation",
+        )
+        require(
             all(
                 module.profile_checks(profile, phase)
                 <= set(profile["required_checks"][phase])
@@ -322,6 +338,7 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     if selected in {
         module.NVIDIA_PROFILE,
         getattr(module, "IDENTITY_PROFILE", "frontend-identity-v1"),
+        getattr(module, "IDENTITY_PROFILE_V2", "frontend-identity-v2"),
     }:
         tool_fields.add("frontend_baseline")
     require(
@@ -334,6 +351,7 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     if selected in {
         module.NVIDIA_PROFILE,
         getattr(module, "IDENTITY_PROFILE", "frontend-identity-v1"),
+        getattr(module, "IDENTITY_PROFILE_V2", "frontend-identity-v2"),
     }:
         baseline = tool["frontend_baseline"]
         require(
