@@ -633,6 +633,46 @@ test("administrator linking retains MFA and cannot bypass an unapproved Engineer
   );
 });
 
+test("an MFA administrator enrolls in Docs without a second password; exact preapproval or owner review controls access", async () => {
+  process.env.ACCESS_REGISTRATION_ENABLED = "true";
+  process.env.ACCESS_APPROVAL_OWNER_ID = owner;
+  process.env.ACCESS_POLICY_EVIDENCE = "Synthetic verified exact email policy";
+  try {
+    for (const preapproved of [true, false]) {
+      const account = await fixture(preapproved ? "preapproved-admin" : "pending-admin", "administrator");
+      await db.query("DELETE FROM engineering_memberships WHERE id=$1", [account.membership]);
+      await db.query("UPDATE users SET mfa_secret=$1 WHERE id=$2", [encrypt("JBSWY3DPEHPK3PXP"), account.id]);
+      const code = randomUUID();
+      await db.query("INSERT INTO mfa_recovery(user_id,code_hash) VALUES($1,$2)", [account.id, hash(code)]);
+      process.env.ACCESS_PREAPPROVED_EMAILS = JSON.stringify(preapproved ? [account.email] : []);
+      const central = await signIn(account, browser(), code);
+      const flow = await authorization(central);
+      assert.equal(flow.details.onesaEnrollment, "available");
+      const enrolled = await submit(flow, "enroll");
+      assert.equal(enrolled.statusCode, 200, enrolled.body);
+      assert.equal(enrolled.json().status, preapproved ? "approved" : "pending");
+      const next = await authorization(browser(new Map([["onesa_account", central.jar.get("onesa_account")!]])));
+      if (preapproved) {
+        assert.deepEqual(next.details.onesaAccount, { email: account.email });
+        const finish = await submit(next, "session");
+        assert.equal(finish.statusCode, 200, finish.body);
+        assert.equal((await exchange(next, finish.json().continuePath)).statusCode, 200);
+      } else {
+        assert.equal(next.details.onesaAccount, undefined);
+        assert.equal(next.details.onesaEnrollment, "pending");
+        assert.equal((await submit(next, "session")).statusCode, 401);
+        assert.equal((await submit(next, "enroll")).json().status, "pending");
+      }
+      assert.equal((await db.query("SELECT 1 FROM engineering_credentials c JOIN engineering_memberships m ON m.id=c.membership_id WHERE m.email=$1", [account.email])).rowCount, 0);
+    }
+    const unprivileged = await fixture("must-prove-existing");
+    const existing = await authorization(await signIn(unprivileged));
+    assert.equal((await submit(existing, "enroll")).statusCode, 403);
+  } finally {
+    for (const key of ["ACCESS_REGISTRATION_ENABLED","ACCESS_APPROVAL_OWNER_ID","ACCESS_POLICY_EVIDENCE","ACCESS_PREAPPROVED_EMAILS"]) delete process.env[key];
+  }
+});
+
 test("global logout invalidates linked issuer artifacts and late writes without claiming to clear Cloudflare cookies", async () => {
   const identity = await fixture("global-logout"),
     { signed, flow, linked } = await linkWithPassword(identity);

@@ -38,6 +38,8 @@ import {
   identityConfiguration,
   identityPath,
   products,
+  clientProducts,
+  isAdminProduct,
   mobileRoles,
   defaultProductRole,
   validProductRole,
@@ -68,6 +70,7 @@ const failures = {
 const proof = z.string().regex(/^[a-f0-9]{64}$/);
 const uid = z.string().regex(/^[A-Za-z0-9_-]{8,128}$/);
 const product = z.enum(products);
+const clientProduct = z.enum(clientProducts);
 const stepUp = z.object({
   password: z.string().min(1).max(256),
   code: z.string().min(6).max(64),
@@ -99,7 +102,7 @@ const membershipSchema = z.object({
   role: z.enum(["viewer", "operator", "admin"]),
   label: z.string().min(1).max(120),
 });
-const applicationSchema = z.object({ product, url: z.url() });
+const applicationSchema = z.object({ product: clientProduct, url: z.url() });
 const catalogSchema = z.object({ product: z.enum(catalogProducts), name: z.string(), connected: z.boolean() });
 const sessionSchema = z.object({
   account: accountSchema,
@@ -252,12 +255,15 @@ export async function registerIdentity(
               auth_time: z.number().int(),
               amr: z.array(z.string()),
               onesa_roles: z.array(z.literal("global_admin")),
-              onesa_applications: z.array(product),
+              onesa_applications: z.array(clientProduct),
               onesa_product_roles: z.object({
                 ai: z.enum(["user", "admin"]).optional(),
                 drone: z.enum(["viewer", "operator", "admin"]).optional(),
                 robot: z.enum(["viewer", "operator", "admin"]).optional(),
                 mobile: z.enum(mobileRoles).optional(),
+                farmer: z.literal("admin").optional(),
+                logistics: z.literal("admin").optional(),
+                pasofi: z.literal("admin").optional(),
               }),
               onesa_memberships: z.array(
                 membershipSchema
@@ -326,23 +332,18 @@ export async function registerIdentity(
         onesa_product_roles,
         onesa_memberships,
       } = await accountAccess(account);
-      // Legacy consumers reject unknown product names. Mobile receives the expanded
-      // vocabulary; existing product assertions retain their three-product contract.
+      // Legacy clients validate the whole vocabulary. New clients receive only
+      // their own entitlement and no information about other product workspaces.
+      const visibleProducts: readonly string[] = isAdminProduct(client.product)
+        ? [client.product]
+        : client.product === "mobile" ? products : ["ai", "drone", "robot"];
       const claims = {
         onesa_roles,
-        onesa_applications:
-          client.product === "mobile"
-            ? onesa_applications
-            : onesa_applications.filter((name) => name !== "mobile"),
-        onesa_product_roles:
-          client.product === "mobile"
-            ? onesa_product_roles
-            : Object.fromEntries(
-                Object.entries(onesa_product_roles).filter(
-                  ([name]) => name !== "mobile",
-                ),
-              ),
-        onesa_memberships,
+        onesa_applications: onesa_applications.filter((name) => visibleProducts.includes(name)),
+        onesa_product_roles: Object.fromEntries(
+          Object.entries(onesa_product_roles).filter(([name]) => visibleProducts.includes(name)),
+        ),
+        onesa_memberships: isAdminProduct(client.product) ? [] : onesa_memberships,
       };
       if (!claims.onesa_applications.includes(client.product))
         return { active: false as const };
@@ -737,6 +738,7 @@ export async function registerIdentity(
     reply: FastifyReply,
     input: z.infer<typeof credentials>,
     mfaRequired: boolean,
+    interactionAccountId?: string,
   ): Promise<AccountSession> {
     const email = input.email.toLowerCase();
     await limits.limit("identity-login-ip:" + limits.address(req), 15, 900);
@@ -891,8 +893,12 @@ export async function registerIdentity(
       ...cookieOptions(),
       ...(input.rememberBrowser ? { maxAge: 28800 } : {}),
     });
-    reply.clearCookie("onesa_identity_session", { path: "/" });
-    reply.clearCookie("onesa_identity_session.sig", { path: "/" });
+    // OIDC binds a pending interaction to the original provider session UID.
+    // During same-account step-up the central credential rotates independently.
+    if (interactionAccountId !== result.account.id) {
+      reply.clearCookie("onesa_identity_session", { path: "/" });
+      reply.clearCookie("onesa_identity_session.sig", { path: "/" });
+    }
     if (result.account.role === "member") clearSessionCookies(reply);
     if (result.account.role !== "member")
       setSessionCookie(
@@ -1166,10 +1172,13 @@ export async function registerIdentity(
       );
     return { details, client };
   }
-  const freshRequired = (params: Record<string, unknown>) =>
-    String(params.prompt ?? "")
-      .split(" ")
-      .includes("login") || params.max_age !== undefined;
+  function freshRequired(params: Record<string, unknown>, session: AccountSession | null) {
+    if (String(params.prompt ?? "").split(" ").includes("login")) return true;
+    if (params.max_age === undefined) return false;
+    const maxAge = Number(params.max_age);
+    const age = session && Math.floor(Date.now() / 1000) - session.authenticatedAt;
+    return !Number.isSafeInteger(maxAge) || maxAge <= 0 || age === null || age < 0 || age >= maxAge;
+  }
   const mfaRequired = (params: Record<string, unknown>) =>
     String(params.acr_values ?? "")
       .split(" ")
@@ -1184,7 +1193,7 @@ export async function registerIdentity(
         response: {
           200: z.object({
             csrf: proof,
-            product,
+            product: clientProduct,
             freshRequired: z.boolean(),
             mfaRequired: z.boolean(),
             account: accountSchema.nullable(),
@@ -1199,7 +1208,7 @@ export async function registerIdentity(
       return {
         csrf: interactionProof(details.uid),
         product: client.product,
-        freshRequired: freshRequired(details.params),
+        freshRequired: freshRequired(details.params, session),
         mfaRequired: mfaRequired(details.params),
         account: session ? safeAccount(session.account) : null,
       };
@@ -1343,13 +1352,14 @@ export async function registerIdentity(
       const { details, client } = await interaction(req, reply);
       if (!same(req.body.csrf, interactionProof(details.uid)))
         throw new HttpError(403, "CSRF", "Refresh this sign-in request.");
-      if (freshRequired(details.params))
+      const session = await requireAccount(req);
+      if (freshRequired(details.params, session))
         throw new HttpError(
           403,
           "REAUTH_REQUIRED",
           "Confirm your password and authenticator to continue.",
         );
-      return finish(req, reply, await requireAccount(req), client);
+      return finish(req, reply, session, client);
     },
   );
   api.post(
@@ -1373,7 +1383,7 @@ export async function registerIdentity(
       return finish(
         req,
         reply,
-        await authenticate(req, reply, req.body, mfaRequired(details.params)),
+        await authenticate(req, reply, req.body, mfaRequired(details.params), details.session?.accountId),
         client,
       );
     },

@@ -20,7 +20,7 @@ const origin = process.env.PUBLIC_ORIGIN;
 const key = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const config = {
   issuer: origin + "/api/v1/identity",
-  clients: ["ai", "drone", "robot", "mobile"].map((product) => ({
+  clients: ["ai", "drone", "robot", "mobile", "farmer", "logistics", "pasofi"].map((product) => ({
     product,
     clientId: "synthetic_onesa_" + product,
     clientSecret: randomBytes(48).toString("hex") + "+%",
@@ -265,7 +265,7 @@ const inspect = (token: string, index = 0) =>
 
 test("Configuration is opt-in, fixed-client, exact issuer/callback and strong-key only", () => {
   assert.equal(identityConfiguration({}, origin), null);
-  assert.equal(identityConfiguration(process.env, origin)?.clients.length, 4);
+  assert.equal(identityConfiguration(process.env, origin)?.clients.length, 7);
   assert.equal(
     identityConfiguration(
       {
@@ -576,6 +576,74 @@ test("Global Administrators need MFA and receive all applications without per-pr
   });
   assert.ok(claims.amr.includes("otp"));
 });
+test("an MFA platform session signs into all seven clients with the contract for that audience", async () => {
+  const central = await signIn("admin");
+  const legacy = ["ai", "drone", "robot"];
+  const tokens: string[] = [];
+  for (const [index, client] of config.clients.entries()) {
+    const flow = await authorization("admin", index, central);
+    assert.equal(flow.details.account.id, admin);
+    const { token } = await complete(flow, true);
+    const claims = (await inspect(token, index)).json();
+    assert.equal(claims.active, true);
+    assert.equal(claims.sub, admin);
+    assert.equal(claims.aud, client.clientId);
+    assert.deepEqual(claims.onesa_roles, ["global_admin"]);
+    assert.ok(claims.amr.includes("otp"));
+    const expected = legacy.includes(client.product) ? legacy :
+      client.product === "mobile" ? [...legacy, "mobile"] : [client.product];
+    assert.deepEqual(claims.onesa_applications, expected);
+    assert.deepEqual(claims.onesa_product_roles, Object.fromEntries(expected.map((name) => [name, "admin"])));
+    assert.deepEqual(claims.onesa_memberships, []);
+    tokens.push(token);
+  }
+  await db.query("UPDATE users SET role='member' WHERE id=$1", [admin]);
+  for (const [index, token] of tokens.entries())
+    assert.deepEqual((await inspect(token, index)).json(), { active: false });
+});
+
+test("ordinary product membership cannot authorize an administrator-only client", async () => {
+  const central = await signIn("member");
+  for (const [index, client] of config.clients.entries()) {
+    if (!["farmer", "logistics", "pasofi"].includes(client.product)) continue;
+    const flow = await authorization("member", index, central);
+    const response = await flow.request({
+      method: "POST", url: "/api/v1/account/interaction/" + flow.uid + "/continue",
+      payload: {csrf: flow.details.csrf},
+    });
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().error.code, "PRODUCT_ACCESS_REQUIRED");
+  }
+});
+
+test("switching from AI to PasoFi and Mobile keeps OIDC state, enforces max_age and preserves prior proof", async () => {
+  const central = await signIn("admin");
+  const oldTime = Math.floor(Date.now() / 1000) - 600;
+  await db.query("UPDATE identity_sessions SET authenticated_at=to_timestamp($2) WHERE user_id=$1", [admin, oldTime]);
+  const first = await complete(await authorization("admin", 0, central), true);
+  const original = (await inspect(first.token, 0)).json();
+  assert.equal(original.auth_time, oldTime);
+  const pasofi = config.clients.findIndex(client => client.product === "pasofi");
+  const mobile = config.clients.findIndex(client => client.product === "mobile");
+  const stepUp = { max_age: "300", acr_values: "urn:onesa:mfa" };
+  const stale = await authorization("admin", pasofi, central, stepUp);
+  assert.equal(stale.details.freshRequired, true);
+  const refused = await stale.request({method: "POST", url: "/api/v1/account/interaction/" + stale.uid + "/continue", payload: {csrf: stale.details.csrf}});
+  assert.equal(refused.statusCode, 403);
+  const refreshed = await complete(stale);
+  const fresh = (await inspect(refreshed.token, pasofi)).json();
+  assert.equal(fresh.active, true);
+  assert.ok(fresh.auth_time > oldTime);
+  const next = await authorization("admin", mobile, central, stepUp);
+  assert.equal(next.details.freshRequired, false);
+  const continued = await complete(next, true);
+  assert.equal((await inspect(continued.token, mobile)).json().auth_time, fresh.auth_time);
+  assert.deepEqual((await inspect(first.token, 0)).json(), original);
+  await db.query("UPDATE users SET role='member' WHERE id=$1", [admin]);
+  for (const [index, grant] of [[0, first], [pasofi, refreshed], [mobile, continued]] as const)
+    assert.deepEqual((await inspect(grant.token, index)).json(), { active: false });
+});
+
 test("Fresh step-up cannot reuse an existing login session", async () => {
   const central = await signIn("admin"),
     flow = await authorization("admin", 0, central, {

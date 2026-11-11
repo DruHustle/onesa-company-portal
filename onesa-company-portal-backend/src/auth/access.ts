@@ -164,7 +164,7 @@ type Registration = {
   id: string;
   email: string;
   audience: Audience;
-  password_hash: string;
+  password_hash: string | null;
   state: string;
 };
 export async function provisionAccess(
@@ -175,6 +175,7 @@ export async function provisionAccess(
   role = "administrator",
 ) {
   if (request.audience === "admin") {
+    if (!request.password_hash) throw new HttpError(409, "ACCESS_REVIEW", "Review this account registration before granting access.");
     // No public registration or approval route can create an owner or overwrite an existing account.
     await c.query(
       "INSERT INTO users(id,email,password_hash,role) VALUES($1,$2,$3,$4) ON CONFLICT(email) DO NOTHING",
@@ -199,7 +200,7 @@ export async function provisionAccess(
         "INSERT INTO engineering_memberships(id,email,enabled,access_policy_evidence,approved_by) VALUES($1,$2,true,$3,$4)",
         [id, request.email, evidence, reviewer],
       );
-    await c.query(
+    if (request.password_hash) await c.query(
       "INSERT INTO engineering_credentials(membership_id,password_hash) VALUES($1,$2) ON CONFLICT(membership_id) DO NOTHING",
       [id, request.password_hash],
     );
@@ -212,6 +213,33 @@ export async function provisionAccess(
     "INSERT INTO audit(actor_id,action,record_id) VALUES($1,'access.registration_approved',$2)",
     [reviewer, request.id],
   );
+}
+/** Creates a first-time Docs approval request after MFA proof of a verified platform account. */
+export async function requestAdministratorDocsAccess(
+  c: PoolClient, config: AccessConfiguration,
+  account: { email: string; display_name: string }, externalEmails: readonly string[],
+) {
+  const reviewer = await owner(c, config);
+  const email = account.email;
+  await c.query("SELECT pg_advisory_xact_lock(hashtextextended('access-registration:'||$1||':engineering',0))", [email]);
+  await c.query("SELECT pg_advisory_xact_lock(hashtextextended('engineering-member:'||$1,0))", [email]);
+  const membership = await c.query("SELECT 1 FROM engineering_memberships WHERE email=$1", [email]);
+  if (membership.rowCount) throw new HttpError(409, "ENGINEERING_MEMBERSHIP", "Use the existing Engineering Docs membership.");
+  const previous = (await c.query("SELECT state FROM access_registrations WHERE email=$1 AND audience='engineering' FOR UPDATE", [email])).rows[0];
+  if (previous?.state === "pending") return "pending" as const;
+  if (previous) throw new HttpError(409, "ACCESS_REVIEW", "An Engineering registration already exists. Contact the owner.");
+  const id = randomUUID();
+  await c.query("INSERT INTO access_registrations(id,email,audience,display_name,state,email_verified_at) VALUES($1,$2,'engineering',$3,'pending',now())", [id, email, account.display_name]);
+  if (config.preapprovedEmails.includes(email) && engineeringEmailAllowed(email, externalEmails)) {
+    await provisionAccess(c, {id, email, audience: "engineering", state: "pending", password_hash: null}, reviewer.id, config.policyEvidence);
+    return "approved" as const;
+  }
+  await enqueue(c, "access-approval:" + id, {
+    to: reviewer.email, subject: "Engineering Docs access awaiting approval",
+    encryptedText: encrypt("A verified Onesa administrator requested Engineering Docs. Review the exact email policy and request " + id + " in Onesa Portal → Users → Access requests.\n" + env.PUBLIC_ORIGIN + "/admin"),
+  });
+  await c.query("INSERT INTO audit(action,record_id) VALUES('access.registration_requested',$1)", [id]);
+  return "pending" as const;
 }
 export async function confirmRegistration(
   config: AccessConfiguration,

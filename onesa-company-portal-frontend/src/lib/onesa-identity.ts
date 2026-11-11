@@ -10,7 +10,7 @@ export function identityRedirectLocation(value: string | null, origin: string, e
     if (url.username || url.password || url.hash) return null;
     if (url.origin === origin && !url.search && (new RegExp("^" + identityPath + "/auth/[A-Za-z0-9_-]{8,128}$").test(url.pathname) || /^\/account\/sign-in\/[A-Za-z0-9_-]{8,128}$/.test(url.pathname))) return url.href;
     const callbacks: unknown = JSON.parse(encodedCallbacks || "[]");
-    if (!Array.isArray(callbacks) || callbacks.length > 4) return null;
+    if (!Array.isArray(callbacks) || callbacks.length > 7) return null;
     const exact = callbacks.some(value => {
       if (typeof value !== "string") return false;
       const allowed = new URL(value);
@@ -23,4 +23,11 @@ export function identityRedirectLocation(value: string | null, origin: string, e
     if (issuer && issuer !== origin + identityPath) return null;
     return url.href;
   } catch { return null; }
+}
+
+/** Launch a platform administrator into the staff surface on the registered origin. */
+export function accountApplicationUrl(product: string, registeredUrl: string, globalAdmin: boolean) {
+  if (globalAdmin && product === "pasofi") return new URL("/#staff", registeredUrl).href;
+  if (globalAdmin && product === "mobile") return new URL("/internal/", registeredUrl).href;
+  return registeredUrl;
 }

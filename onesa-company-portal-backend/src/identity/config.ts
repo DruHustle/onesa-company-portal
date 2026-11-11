@@ -3,6 +3,13 @@ import { z } from "zod";
 
 export const identityPath = "/api/v1/identity";
 export const products = ["ai", "drone", "robot", "mobile"] as const;
+// These clients accept a verified platform administrator without creating product grants.
+export const adminProducts = ["farmer", "logistics", "pasofi"] as const;
+export const clientProducts = [...products, ...adminProducts] as const;
+export type ClientProduct = (typeof clientProducts)[number];
+export function isAdminProduct(product: ClientProduct): product is (typeof adminProducts)[number] {
+  return adminProducts.some((value) => value === product);
+}
 export const mobileRoles = [
   "admin",
   "operations",
@@ -51,7 +58,7 @@ const absoluteHttps = z
   });
 const client = z
   .object({
-    product: z.enum(products),
+    product: z.enum(clientProducts),
     clientId: z.string().regex(/^[A-Za-z0-9_-]{16,128}$/),
     clientSecret: z.string().min(48).max(256),
     redirectUri: absoluteHttps,
@@ -61,7 +68,7 @@ const client = z
 const schema = z
   .object({
     issuer: absoluteHttps,
-    clients: z.array(client).min(1).max(4),
+    clients: z.array(client).min(1).max(clientProducts.length),
     cookieKeys: z.array(z.string().min(48).max(256)).min(1).max(2),
     jwks: z
       .object({ keys: z.array(z.record(z.string(), z.string())).length(1) })
