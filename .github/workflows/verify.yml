@@ -41,6 +41,10 @@ jobs:
       # Keep synthetic browser rendering independent of runner GPU discovery.
       LIBGL_ALWAYS_SOFTWARE: 'true'
       GALLIUM_DRIVER: llvmpipe
+      # Main/staging release runs and explicit review runs retain the entire layout matrix.
+      PORTAL_LAYOUT_SCREENSHOTS: >-
+        ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' &&
+        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging'))) && 'full' || 'representative' }}
       STORAGE_DIR: ${{ github.workspace }}/.test-storage
       REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
       REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
@@ -180,7 +184,7 @@ jobs:
     - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       if: always()
       with:
-        retention-days: 3
+        retention-days: ${{ env.PORTAL_LAYOUT_SCREENSHOTS == 'full' && 3 || 2 }}
         name: verification-evidence
         path: 'onesa-company-portal-frontend/test-results
 
