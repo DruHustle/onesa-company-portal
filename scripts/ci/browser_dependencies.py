@@ -5,6 +5,7 @@ import os
 import platform
 import re
 import stat
+import subprocess
 import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -103,14 +104,38 @@ def mirror_uri_diagnostic(uri, line_number):
     }
 
 
-def rewrite_mirror_list(text):
-    """Remove only Azure from the runner's referenced archive failover list."""
+UBUNTU_FALLBACK = "https://mirrors.edge.kernel.org/ubuntu/\tpriority:1\n"
+
+
+def ubuntu_archive_dns_unavailable():
+    for host in ("archive.ubuntu.com", "security.ubuntu.com"):
+        try:
+            result = subprocess.run(["getent", "ahosts", host], timeout=5,
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except subprocess.TimeoutExpired:
+            continue
+        if result.returncode == 0:
+            return False
+        if result.returncode != 2:
+            raise ValueError("Cannot determine Ubuntu archive DNS availability")
+    return True
+
+
+def rewrite_mirror_list(text, *, archive_dns_unavailable=False):
+    """Keep signed Ubuntu sources; use a separate DNS zone during an outage."""
     if len(text.splitlines()) > 32:
         raise ValueError("Unexpected mirror-list bounds")
     output = []
     removed = 0
+    has_fallback = False
     canonical = False
     for line_number, line in enumerate(text.splitlines(keepends=True), 1):
+        if line == UBUNTU_FALLBACK:
+            if has_fallback:
+                raise ValueError("Duplicate fallback mirror entry")
+            has_fallback = True
+            output.append(line)
+            continue
         if not line.strip() or line.lstrip().startswith("#"):
             output.append(line)
             continue
@@ -155,6 +180,9 @@ def rewrite_mirror_list(text):
         output.append(line)
     if not canonical:
         raise ValueError("Existing signed archive transport must remain available")
+    if archive_dns_unavailable and not has_fallback:
+        output.insert(0, UBUNTU_FALLBACK)
+        return "".join(output), removed + 1
     return "".join(output), removed
 
 
@@ -189,7 +217,7 @@ def atomic(path, text, mode):
         pending.unlink(missing_ok=True)
 
 
-def prepare(root):
+def prepare(root, *, archive_dns_unavailable=False):
     apt = root / "etc/apt"
     parts = apt / "sources.list.d"
     files = ([apt / "sources.list"] if (apt / "sources.list").exists() else []) + [
@@ -209,7 +237,7 @@ def prepare(root):
     for name in sorted(mirror_files):
         path = apt / name
         before = regular(path)
-        updated, count = rewrite_mirror_list(path.read_text())
+        updated, count = rewrite_mirror_list(path.read_text(), archive_dns_unavailable=archive_dns_unavailable)
         if count:
             replacements.append((path, updated, stat.S_IMODE(before.st_mode), count))
             mirror_updates += 1
@@ -249,4 +277,4 @@ def require_runner():
 
 if __name__ == "__main__":
     require_runner()
-    print(json.dumps(prepare(Path("/"))))
+    print(json.dumps(prepare(Path("/"), archive_dns_unavailable=ubuntu_archive_dns_unavailable())))
