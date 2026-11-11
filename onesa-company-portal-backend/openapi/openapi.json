@@ -26391,7 +26391,10 @@
                               "ai",
                               "drone",
                               "robot",
-                              "mobile"
+                              "mobile",
+                              "farmer",
+                              "logistics",
+                              "pasofi"
                             ]
                           }
                         },
@@ -26431,6 +26434,24 @@
                                 "agent",
                                 "auditor",
                                 "customer"
+                              ]
+                            },
+                            "farmer": {
+                              "type": "string",
+                              "enum": [
+                                "admin"
+                              ]
+                            },
+                            "logistics": {
+                              "type": "string",
+                              "enum": [
+                                "admin"
+                              ]
+                            },
+                            "pasofi": {
+                              "type": "string",
+                              "enum": [
+                                "admin"
                               ]
                             }
                           },
@@ -27169,7 +27190,10 @@
                               "ai",
                               "drone",
                               "robot",
-                              "mobile"
+                              "mobile",
+                              "farmer",
+                              "logistics",
+                              "pasofi"
                             ]
                           },
                           "url": {
@@ -27674,7 +27698,10 @@
                               "ai",
                               "drone",
                               "robot",
-                              "mobile"
+                              "mobile",
+                              "farmer",
+                              "logistics",
+                              "pasofi"
                             ]
                           },
                           "url": {
@@ -28924,7 +28951,10 @@
                               "ai",
                               "drone",
                               "robot",
-                              "mobile"
+                              "mobile",
+                              "farmer",
+                              "logistics",
+                              "pasofi"
                             ]
                           },
                           "url": {
@@ -30502,7 +30532,10 @@
                               "ai",
                               "drone",
                               "robot",
-                              "mobile"
+                              "mobile",
+                              "farmer",
+                              "logistics",
+                              "pasofi"
                             ]
                           },
                           "url": {
@@ -30892,7 +30925,10 @@
                         "ai",
                         "drone",
                         "robot",
-                        "mobile"
+                        "mobile",
+                        "farmer",
+                        "logistics",
+                        "pasofi"
                       ]
                     },
                     "freshRequired": {
@@ -40086,6 +40122,13 @@
                       ],
                       "additionalProperties": false
                     },
+                    "onesaEnrollment": {
+                      "type": "string",
+                      "enum": [
+                        "available",
+                        "pending"
+                      ]
+                    },
                     "onesaSignInPath": {
                       "type": "string"
                     },
@@ -40452,6 +40495,360 @@
                   },
                   "required": [
                     "continuePath"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/engineering-sign-in/{uid}/enroll": {
+      "post": {
+        "operationId": "enrollOnesaAdministratorForDocs",
+        "tags": [
+          "Engineering access"
+        ],
+        "description": "INTERNAL documentation identity. No Portal administrator role is granted. Cookie-bound interaction and same-origin proof required.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "csrf": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "required": [
+                  "csrf"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "path",
+            "name": "uid",
+            "required": true
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "approved"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status"
                   ],
                   "additionalProperties": false
                 }

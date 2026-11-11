@@ -18,14 +18,14 @@ test("Identity redirects admit only account interaction, protocol resume and exa
 });
 
 
-test("Mobile is accepted only as an exact configured fourth callback and preserves legacy callbacks", () => {
+test("Every registered product has an exact callback and legacy callbacks remain valid", () => {
   const mobile = "https://mobile.example.invalid/api/v1/auth/onesa/callback";
-  const callbacks = [callback, "https://drone.example.invalid/api/v1/auth/identity/callback", "https://robot.example.invalid/api/v1/auth/identity/callback", mobile];
+  const callbacks = [callback, "https://drone.example.invalid/api/v1/auth/identity/callback", "https://robot.example.invalid/api/v1/auth/identity/callback", mobile, ...["farmer", "logistics", "pasofi"].map(product => "https://" + product + ".example.invalid/identity/callback")];
   for (const destination of callbacks) {
     const response = destination + "?code=synthetic&state=bound";
     assert.equal(identityRedirectLocation(response, origin, JSON.stringify(callbacks)), response);
   }
   assert.equal(identityRedirectLocation(mobile + "?code=synthetic", origin, configured), null);
   assert.equal(identityRedirectLocation(mobile + "/foreign?code=synthetic", origin, JSON.stringify(callbacks)), null);
-  assert.equal(identityRedirectLocation(mobile + "?code=synthetic", origin, JSON.stringify([...callbacks, "https://fifth.example.invalid/callback"])), null);
+  assert.equal(identityRedirectLocation(mobile + "?code=synthetic", origin, JSON.stringify([...callbacks, "https://extra.example.invalid/callback"])), null);
 });

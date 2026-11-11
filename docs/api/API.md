@@ -174,8 +174,12 @@ The change uses schema 012 and retains the worker's existing publication postcon
 The public account configuration and authenticated account snapshots now include
 an additive `catalog` of `{product,name,connected}` entries. AI, Drone and Robot
 and optional Mobile are connected only when their fixed confidential client is configured.
-Farmer, Logistics, Factory and PasoFi remain unconnected recognition entries:
-they accept no registration request, callback or token and receive no entitlement.
+Farmer, Logistics and PasoFi can each register a confidential client for verified
+platform administrators. Those clients receive only their own entry in
+`onesa_applications` and `onesa_product_roles`, an MFA-backed `global_admin`
+claim and no workspace memberships. Each application enforces its own resource
+permissions. The registration and product-grant APIs retain their four-product
+vocabulary. Smart Factory remains a catalog entry.
 The existing `applications` response and legacy audience-bound three-product claims remain
 compatible; Mobile keeps its separately configured vocabulary and client boundaries.
 Future commissioning requires an independently reviewed client and its

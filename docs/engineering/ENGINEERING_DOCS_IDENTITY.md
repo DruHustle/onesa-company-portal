@@ -46,3 +46,14 @@ identity does not silently reactivate the independent password for linked accoun
 Published Mobile migration 015 precedes Engineering account-link migration 016.
 The migrations and these source changes require their own qualified release; no
 live account, approval, credential, provider or policy change is claimed here.
+
+A verified, MFA-authenticated platform administrator opening Docs for the first
+time can choose **Use my Onesa account for Docs** when access registration is
+enabled. A new membership can be linked immediately only for an individually
+preapproved eligible address with recorded owner policy evidence. Other new
+addresses enter the existing owner review queue. After manual approval the
+administrator proves the approved Docs mailbox with a one-use sign-in link
+and elects to link the Onesa account. No separate Docs password is required.
+Existing, disabled, previously rejected and conflicting identities stay in their
+existing review or recovery paths. The Cloudflare Access policy must allow the
+individual email address at the protected Docs hostname.

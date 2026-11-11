@@ -1356,6 +1356,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/engineering-sign-in/{uid}/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description INTERNAL documentation identity. No Portal administrator role is granted. Cookie-bound interaction and same-origin proof required. */
+        post: operations["enrollOnesaAdministratorForDocs"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/engineering-sign-in/{uid}/session": {
         parameters: {
             query?: never;
@@ -12337,7 +12354,7 @@ export interface operations {
                         auth_time: number;
                         amr: string[];
                         onesa_roles: "global_admin"[];
-                        onesa_applications: ("ai" | "drone" | "robot" | "mobile")[];
+                        onesa_applications: ("ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi")[];
                         onesa_product_roles: {
                             /** @enum {string} */
                             ai?: "user" | "admin";
@@ -12347,6 +12364,12 @@ export interface operations {
                             robot?: "viewer" | "operator" | "admin";
                             /** @enum {string} */
                             mobile?: "admin" | "operations" | "support" | "finance" | "agent" | "auditor" | "customer";
+                            /** @enum {string} */
+                            farmer?: "admin";
+                            /** @enum {string} */
+                            logistics?: "admin";
+                            /** @enum {string} */
+                            pasofi?: "admin";
                         };
                         onesa_memberships: {
                             /** Format: uuid */
@@ -12652,7 +12675,7 @@ export interface operations {
                         enabled: boolean;
                         applications: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi";
                             /** Format: uri */
                             url: string;
                         }[];
@@ -12833,7 +12856,7 @@ export interface operations {
                         }[];
                         applications: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi";
                             /** Format: uri */
                             url: string;
                         }[];
@@ -13328,7 +13351,7 @@ export interface operations {
                         }[];
                         applications: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi";
                             /** Format: uri */
                             url: string;
                         }[];
@@ -13964,7 +13987,7 @@ export interface operations {
                         }[];
                         applications: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi";
                             /** Format: uri */
                             url: string;
                         }[];
@@ -14119,7 +14142,7 @@ export interface operations {
                     "application/json": {
                         csrf: string;
                         /** @enum {string} */
-                        product: "ai" | "drone" | "robot" | "mobile";
+                        product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi";
                         freshRequired: boolean;
                         mfaRequired: boolean;
                         account: {
@@ -17782,6 +17805,8 @@ export interface operations {
                             /** Format: email */
                             email: string;
                         };
+                        /** @enum {string} */
+                        onesaEnrollment?: "available" | "pending";
                         onesaSignInPath?: string;
                         /** @enum {boolean} */
                         onesaReauthRequired?: true;
@@ -17936,6 +17961,157 @@ export interface operations {
                     "application/json": {
                         /** @enum {string} */
                         continuePath: "/engineering";
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    enrollOnesaAdministratorForDocs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    csrf: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "pending" | "approved";
                     };
                 };
             };

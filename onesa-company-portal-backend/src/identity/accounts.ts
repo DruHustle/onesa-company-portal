@@ -4,7 +4,7 @@ import { db } from "../services/db.js";
 import { hash } from "../auth/crypto.js";
 import { sessionAuthenticationTime } from "../auth/session-proof.js";
 import { HttpError } from "../services/workflows.js";
-import { products } from "./config.js";
+import { clientProducts } from "./config.js";
 
 export const accountCookie = "onesa_account";
 export const isGlobalAdmin = (role: string) =>
@@ -121,12 +121,12 @@ export async function accountAccess(
   return {
     onesa_roles: admin ? ["global_admin" as const] : [],
     onesa_applications: admin
-      ? [...products]
+      ? [...clientProducts]
       : access
           .filter((row) => row.status === "active")
           .map((row) => row.product),
     onesa_product_roles: admin
-      ? { ai: "admin", drone: "admin", robot: "admin", mobile: "admin" }
+      ? Object.fromEntries(clientProducts.map((product) => [product, "admin"]))
       : Object.fromEntries(
           access
             .filter((row) => row.status === "active")

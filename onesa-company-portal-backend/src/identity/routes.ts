@@ -38,6 +38,8 @@ import {
   identityConfiguration,
   identityPath,
   products,
+  clientProducts,
+  isAdminProduct,
   mobileRoles,
   defaultProductRole,
   validProductRole,
@@ -68,6 +70,7 @@ const failures = {
 const proof = z.string().regex(/^[a-f0-9]{64}$/);
 const uid = z.string().regex(/^[A-Za-z0-9_-]{8,128}$/);
 const product = z.enum(products);
+const clientProduct = z.enum(clientProducts);
 const stepUp = z.object({
   password: z.string().min(1).max(256),
   code: z.string().min(6).max(64),
@@ -99,7 +102,7 @@ const membershipSchema = z.object({
   role: z.enum(["viewer", "operator", "admin"]),
   label: z.string().min(1).max(120),
 });
-const applicationSchema = z.object({ product, url: z.url() });
+const applicationSchema = z.object({ product: clientProduct, url: z.url() });
 const catalogSchema = z.object({ product: z.enum(catalogProducts), name: z.string(), connected: z.boolean() });
 const sessionSchema = z.object({
   account: accountSchema,
@@ -252,12 +255,15 @@ export async function registerIdentity(
               auth_time: z.number().int(),
               amr: z.array(z.string()),
               onesa_roles: z.array(z.literal("global_admin")),
-              onesa_applications: z.array(product),
+              onesa_applications: z.array(clientProduct),
               onesa_product_roles: z.object({
                 ai: z.enum(["user", "admin"]).optional(),
                 drone: z.enum(["viewer", "operator", "admin"]).optional(),
                 robot: z.enum(["viewer", "operator", "admin"]).optional(),
                 mobile: z.enum(mobileRoles).optional(),
+                farmer: z.literal("admin").optional(),
+                logistics: z.literal("admin").optional(),
+                pasofi: z.literal("admin").optional(),
               }),
               onesa_memberships: z.array(
                 membershipSchema
@@ -326,23 +332,18 @@ export async function registerIdentity(
         onesa_product_roles,
         onesa_memberships,
       } = await accountAccess(account);
-      // Legacy consumers reject unknown product names. Mobile receives the expanded
-      // vocabulary; existing product assertions retain their three-product contract.
+      // Legacy clients validate the whole vocabulary. New clients receive only
+      // their own entitlement and no information about other product workspaces.
+      const visibleProducts: readonly string[] = isAdminProduct(client.product)
+        ? [client.product]
+        : client.product === "mobile" ? products : ["ai", "drone", "robot"];
       const claims = {
         onesa_roles,
-        onesa_applications:
-          client.product === "mobile"
-            ? onesa_applications
-            : onesa_applications.filter((name) => name !== "mobile"),
-        onesa_product_roles:
-          client.product === "mobile"
-            ? onesa_product_roles
-            : Object.fromEntries(
-                Object.entries(onesa_product_roles).filter(
-                  ([name]) => name !== "mobile",
-                ),
-              ),
-        onesa_memberships,
+        onesa_applications: onesa_applications.filter((name) => visibleProducts.includes(name)),
+        onesa_product_roles: Object.fromEntries(
+          Object.entries(onesa_product_roles).filter(([name]) => visibleProducts.includes(name)),
+        ),
+        onesa_memberships: isAdminProduct(client.product) ? [] : onesa_memberships,
       };
       if (!claims.onesa_applications.includes(client.product))
         return { active: false as const };
@@ -1184,7 +1185,7 @@ export async function registerIdentity(
         response: {
           200: z.object({
             csrf: proof,
-            product,
+            product: clientProduct,
             freshRequired: z.boolean(),
             mfaRequired: z.boolean(),
             account: accountSchema.nullable(),
