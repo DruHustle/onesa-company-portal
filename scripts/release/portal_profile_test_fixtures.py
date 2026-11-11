@@ -19,8 +19,12 @@ FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures/portal_frontend_v1"
 PREFIX = "onesa-company-portal-frontend/"
 # Previously pinned files changed by the separate billing and catalog source.
 # The browser fixture is the exact pinned public blob in Portal ecc4521dc44dd9e162701a5e34a455f7f27661fc.
+# Product directory and footer fixtures are the exact public blobs from Portal
+# 25eef94002d43f8732346308a2b10246adee12f0.
 # Sizes and hashes identify actual original public bytes, not a generated mock.
 REVIEWED_FILES = {
+    PREFIX + "src/components/site-footer.tsx": (2925, "aee902a898185551b5d7abb3ff511a57b9a84a30ff1e372919d2146366ce284d"),
+    PREFIX + "src/components/product-overview.tsx": (8843, "8ccf113f761c363933f64c0d7f611d199eda8849e23a70bba2d6d0c2f8ce615f"),
     PREFIX + "package.json": (3038, "e3cbc621f1713824ec3f621588ac0d13e0c3cd6d6c7688e7d64dfe85aa00774e"),
     PREFIX + "scripts/test-onesa-account.mjs": (43775, "fdd380ccad7ebef858697155c0cd235e8d62d824d54dafcea6ac3edaa24a63e0"),
     PREFIX + "src/app/api/v1/[...path]/route.ts": (5293, "7fbb4b327152af662956b0f2410c204349874ec7bda59bd6ac60f81dbb158794"),
@@ -29,6 +33,8 @@ REVIEWED_FILES = {
     PREFIX + "src/lib/api/generated/schema.d.ts": (787032, "e84ad11bf072ba1c2aee94b70af9ea73e98d8dea426979d55e09479d23cf37f8"),
 }
 REVIEWED_BLOBS = {
+    PREFIX + "src/components/site-footer.tsx": "117a384565a5855fe103253f962b3d8fe2aefda4",
+    PREFIX + "src/components/product-overview.tsx": "edd985c57114704bba320b1679937b702047abb6",
     PREFIX + "package.json": "63c3ba4fafad01f84071c7590034710017d7f2b5",
     PREFIX + "scripts/test-onesa-account.mjs": "f3f5cdd4021be407c03368b7e20c09a12a318a3b",
     PREFIX + "src/app/api/v1/[...path]/route.ts": "5271c8e0089adc388805172f47a955787a856be8",
