@@ -333,3 +333,50 @@ An in-progress authorization can be cancelled with its browser cookie and
 interaction CSRF proof at `POST /api/v1/account/interaction/:uid/cancel`.
 Following the signed-in browser's continuation returns the original state and
 `access_denied` to the registered callback. No grant is issued.
+
+### Customer access for Logistics, PasoFi and Factory
+
+Migration 018 adds explicit ordinary product grants: `logistics: user`,
+`pasofi: customer` and `factory: user`. Existing rows and approvals are unchanged.
+These clients receive only their own product assertion and no Drone memberships.
+A registered client, verified account and active product approval are required.
+Global administrators retain MFA and the existing `admin` assertion. Each product
+owns its local account links, records and organizational access; matching email or
+Portal product approval alone does not confer access to existing product data.
+Factory admits new ordinary identities to its pending local-access screen until
+an administrator approves their local role. An existing independently proven
+Factory account retains its local access.
+
+The identity preparation command retains its seven-client default. Explicit
+`--include-factory` adds the eighth confidential client and the exact
+`https://factory.onesa.eu/api/auth/onesa/callback` registration. The historical
+seven-client Oracle release profiles remain unchanged and do not qualify the
+new migration or eighth client. Qualify those exact changes before installation.
+
+### Infrastructure observations
+
+`GET /api/v1/admin/infrastructure` requires an owner or administrator Portal
+session and returns `Cache-Control: no-store`. All nine products, Kubernetes and
+Portainer appear even without observations. Configure the backend-only absolute
+`INFRASTRUCTURE_OBSERVATIONS_FILE` path to a read-only sanitized JSON snapshot.
+The response includes dependency/hosting descriptions, last observation,
+environment, observed revision when available and a scope description. It never
+returns provider credentials, raw responses or secret-file paths.
+
+Snapshots use version 1 and an `observations` array. Each entry has `id`, UTC
+`observedAt`, `state` (`available`, `unavailable`, `not_observed`), `source`
+(`public_http`, `owner_runtime`), `environment` and nullable source `revision`.
+Unknown fields, duplicate IDs, future dates, oversized files, symlinks and
+files writable by other users are rejected. The collector's containing directory
+must be owned by the service operator and not writable by other users. The API
+needs read access only; private observer credentials stay with the separate
+least-privilege collector, never the frontend. Missing/invalid snapshots display
+unobserved status. Observations at least five minutes old display stale status,
+retaining the previous result separately.
+
+`scripts/observe-infrastructure.mts` performs only credential-free public API
+liveness probes with bounded timeouts and fixed destinations. It writes a mode0600
+snapshot atomically; HTML success responses do not establish API health. Private
+cluster/node/workload/volume and Portainer observations require the commissioned
+runtime observer and must not be inferred from an installed binary or manifest.
+No scheduler or private runtime observation is activated by this source change.

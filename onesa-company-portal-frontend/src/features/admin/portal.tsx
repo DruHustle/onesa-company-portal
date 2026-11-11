@@ -9,6 +9,7 @@ import {
 import { api, setCsrf, ApiError } from "@/lib/api/client";
 import { fileBase64 } from "@/components/application-form";
 import { privateDocument } from "@/lib/api/transfers";
+import { Infrastructure } from "./infrastructure";
 import { BackgroundProcessing } from "./background-processing";
 import { PrivacyGovernance } from "./privacy-governance";
 import { EngineeringMemberships } from "./engineering-memberships";
@@ -620,6 +621,7 @@ export function AdminPortal({
               "Security",
               "Governance & Compliance",
               "Background Processing",
+              "Infrastructure",
             ].includes(tab) && (
               <div className="admin-actions">
                 <input
@@ -713,6 +715,7 @@ export function AdminPortal({
                 </button>
               </div>
             )}
+            {tab === "Infrastructure" && ["owner", "administrator"].includes(user.role) && <Infrastructure />}
             {tab === "Background Processing" &&
               ["owner", "administrator"].includes(user.role) && (
                 <BackgroundProcessing />

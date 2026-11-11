@@ -14,13 +14,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
-  clientProducts,
   identityConfiguration,
   type IdentityConfig,
 } from "../src/identity/config.js";
 import {
   prepareIdentityRelease,
   productionOrigins,
+  qualifiedClientProducts,
 } from "../src/identity/prepare-release.js";
 
 const callbacks = {
@@ -29,6 +29,7 @@ const callbacks = {
   robot: "https://robot.onesa.eu/api/v1/auth/identity/callback",
   farmer: "https://farmer.onesa.eu/auth/onesa/callback",
   logistics: "https://logistics.onesa.eu/api/auth/onesa/callback",
+  factory: "https://factory.onesa.eu/api/auth/onesa/callback",
   pasofi: "https://pasofi.mobile.onesa.eu/onesa-callback.html",
   mobile: "https://mobile.onesa.eu/api/v1/auth/onesa/callback",
 };
@@ -62,14 +63,14 @@ test("creates private issuer and product inputs and preserves an existing issuer
   assert.deepEqual(Object.keys(frontend), ["ONESA_IDENTITY_CALLBACKS_JSON"]);
   assert.deepEqual(
     JSON.parse(frontend.ONESA_IDENTITY_CALLBACKS_JSON).sort(),
-    Object.values(callbacks).sort(),
+    qualifiedClientProducts.map(product => callbacks[product]).sort(),
   );
   const files = await readdir(output);
   assert.equal(files.length, 11);
   assert.equal((await stat(output)).mode & 0o777, 0o700);
   for (const file of files)
     assert.equal((await stat(join(output, file))).mode & 0o777, 0o600);
-  for (const product of clientProducts) {
+  for (const product of qualifiedClientProducts) {
     const client = initial.clients.find((c) => c.product === product)!;
     assert.equal(client.redirectUri, callbacks[product]);
     const env = await json(join(output, product + ".env.json"));
@@ -102,6 +103,7 @@ test("creates private issuer and product inputs and preserves an existing issuer
       drone: "ONESA_IDENTITY_CALLBACK",
       robot: "ONESA_IDENTITY_CALLBACK_URL",
       logistics: "ONESA_IDENTITY_REDIRECT_URI",
+      factory: "ONESA_IDENTITY_REDIRECT_URI",
       pasofi: "PASOFI_ONESA_REDIRECT_URI",
       mobile: "MOBILE_PUBLIC_ORIGIN",
       farmer: "WEB_ORIGIN",
@@ -219,7 +221,7 @@ test("staging uses seven independently selected, exact HTTPS origins and rejects
   const dir = await mkdtemp(join(tmpdir(), "onesa-staging-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const origins = Object.fromEntries(
-    Object.keys(productionOrigins).map((p) => [
+    Object.keys(productionOrigins).filter(name => name !== "factory").map((p) => [
       p,
       "https://" + p + ".staging.example",
     ]),
@@ -280,4 +282,20 @@ test("staging uses seven independently selected, exact HTTPS origins and rejects
     ]),
   );
   await assert.rejects(stat(bad), { code: "ENOENT" });
+});
+
+
+test("Factory registration is explicit and writes only its own confidential binding", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "onesa-factory-binding-"));
+  t.after(() => rm(dir, {recursive:true, force:true}));
+  const output = join(dir, "eight-clients");
+  await prepareIdentityRelease(["--environment", "production", "--initialize", "--include-factory", "--output", output]);
+  const config = identityConfiguration(await json(join(output, "portal-issuer.env.json")), productionOrigins.portal)!;
+  assert.equal(config.clients.length, 8);
+  const client = config.clients.find(item => item.product === "factory")!;
+  const env = await json(join(output, "factory.env.json"));
+  assert.equal(env.ONESA_IDENTITY_REDIRECT_URI, callbacks.factory);
+  assert.equal(env.ONESA_IDENTITY_CLIENT_SECRET, client.clientSecret);
+  assert.equal(env.ONESA_IDENTITY_ISSUER, config.issuer);
+  assert.ok(config.clients.filter(item => item.product !== "factory").every(item => !Object.values(env).includes(item.clientSecret)));
 });

@@ -255,9 +255,9 @@ test("catalog recognition cannot commission future applications or grant their a
     );
   const before = (await counts()).rows;
   for (const [product, status] of [
-    ["logistics", 400],
-    ["factory", 400],
-    ["pasofi", 400],
+    ["logistics", 503],
+    ["factory", 503],
+    ["pasofi", 503],
     // Recognized products still require their own exact client registration.
     ["farmer", 503],
     ["mobile", 503],

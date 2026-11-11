@@ -42,7 +42,6 @@ import {
   identityPath,
   products,
   clientProducts,
-  isAdminProduct,
   mobileRoles,
   defaultProductRole,
   validProductRole,
@@ -159,7 +158,7 @@ export async function registerIdentity(
   const requireProductConfigured = (selected: string) => {
     const { config } = configured();
     if (
-      (selected === "mobile" || selected === "farmer") &&
+      !["ai", "drone", "robot"].includes(selected) &&
       !config.clients.some((client) => client.product === selected)
     )
       throw new HttpError(
@@ -265,8 +264,9 @@ export async function registerIdentity(
                 robot: z.enum(["viewer", "operator", "admin"]).optional(),
                 mobile: z.enum(mobileRoles).optional(),
                 farmer: z.enum(["user", "admin"]).optional(),
-                logistics: z.literal("admin").optional(),
-                pasofi: z.literal("admin").optional(),
+                logistics: z.enum(["user", "admin"]).optional(),
+                factory: z.enum(["user", "admin"]).optional(),
+                pasofi: z.enum(["customer", "admin"]).optional(),
               }),
               onesa_memberships: z.array(
                 membershipSchema
@@ -337,7 +337,7 @@ export async function registerIdentity(
       } = await accountAccess(account);
       // Legacy clients validate the whole vocabulary. New clients receive only
       // their own entitlement and no information about other product workspaces.
-      const ownProductOnly = client.product === "farmer" || isAdminProduct(client.product);
+      const ownProductOnly = ["farmer", "logistics", "pasofi", "factory"].includes(client.product);
       const visibleProducts: readonly string[] = ownProductOnly
         ? [client.product]
         : client.product === "mobile" ? ["ai", "drone", "robot", "mobile"] : ["ai", "drone", "robot"];

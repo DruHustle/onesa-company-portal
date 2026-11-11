@@ -26,7 +26,7 @@ const origin = process.env.PUBLIC_ORIGIN;
 const key = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const config = {
   issuer: origin + "/api/v1/identity",
-  clients: ["ai", "drone", "robot", "mobile", "farmer", "logistics", "pasofi"].map((product) => ({
+  clients: ["ai", "drone", "robot", "mobile", "farmer", "logistics", "pasofi", "factory"].map((product) => ({
     product,
     clientId: "synthetic_onesa_" + product,
     clientSecret: randomBytes(48).toString("hex") + "+%",
@@ -278,7 +278,7 @@ const inspect = (token: string, index = 0) =>
 
 test("Configuration is opt-in, fixed-client, exact issuer/callback and strong-key only", () => {
   assert.equal(identityConfiguration({}, origin), null);
-  assert.equal(identityConfiguration(process.env, origin)?.clients.length, 7);
+  assert.equal(identityConfiguration(process.env, origin)?.clients.length, 8);
   assert.equal(
     identityConfiguration(
       {
@@ -589,7 +589,7 @@ test("Global Administrators need MFA and receive all applications without per-pr
   });
   assert.ok(claims.amr.includes("otp"));
 });
-test("an MFA platform session signs into all seven clients with the contract for that audience", async () => {
+test("an MFA platform session signs into all configured clients with the contract for that audience", async () => {
   const central = await signIn("admin");
   const legacy = ["ai", "drone", "robot"];
   const tokens: string[] = [];
@@ -1916,3 +1916,34 @@ test("A real HTTPS cookie jar carries an administrator's signed interaction thro
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+for (const [product, role] of [["logistics", "user"], ["pasofi", "customer"], ["factory", "user"]] as const) {
+  test(`${product} customers need explicit approval, receive only their own role and lose access on revocation`, async () => {
+    const index = config.clients.findIndex(client => client.product === product);
+    const customer = await signIn("member");
+    const requested = await customer.request({method: "POST", url: `/api/v1/account/products/${product}/request`, headers: {"x-csrf-token": customer.session.csrf}, payload: {}});
+    assert.equal(requested.statusCode, 200, requested.body);
+    assert.equal(requested.json().access.find((grant: {product: string}) => grant.product === product).status, "pending");
+    const pending = await authorization("member", index, customer);
+    assert.equal((await pending.request({method: "POST", url: `/api/v1/account/interaction/${pending.uid}/continue`, payload: {csrf: pending.details.csrf}})).statusCode, 403);
+    const administrator = await signIn("admin");
+    async function decision(status: "active" | "revoked", revision: number, selectedRole: string = role) {
+      return administrator.request({method: "PUT", url: `/api/v1/admin/identity/accounts/${member}/products/${product}`, headers: {"x-csrf-token": administrator.session.csrf}, payload: {role: selectedRole, status, expectedRevision: revision, memberships: [], stepUp: {password, code: await factor(admin)}}});
+    }
+    assert.equal((await decision("active", 1, "admin")).statusCode, 400, "An ordinary product grant cannot grant global administration");
+    const approved = await decision("active", 1);
+    assert.equal(approved.statusCode, 200, approved.body);
+    const grant = await complete(await authorization("member", index, customer), true);
+    const claims = (await inspect(grant.token, index)).json();
+    assert.equal(claims.active, true);
+    assert.equal(claims.sub, member);
+    assert.deepEqual(claims.onesa_roles, []);
+    assert.deepEqual(claims.onesa_product_roles, {[product]: role});
+    assert.deepEqual(claims.onesa_applications, [product]);
+    assert.deepEqual(claims.onesa_memberships, []);
+    const repeated = await complete(await authorization("member", index));
+    assert.equal((await inspect(repeated.token, index)).json().sub, member);
+    assert.equal((await decision("revoked", 2)).statusCode, 200);
+    assert.equal((await inspect(repeated.token, index)).json().active, false);
+  });
+}

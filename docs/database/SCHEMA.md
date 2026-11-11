@@ -238,3 +238,11 @@ This source boundary supplies no live migration, restore or payment acceptance.
 
 Migration 017 adds the Farmer product and its ordinary `user` role to the existing
 product-access constraints. It changes no identity, membership or approval rows.
+
+### Migration 018: ordinary customer product grants
+
+`018_customer_product_identity.sql` extends the product/role check constraints
+for Logistics `user`, PasoFi `customer`, and Factory `user`. It changes no existing
+accounts, grants, approvals or memberships. Apply through the normal bounded
+transactional migrator after migration017; the exact new source requires isolated
+qualification and a compatible release profile. Product databases remain independent.
