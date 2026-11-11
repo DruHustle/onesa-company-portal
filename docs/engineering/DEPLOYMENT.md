@@ -361,6 +361,11 @@ An environment with **no existing issuer** can use `--initialize` in place of `-
 
 Install the values from each JSON object in the named service's protected environment. Restrict `portal-issuer.env.json` to the Portal issuer. The Portal frontend takes only the callback list in `portal-frontend.env.json`. Preserve the existing Portal frontend-to-backend routing, Portal domain and private signing credentials. Each of the seven product environments receives its own binding. Mobile and PasoFi take their deployment inputs through Compose. Install their raw secret files for the designated service UID with owner-only read permissions. Additional product settings belong to the corresponding service:
 
+The independent `frontend-identity-v2` release uses the existing frontend plan, installer, preview and production phases. Select its complete installer bundle with `oracle_portal_frontend_identity_v2.py`. The profile verifies the whole frontend Git subtree (paths, modes and bytes) against reviewed staging `b92e22f` and the provider-observed retained source. Production at `7f72381`, reviewed main at `d3c4448`, and the same qualified frontend with a new configuration are supported baselines. Each installation still verifies the full current-main source and its CI. The earlier `frontend-identity-v1` profile has its own source closure.
+
+Use the two separate `portal-frontend.env.json` outputs from the issuer preparation step. Set their `ONESA_IDENTITY_CALLBACKS_JSON` values as plain, server-side variables on the Portal Vercel project. Restrict production to the production target, and staging to preview on the `staging` branch. Include both variable IDs and their corresponding values in the frontend plan's existing `server_public_variable_ids` and `server_public_configuration` maps. Refresh the environment-metadata receipt after setting both targets. The frontend verifier reads the seven product origins from the root-owned seven-client issuer plan and verifies the actual named Vercel values. Staging requires distinct operator-selected origins. The ensuing hosted identity acceptance exercises sign-in with those registrations.
+
+
 | Service | Existing deployment inputs to retain or configure |
 | --- | --- |
 | AI Platform and Drone | Each backend's private `ONESA_IDENTITY_ENCRYPTION_KEY` (Fernet) and secure database/session settings. |
