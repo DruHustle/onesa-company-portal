@@ -1,10 +1,24 @@
-import Provider, { type Configuration } from "oidc-provider";
+import Provider, { interactionPolicy, type Configuration } from "oidc-provider";
 import { IdentityAdapter } from "./adapter.js";
-import { identityAccount } from "./accounts.js";
+import { identityAccount, liveGrantSession } from "./accounts.js";
 import type { IdentityConfig } from "./config.js";
 
 /** One established protocol implementation, explicitly configured confidential product clients. */
 export function createIdentityProvider(config: IdentityConfig) {
+  const policy = interactionPolicy.base();
+  const farmer = config.clients.find((client) => client.product === "farmer");
+  if (farmer) {
+    // An issuer cookie can outlive the Portal session that authorized its Farmer grant.
+    // Prompt before issuing another code with that expired source.
+    policy.get("login")!.checks.add(new interactionPolicy.Check(
+      "farmer_source_session_expired", "Fresh Portal authentication is required for Smart Farmer",
+      async ({ oidc }) => {
+        if (oidc.client?.clientId !== farmer.clientId || !oidc.session?.accountId) return false;
+        const grant = oidc.session.grantIdFor(farmer.clientId);
+        return grant ? !(await liveGrantSession(grant, oidc.session.accountId)) : false;
+      },
+    ));
+  }
   const options: Configuration = {
     adapter: IdentityAdapter,
     clients: config.clients.map((client) => ({
@@ -51,6 +65,7 @@ export function createIdentityProvider(config: IdentityConfig) {
       rpInitiatedLogout: { enabled: false },
     },
     interactions: {
+      policy,
       url: (_ctx, interaction) =>
         new URL("/account/sign-in/" + interaction.uid, config.issuer).href,
     },

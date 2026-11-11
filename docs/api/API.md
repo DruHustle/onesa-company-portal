@@ -311,6 +311,7 @@ A self-service account with the ordinary `member` role requests Farmer from
 `/account` using `POST /api/v1/account/products/farmer/request`. A Portal
 administrator can approve the existing account in the product-access manager.
 An approval for another product grants access only to that product.
+When the Portal session that approved a Farmer grant expires, the next Farmer sign-in requests fresh authentication even if the browser still holds the issuer session cookie. A subsequent successful sign-in uses the same Portal subject.
 An in-progress authorization can be cancelled with its browser cookie and
 interaction CSRF proof at `POST /api/v1/account/interaction/:uid/cancel`.
 Following the signed-in browser's continuation returns the original state and
