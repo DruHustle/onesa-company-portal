@@ -8,6 +8,12 @@ import {
   randomBytes,
   randomUUID,
 } from "node:crypto";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { createServer } from "node:https";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
 import type { InjectOptions } from "fastify";
 if (!process.env.TEST_DATABASE_URL)
   throw Error("Isolated loopback test database required");
@@ -1837,4 +1843,76 @@ test("Cancelling Farmer sign-in returns the original state without issuing a gra
   assert.equal(callback.searchParams.get("error"), "access_denied");
   assert.equal(callback.searchParams.has("code"), false);
   assert.equal((await db.query("SELECT count(*) FROM identity_grant_sessions")).rows[0].count, "0");
+});
+
+test("A real HTTPS cookie jar carries an administrator's signed interaction through the account API", async () => {
+  const run = promisify(execFile);
+  const directory = await mkdtemp(join(tmpdir(), "onesa-cookie-path-"));
+  try {
+    const { hostname } = new URL(origin);
+    const cert = join(directory, "cert.pem"), key = join(directory, "key.pem");
+    await run("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
+      "-subj", "/CN=" + hostname, "-addext", "subjectAltName=DNS:" + hostname,
+      "-keyout", key, "-out", cert]);
+    const server = createServer({ cert: await readFile(cert), key: await readFile(key) }, (req, res) => {
+      // The public TLS listener supplies the same private header as Portal's proxy.
+      req.headers["x-portal-proxy-key"] = proxy["x-portal-proxy-key"];
+      app.server.emit("request", req, res);
+    });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        server.once("error", reject);
+        server.listen(0, "127.0.0.1", resolve);
+      });
+      const address = server.address();
+      assert.ok(address && typeof address === "object");
+      const port = address.port;
+      const jar = join(directory, "cookies"), body = join(directory, "response");
+      async function request(path: string, input?: Record<string, string>) {
+        const { stdout } = await run("curl", ["--silent", "--show-error", "--max-time", "10",
+          "--noproxy", "*", "--connect-to", hostname + ":443:127.0.0.1:" + port,
+          "--cacert", cert, "--cookie", jar, "--cookie-jar", jar, "--output", body,
+          "--write-out", "%{response_code}\n%{redirect_url}",
+          ...(input ? ["--header", "Origin: " + origin, "--header", "Content-Type: application/json",
+                       "--data-binary", JSON.stringify(input)] : []), origin + path]);
+        const [status, location] = stdout.split("\n");
+        return { status: Number(status), location, json: async () => JSON.parse(await readFile(body, "utf8")) };
+      }
+      for (const existingSession of [false, true]) {
+        const client = config.clients[existingSession ? 1 : 2], state = randomBytes(32).toString("base64url");
+        const params = new URLSearchParams({
+          client_id: client.clientId, redirect_uri: client.redirectUri, response_type: "code",
+          scope: "openid email profile onesa", state, nonce: randomBytes(32).toString("base64url"),
+          code_challenge: createHash("sha256").update(randomBytes(32)).digest("base64url"), code_challenge_method: "S256",
+        });
+        const start = await request("/api/v1/identity/auth?" + params);
+        assert.equal(start.status, 303);
+        const form = new URL(start.location);
+        assert.equal(form.origin, origin, existingSession ? "second product" : "first product");
+        assert.match(form.pathname, /^\/account\/sign-in\/[A-Za-z0-9_-]+$/);
+        const uid = form.pathname.split("/").pop()!;
+        const interaction = "/api/v1/account/interaction/" + uid;
+        const details = await request(interaction);
+        assert.equal(details.status, 200);
+        const account = await details.json();
+        if (existingSession) assert.equal(account.account?.email, emails.admin);
+        const submitted = existingSession
+          ? await request(interaction + "/continue", { csrf: account.csrf })
+          : await request(interaction + "/login", { csrf: account.csrf, email: emails.admin, password, code: await factor(admin) });
+        assert.equal(submitted.status, 200);
+        const resume = (await submitted.json()).continuePath;
+        assert.match(resume, /^\/api\/v1\/identity\/auth\/[A-Za-z0-9_-]+$/);
+        const result = await request(resume);
+        assert.equal(result.status, 303);
+        const callback = new URL(result.location);
+        assert.equal(callback.origin + callback.pathname, client.redirectUri);
+        assert.equal(callback.searchParams.get("state"), state);
+        assert.ok(callback.searchParams.get("code"));
+      }
+    } finally {
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
