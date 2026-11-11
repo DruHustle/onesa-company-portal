@@ -181,6 +181,13 @@ async function authorization(
   const location = new URL(String(start.headers.location));
   assert.match(location.pathname, /^\/account\/sign-in\/[A-Za-z0-9_-]+$/);
   const uid = location.pathname.split("/").pop()!;
+  const interactionCookies = start.cookies.filter(cookie => ["onesa_identity_interaction","onesa_identity_interaction.sig"].includes(cookie.name));
+  assert.ok(interactionCookies.length > 0);
+  for (const cookie of interactionCookies) {
+    assert.equal(cookie.path, "/api/v1/account/interaction/" + uid);
+    assert.equal(cookie.httpOnly, true);
+    assert.equal(cookie.secure, true);
+  }
   const details = await existing.request({
     url: "/api/v1/account/interaction/" + uid,
   });
@@ -1593,4 +1600,21 @@ test("Farmer admits verified Portal staff and approved customers, and enforces l
   await decision(member, "revoked", 2);
   assert.deepEqual((await inspect(staff.token, farmer)).json(), {active: false});
   assert.deepEqual((await inspect(grant.token, farmer)).json(), {active: false});
+});
+
+test("Cancelling Farmer sign-in returns the original state without issuing a grant", async () => {
+  const farmer = config.clients.findIndex((client) => client.product === "farmer");
+  const flow = await authorization("member", farmer);
+  const url = "/api/v1/account/interaction/" + flow.uid + "/cancel";
+  assert.equal((await flow.request({method:"POST", url, payload:{csrf: "0".repeat(64)}})).statusCode, 403);
+  const cancelled = await flow.request({method:"POST", url, payload:{csrf:flow.details.csrf}});
+  assert.equal(cancelled.statusCode, 200, cancelled.body);
+  const resumed = await flow.request({url:cancelled.json().continuePath});
+  assert.equal(resumed.statusCode, 303, resumed.body);
+  const callback = new URL(String(resumed.headers.location));
+  assert.equal(callback.origin + callback.pathname, config.clients[farmer].redirectUri);
+  assert.equal(callback.searchParams.get("state"), flow.state);
+  assert.equal(callback.searchParams.get("error"), "access_denied");
+  assert.equal(callback.searchParams.has("code"), false);
+  assert.equal((await db.query("SELECT count(*) FROM identity_grant_sessions")).rows[0].count, "0");
 });

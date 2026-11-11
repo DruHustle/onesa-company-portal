@@ -1320,6 +1320,9 @@ export async function registerIdentity(
         { mergeWithLastSubmission: false },
       ),
     );
+    return continuation(next, config.issuer);
+  }
+  function continuation(next: URL, issuer: string) {
     if (
       next.origin !== env.PUBLIC_ORIGIN ||
       !new RegExp("^" + identityPath + "/auth/[A-Za-z0-9_-]{8,128}$").test(
@@ -1333,8 +1336,33 @@ export async function registerIdentity(
         "IDENTITY_CONTINUE",
         "Sign-in could not be completed.",
       );
-    return { continuePath: next.pathname, issuer: config.issuer };
+    return { continuePath: next.pathname, issuer };
   }
+  api.post(
+    "/api/v1/account/interaction/:uid/cancel",
+    {
+      logLevel: "silent",
+      schema: {
+        ...meta("cancelOnesaSignIn"),
+        params: interactionParams,
+        body: z.object({ csrf: proof }),
+        response: {
+          200: z.object({ continuePath: z.string(), issuer: z.string() }),
+          ...failures,
+        },
+      },
+    },
+    async (req, reply) => {
+      const { provider, config } = configured();
+      const { details } = await interaction(req, reply);
+      if (!same(req.body.csrf, interactionProof(details.uid)))
+        throw new HttpError(403, "CSRF", "Refresh this sign-in request.");
+      const next = await provider.interactionResult(req.raw, reply.raw,
+        { error: "access_denied", error_description: "Sign-in cancelled." },
+        { mergeWithLastSubmission: false });
+      return continuation(new URL(next), config.issuer);
+    },
+  );
   api.post(
     "/api/v1/account/interaction/:uid/continue",
     {

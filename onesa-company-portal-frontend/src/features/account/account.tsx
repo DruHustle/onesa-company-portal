@@ -132,6 +132,10 @@ export function OnesaAccount({ mode = "login", interactionId }: { mode?: Mode; i
         {mode === "login" && <label className={styles.check}><input name="remember" type="checkbox"/><span>{t.remember}</span></label>}
         <button className="button">{busy ? t.wait : mode === "register" ? t.request : mode === "confirm" ? t.confirm : t.next}</button>
       </fieldset></form>}
+      {interactionId && interaction && <button className={styles.action} type="button" disabled={busy}
+        onClick={() => void action(async () => follow(await accountRequest("/api/v1/account/interaction/" + encodeURIComponent(interactionId) + "/cancel", {csrf: interaction.csrf})))}>
+        {language === "de" ? "Anmeldung abbrechen" : "Cancel sign-in"}
+      </button>}
       {noticeElement}
       {help === "MFA_ENROLLMENT_REQUIRED" && <p><a href={setupUrl}>{t.setup}</a></p>}
       {help === "EMAIL_VERIFICATION_REQUIRED" && <p><a href="/account/register">{t.verify}</a></p>}
