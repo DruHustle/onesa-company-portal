@@ -1,5 +1,11 @@
 # Changelog
 
+- Scope the signed Onesa sign-in interaction cookies to the exact session API path
+  used by browsers while directing the user to the existing Portal sign-in form.
+
+- Let verified Portal users initiate account and associated product-data deletion at
+  `/account/delete` and receive a reference for follow-up with the privacy team.
+
 - Prepare the English and German mobile app directory on the Company Products page.
   Each product links to its own website. Platform-specific install links appear
   when that product has a verified release destination.

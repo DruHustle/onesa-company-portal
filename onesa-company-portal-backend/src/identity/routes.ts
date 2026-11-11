@@ -5,6 +5,7 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db, transaction, inTransaction } from "../services/db.js";
 import { env } from "../config/env.js";
+import { company } from "../config/company.js";
 import { error } from "../api/contracts.js";
 import { HttpError, enqueue } from "../services/workflows.js";
 import {
@@ -567,6 +568,50 @@ export async function registerIdentity(
     async (req) => {
       configured();
       return snapshot(await requireAccount(req));
+    },
+  );
+
+  api.post(
+    "/api/v1/account/deletion-requests",
+    {
+      logLevel: "silent",
+      schema: {
+        ...meta("requestOnesaAccountDeletion", true),
+        body: z.object({ confirmed: z.literal(true) }).strict(),
+        response: { 202: z.object({ reference: z.uuid() }), ...failures },
+      },
+    },
+    async (req, reply) => {
+      configured();
+      const session = await requireAccount(req, true);
+      if (!session.account.email_verified_at)
+        throw new HttpError(403, "VERIFICATION_REQUIRED", "Verify your Onesa email first.");
+      await limits.limit("identity-deletion-request:" + session.account.id, 10, 3600);
+      const reference = await transaction(async (c) => {
+        await lockAccountSession(c, session);
+        const previous = await c.query(
+          "SELECT record_id FROM audit WHERE actor_id=$1 AND action='identity.deletion_requested' AND created_at>now()-interval '24 hours' ORDER BY created_at DESC LIMIT 1",
+          [session.account.id],
+        );
+        if (previous.rows.length) return String(previous.rows[0].record_id);
+        const id = randomUUID();
+        await enqueue(c, "identity-deletion-request:" + id, {
+          to: company.privacyEmail,
+          subject: "Onesa account deletion request",
+          encryptedText: encrypt([
+            "Review the request to delete the shared Onesa account and associated product data.",
+            "Reference: " + id, "Portal user ID: " + session.account.id,
+            "Verified contact: " + session.account.email,
+          ].join("\n")),
+        });
+        await c.query(
+          "INSERT INTO audit(actor_id,action,record_id,request_id) VALUES($1,'identity.deletion_requested',$2,$3)",
+          [session.account.id, id, req.id],
+        );
+        return id;
+      });
+      reply.code(202);
+      return { reference };
     },
   );
 

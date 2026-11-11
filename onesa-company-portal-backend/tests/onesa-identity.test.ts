@@ -181,6 +181,13 @@ async function authorization(
   const location = new URL(String(start.headers.location));
   assert.match(location.pathname, /^\/account\/sign-in\/[A-Za-z0-9_-]+$/);
   const uid = location.pathname.split("/").pop()!;
+  for (const name of ["onesa_identity_interaction", "onesa_identity_interaction.sig"]) {
+    const cookie = start.cookies.find(value => value.name === name);
+    assert.ok(cookie);
+    assert.equal(cookie.path, "/api/v1/account/interaction/" + uid);
+    assert.equal(cookie.httpOnly, true);
+    assert.equal(cookie.secure, true);
+  }
   const details = await existing.request({
     url: "/api/v1/account/interaction/" + uid,
   });
@@ -1549,4 +1556,135 @@ test("An unconfigured Mobile client does not enable registration, access request
     await legacyApp?.close();
     process.env.ONESA_IDENTITY_CONFIG_B64 = saved;
   }
+});
+
+test("A deletion request belongs to the verified session and concurrent retries queue one privacy case", async () => {
+  const url = "/api/v1/account/deletion-requests";
+  const input = { method: "POST" as const, url, payload: { confirmed: true } };
+  assert.equal((await browser().request(input)).statusCode, 401);
+  const client = await signIn();
+  assert.equal((await client.request(input)).statusCode, 403);
+  const headers = { "x-csrf-token": client.session.csrf };
+  assert.equal(
+    (await client.request({ ...input, headers, payload: { confirmed: false } }))
+      .statusCode,
+    400,
+  );
+  const offOrigin = await client.request({
+    ...input,
+    headers: { ...headers, origin: "https://foreign.example.invalid" },
+  });
+  assert.equal(offOrigin.statusCode, 403);
+  const replies = await Promise.all([
+    client.request({ ...input, headers }),
+    client.request({ ...input, headers }),
+  ]);
+  for (const reply of replies) assert.equal(reply.statusCode, 202);
+  const id = replies[0].json().reference;
+  assert.match(id, /^[a-f\d-]{36}$/);
+  assert.equal(replies[1].json().reference, id);
+  const jobs = (
+    await db.query(
+      "SELECT payload FROM jobs WHERE dedupe_key LIKE 'identity-deletion-request:%'",
+    )
+  ).rows;
+  assert.equal(jobs.length, 1);
+  assert.equal(jobs[0].payload.text, undefined);
+  assert.ok(decrypt(jobs[0].payload.encryptedText).includes(member));
+  assert.equal(
+    (
+      await db.query(
+        "SELECT count(*)::int n FROM audit WHERE action='identity.deletion_requested' AND actor_id=$1 AND record_id=$2",
+        [member, id],
+      )
+    ).rows[0].n,
+    1,
+  );
+  assert.equal(
+    (await client.request({ url: "/api/v1/account/me" })).statusCode,
+    200,
+  );
+});
+async function enableDroneOperator() {
+  await db.query(
+    "INSERT INTO identity_product_access(user_id,product,role,status) VALUES($1,'drone','operator','active')",
+    [member],
+  );
+  const tenant = randomUUID();
+  await db.query(
+    "INSERT INTO identity_drone_memberships VALUES($1,$2,'operator','Simulation only')",
+    [member, tenant],
+  );
+  return tenant;
+}
+test("Drone password recovery ends live grants, preserves the subject and workspace, and consumes the email link once", async () => {
+  const tenant = await enableDroneOperator();
+  const flow = await authorization("member", 1);
+  const { token } = await complete(flow);
+  const previous = (await inspect(token, 1)).json();
+  assert.equal(previous.active, true);
+  assert.equal(previous.sub, member);
+  assert.deepEqual(previous.onesa_memberships, [
+    { product: "drone", tenant_id: tenant, role: "operator" },
+  ]);
+  const client = browser();
+  assert.equal(
+    (
+      await client.request({
+        method: "POST",
+        url: "/api/v1/account/password/request",
+        payload: { email: emails.member },
+      })
+    ).statusCode,
+    202,
+  );
+  const { payload } = (
+    await db.query("SELECT payload FROM jobs WHERE payload->>'to'=$1", [
+      emails.member,
+    ])
+  ).rows[0];
+  const secret = decrypt(payload.encryptedText).match(
+    /#access-link=([a-f0-9]{64})/,
+  )?.[1];
+  assert.ok(secret);
+  const newPassword = randomBytes(36).toString("base64url");
+  const reset = () =>
+    client.request({
+      method: "POST",
+      url: "/api/v1/auth/password/reset",
+      payload: { token: secret, password: newPassword },
+    });
+  assert.equal((await reset()).statusCode, 200);
+  assert.equal((await reset()).statusCode, 400);
+  assert.deepEqual((await inspect(token, 1)).json(), { active: false });
+  const old = await client.request({
+    method: "POST",
+    url: "/api/v1/account/login",
+    payload: { email: emails.member, password },
+  });
+  assert.equal(old.statusCode, 401);
+  const fresh = await client.request({
+    method: "POST",
+    url: "/api/v1/account/login",
+    payload: { email: emails.member, password: newPassword },
+  });
+  assert.equal(fresh.statusCode, 200);
+  const { token: newToken } = await complete(
+    await authorization("member", 1, client),
+    true,
+  );
+  const now = (await inspect(newToken, 1)).json();
+  assert.equal(now.active, true);
+  assert.equal(now.sub, member);
+  assert.deepEqual(now.onesa_memberships, previous.onesa_memberships);
+});
+test("An expired central account session invalidates the issued Drone grant", async () => {
+  await enableDroneOperator();
+  const { token } = await complete(await authorization("member", 1));
+  assert.equal((await inspect(token, 1)).json().active, true);
+  await db.query(
+    "UPDATE identity_sessions SET expires_at=now()-interval '1 second' WHERE user_id=$1",
+    [member],
+  );
+  assert.deepEqual((await inspect(token, 1)).json(), { active: false });
 });
