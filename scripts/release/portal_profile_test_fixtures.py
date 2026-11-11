@@ -17,10 +17,10 @@ FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures/portal_frontend_v1"
 # split retains these exact blobs even though commit IDs and paths have changed.
 # Their bundled copies also support API-published snapshots without that ancestry.
 PREFIX = "onesa-company-portal-frontend/"
-# Previously pinned files changed by the separate billing and catalog source.
-# The browser fixture is the exact pinned public blob in Portal ecc4521dc44dd9e162701a5e34a455f7f27661fc.
-# Product directory and footer fixtures are the exact public blobs from Portal
-# 25eef94002d43f8732346308a2b10246adee12f0.
+# Public fixtures retain the reviewed bytes before billing, catalog and directory updates.
+# The browser fixture comes from Portal ecc4521dc44dd9e162701a5e34a455f7f27661fc.
+# Portal 25eef94002d43f8732346308a2b10246adee12f0 and
+# f44dee4ef2c3c7ada580e37647fce463dc319970 contain identical footer and product-view blobs.
 # Sizes and hashes identify actual original public bytes, not a generated mock.
 REVIEWED_FILES = {
     PREFIX + "src/components/site-footer.tsx": (2925, "aee902a898185551b5d7abb3ff511a57b9a84a30ff1e372919d2146366ce284d"),
