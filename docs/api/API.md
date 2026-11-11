@@ -311,3 +311,9 @@ retries within 24 hours return the same reference. The transaction records an
 audit event and queues an encrypted request for the published privacy contact.
 The reference confirms intake. The privacy team reviews the request, identifies
 applicable retention obligations and coordinates fulfillment across products.
+
+Verified platform administrators can disable or restore an ordinary member from
+**Accounts and product access → Member account**. The `PUT /api/v1/admin/identity/accounts/:id/member-status`
+endpoint takes `disabled` and a fresh administrator `stepUp`, and writes the reviewer's
+identity to the audit log. Disabling revokes sessions. Restoring permits a fresh
+login with the member's existing product approvals and workspace assignments.

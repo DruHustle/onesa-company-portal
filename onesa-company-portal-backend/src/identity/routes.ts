@@ -28,6 +28,8 @@ import {
   accountAccess,
   currentAccount,
   identityAccount,
+  identityAccountQuery,
+  type IdentityAccount,
   isGlobalAdmin,
   requireAccount,
   revokeAccountIdentity,
@@ -1450,6 +1452,7 @@ export async function registerIdentity(
             items: z.array(
               z.object({
                 account: accountSchema,
+                disabled: z.boolean(),
                 access: z.array(accessSchema),
                 memberships: z.array(membershipSchema),
               }),
@@ -1464,18 +1467,56 @@ export async function registerIdentity(
     async (req) => {
       configured();
       const rows = (
-        await db.query(
-          "SELECT u.id FROM users u WHERE NOT u.disabled AND u.email ILIKE $1 ORDER BY u.email,u.id OFFSET $2 LIMIT 51",
+        await db.query<IdentityAccount & { disabled: boolean }>(
+          identityAccountQuery + " WHERE (NOT u.disabled OR u.role='member') AND u.email ILIKE $1 ORDER BY u.email,u.id OFFSET $2 LIMIT 51",
           ["%" + req.query.search + "%", (req.query.page - 1) * 50],
         )
       ).rows;
       const items = [];
-      for (const row of rows.slice(0, 50)) {
-        const account = (await identityAccount(row.id))!;
+      for (const account of rows.slice(0, 50)) {
         const { access, memberships } = await accountAccess(account);
-        items.push({ account: safeAccount(account), access, memberships });
+        items.push({ account: safeAccount(account), disabled: account.disabled, access, memberships });
       }
       return { items, page: req.query.page, hasMore: rows.length > 50 };
+    },
+  );
+  api.put(
+    "/api/v1/admin/identity/accounts/:id/member-status",
+    {
+      preHandler: admin,
+      schema: {
+        ...meta("setOnesaMemberStatus", true),
+        params: z.object({ id: z.uuid() }),
+        body: z.object({ disabled: z.boolean(), stepUp }).strict(),
+        response: { 200: z.object({ ok: z.literal(true) }), ...failures },
+      },
+    },
+    async (req) => {
+      configured();
+      await limits.limit("identity-admin-change:" + req.actor!.id, 20, 900);
+      const id = req.params.id;
+      await transaction(async c => {
+        const role = await reauthenticate(c, {
+          userId: req.actor!.id, token: req.cookies.onesa_session!, csrf: req.actor!.csrf,
+        }, req.body.stepUp);
+        if (!isGlobalAdmin(role))
+          throw new HttpError(403, "FORBIDDEN", "Administrator access is required.");
+        const target = (await c.query(
+          "SELECT disabled FROM users WHERE id=$1 AND role='member' FOR NO KEY UPDATE", [id],
+        )).rows[0];
+        if (!target || id === req.actor!.id)
+          throw new HttpError(409, "MEMBER_REQUIRED", "This action is available for ordinary Onesa members only.");
+        if (target.disabled === req.body.disabled) return;
+        // The existing user-state trigger revokes shared identity sessions and provider grants.
+        await c.query("UPDATE users SET disabled=$1 WHERE id=$2", [req.body.disabled, id]);
+        await c.query("DELETE FROM sessions WHERE user_id=$1", [id]);
+        await c.query("DELETE FROM recovery_tokens WHERE user_id=$1", [id]);
+        await c.query(
+          "INSERT INTO audit(actor_id,action,record_id,request_id) VALUES($1,$2,$3,$4)",
+          [req.actor!.id, req.body.disabled ? "identity.member_disabled" : "identity.member_restored", id, req.id],
+        );
+      });
+      return { ok: true as const };
     },
   );
   api.put(

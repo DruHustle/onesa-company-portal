@@ -17,13 +17,16 @@ export type IdentityAccount = {
   email_verified_at: Date | null;
   mfa_enrolled: boolean;
 };
+export const identityAccountQuery =
+  "SELECT u.id,u.email,u.role,u.disabled,coalesce(p.display_name,u.email) AS display_name,p.email_verified_at,(u.mfa_secret IS NOT NULL) AS mfa_enrolled FROM users u LEFT JOIN identity_profiles p ON p.user_id=u.id";
+
 export async function identityAccount(
   id: string,
   connection: Pick<PoolClient, "query"> = db,
 ): Promise<IdentityAccount | undefined> {
   return (
     await connection.query<IdentityAccount>(
-      "SELECT u.id,u.email,u.role,coalesce(p.display_name,u.email) AS display_name,p.email_verified_at,(u.mfa_secret IS NOT NULL) AS mfa_enrolled FROM users u LEFT JOIN identity_profiles p ON p.user_id=u.id WHERE u.id=$1 AND NOT u.disabled",
+      identityAccountQuery + " WHERE u.id=$1 AND NOT u.disabled",
       [id],
     )
   ).rows[0];

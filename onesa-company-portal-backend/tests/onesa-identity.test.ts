@@ -1688,3 +1688,92 @@ test("An expired central account session invalidates the issued Drone grant", as
   );
   assert.deepEqual((await inspect(token, 1)).json(), { active: false });
 });
+
+test("An administrator can disable and restore an ordinary member with fresh MFA and retained Drone assignments", async () => {
+  const tenant = await enableDroneOperator();
+  const { token } = await complete(await authorization("member", 1));
+  const staff = await signIn("admin");
+  const url = "/api/v1/admin/identity/accounts/" + member + "/member-status";
+  const headers = { "x-csrf-token": staff.session.csrf };
+  const fresh = async () => ({ password, code: await factor(admin) });
+  const setStatus = async (disabled: boolean) =>
+    staff.request({
+      method: "PUT",
+      url,
+      headers,
+      payload: { disabled, stepUp: await fresh() },
+    });
+  const ordinary = await signIn("member");
+  assert.equal(
+    (
+      await ordinary.request({
+        method: "PUT",
+        url,
+        headers: { "x-csrf-token": ordinary.session.csrf },
+        payload: { disabled: true, stepUp: await fresh() },
+      })
+    ).statusCode,
+    401,
+  );
+  assert.equal(
+    (
+      await staff.request({
+        method: "PUT",
+        url,
+        headers,
+        payload: { disabled: true },
+      })
+    ).statusCode,
+    400,
+  );
+  assert.equal(
+    (
+      await staff.request({
+        method: "PUT",
+        url,
+        headers,
+        payload: { disabled: true, stepUp: { password, code: "invalid" } },
+      })
+    ).statusCode,
+    403,
+  );
+  assert.equal((await setStatus(true)).statusCode, 200);
+  assert.deepEqual((await inspect(token, 1)).json(), { active: false });
+  assert.equal(
+    (await ordinary.request({ url: "/api/v1/account/me" })).statusCode,
+    401,
+  );
+  assert.equal(
+    (
+      await browser().request({
+        method: "POST",
+        url: "/api/v1/account/login",
+        payload: { email: emails.member, password },
+      })
+    ).statusCode,
+    401,
+  );
+  const directory = await staff.request({
+    url:
+      "/api/v1/admin/identity/accounts?search=" +
+      encodeURIComponent(emails.member),
+  });
+  assert.equal(directory.json().items[0].disabled, true);
+  const protectedStaff = await staff.request({
+    method: "PUT",
+    url: url.replace(member, owner),
+    headers,
+    payload: { disabled: true, stepUp: await fresh() },
+  });
+  assert.equal(protectedStaff.statusCode, 409);
+  assert.equal((await setStatus(false)).statusCode, 200);
+  assert.deepEqual((await inspect(token, 1)).json(), { active: false });
+  const { token: newToken } = await complete(await authorization("member", 1));
+  const restored = (await inspect(newToken, 1)).json();
+  assert.equal(restored.sub, member);
+  assert.deepEqual(restored.onesa_roles, []);
+  assert.equal(restored.onesa_product_roles.drone, "operator");
+  assert.deepEqual(restored.onesa_memberships, [
+    { product: "drone", tenant_id: tenant, role: "operator" },
+  ]);
+});
