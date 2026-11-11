@@ -121,19 +121,22 @@ export async function accountAccess(
     )
   ).rows;
   const admin = isGlobalAdmin(account.role);
+  const active = access.filter((row) => row.status === "active");
+  // Verified staff already approved for the Portal may enter Farmer's empty
+  // workspace. A recorded Farmer decision always takes precedence for staff.
+  if (!admin && account.role !== "member" && account.email_verified_at &&
+      !access.some((row) => row.product === "farmer")) {
+    active.push({ product: "farmer", role: "user" });
+  }
   return {
     onesa_roles: admin ? ["global_admin" as const] : [],
     onesa_applications: admin
       ? [...clientProducts]
-      : access
-          .filter((row) => row.status === "active")
-          .map((row) => row.product),
+      : active.map((row) => row.product),
     onesa_product_roles: admin
       ? Object.fromEntries(clientProducts.map((product) => [product, "admin"]))
       : Object.fromEntries(
-          access
-            .filter((row) => row.status === "active")
-            .map((row) => [row.product, row.role]),
+          active.map((row) => [row.product, row.role]),
         ),
     onesa_memberships: memberships.map((row) => ({
       product: "drone" as const,

@@ -107,5 +107,19 @@ export function createIdentityProvider(config: IdentityConfig) {
     }
   });
   provider.proxy = true;
+  // The HTML prompt and its API have distinct paths. Bind both signed
+  // interaction cookies to this request's API subtree; keep resume/session
+  // cookies at the paths chosen by the provider.
+  provider.use(async (ctx, next) => {
+    await next();
+    const headers = ctx.res.getHeader("set-cookie");
+    if (!Array.isArray(headers)) return;
+    const prefix = provider.cookieName("interaction");
+    ctx.res.setHeader("set-cookie", headers.map((cookie) => {
+      if (!cookie.startsWith(prefix + "=") && !cookie.startsWith(prefix + ".sig=")) return cookie;
+      return cookie.replace(/(;\s*path=)\/account\/sign-in\/([A-Za-z0-9_-]{8,128})(?=;|$)/i,
+        "$1/api/v1/account/interaction/$2");
+    }));
+  });
   return provider;
 }

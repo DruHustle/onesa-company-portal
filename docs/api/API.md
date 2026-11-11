@@ -317,3 +317,19 @@ Verified platform administrators can disable or restore an ordinary member from
 endpoint takes `disabled` and a fresh administrator `stepUp`, and writes the reviewer's
 identity to the audit log. Disabling revokes sessions. Restoring permits a fresh
 login with the member's existing product approvals and workspace assignments.
+
+When a Farmer client is configured, a verified Onesa customer with active Farmer
+access receives `onesa_product_roles.farmer = "user"`. Verified Portal staff can
+enter Farmer under their existing Portal approval. An explicit pending, rejected
+or revoked Farmer decision takes precedence for ordinary staff. Platform
+administrators retain the existing MFA requirement. Farmer receives only its own
+product assertion and resolves all farm memberships within Smart Farmer. With no
+membership, the user may create a farm or accept an invitation.
+A self-service account with the ordinary `member` role requests Farmer from
+`/account` using `POST /api/v1/account/products/farmer/request`. A Portal
+administrator can approve the existing account in the product-access manager.
+An approval for another product grants access only to that product.
+An in-progress authorization can be cancelled with its browser cookie and
+interaction CSRF proof at `POST /api/v1/account/interaction/:uid/cancel`.
+Following the signed-in browser's continuation returns the original state and
+`access_denied` to the registered callback. No grant is issued.

@@ -235,3 +235,6 @@ entry point; it does not cancel charges, delete financial records, revoke other
 provider sessions or undo the independent service's data. Qualification and
 recovery must preserve both services' original identity and operation records.
 This source boundary supplies no live migration, restore or payment acceptance.
+
+Migration 017 adds the Farmer product and its ordinary `user` role to the existing
+product-access constraints. It changes no identity, membership or approval rows.

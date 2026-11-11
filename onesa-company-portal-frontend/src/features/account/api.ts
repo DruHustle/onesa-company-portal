@@ -12,12 +12,12 @@ export async function accountRequest<T>(path: string, input?: unknown, csrf?: st
   if (!response.ok) throw new AccountError(body?.error?.message || "The request could not be completed. Please try again.", body?.error?.code || "REQUEST_FAILED", response.status);
   return body as T;
 }
-export const productNames = { ai: "Onesa AI Platform", drone: "Onesa Drone", robot: "Onesa Robot", mobile: "Onesa Mobile" };
-export const adminProductNames = { farmer: "Smart Farmer", logistics: "Smart Logistics", pasofi: "PasoFi" };
+export const productNames = { ai: "Onesa AI Platform", drone: "Onesa Drone", robot: "Onesa Robot", mobile: "Onesa Mobile", farmer: "Smart Farmer" };
+export const adminProductNames = { logistics: "Smart Logistics", pasofi: "PasoFi" };
 export type Product = keyof typeof productNames;
 export type ApplicationProduct = Product | keyof typeof adminProductNames;
 export function enabledProducts(applications: { product: ApplicationProduct }[]): Product[] {
-  return (Object.keys(productNames) as Product[]).filter(product => product !== "mobile" || applications.some(application => application.product === "mobile"));
+  return (Object.keys(productNames) as Product[]).filter(product => (product !== "mobile" && product !== "farmer") || applications.some(application => application.product === product));
 }
 
 export const futureProductNames = { farmer: "Smart Farmer", logistics: "Smart Logistics", factory: "Smart Factory", pasofi: "PasoFi", mobile: "Onesa Mobile" };

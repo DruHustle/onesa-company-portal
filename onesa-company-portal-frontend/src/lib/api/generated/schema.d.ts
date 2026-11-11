@@ -1049,6 +1049,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/account/interaction/{uid}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Shared identity and explicit product access. No product data or physical-control permission is granted by registration. */
+        post: operations["cancelOnesaSignIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/account/interaction/{uid}/continue": {
         parameters: {
             query?: never;
@@ -12399,7 +12416,7 @@ export interface operations {
                             /** @enum {string} */
                             mobile?: "admin" | "operations" | "support" | "finance" | "agent" | "auditor" | "customer";
                             /** @enum {string} */
-                            farmer?: "admin";
+                            farmer?: "user" | "admin";
                             /** @enum {string} */
                             logistics?: "admin";
                             /** @enum {string} */
@@ -12875,7 +12892,7 @@ export interface operations {
                         csrf: string;
                         access: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer";
                             role: string;
                             /** @enum {string} */
                             status: "pending" | "active" | "revoked" | "rejected";
@@ -13188,7 +13205,7 @@ export interface operations {
                     /** Format: email */
                     email: string;
                     name: string;
-                    products: ("ai" | "drone" | "robot" | "mobile")[];
+                    products: ("ai" | "drone" | "robot" | "mobile" | "farmer")[];
                 };
             };
         };
@@ -13520,7 +13537,7 @@ export interface operations {
                         csrf: string;
                         access: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer";
                             role: string;
                             /** @enum {string} */
                             status: "pending" | "active" | "revoked" | "rejected";
@@ -14124,7 +14141,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                product: "ai" | "drone" | "robot" | "mobile";
+                product: "ai" | "drone" | "robot" | "mobile" | "farmer";
             };
             cookie?: never;
         };
@@ -14156,7 +14173,7 @@ export interface operations {
                         csrf: string;
                         access: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer";
                             role: string;
                             /** @enum {string} */
                             status: "pending" | "active" | "revoked" | "rejected";
@@ -14341,6 +14358,157 @@ export interface operations {
                             emailVerified: boolean;
                             mfaEnrolled: boolean;
                         } | null;
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    cancelOnesaSignIn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    csrf: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        continuePath: string;
+                        issuer: string;
                     };
                 };
             };
@@ -14810,7 +14978,7 @@ export interface operations {
                             disabled: boolean;
                             access: {
                                 /** @enum {string} */
-                                product: "ai" | "drone" | "robot" | "mobile";
+                                product: "ai" | "drone" | "robot" | "mobile" | "farmer";
                                 role: string;
                                 /** @enum {string} */
                                 status: "pending" | "active" | "revoked" | "rejected";
@@ -15112,7 +15280,7 @@ export interface operations {
             header?: never;
             path: {
                 id: string;
-                product: "ai" | "drone" | "robot" | "mobile";
+                product: "ai" | "drone" | "robot" | "mobile" | "farmer";
             };
             cookie?: never;
         };

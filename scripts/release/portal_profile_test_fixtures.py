@@ -68,3 +68,36 @@ def reviewed_frontend_bytes(name):
     if len(data) != size or hashlib.sha256(data).hexdigest() != digest:
         raise ValueError("LEGACY_TEST_FIXTURE_BYTES_CHANGED")
     return data
+
+
+# Historical positive inputs for the schema-016 release and restore fixtures.
+# Exact migration bytes at Portal f104f81ef25a4b75d9f8fbf803021db82caa047b.
+SCHEMA_016 = {
+    "001_initial.sql": "7d9b7ee898859ec4cd858f9cba4e43bc7c62a866323ca6786d2d7571cf4e26e9",
+    "002_security_workflows.sql": "f4900254857995fd7da68ad51f2f5728ad2376213aad4d943a1ffc5ee8ab8fec",
+    "003_document_versions.sql": "f6e0bf91cb2f547754d7eaafbe38e28edc563b25101e3d7878beb9f901e42b15",
+    "004_company_facts.sql": "49d4d0bb74ae099104e45a6007a974d0ad12423aff49af23b4c28fc5d6385aa9",
+    "005_storage_deletion_outbox.sql": "ea8c603df94c9310177f4af9d15ac41be16b4f1d5ca1e36508509e771f94f563",
+    "006_bounded_transfers.sql": "da997d58639f6dd6e6eac5cf5a845e59422b1a96e2e0f4ba6b38c4d84ce111be",
+    "007_operational_state.sql": "f1c27cd7ada57de2b262feb67e6c8290419b27e8094754ed01ca3ebed4ea76ea",
+    "008_privacy_governance.sql": "c016c076686dfcb2982c743359ad94bfa24fca71bc1250e20fc3b7c655df02e3",
+    "009_privacy_lifecycle.sql": "8d066d911d17dd5aec1cc89915037bfb5f158afa069e381e4fb42976348877a5",
+    "010_engineering_identity.sql": "11f4cb0d0fb2de052c31583a35d72b68f4ed288b155196e6cee9cf56010f5c86",
+    "011_access_registration.sql": "11ee7bd502a78ee876f1634edf34dc626d3a3b9c7417646427abe03607e0e297",  # gitleaks:allow -- SHA-256 of immutable public migration SQL.
+    "012_editorial_publications.sql": "8da498b00c9eef6e9cdd4bf4299d2ffa7a890e5d936fc23c6f37e9398b54608c",
+    "013_onesa_identity.sql": "ce7f4ab09f7fafb915b4a4e8b1657ef1e6520494bd28a0492fc3d46d0f4d79e7",
+    "014_identity_grant_sessions.sql": "a45640fc7a946f410033c0cc9cd666bfcb2e6a8e02a4f5a200bc2b548f7ce03f",
+    "015_mobile_identity.sql": "424c55596b0a3ee98330a2b2cd9171ab9dd2b23b8b20961a5f4b16b59f9867df",
+    "016_engineering_account_links.sql": "37416e013033aedfc54478f569ccc2b0eb8b0bf67e32bc76e13ae4fec24b5577",
+}
+
+
+def schema_016_migrations(root):
+    directory = root / "onesa-company-portal-backend/migrations"
+    migrations = {}
+    for name, digest in SCHEMA_016.items():
+        data = (directory / name).read_bytes()
+        if hashlib.sha256(data).hexdigest() != digest:
+            raise ValueError("HISTORICAL_MIGRATION_BYTES_CHANGED")
+        migrations[name] = data
+    return migrations

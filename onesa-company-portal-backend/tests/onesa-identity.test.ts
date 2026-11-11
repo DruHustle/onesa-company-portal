@@ -1777,3 +1777,64 @@ test("An administrator can disable and restore an ordinary member with fresh MFA
     { product: "drone", tenant_id: tenant, role: "operator" },
   ]);
 });
+
+test("Farmer admits verified Portal staff and approved customers, and enforces later revocation", async () => {
+  const farmer = config.clients.findIndex((client) => client.product === "farmer");
+  const first = await signIn("member");
+  const requested = await first.request({
+    method: "POST", url: "/api/v1/account/products/farmer/request",
+    headers: {"x-csrf-token": first.session.csrf}, payload: {},
+  });
+  assert.equal(requested.statusCode, 200, requested.body);
+  assert.equal(requested.json().access.find((grant: {product: string}) => grant.product === "farmer").status, "pending");
+  const waiting = await authorization("member", farmer, first);
+  const denied = await waiting.request({method: "POST", url: "/api/v1/account/interaction/" + waiting.uid + "/continue", payload: {csrf: waiting.details.csrf}});
+  assert.equal(denied.statusCode, 403);
+
+  const reviewer = await signIn("admin");
+  const decision = async (id: string, status: "active" | "revoked", revision: number) => {
+    const result = await reviewer.request({
+      method: "PUT", url: "/api/v1/admin/identity/accounts/" + id + "/products/farmer",
+      headers: {"x-csrf-token": reviewer.session.csrf},
+      payload: {role: "user", status, expectedRevision: revision, memberships: [],
+        stepUp: {password, code: await factor(admin)}},
+    });
+    assert.equal(result.statusCode, 200, result.body);
+  };
+  await decision(member, "active", 1);
+  const grant = await complete(await authorization("member", farmer, first), true);
+  const claims = (await inspect(grant.token, farmer)).json();
+  assert.deepEqual(claims.onesa_product_roles, {farmer: "user"});
+  assert.deepEqual(claims.onesa_applications, ["farmer"]);
+  assert.deepEqual(claims.onesa_roles, []);
+  assert.deepEqual(claims.onesa_memberships, []);
+
+  await db.query("UPDATE users SET role='viewer',mfa_secret=$2 WHERE id=$1", [outsider, encrypt("JBSWY3DPEHPK3PXP")]);
+  const staffBrowser = browser();
+  const login = await staffBrowser.request({method:"POST", url:"/api/v1/account/login",
+    payload: {email: emails.outsider, password, code: await factor(outsider)}});
+  assert.equal(login.statusCode, 200, login.body);
+  const staff = await complete(await authorization("outsider", farmer, staffBrowser), true);
+  assert.deepEqual((await inspect(staff.token, farmer)).json().onesa_product_roles, {farmer: "user"});
+  await decision(outsider, "revoked", 0);
+  await decision(member, "revoked", 2);
+  assert.deepEqual((await inspect(staff.token, farmer)).json(), {active: false});
+  assert.deepEqual((await inspect(grant.token, farmer)).json(), {active: false});
+});
+
+test("Cancelling Farmer sign-in returns the original state without issuing a grant", async () => {
+  const farmer = config.clients.findIndex((client) => client.product === "farmer");
+  const flow = await authorization("member", farmer);
+  const url = "/api/v1/account/interaction/" + flow.uid + "/cancel";
+  assert.equal((await flow.request({method:"POST", url, payload:{csrf: "0".repeat(64)}})).statusCode, 403);
+  const cancelled = await flow.request({method:"POST", url, payload:{csrf:flow.details.csrf}});
+  assert.equal(cancelled.statusCode, 200, cancelled.body);
+  const resumed = await flow.request({url:cancelled.json().continuePath});
+  assert.equal(resumed.statusCode, 303, resumed.body);
+  const callback = new URL(String(resumed.headers.location));
+  assert.equal(callback.origin + callback.pathname, config.clients[farmer].redirectUri);
+  assert.equal(callback.searchParams.get("state"), flow.state);
+  assert.equal(callback.searchParams.get("error"), "access_denied");
+  assert.equal(callback.searchParams.has("code"), false);
+  assert.equal((await db.query("SELECT count(*) FROM identity_grant_sessions")).rows[0].count, "0");
+});

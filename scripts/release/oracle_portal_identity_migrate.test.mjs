@@ -7,7 +7,15 @@ import {fileURLToPath} from 'node:url';
 import {additions,connectionScope,migrate,validateRequest,validateState} from './oracle_portal_identity_migrate.mjs';
 
 const directory=fileURLToPath(new URL('../../onesa-company-portal-backend/migrations/',import.meta.url));
-const files={};for(const name of (await readdir(directory)).filter(n=>n.endsWith('.sql')).sort())files[name]=await readFile(directory+name,'utf8');
+// Positive fixtures cover the reviewed schema-016 profile. The source tree also
+// contains the Farmer candidate, which the historical installer must refuse.
+const currentFiles = {};
+for (const name of (await readdir(directory)).filter(n => n.endsWith('.sql')).sort()) {
+  currentFiles[name] = await readFile(directory + name, 'utf8');
+}
+const files = Object.fromEntries(Object.entries(currentFiles).filter(([name]) =>
+  /^(?:00[1-9]|01[0-6])_[a-z_]+\.sql$/.test(name)));
+
 const manifest=Object.fromEntries(Object.entries(files).map(([name,raw])=>[name,createHash('sha256').update(raw).digest('hex')]));
 const request=()=>({action:'apply',environment:'staging',operation_id:'11111111-1111-4111-8111-111111111111',source_commit:'a'.repeat(40),
  database:{host:'ep-identity.example.test',database:'portal_test',owner_role:'portal_owner',application_role:'portal_app'},
@@ -144,4 +152,11 @@ test('exact 001–016 state matching excludes newer or reordered counterfeit nam
  const rows=Object.entries(manifest).map(([name,checksum])=>({name,checksum}));
  assert.equal(validateState(rows.reverse(),manifest),16);
  rows[0]={name:'099_forged.sql',checksum:rows[0].checksum};assert.throws(()=>validateState(rows,manifest));
+});
+
+test('the schema-016 installer rejects the actual Farmer migration inventory', () => {
+  assert.ok(currentFiles['017_farmer_identity.sql']);
+  const migrations = Object.fromEntries(Object.entries(currentFiles).map(([name, sql]) =>
+    [name, createHash('sha256').update(sql).digest('hex')]));
+  assert.throws(() => validateRequest({...request(), migrations}), /IDENTITY_MIGRATION_REFUSED/);
 });
