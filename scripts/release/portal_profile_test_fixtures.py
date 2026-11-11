@@ -24,7 +24,9 @@ PREFIX = "onesa-company-portal-frontend/"
 # Sizes and hashes identify actual original public bytes, not a generated mock.
 # Additional historical identity inputs are the exact bytes at Portal 2686929ba0a8e1491dd45734bf4156c46eeebb7e.
 # The historical access manager is preserved verbatim from Portal f104f81.
+# The historical Admin screen is also from f104f81, before infrastructure monitoring.
 REVIEWED_FILES = {
+    PREFIX + "src/features/admin/portal.tsx": (67332, "deeb9722ccf7434a2835e24f9e2425ea2fcab7c32a46da9dc0306a7621fdcd6e"),
     PREFIX + "src/features/account/access-manager.tsx": (11966, "24400fcf47357b6e7951a40a36bf3b9c5e28ac6c97099cd837cfe0fe3471f6d4"),
     PREFIX + "src/features/engineering/sign-in.tsx": (16421, "2c69fe4bc96f695561d8a38493dedd8892bee85e6e2fb218a8db25ab078c7499"),
     PREFIX + "src/lib/engineering-sign-in-errors.ts": (3177, "cef6efc4fbad3cb04e67f712ccccc50e57b31827aa55c65262af2e1dfababe6d"),
@@ -40,6 +42,7 @@ REVIEWED_FILES = {
     PREFIX + "src/lib/api/generated/schema.d.ts": (787032, "e84ad11bf072ba1c2aee94b70af9ea73e98d8dea426979d55e09479d23cf37f8"),
 }
 REVIEWED_BLOBS = {
+    PREFIX + "src/features/admin/portal.tsx": "78ff42da23691e12c28be6ac4439d1cb694213db",
     PREFIX + "src/features/account/access-manager.tsx": "f84c3503551a5897befac16730895a59bd26effb",  # gitleaks:allow -- Git blob of the reviewed public access manager.
     PREFIX + "src/features/engineering/sign-in.tsx": "ed871e21ef90c4be1e214cc3d1a75a968216cb76",
     PREFIX + "src/lib/engineering-sign-in-errors.ts": "3f024f195f0a8fcb8432d5629b3b231c88d2606b",
