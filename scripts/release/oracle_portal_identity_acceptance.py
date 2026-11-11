@@ -28,6 +28,7 @@ import oracle_portal_identity as identity
 
 PROFILE = "portal-shared-identity-acceptance-v1"
 PROFILE_V2 = "portal-shared-identity-acceptance-v2"
+FRONTEND_PROFILE_V2 = "frontend-identity-v2"
 PLAN = Path("/etc/onesa/oracle-portal-identity-acceptance.json")
 PLAN_V2 = Path("/etc/onesa/oracle-portal-identity-acceptance-v2.json")
 ROOT = Path("/var/lib/onesa/release-verification/portal/identity-acceptance")
@@ -264,7 +265,60 @@ def validate_plan(binding, plan, expected_profile=PROFILE):
     return r.component_artifact_folder(ROOT, binding)
 
 
-def signed_dependency(reference, env):
+def portal_v2_evidence(expected_profile, policy_profile, observation, binding, env, operation):
+    """Compare the commissioned Portal profile to the evidence its active phase actually signed."""
+    dependency_scope(binding, product="portal")
+    component = "frontend" if expected_profile == FRONTEND_PROFILE_V2 else "identity"
+    r.require(policy_profile.get("qualification_profile") == expected_profile
+              and binding["component"] == component, "IDENTITY_PORTAL_DEPENDENCY_PROFILE")
+    if expected_profile == FRONTEND_PROFILE_V2:
+        scope = observation.get("source_scope")
+        r.require(observation.get("status") == "PASS" and observation.get("operation_id") == operation
+                  and isinstance(scope, dict) and scope.get("qualification_profile") == FRONTEND_PROFILE_V2
+                  and scope.get("authentication_source_explicitly_reviewed") is True
+                  and scope.get("product_presentation_requires_current_hosted_acceptance") is True
+                  and scope.get("new_full_business_acceptance_claimed") is False,
+                  "IDENTITY_SIGNED_FRONTEND_SOURCE_SCOPE")
+        return
+
+    r.require(expected_profile == identity.PROFILE_V2, "IDENTITY_PORTAL_DEPENDENCY_PROFILE")
+    required = identity.CHECKS_V2[env] - identity.CHECKS[env]
+    r.require(required <= set(policy_profile["required_checks"][env])
+              and all(observation["checks"].get(key) == "PASS" for key in required),
+              "IDENTITY_SIGNED_ISSUER_REGISTRY_CHECKS")
+    if env == "staging":
+        receipt = observation.get("receipt")
+        r.require(isinstance(receipt, dict) and receipt.get("binding") == binding
+                  and receipt.get("context_id") == operation
+                  and receipt.get("state") == "IDENTITY_STAGING_OBSERVED_NOT_AUTHORIZATION",
+                  "IDENTITY_SIGNED_ISSUER_STAGING_RECEIPT")
+    else:
+        r.require(observation.get("operation_id") == operation, "IDENTITY_SIGNED_ISSUER_PRODUCTION_OPERATION")
+        receipt = observation
+
+    hosted = receipt.get("hosted")
+    r.require(isinstance(hosted, dict) and isinstance(hosted.get("administrator_observation"), dict),
+              "IDENTITY_SIGNED_PORTAL_ADMINISTRATOR_REQUIRED")
+    administrator = hosted["administrator_observation"]
+    for proof, version, state in [(hosted, 1, "HOSTED_IDENTITY_OBSERVED_NOT_AUTHORIZATION"),
+                                  (administrator, 2, "HOSTED_ADMINISTRATOR_SIGNIN_OBSERVED_NOT_AUTHORIZATION")]:
+        r.require(type(proof.get("schema_version")) is int and proof["schema_version"] == version
+                  and proof.get("state") == state and proof.get("scope") == "account"
+                  and proof.get("binding") == binding and proof.get("environment") == env
+                  and proof.get("operation_id") == operation and proof.get("physical_hardware_authorized") is False
+                  and type(proof.get("physical_operations")) is int and proof["physical_operations"] == 0,
+                  "IDENTITY_SIGNED_PORTAL_ADMINISTRATOR_SCOPE")
+    checks = hosted.get("checks")
+    r.require(isinstance(checks, dict)
+              and set(checks) == identity.hosted_checks({"qualification_profile": identity.PROFILE_V2}, "account")
+              and all(value is True for value in checks.values())
+              and isinstance(administrator.get("checks"), dict)
+              and set(administrator["checks"]) == {"portal_mfa_administrator"}
+              and administrator["checks"]["portal_mfa_administrator"] is True,
+              "IDENTITY_SIGNED_PORTAL_ADMINISTRATOR_CHECKS")
+
+
+def signed_dependency(reference, env, *, expected_portal_profile=None):
     """Verify the foreign commissioned store read-only; execute no foreign code.
 
     Product verifiers have different executable hashes. Their independently
@@ -283,7 +337,7 @@ def signed_dependency(reference, env):
         and r.sha(Path(owner.OPENSSL)) == trust["openssl_sha256"],
         "IDENTITY_DEPENDENCY_CUSTODY_CHANGED",
     )
-    dependency_binding_valid(reference["binding"], policy)
+    profile = dependency_binding_valid(reference["binding"], policy)
     conn = sqlite3.connect(
         "file:" + str(path / "records.sqlite") + "?mode=ro", uri=True, timeout=20
     )
@@ -415,6 +469,9 @@ def signed_dependency(reference, env):
         ),
         "IDENTITY_DEPENDENCY_ACCEPTANCE_INCOMPLETE",
     )
+    if expected_portal_profile is not None:
+        operation = root_context["id"] if env == "staging" else chain[0]["parent"]
+        portal_v2_evidence(expected_portal_profile, profile, observation, reference["binding"], env, operation)
     qualified = next((row for row in chain if row["kind"] == "qualification"), None)
     r.require(
         qualified
@@ -591,8 +648,12 @@ def dependencies(plan, env, accepted=None):
                 **frontend_reference,
                 "record_id": accepted[product]["frontend_record_id"],
             }
-        backend = signed_dependency(backend_reference, env)
-        frontend = signed_dependency(frontend_reference, env)
+        if product == "portal" and plan.get("qualification_profile") == PROFILE_V2:
+            backend = signed_dependency(backend_reference, env, expected_portal_profile=identity.PROFILE_V2)
+            frontend = signed_dependency(frontend_reference, env, expected_portal_profile=FRONTEND_PROFILE_V2)
+        else:
+            backend = signed_dependency(backend_reference, env)
+            frontend = signed_dependency(frontend_reference, env)
         deployment_id = deployment_identity(value, frontend, env)
         name = (
             "onesa-drone-oracle-" + env + "-api-1"
