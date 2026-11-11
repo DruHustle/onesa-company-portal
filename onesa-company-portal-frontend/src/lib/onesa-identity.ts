@@ -24,3 +24,10 @@ export function identityRedirectLocation(value: string | null, origin: string, e
     return url.href;
   } catch { return null; }
 }
+
+/** Launch a platform administrator into the staff surface on the registered origin. */
+export function accountApplicationUrl(product: string, registeredUrl: string, globalAdmin: boolean) {
+  if (globalAdmin && product === "pasofi") return new URL("/#staff", registeredUrl).href;
+  if (globalAdmin && product === "mobile") return new URL("/internal/", registeredUrl).href;
+  return registeredUrl;
+}

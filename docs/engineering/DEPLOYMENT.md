@@ -345,3 +345,31 @@ Primary references: [K3s configuration](https://docs.k3s.io/installation/configu
 [Portainer compatibility](https://docs.portainer.io/start/requirements-and-prerequisites),
 [Docker firewall policy](https://docs.docker.com/engine/network/firewall-iptables/),
 and [OCI IMDSv2](https://docs.oracle.com/en-us/iaas/Content/Compute/Tasks/gettingmetadata.htm).
+
+## Seven-client Onesa administrator sign-in
+
+Prepare the Portal issuer, frontend callback list and individual product bindings on the private release host. Run from the Portal backend directory under the account that holds the existing issuer credentials. The input JSON has the two keys `ONESA_IDENTITY_ENABLED` and `ONESA_IDENTITY_CONFIG_B64`. Use the active environment's private copy. The destination must be new and its parent must already be an owner-only directory. For example, after building the backend:
+
+```sh
+node dist/src/identity/prepare-release.js \
+  --environment production \
+  --existing /private/onesa/active/portal-issuer.env.json \
+  --output /private/onesa/releases/admin-login
+```
+
+An environment with **no existing issuer** can use `--initialize` in place of `--existing PATH` to generate its first signing key, session cookie key and client credentials. For staging, use `--environment staging --staging-origins /private/onesa/staging-origins.json`. Supply an object with eight distinct HTTPS origins under the keys `portal`, `ai`, `drone`, `robot`, `farmer`, `logistics`, `pasofi` and `mobile`. Production uses the canonical Onesa hosts built into the preparer. The tool checks the exact callback for every existing registration and preserves the issuer signing key, cookie keys, previously issued client credentials and application URLs. To retry with the same new registrations, use the generated issuer JSON as the next `--existing` input.
+
+Install the values from each JSON object in the named service's protected environment. Restrict `portal-issuer.env.json` to the Portal issuer. The Portal frontend takes only the callback list in `portal-frontend.env.json`. Preserve the existing Portal frontend-to-backend routing, Portal domain and private signing credentials. Each of the seven product environments receives its own binding. Additional product settings belong to the corresponding service:
+
+| Service | Existing deployment inputs to retain or configure |
+| --- | --- |
+| AI Platform and Drone | Each backend's private `ONESA_IDENTITY_ENCRYPTION_KEY` (Fernet) and secure database/session settings. |
+| Robot | The configured operator and simulation storage. |
+| Farmer | Its durable application database and session configuration. |
+| Logistics | Its database, migration 009, existing `JWT_SECRET` and the exact Logistics frontend origin in `CORS_ALLOWED_ORIGINS`. |
+| PasoFi | Install the separate `pasofi_onesa_client_secret` file under `PAMOFI_SECRETS_DIR` and use the identity-service staff Compose overlay, trusted origin and staff MFA encryption key. The production overlay pins the production origins. Staging needs its own matching issuer and callback. |
+| Mobile | Its durable database, `AUTH_ENCRYPTION_KEY`, exact public origin in `CORS_ALLOWED_ORIGINS` and the frontend's `MOBILE_ACCOUNT_GATEWAY_ORIGIN` pointing at the published account backend. |
+
+Engineering Docs uses the separate engineering identity issuer and Cloudflare Access. Its exact-address policy, owner approval, first-time MFA and linking/enrollment procedure are described in [Engineering Docs identity](ENGINEERING_DOCS_IDENTITY.md).
+
+The historical `portal-shared-identity-v1` commissioning profile and its signed evidence cover AI, Drone and Robot. The preparation command writes private configuration files. Deployment and acceptance of the seven-client release still require the current Portal runtime, each product release and a successful MFA-backed login through its deployed callback. Check that a regular account is refused on administrator-only products and that a revoked administrator grant stops authorizing privileged sessions.

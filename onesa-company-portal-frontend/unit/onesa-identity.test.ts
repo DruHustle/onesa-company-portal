@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { identityProtocolPath, identityRedirectLocation } from "../src/lib/onesa-identity.ts";
+import { accountApplicationUrl, identityProtocolPath, identityRedirectLocation } from "../src/lib/onesa-identity.ts";
 const origin = "https://account.example.invalid", callback = "https://ai.example.invalid/api/v1/auth/identity/callback";
 const configured = JSON.stringify([callback]);
 test("Only exact shared identity protocol routes admit protocol punctuation and server credentials", () => {
@@ -28,4 +28,12 @@ test("Every registered product has an exact callback and legacy callbacks remain
   assert.equal(identityRedirectLocation(mobile + "?code=synthetic", origin, configured), null);
   assert.equal(identityRedirectLocation(mobile + "/foreign?code=synthetic", origin, JSON.stringify(callbacks)), null);
   assert.equal(identityRedirectLocation(mobile + "?code=synthetic", origin, JSON.stringify([...callbacks, "https://extra.example.invalid/callback"])), null);
+});
+
+test("platform administrators open the registered PasoFi and Mobile staff workspaces", () => {
+  const surface = "https://staging.example.invalid/";
+  assert.equal(accountApplicationUrl("pasofi", surface, true), surface + "#staff");
+  assert.equal(accountApplicationUrl("mobile", surface, true), surface + "internal/");
+  assert.equal(accountApplicationUrl("mobile", surface, false), surface);
+  assert.equal(accountApplicationUrl("robot", surface + "console", true), surface + "console");
 });

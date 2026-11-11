@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { accountApplicationUrl } from "@/lib/onesa-identity";
 import { accessLinkToken } from "@/lib/access-link";
 import { accountReturnPath, accountReauthenticationRequired } from "@/lib/account-return";
 import { AccountError, accountRequest, productNames, adminProductNames, type ApplicationProduct, futureProductNames, enabledProducts, type Product, type ProductCatalog, type AccountConfig, type AccountSession, type Account } from "./api";
@@ -108,11 +109,11 @@ export function OnesaAccount({ mode = "login", interactionId }: { mode?: Mode; i
         const grant = session.access.find(item => item.product === product), active = session.account.globalAdmin || grant?.status === "active", isConnected = connected(product);
         const application = session.applications.find(item => item.product === product);
         return <article className={styles.product} key={product}><span className={styles.badge}>{!isConnected ? t.unconnected : active ? t.active : grant ? t[grant.status] : t.none}</span><h2>{productNames[product]}</h2><p>{t.products[product]}</p>
-          {!isConnected ? <p>{t.futureHint}</p> : active && application ? <a className={"button " + styles.action} href={application.url}>{t.open}</a> : <button className={styles.action} disabled={busy || grant?.status === "pending" || active} onClick={() => void action(async () => { setSession(await accountRequest<AccountSession>("/api/v1/account/products/" + product + "/request", {}, session.csrf)); setNotice(t.requested); })}>{grant?.status === "pending" ? t.pending : active ? t.unavailable : t.requestAccess}</button>}
+          {!isConnected ? <p>{t.futureHint}</p> : active && application ? <a className={"button " + styles.action} href={accountApplicationUrl(product, application.url, session.account.globalAdmin)}>{t.open}</a> : <button className={styles.action} disabled={busy || grant?.status === "pending" || active} onClick={() => void action(async () => { setSession(await accountRequest<AccountSession>("/api/v1/account/products/" + product + "/request", {}, session.csrf)); setNotice(t.requested); })}>{grant?.status === "pending" ? t.pending : active ? t.unavailable : t.requestAccess}</button>}
         </article>;
       })}{adminApplications.map(app => <article className={styles.product} key={app.product}>
         <span className={styles.badge}>{t.adminBadge}</span><h2>{adminProductNames[app.product]}</h2>
-        <a className={"button " + styles.action} href={app.url}>{t.open}</a>
+        <a className={"button " + styles.action} href={accountApplicationUrl(app.product, app.url, session.account.globalAdmin)}>{t.open}</a>
       </article>)}</section>
       <h2>{t.futureProducts}</h2>{futureProducts}
       <nav className={styles.accountLinks} aria-label={language === "de" ? "Kontoeinstellungen" : "Account settings"}>{session.account.portalAccess && <a className={styles.action} href="/admin">{t.admin}</a>}<a className={styles.action} href="/engineering">Engineering Docs</a>{!session.account.mfaEnrolled && <a className={styles.action} href={setupUrl}>{t.setup}</a>}<a className={styles.action} href="/account/billing">{language === "de" ? "Abrechnung" : "Billing"}</a><a className={styles.action} href="/account/security">{language === "de" ? "Passwort und Sicherheit" : "Password and security"}</a></nav>
