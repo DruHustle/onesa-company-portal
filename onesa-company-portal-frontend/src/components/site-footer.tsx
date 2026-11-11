@@ -23,6 +23,7 @@ export function SiteFooter({locale}: {locale: Locale}) {
       <nav className={styles.group} aria-labelledby="footer-products">
         <h2 id="footer-products">{t.nav.products}</h2>
         <ul>
+          <li><Link href={`/${locale}/products#mobile-apps`}>{de ? 'Mobile Apps' : 'Mobile apps'}</Link></li>
           <li><Link href={`/${locale}/products`}>{de ? 'Produkte entdecken' : 'Explore products'}</Link></li>
           {applications.applications.filter(app => app.id === 'ai' || app.id === 'robot').map(app =>
             <li key={app.id}><a href={app.href}>{app.label} <span aria-hidden="true">↗</span></a></li>)}
