@@ -27,7 +27,10 @@ import oracle_portal as r
 import oracle_portal_identity as identity
 
 PROFILE = "portal-shared-identity-acceptance-v1"
+PROFILE_V2 = "portal-shared-identity-acceptance-v2"
+FRONTEND_PROFILE_V2 = "frontend-identity-v2"
 PLAN = Path("/etc/onesa/oracle-portal-identity-acceptance.json")
+PLAN_V2 = Path("/etc/onesa/oracle-portal-identity-acceptance-v2.json")
 ROOT = Path("/var/lib/onesa/release-verification/portal/identity-acceptance")
 REPOSITORIES = {
     "portal": "DruHustle/onesa-company-portal",
@@ -41,10 +44,28 @@ COMPONENTS = {
     "drone": {"backend", "backend-identity"},
     "robot": {"api", "api-identity"},
 }
+# These repositories qualify their own releases outside the Portal verifier store.
+# Inspect their established native CI, immutable runtime images and real serving frontend.
+NATIVE_PRODUCTS = {
+    "farmer": ("smart-farmer", "ci.yml", ("api", "web")),
+    "logistics": ("smart-logistics", "ci.yml", ("app",)),
+    "pasofi": ("pasofi", "verify.yml", ("identity",)),
+    "mobile": ("onesa-mobile", "onesa-mobile-ci.yml", ("api", "web")),
+}
+PRODUCTION_ORIGINS = {
+    "portal": "https://portal.onesa.eu", "ai": "https://platform.onesa.eu",
+    "drone": "https://drone.onesa.eu", "robot": "https://robot.onesa.eu",
+    "farmer": "https://farmer.onesa.eu", "logistics": "https://logistics.onesa.eu",
+    "pasofi": "https://pasofi.mobile.onesa.eu", "mobile": "https://mobile.onesa.eu",
+}
 CHECKS = {phase: set(values) for phase, values in owner.REQUIRED_CHECKS.items()}
 CURRENT = "accepted-current-exact-binding"
 for phase in CHECKS:
     CHECKS[phase] |= {"independent_product_acceptance", "exact_served_revisions"}
+
+
+CHECKS_V2 = {phase: checks | {"native_release_provenance", "seven_product_administrator_sessions"}
+             for phase, checks in CHECKS.items()}
 
 
 def dependency_scope(binding, product=None, kind=None):
@@ -119,7 +140,26 @@ def configuration(plan, env):
     }
 
 
-def validate_plan(binding, plan):
+def validate_native(product, value):
+    _, _, services = NATIVE_PRODUCTS[product]
+    fields = {"revision", "ci_run_id", "compose_project", "images"}
+    if product != "farmer":
+        fields |= {"provider_file", "project_id", "deployment_id"}
+    identity.exact(value, fields, "IDENTITY_NATIVE_RELEASE_SCHEMA")
+    identity.exact(value["images"], services, "IDENTITY_NATIVE_SERVICE_IMAGES")
+    r.require(re.fullmatch(r"[a-f0-9]{40}", value["revision"])
+              and type(value["ci_run_id"]) is int and value["ci_run_id"] > 0
+              and re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,127}", value["compose_project"])
+              and all(re.fullmatch(r"sha256:[a-f0-9]{64}", image) for image in value["images"].values())
+              and len(set(value["images"].values())) == len(services), "IDENTITY_NATIVE_IMMUTABLE_RELEASE")
+    if product != "farmer":
+        identity.pinned(value["provider_file"])
+        r.require(re.fullmatch(r"prj_[A-Za-z0-9]+", value["project_id"])
+                  and re.fullmatch(r"dpl_[A-Za-z0-9]+", value["deployment_id"]),
+                  "IDENTITY_NATIVE_PINNED_FRONTEND")
+
+
+def validate_plan(binding, plan, expected_profile=PROFILE):
     identity.exact(
         plan,
         r.component_plan_fields(binding, [
@@ -133,7 +173,8 @@ def validate_plan(binding, plan):
     )
     r.require(
         r.component_plan_source(binding, plan, "identity-acceptance")
-        and plan["qualification_profile"] == PROFILE
+        and expected_profile in {PROFILE, PROFILE_V2}
+        and plan["qualification_profile"] == expected_profile
         and binding["component"] == "identity-acceptance"
         and binding["target_environment"] == "production",
         "IDENTITY_ACCEPTANCE_SCOPE",
@@ -141,19 +182,36 @@ def validate_plan(binding, plan):
     identity.exact(
         plan["environments"], identity.ENVIRONMENTS, "IDENTITY_ACCEPTANCE_ENVIRONMENTS"
     )
+    products = set(REPOSITORIES)
+    if expected_profile == PROFILE_V2:
+        products.update(NATIVE_PRODUCTS)
     for env, selected in plan["environments"].items():
         identity.exact(
             selected,
             ["origins", "browser_file", "identity_file", "products"],
             "IDENTITY_ACCEPTANCE_ENVIRONMENT_SCHEMA",
         )
-        identity.exact(selected["origins"], REPOSITORIES, "IDENTITY_ACCEPTANCE_ORIGINS")
+        identity.exact(selected["origins"], products, "IDENTITY_ACCEPTANCE_ORIGINS")
         identity.pinned(selected["browser_file"])
         identity.pinned(selected["identity_file"])
         identity.exact(
-            selected["products"], REPOSITORIES, "IDENTITY_FOUR_PRODUCTS_REQUIRED"
+            selected["products"], products, "IDENTITY_EXACT_PRODUCTS_REQUIRED"
         )
+        if expected_profile == PROFILE_V2:
+            identity.validate_origins(selected["origins"], env, v2=True)
         for product, value in selected["products"].items():
+            origin = urllib.parse.urlsplit(selected["origins"][product])
+            r.require(
+                origin.scheme == "https"
+                and origin.hostname == origin.netloc
+                and not origin.path
+                and not origin.query
+                and not origin.fragment,
+                "IDENTITY_ACCEPTANCE_HTTPS_ORIGIN",
+            )
+            if product in NATIVE_PRODUCTS:
+                validate_native(product, value)
+                continue
             identity.exact(
                 value,
                 ["backend", "frontend", "provider_file", "project_id", "deployment_id"],
@@ -186,15 +244,6 @@ def validate_plan(binding, plan):
                 )
                 accepted = reference["binding"]
                 dependency_scope(accepted, product, kind)
-            origin = urllib.parse.urlsplit(selected["origins"][product])
-            r.require(
-                origin.scheme == "https"
-                and origin.hostname == origin.netloc
-                and not origin.path
-                and not origin.query
-                and not origin.fragment,
-                "IDENTITY_ACCEPTANCE_HTTPS_ORIGIN",
-            )
         r.require(
             identity.digest(configuration(plan, env))
             == binding["configuration_sha256"][env],
@@ -202,21 +251,74 @@ def validate_plan(binding, plan):
         )
     r.require(
         plan["environments"]["production"]["origins"]
-        == {
-            "portal": "https://portal.onesa.eu",
-            "ai": "https://platform.onesa.eu",
-            "drone": "https://drone.onesa.eu",
-            "robot": "https://robot.onesa.eu",
-        }
+        == {product: PRODUCTION_ORIGINS[product] for product in products}
         and set(plan["environments"]["staging"]["origins"].values()).isdisjoint(
             plan["environments"]["production"]["origins"].values()
         ),
         "IDENTITY_ACCEPTANCE_ORIGIN_ISOLATION",
     )
+    if expected_profile == PROFILE_V2:
+        staging, production = (plan["environments"][env]["products"] for env in identity.ENVIRONMENTS)
+        for product in NATIVE_PRODUCTS:
+            r.require(staging[product]["compose_project"] != production[product]["compose_project"],
+                      "IDENTITY_NATIVE_RUNTIME_ENVIRONMENT_ISOLATION")
     return r.component_artifact_folder(ROOT, binding)
 
 
-def signed_dependency(reference, env):
+def portal_v2_evidence(expected_profile, policy_profile, observation, binding, env, operation):
+    """Compare the commissioned Portal profile to the evidence its active phase actually signed."""
+    dependency_scope(binding, product="portal")
+    component = "frontend" if expected_profile == FRONTEND_PROFILE_V2 else "identity"
+    r.require(policy_profile.get("qualification_profile") == expected_profile
+              and binding["component"] == component, "IDENTITY_PORTAL_DEPENDENCY_PROFILE")
+    if expected_profile == FRONTEND_PROFILE_V2:
+        scope = observation.get("source_scope")
+        r.require(observation.get("status") == "PASS" and observation.get("operation_id") == operation
+                  and isinstance(scope, dict) and scope.get("qualification_profile") == FRONTEND_PROFILE_V2
+                  and scope.get("authentication_source_explicitly_reviewed") is True
+                  and scope.get("product_presentation_requires_current_hosted_acceptance") is True
+                  and scope.get("new_full_business_acceptance_claimed") is False,
+                  "IDENTITY_SIGNED_FRONTEND_SOURCE_SCOPE")
+        return
+
+    r.require(expected_profile == identity.PROFILE_V2, "IDENTITY_PORTAL_DEPENDENCY_PROFILE")
+    required = identity.CHECKS_V2[env] - identity.CHECKS[env]
+    r.require(required <= set(policy_profile["required_checks"][env])
+              and all(observation["checks"].get(key) == "PASS" for key in required),
+              "IDENTITY_SIGNED_ISSUER_REGISTRY_CHECKS")
+    if env == "staging":
+        receipt = observation.get("receipt")
+        r.require(isinstance(receipt, dict) and receipt.get("binding") == binding
+                  and receipt.get("context_id") == operation
+                  and receipt.get("state") == "IDENTITY_STAGING_OBSERVED_NOT_AUTHORIZATION",
+                  "IDENTITY_SIGNED_ISSUER_STAGING_RECEIPT")
+    else:
+        r.require(observation.get("operation_id") == operation, "IDENTITY_SIGNED_ISSUER_PRODUCTION_OPERATION")
+        receipt = observation
+
+    hosted = receipt.get("hosted")
+    r.require(isinstance(hosted, dict) and isinstance(hosted.get("administrator_observation"), dict),
+              "IDENTITY_SIGNED_PORTAL_ADMINISTRATOR_REQUIRED")
+    administrator = hosted["administrator_observation"]
+    for proof, version, state in [(hosted, 1, "HOSTED_IDENTITY_OBSERVED_NOT_AUTHORIZATION"),
+                                  (administrator, 2, "HOSTED_ADMINISTRATOR_SIGNIN_OBSERVED_NOT_AUTHORIZATION")]:
+        r.require(type(proof.get("schema_version")) is int and proof["schema_version"] == version
+                  and proof.get("state") == state and proof.get("scope") == "account"
+                  and proof.get("binding") == binding and proof.get("environment") == env
+                  and proof.get("operation_id") == operation and proof.get("physical_hardware_authorized") is False
+                  and type(proof.get("physical_operations")) is int and proof["physical_operations"] == 0,
+                  "IDENTITY_SIGNED_PORTAL_ADMINISTRATOR_SCOPE")
+    checks = hosted.get("checks")
+    r.require(isinstance(checks, dict)
+              and set(checks) == identity.hosted_checks({"qualification_profile": identity.PROFILE_V2}, "account")
+              and all(value is True for value in checks.values())
+              and isinstance(administrator.get("checks"), dict)
+              and set(administrator["checks"]) == {"portal_mfa_administrator"}
+              and administrator["checks"]["portal_mfa_administrator"] is True,
+              "IDENTITY_SIGNED_PORTAL_ADMINISTRATOR_CHECKS")
+
+
+def signed_dependency(reference, env, *, expected_portal_profile=None):
     """Verify the foreign commissioned store read-only; execute no foreign code.
 
     Product verifiers have different executable hashes. Their independently
@@ -235,7 +337,7 @@ def signed_dependency(reference, env):
         and r.sha(Path(owner.OPENSSL)) == trust["openssl_sha256"],
         "IDENTITY_DEPENDENCY_CUSTODY_CHANGED",
     )
-    dependency_binding_valid(reference["binding"], policy)
+    profile = dependency_binding_valid(reference["binding"], policy)
     conn = sqlite3.connect(
         "file:" + str(path / "records.sqlite") + "?mode=ro", uri=True, timeout=20
     )
@@ -367,6 +469,9 @@ def signed_dependency(reference, env):
         ),
         "IDENTITY_DEPENDENCY_ACCEPTANCE_INCOMPLETE",
     )
+    if expected_portal_profile is not None:
+        operation = root_context["id"] if env == "staging" else chain[0]["parent"]
+        portal_v2_evidence(expected_portal_profile, profile, observation, reference["binding"], env, operation)
     qualified = next((row for row in chain if row["kind"] == "qualification"), None)
     r.require(
         qualified
@@ -449,11 +554,90 @@ def accepted_runtime(product, env, actual, observation):
     )
 
 
+def native_ci_run(product, number):
+    repository, _, _ = NATIVE_PRODUCTS[product]
+    url = f"https://api.github.com/repos/DruHustle/{repository}/actions/runs/{number}"
+    request = urllib.request.Request(url, headers={"User-Agent": "OnesaOwnerIdentityAcceptance/2"})
+    with urllib.request.build_opener(r.NoRedirect()).open(request, timeout=25) as response:
+        data = response.read(1024 * 1024 + 1)
+        r.require(response.status == 200 and len(data) <= 1024 * 1024, "IDENTITY_NATIVE_CI_READBACK")
+        return json.loads(data)
+
+
+def native_runtime(inventory, project, service, image_id, revision):
+    # Compose container labels can be overridden. Verify the source revision on the image itself.
+    rows = []
+    for row in inventory.values():
+        labels = row["Config"].get("Labels") or {}
+        if labels.get("com.docker.compose.project") == project and labels.get("com.docker.compose.service") == service:
+            rows.append(row)
+    r.require(len(rows) == 1 and r.healthy(rows[0]) and rows[0]["Image"] == image_id,
+              "IDENTITY_NATIVE_HEALTHY_EXACT_IMAGE_REQUIRED")
+    images = json.loads(r.docker("image", "inspect", image_id))
+    r.require(len(images) == 1 and images[0]["Id"] == image_id
+              and (images[0]["Config"].get("Labels") or {}).get("org.opencontainers.image.revision") == revision,
+              "IDENTITY_NATIVE_IMMUTABLE_IMAGE_SOURCE")
+    return {"container_id": rows[0]["Id"], "image_id": image_id, "source_commit": revision,
+            "runtime_sha256": identity.recovery_target(rows[0])["configuration_sha256"]}
+
+
+def native_frontend(product, release, origin, env):
+    credentials = json.loads(identity.private_bytes(release["provider_file"]))
+    r.require(isinstance(credentials.get("token"), str) and len(credentials["token"]) >= 16
+              and re.fullmatch(r"team_[A-Za-z0-9]+", credentials["team_id"]), "IDENTITY_EXISTING_PROVIDER_CUSTODY")
+    deployment_id, project_id = release["deployment_id"], release["project_id"]
+    deployment = provider_get("/v13/deployments/" + deployment_id, credentials)
+    meta = deployment.get("meta") or {}
+    if product == "logistics":
+        revision = meta.get("smartLogisticsSourceRevision")
+        r.require(meta.get("smartLogisticsRepository") == "DruHustle/smart-logistics",
+                  "IDENTITY_LOGISTICS_FRONTEND_REPOSITORY")
+    else:
+        revision = meta.get("githubCommitSha") or (deployment.get("gitSource") or {}).get("sha")
+    r.require(deployment.get("id") == deployment_id and deployment.get("projectId") == project_id
+              and deployment.get("readyState") == "READY" and revision == release["revision"]
+              and deployment.get("target") in ({"production"} if env == "production" else {None, "preview"}),
+              "IDENTITY_NATIVE_SERVED_FRONTEND_DIFFERS")
+    hostname = urllib.parse.urlsplit(origin).hostname
+    if env != "staging" or deployment.get("url") != hostname:
+        alias = provider_get("/v4/aliases/" + hostname, credentials)
+        r.require((alias.get("deploymentId") or (alias.get("deployment") or {}).get("id")) == deployment_id
+                  and alias.get("projectId") == project_id, "IDENTITY_NATIVE_FRONTEND_ALIAS_CHANGED")
+    return {"project_id": project_id, "deployment_id": deployment_id, "source_commit": revision}
+
+
+def native_dependency(product, value, env, origin, inventory):
+    repository, workflow, services = NATIVE_PRODUCTS[product]
+    revision = value["revision"]
+    run = native_ci_run(product, value["ci_run_id"])
+    full_name = "DruHustle/" + repository
+    r.require(run.get("id") == value["ci_run_id"] and run.get("status") == "completed"
+              and run.get("conclusion") == "success" and run.get("head_sha") == revision
+              and run.get("head_branch") == "main" and run.get("event") == "push"
+              and run.get("path") == ".github/workflows/" + workflow
+              and (run.get("repository") or {}).get("full_name") == full_name
+              and (run.get("head_repository") or {}).get("full_name") == full_name,
+              "IDENTITY_NATIVE_EXACT_SOURCE_CI_REQUIRED")
+    observed = {service: native_runtime(inventory, value["compose_project"], service, value["images"][service], revision)
+                for service in services}
+    result = {"repository": full_name, "source_commit": revision, "ci_run_id": run["id"], "runtime": observed}
+    if product == "farmer":
+        release = r.http_read(origin, "/release.json", 200)
+        r.require(isinstance(release, dict) and release.get("revision") == revision,
+                  "IDENTITY_NATIVE_FARMER_SERVED_FRONTEND_DIFFERS")
+    else:
+        result["frontend"] = native_frontend(product, value, origin, env)
+    return result
+
+
 def dependencies(plan, env, accepted=None):
     selected = plan["environments"][env]
     before = r.inventory()
     observed = {}
     for product, value in selected["products"].items():
+        if product in NATIVE_PRODUCTS:
+            observed[product] = native_dependency(product, value, env, selected["origins"][product], before)
+            continue
         backend_reference, frontend_reference = value["backend"], value["frontend"]
         if accepted is not None:
             backend_reference = {
@@ -464,8 +648,12 @@ def dependencies(plan, env, accepted=None):
                 **frontend_reference,
                 "record_id": accepted[product]["frontend_record_id"],
             }
-        backend = signed_dependency(backend_reference, env)
-        frontend = signed_dependency(frontend_reference, env)
+        if product == "portal" and plan.get("qualification_profile") == PROFILE_V2:
+            backend = signed_dependency(backend_reference, env, expected_portal_profile=identity.PROFILE_V2)
+            frontend = signed_dependency(frontend_reference, env, expected_portal_profile=FRONTEND_PROFILE_V2)
+        else:
+            backend = signed_dependency(backend_reference, env)
+            frontend = signed_dependency(frontend_reference, env)
         deployment_id = deployment_identity(value, frontend, env)
         name = (
             "onesa-drone-oracle-" + env + "-api-1"
@@ -566,7 +754,7 @@ def operations(binding, plan, records):
         and observed["environment"] == "staging"
         and observed["dependencies"]
         == dependencies(plan, "staging", observed["dependencies"])
-        and set(observed["hosted"]["checks"]) == identity.HOSTED_CHECKS
+        and set(observed["hosted"]["checks"]) == identity.hosted_checks(plan, "integrated")
         and all(v is True for v in observed["hosted"]["checks"].values()),
         "IDENTITY_INTEGRATION_STAGING_REQUIRED",
     )
@@ -585,12 +773,13 @@ def operations(binding, plan, records):
     }
 
 
-def runner(phase, binding, context):
-    r.require(phase in CHECKS, "IDENTITY_INTEGRATION_PHASE")
-    plan = r.read(r.component_plan_path(binding, PLAN))
-    folder = validate_plan(binding, plan)
+def runner(phase, binding, context, expected_profile=PROFILE):
+    checks = CHECKS_V2 if expected_profile == PROFILE_V2 else CHECKS
+    r.require(phase in checks, "IDENTITY_INTEGRATION_PHASE")
+    plan = r.read(r.component_plan_path(binding, PLAN_V2 if expected_profile == PROFILE_V2 else PLAN))
+    folder = validate_plan(binding, plan, expected_profile)
     records = r.verify_invocation(binding, context, phase, plan)
-    r.verify_canonical_component_custody(binding, plan, CHECKS)
+    r.verify_canonical_component_custody(binding, plan, checks)
     identity.source_and_image(binding, plan, folder)
     if phase == "operations":
         value = operations(binding, plan, records)
@@ -675,11 +864,11 @@ def runner(phase, binding, context):
         "environment": "staging" if phase == "staging" else "production",
         "workflow_run_id": 0,
         "observed_at": r.now().isoformat(),
-        "checks": {key: "PASS" for key in CHECKS[phase]},
+        "checks": {key: "PASS" for key in checks[phase]},
     }
 
 
-def main():
+def main(expected_profile=PROFILE):
     request = None
     try:
         r.require(
@@ -697,7 +886,7 @@ def main():
         )
         print(
             json.dumps(
-                runner(sys.argv[1], request["binding"], request["context"]),
+                runner(sys.argv[1], request["binding"], request["context"], expected_profile),
                 sort_keys=True,
             )
         )

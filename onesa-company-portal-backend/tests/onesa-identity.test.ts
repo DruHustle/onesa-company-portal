@@ -8,6 +8,12 @@ import {
   randomBytes,
   randomUUID,
 } from "node:crypto";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { createServer } from "node:https";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
 import type { InjectOptions } from "fastify";
 if (!process.env.TEST_DATABASE_URL)
   throw Error("Isolated loopback test database required");
@@ -20,7 +26,7 @@ const origin = process.env.PUBLIC_ORIGIN;
 const key = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const config = {
   issuer: origin + "/api/v1/identity",
-  clients: ["ai", "drone", "robot", "mobile"].map((product) => ({
+  clients: ["ai", "drone", "robot", "mobile", "farmer", "logistics", "pasofi"].map((product) => ({
     product,
     clientId: "synthetic_onesa_" + product,
     clientSecret: randomBytes(48).toString("hex") + "+%",
@@ -181,6 +187,13 @@ async function authorization(
   const location = new URL(String(start.headers.location));
   assert.match(location.pathname, /^\/account\/sign-in\/[A-Za-z0-9_-]+$/);
   const uid = location.pathname.split("/").pop()!;
+  for (const name of ["onesa_identity_interaction", "onesa_identity_interaction.sig"]) {
+    const cookie = start.cookies.find(value => value.name === name);
+    assert.ok(cookie);
+    assert.equal(cookie.path, "/api/v1/account/interaction/" + uid);
+    assert.equal(cookie.httpOnly, true);
+    assert.equal(cookie.secure, true);
+  }
   const details = await existing.request({
     url: "/api/v1/account/interaction/" + uid,
   });
@@ -265,7 +278,7 @@ const inspect = (token: string, index = 0) =>
 
 test("Configuration is opt-in, fixed-client, exact issuer/callback and strong-key only", () => {
   assert.equal(identityConfiguration({}, origin), null);
-  assert.equal(identityConfiguration(process.env, origin)?.clients.length, 4);
+  assert.equal(identityConfiguration(process.env, origin)?.clients.length, 7);
   assert.equal(
     identityConfiguration(
       {
@@ -576,6 +589,74 @@ test("Global Administrators need MFA and receive all applications without per-pr
   });
   assert.ok(claims.amr.includes("otp"));
 });
+test("an MFA platform session signs into all seven clients with the contract for that audience", async () => {
+  const central = await signIn("admin");
+  const legacy = ["ai", "drone", "robot"];
+  const tokens: string[] = [];
+  for (const [index, client] of config.clients.entries()) {
+    const flow = await authorization("admin", index, central);
+    assert.equal(flow.details.account.id, admin);
+    const { token } = await complete(flow, true);
+    const claims = (await inspect(token, index)).json();
+    assert.equal(claims.active, true);
+    assert.equal(claims.sub, admin);
+    assert.equal(claims.aud, client.clientId);
+    assert.deepEqual(claims.onesa_roles, ["global_admin"]);
+    assert.ok(claims.amr.includes("otp"));
+    const expected = legacy.includes(client.product) ? legacy :
+      client.product === "mobile" ? [...legacy, "mobile"] : [client.product];
+    assert.deepEqual(claims.onesa_applications, expected);
+    assert.deepEqual(claims.onesa_product_roles, Object.fromEntries(expected.map((name) => [name, "admin"])));
+    assert.deepEqual(claims.onesa_memberships, []);
+    tokens.push(token);
+  }
+  await db.query("UPDATE users SET role='member' WHERE id=$1", [admin]);
+  for (const [index, token] of tokens.entries())
+    assert.deepEqual((await inspect(token, index)).json(), { active: false });
+});
+
+test("ordinary product membership cannot authorize an administrator-only client", async () => {
+  const central = await signIn("member");
+  for (const [index, client] of config.clients.entries()) {
+    if (!["farmer", "logistics", "pasofi"].includes(client.product)) continue;
+    const flow = await authorization("member", index, central);
+    const response = await flow.request({
+      method: "POST", url: "/api/v1/account/interaction/" + flow.uid + "/continue",
+      payload: {csrf: flow.details.csrf},
+    });
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().error.code, "PRODUCT_ACCESS_REQUIRED");
+  }
+});
+
+test("switching from AI to PasoFi and Mobile keeps OIDC state, enforces max_age and preserves prior proof", async () => {
+  const central = await signIn("admin");
+  const oldTime = Math.floor(Date.now() / 1000) - 600;
+  await db.query("UPDATE identity_sessions SET authenticated_at=to_timestamp($2) WHERE user_id=$1", [admin, oldTime]);
+  const first = await complete(await authorization("admin", 0, central), true);
+  const original = (await inspect(first.token, 0)).json();
+  assert.equal(original.auth_time, oldTime);
+  const pasofi = config.clients.findIndex(client => client.product === "pasofi");
+  const mobile = config.clients.findIndex(client => client.product === "mobile");
+  const stepUp = { max_age: "300", acr_values: "urn:onesa:mfa" };
+  const stale = await authorization("admin", pasofi, central, stepUp);
+  assert.equal(stale.details.freshRequired, true);
+  const refused = await stale.request({method: "POST", url: "/api/v1/account/interaction/" + stale.uid + "/continue", payload: {csrf: stale.details.csrf}});
+  assert.equal(refused.statusCode, 403);
+  const refreshed = await complete(stale);
+  const fresh = (await inspect(refreshed.token, pasofi)).json();
+  assert.equal(fresh.active, true);
+  assert.ok(fresh.auth_time > oldTime);
+  const next = await authorization("admin", mobile, central, stepUp);
+  assert.equal(next.details.freshRequired, false);
+  const continued = await complete(next, true);
+  assert.equal((await inspect(continued.token, mobile)).json().auth_time, fresh.auth_time);
+  assert.deepEqual((await inspect(first.token, 0)).json(), original);
+  await db.query("UPDATE users SET role='member' WHERE id=$1", [admin]);
+  for (const [index, grant] of [[0, first], [pasofi, refreshed], [mobile, continued]] as const)
+    assert.deepEqual((await inspect(grant.token, index)).json(), { active: false });
+});
+
 test("Fresh step-up cannot reuse an existing login session", async () => {
   const central = await signIn("admin"),
     flow = await authorization("admin", 0, central, {
@@ -1480,5 +1561,78 @@ test("An unconfigured Mobile client does not enable registration, access request
   } finally {
     await legacyApp?.close();
     process.env.ONESA_IDENTITY_CONFIG_B64 = saved;
+  }
+});
+
+
+test("A real HTTPS cookie jar carries an administrator's signed interaction through the account API", async () => {
+  const run = promisify(execFile);
+  const directory = await mkdtemp(join(tmpdir(), "onesa-cookie-path-"));
+  try {
+    const { hostname } = new URL(origin);
+    const cert = join(directory, "cert.pem"), key = join(directory, "key.pem");
+    await run("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
+      "-subj", "/CN=" + hostname, "-addext", "subjectAltName=DNS:" + hostname,
+      "-keyout", key, "-out", cert]);
+    const server = createServer({ cert: await readFile(cert), key: await readFile(key) }, (req, res) => {
+      // The public TLS listener supplies the same private header as Portal's proxy.
+      req.headers["x-portal-proxy-key"] = proxy["x-portal-proxy-key"];
+      app.server.emit("request", req, res);
+    });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        server.once("error", reject);
+        server.listen(0, "127.0.0.1", resolve);
+      });
+      const address = server.address();
+      assert.ok(address && typeof address === "object");
+      const port = address.port;
+      const jar = join(directory, "cookies"), body = join(directory, "response");
+      async function request(path: string, input?: Record<string, string>) {
+        const { stdout } = await run("curl", ["--silent", "--show-error", "--max-time", "10",
+          "--noproxy", "*", "--connect-to", hostname + ":443:127.0.0.1:" + port,
+          "--cacert", cert, "--cookie", jar, "--cookie-jar", jar, "--output", body,
+          "--write-out", "%{response_code}\n%{redirect_url}",
+          ...(input ? ["--header", "Origin: " + origin, "--header", "Content-Type: application/json",
+                       "--data-binary", JSON.stringify(input)] : []), origin + path]);
+        const [status, location] = stdout.split("\n");
+        return { status: Number(status), location, json: async () => JSON.parse(await readFile(body, "utf8")) };
+      }
+      for (const existingSession of [false, true]) {
+        const client = config.clients[existingSession ? 1 : 2], state = randomBytes(32).toString("base64url");
+        const params = new URLSearchParams({
+          client_id: client.clientId, redirect_uri: client.redirectUri, response_type: "code",
+          scope: "openid email profile onesa", state, nonce: randomBytes(32).toString("base64url"),
+          code_challenge: createHash("sha256").update(randomBytes(32)).digest("base64url"), code_challenge_method: "S256",
+        });
+        const start = await request("/api/v1/identity/auth?" + params);
+        assert.equal(start.status, 303);
+        const form = new URL(start.location);
+        assert.equal(form.origin, origin, existingSession ? "second product" : "first product");
+        assert.match(form.pathname, /^\/account\/sign-in\/[A-Za-z0-9_-]+$/);
+        const uid = form.pathname.split("/").pop()!;
+        const interaction = "/api/v1/account/interaction/" + uid;
+        const details = await request(interaction);
+        assert.equal(details.status, 200);
+        const account = await details.json();
+        if (existingSession) assert.equal(account.account?.email, emails.admin);
+        const submitted = existingSession
+          ? await request(interaction + "/continue", { csrf: account.csrf })
+          : await request(interaction + "/login", { csrf: account.csrf, email: emails.admin, password, code: await factor(admin) });
+        assert.equal(submitted.status, 200);
+        const resume = (await submitted.json()).continuePath;
+        assert.match(resume, /^\/api\/v1\/identity\/auth\/[A-Za-z0-9_-]+$/);
+        const result = await request(resume);
+        assert.equal(result.status, 303);
+        const callback = new URL(result.location);
+        assert.equal(callback.origin + callback.pathname, client.redirectUri);
+        assert.equal(callback.searchParams.get("state"), state);
+        assert.ok(callback.searchParams.get("code"));
+      }
+    } finally {
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });

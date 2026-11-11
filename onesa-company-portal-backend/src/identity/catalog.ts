@@ -13,13 +13,13 @@ export const catalogProducts = [
   "mobile",
 ] as const;
 const names: Record<(typeof catalogProducts)[number], string> = {
-  ai: "Onesa AI",
+  ai: "Onesa AI Platform",
   drone: "Onesa Drone",
   robot: "Onesa Robot",
   farmer: "Smart Farmer",
   logistics: "Smart Logistics",
   factory: "Smart Factory",
-  pasofi: "PasoFi",
+  pasofi: "Pasofi",
   mobile: "Onesa Mobile",
 };
 export function identityCatalog(config: IdentityConfig | null) {

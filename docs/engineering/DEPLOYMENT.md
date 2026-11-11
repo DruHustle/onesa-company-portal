@@ -345,3 +345,53 @@ Primary references: [K3s configuration](https://docs.k3s.io/installation/configu
 [Portainer compatibility](https://docs.portainer.io/start/requirements-and-prerequisites),
 [Docker firewall policy](https://docs.docker.com/engine/network/firewall-iptables/),
 and [OCI IMDSv2](https://docs.oracle.com/en-us/iaas/Content/Compute/Tasks/gettingmetadata.htm).
+
+## Seven-client Onesa administrator sign-in
+
+Prepare the Portal issuer, frontend callback list and individual product bindings on the private release host. Run from the Portal backend directory under the account that holds the existing issuer credentials. The input JSON has the two keys `ONESA_IDENTITY_ENABLED` and `ONESA_IDENTITY_CONFIG_B64`. Use the active environment's private copy. The destination must be new and its parent must already be an owner-only directory. For example, after building the backend:
+
+```sh
+node dist/src/identity/prepare-release.js \
+  --environment production \
+  --existing /private/onesa/active/portal-issuer.env.json \
+  --output /private/onesa/releases/admin-login
+```
+
+An environment with **no existing issuer** can use `--initialize` in place of `--existing PATH` to generate its first signing key, session cookie key and client credentials. For staging, use `--environment staging --staging-origins /private/onesa/staging-origins.json`. Supply an object with eight distinct HTTPS origins under the keys `portal`, `ai`, `drone`, `robot`, `farmer`, `logistics`, `pasofi` and `mobile`. Production uses the canonical Onesa hosts built into the preparer. The tool checks the exact callback for every existing registration and preserves the issuer signing key, cookie keys, previously issued client credentials and application URLs. To retry with the same new registrations, use the generated issuer JSON as the next `--existing` input.
+
+Install the values from each JSON object in the named service's protected environment. Restrict `portal-issuer.env.json` to the Portal issuer. The Portal frontend takes only the callback list in `portal-frontend.env.json`. Preserve the existing Portal frontend-to-backend routing, Portal domain and private signing credentials. Each of the seven product environments receives its own binding. Mobile and PasoFi take their deployment inputs through Compose. Install their raw secret files for the designated service UID with owner-only read permissions. Additional product settings belong to the corresponding service:
+
+The independent `frontend-identity-v2` release uses the existing frontend plan, installer, preview and production phases. Select its complete installer bundle with `oracle_portal_frontend_identity_v2.py`. The profile verifies the whole frontend Git subtree (paths, modes and bytes) against reviewed staging `b92e22f` and the provider-observed retained source. Production at `7f72381`, reviewed main at `d3c4448`, and the same qualified frontend with a new configuration are supported baselines. Each installation still verifies the full current-main source and its CI. The earlier `frontend-identity-v1` profile has its own source closure.
+
+Use the two separate `portal-frontend.env.json` outputs from the issuer preparation step. Set their `ONESA_IDENTITY_CALLBACKS_JSON` values as plain, server-side variables on the Portal Vercel project. Restrict production to the production target, and staging to preview on the `staging` branch. Include both variable IDs and their corresponding values in the frontend plan's existing `server_public_variable_ids` and `server_public_configuration` maps. Refresh the environment-metadata receipt after setting both targets. The frontend verifier reads the seven product origins from the root-owned seven-client issuer plan and verifies the actual named Vercel values. Staging requires distinct operator-selected origins. The ensuing hosted identity acceptance exercises sign-in with those registrations.
+
+
+| Service | Existing deployment inputs to retain or configure |
+| --- | --- |
+| AI Platform and Drone | Each backend's private `ONESA_IDENTITY_ENCRYPTION_KEY` (Fernet) and secure database/session settings. |
+| Robot | The configured operator and simulation storage. |
+| Farmer | Its durable application database and session configuration. |
+| Logistics | Its database, migration 009, existing `JWT_SECRET` and the exact Logistics frontend origin in `CORS_ALLOWED_ORIGINS`. |
+| PasoFi | Install the separate `pasofi_onesa_client_secret` file under `PAMOFI_SECRETS_DIR` and use the identity-service staff Compose overlay, trusted origin and staff MFA encryption key. The production overlay pins the production origins. Staging needs its own matching issuer and callback. |
+| Mobile | The production Compose overlay uses the four `MOBILE_*` inputs in `mobile.env.json`, including the protected file path `MOBILE_ONESA_SECRET_FILE`. Retain the durable database and existing `MOBILE_AUTH_KEY_FILE`. The frontend needs `MOBILE_ACCOUNT_GATEWAY_ORIGIN` pointing at the published account backend. |
+
+Engineering Docs uses the separate engineering identity issuer and Cloudflare Access. Its exact-address policy, owner approval, first-time MFA and linking/enrollment procedure are described in [Engineering Docs identity](ENGINEERING_DOCS_IDENTITY.md).
+
+The historical `portal-shared-identity-v1` commissioning profile and its signed evidence cover AI, Drone and Robot. The preparation command writes private configuration files. Deployment and acceptance of the seven-client release still require the current Portal runtime, each product release and a successful MFA-backed login through its deployed callback. Check that a regular account is refused on administrator-only products and that a revoked administrator grant stops authorizing privileged sessions.
+
+### Oracle installation and hosted administrator acceptance
+
+The separate `portal-shared-identity-v2` and `portal-shared-identity-acceptance-v2` profiles support the seven registered product clients. Install the reviewed source through the existing Oracle owner verifier and commission the exact source, plan hashes and new entry points under owner signing custody. Existing v1 plans continue using their three-client runners. The two v2 plan files are `/etc/onesa/oracle-portal-identity-release-v2.json` and `/etc/onesa/oracle-portal-identity-acceptance-v2.json`. Check the actual runtime and retained issuer on the VM before generating the plan. The issuer profile covers the existing schema through migration 016. It binds the seven exact client registrations to the staging or production issuer and checks discovery and signing keys.
+
+For integrated acceptance, retain the signed backend and frontend dependencies for Portal, AI, Drone and Robot. Pin each additional repository's qualified main commit and successful native GitHub Actions run (`revision` and `ci_run_id`). Use its normal release procedure, then record its actual Compose project and inspected immutable image IDs in `compose_project` and `images`. Staging and production use separate Compose projects. Recheck native CI, immutable image revision labels and the running service before and after the browser check. Use the existing independent product release and rollback procedures.
+
+| Product | Compose services to pin | Serving frontend check |
+| --- | --- | --- |
+| Farmer | `api`, `web` from the ARM64 release qualification | The served `/release.json` revision must match the running web image and the qualified commit. |
+| Logistics | `app` from the consolidated release | The Vercel project, deployment, source metadata and serving hostname must match. |
+| PasoFi | `identity` from the Oracle staff release | The Vercel project, deployment, source revision and serving hostname must match. |
+| Mobile | `api`, `web` from the Mobile production build (the VM web service is its gateway) | The public Vercel frontend and the private gateway must correspond to the same qualified Mobile revision. |
+
+For each of the three Vercel frontends, bind the exact `project_id`, `deployment_id` and existing protected `provider_file` in the plan for that environment. Commission the integration once these independent releases have identifiable artifacts. The verifier checks the immutable preview URL or serving alias in staging and the serving alias in production.
+
+Use the existing private browser fixture for a verified Onesa global administrator with enrolled MFA. The integrated observer verifies the same account through each product's sign-in and authenticated session, in addition to the retained entitlement and revocation checks. Record protected Engineering Docs separately with that administrator's individually approved Cloudflare Access address and document access after central sign-in. A Docs redirect to the identity provider establishes only that Access protects the page.

@@ -8,6 +8,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
   const [onesaAccount, setOnesaAccount] = useState<string | null>(null);
   const [onesaLink, setOnesaLink] = useState<string | null>(null), [onesaSignInPath, setOnesaSignInPath] = useState<string | null>(null);
   const [linkOnesaAccount, setLinkOnesaAccount] = useState(false), [reauthenticate, setReauthenticate] = useState(false);
+  const [enrollment, setEnrollment] = useState<"available" | "pending" | null>(null);
   const [useExistingSession, setUseExistingSession] = useState(true);
   const [csrf, setCsrf] = useState(""), [method, setMethod] = useState<"link" | "password">("link"), [linkEmail, setLinkEmail] = useState<string | null>(null), [notice, setNotice] = useState(""), [sent, setSent] = useState(false), [busy, setBusy] = useState(false), [ready, setReady] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -28,7 +29,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
     return () => window.clearInterval(timer);
   }, [resendUntil]);
   useEffect(() => {
-    let active = true, timedOut = false, preparingLink = false; const abort = new AbortController(); setReady(false); setOpeningDocs(false); setCsrf(""); setLinkEmail(null); setOnesaAccount(null); setOnesaLink(null); setOnesaSignInPath(null); setLinkOnesaAccount(false); setReauthenticate(false); setUseExistingSession(true); setRestartRequired(false); setNotice(""); setRegistrationRequired(false);
+    let active = true, timedOut = false, preparingLink = false; const abort = new AbortController(); setReady(false); setOpeningDocs(false); setCsrf(""); setLinkEmail(null); setOnesaAccount(null); setOnesaLink(null); setOnesaSignInPath(null); setLinkOnesaAccount(false); setReauthenticate(false); setUseExistingSession(true); setEnrollment(null); setRestartRequired(false); setNotice(""); setRegistrationRequired(false);
     let deadline = window.setTimeout(() => { timedOut = true; abort.abort(); }, 25000);
     const receiveLink = () => {
       const raw = accessLinkToken(window.location.hash);
@@ -63,6 +64,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
       if (!/^[a-f0-9]{64}$/.test(value.csrf)) throw Error();
       if (value.linkEmail !== undefined && (typeof value.linkEmail !== "string" || value.linkEmail.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(value.linkEmail))) throw Error();
       if (value.onesaAccount !== undefined && (typeof value.onesaAccount?.email !== "string" || value.onesaAccount.email.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(value.onesaAccount.email))) throw Error();
+      if (value.onesaEnrollment !== undefined && !["available", "pending"].includes(value.onesaEnrollment)) throw Error();
       if (value.onesaLink !== undefined && (typeof value.onesaLink?.email !== "string" || value.onesaLink.email.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(value.onesaLink.email))) throw Error();
       if (value.onesaSignInPath !== undefined && value.onesaSignInPath !== engineeringAccountSignInPath(uid)) throw Error();
       if (value.onesaReauthRequired !== undefined && (typeof value.onesaReauthRequired !== "boolean" || (value.onesaReauthRequired && !value.onesaSignInPath))) throw Error();
@@ -70,22 +72,23 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
         const remaining = Number.isInteger(value.linkResendSeconds) && value.linkResendSeconds > 0 && value.linkResendSeconds <= 30 ? value.linkResendSeconds : 0;
         setSent(remaining > 0); setResendSeconds(remaining); setResendUntil(remaining > 0 ? performance.now() + remaining * 1000 : 0);
         setOnesaAccount(value.onesaReauthRequired === true ? null : value.onesaAccount?.email ?? null); setOnesaLink(value.onesaLink?.email ?? null); setOnesaSignInPath(value.onesaSignInPath ?? null); setReauthenticate(value.onesaReauthRequired === true);
+        setEnrollment(value.onesaEnrollment ?? null);
         if (value.onesaLink?.email) setEmail(value.onesaLink.email);
         setCsrf(value.csrf); setLinkEmail(value.linkEmail ?? null); setReady(true); }
     }).catch(() => { if (active && !preparingLink && (!abort.signal.aborted || timedOut)) { setRestartRequired(true); setNotice(timedOut ? "The sign-in page took too long to load. Start a new sign-in." : "The sign-in page could not be loaded. Start a new sign-in."); } }).finally(() => window.clearTimeout(detailsDeadline));
     return () => { active = false; window.clearTimeout(deadline); abort.abort(); window.removeEventListener("hashchange", receiveLink); };
   }, [uid]);
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (submitting.current || openingDocs || !ready || (method === "link" && !linkEmail && !(onesaAccount && useExistingSession) && resendSeconds > 0)) return;
+    event.preventDefault(); if (submitting.current || openingDocs || !ready || (enrollment !== "available" && method === "link" && !linkEmail && !(onesaAccount && useExistingSession) && resendSeconds > 0)) return;
     const data = new FormData(event.currentTarget); submitting.current = true; setBusy(true); setNotice(""); setRegistrationRequired(false);
     const abort = new AbortController();
     const timeout = window.setTimeout(() => abort.abort(), 25000);
     let navigating = false;
     try {
-      const action = onesaAccount && useExistingSession && !linkEmail ? "session" : method === "password" ? "password" : linkEmail ? "handoff-verify" : "link";
+      const action = enrollment === "available" && !linkEmail ? "enroll" : onesaAccount && useExistingSession && !linkEmail ? "session" : method === "password" ? "password" : linkEmail ? "handoff-verify" : "link";
       if (action === "link") setSent(false);
       const canLink = Boolean(onesaLink && (action === "password" ? email.trim().toLowerCase() === onesaLink : action === "handoff-verify" && linkEmail === onesaLink));
-      const response = await fetch("/engineering/sign-in/" + uid + "/" + action, { method: "POST", signal: abort.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ csrf, rememberBrowser, ...(action === "session" ? {} : method === "password" ? { email, password: String(data.get("password")) } : linkEmail ? {} : { email }), ...(canLink && linkOnesaAccount ? { linkOnesaAccount: true } : {}) }) });
+      const response = await fetch("/engineering/sign-in/" + uid + "/" + action, { method: "POST", signal: abort.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify(action === "enroll" ? {csrf} : { csrf, rememberBrowser, ...(action === "session" ? {} : method === "password" ? { email, password: String(data.get("password")) } : linkEmail ? {} : { email }), ...(canLink && linkOnesaAccount ? { linkOnesaAccount: true } : {}) }) });
       const value = await response.json().catch(() => { throw Error("Sign-in is temporarily unavailable. Please try again."); });
       if (!response.ok) {
         const failure = engineeringSignInError(response.status, value?.error?.code, action);
@@ -94,6 +97,11 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
         if (failure.restart) { setReady(false); setRestartRequired(true); }
         setRegistrationRequired(failure.registration);
         throw Error(failure.message);
+      }
+      if (action === "enroll") {
+        if (value.status === "pending") { setEnrollment("pending"); return; }
+        if (value.status !== "approved") throw Error("The access request could not be confirmed.");
+        navigating = true; window.location.reload(); return;
       }
       if (action === "link") { if (value?.ok !== true) throw Error("The sign-in request could not be confirmed. Please try again."); setSent(true); setResendSeconds(30); setResendUntil(performance.now() + 30000); return; }
       if (typeof value?.continuePath !== "string" || !/^\/api\/v1\/engineering-identity\/auth\/[A-Za-z0-9_-]{8,128}$/.test(value.continuePath)) throw Error("The sign-in service returned an unexpected response. Start a new sign-in.");
@@ -115,9 +123,13 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
       {openingDocs ? <p role="status">Please wait…</p> : <>
       {notice && <p role="alert">{notice}{registrationRequired && <> <a href="/access/register?audience=engineering">Register for Engineering Docs</a></>}</p>}
       {restartRequired && <a className="button" href="/engineering">Start a new sign-in</a>}
-      {onesaSignInPath && !continuingSession && <p><a className="button" href={onesaSignInPath + (reauthenticate ? "&reauthenticate=1" : "")}>{reauthenticate ? "Sign in to Onesa again" : "Sign in with your Onesa account"}</a></p>}
+      {onesaSignInPath && !continuingSession && (!enrollment || reauthenticate) && <p><a className="button" href={onesaSignInPath + (reauthenticate ? "&reauthenticate=1" : "")}>{reauthenticate ? "Sign in to Onesa again" : "Sign in with your Onesa account"}</a></p>}
       {!ready && !notice && <p role="status">Preparing secure sign-in…</p>}
-      {ready && <>
+      {ready && enrollment && !confirming && <div>
+        {enrollment === "pending" ? <p role="status">The owner is reviewing your Engineering Docs access request. You will receive the decision by email.</p> :
+          <form onSubmit={submit}><p>Request Engineering Docs access with your verified Onesa administrator account. Your existing sign-in will be used after approval.</p><button className="button" type="submit" disabled={busy || reauthenticate}>{busy ? "Requesting…" : "Use my Onesa account for Docs"}</button></form>}
+      </div>}
+      {ready && (!enrollment || confirming) && <>
         {!confirming && !continuingSession && <div className="signin-methods" role="group" aria-label="Sign-in method"><button type="button" disabled={busy} aria-pressed={method === "link"} onClick={() => { setMethod("link"); setLinkOnesaAccount(false); setNotice(""); setRegistrationRequired(false); }}>Email a sign-in link</button><button type="button" disabled={busy} aria-pressed={method === "password"} onClick={() => { setMethod("password"); setLinkOnesaAccount(false); setNotice(""); setRegistrationRequired(false); }}>Email and password</button></div>}
         <form ref={formRef} onSubmit={submit} aria-busy={busy}><fieldset disabled={controlsDisabled}><legend className="sr-only">{method === "password" ? "Email and password" : confirming ? "Confirm your sign-in link" : "Your approved email"}</legend>
           {!confirming && !continuingSession && <label>Email address<input name="email" type="email" value={email} onChange={event => { setEmail(event.target.value); setLinkOnesaAccount(false); setSent(false); }} disabled={controlsDisabled} autoComplete="username" maxLength={254} required /></label>}
@@ -130,7 +142,7 @@ export function EngineeringSignIn({ uid, environment }: { uid: string; environme
         {linkSent && <div className="engineering-link-sent"><p className="engineering-sent-notice" ref={sentRef} tabIndex={-1} role="status">Sent.</p><button className="button" type="button" disabled={busy || resendSeconds > 0} onClick={() => { if (!email) { setSent(false); return; } formRef.current?.requestSubmit(); }}>Send another link{resendSeconds > 0 ? ` (${resendSeconds}s)` : ""}</button></div>}
       </>}
       <div className="engineering-signin-support">
-        {!confirming && !sent && !registrationRequired && <p className="signin-registration">First time here? <a href="/access/register?audience=engineering">Register for Engineering Docs</a></p>}
+        {!enrollment && !confirming && !sent && !registrationRequired && <p className="signin-registration">First time here? <a href="/access/register?audience=engineering">Register for Engineering Docs</a></p>}
         <details className="signin-help"><summary>Help with access</summary><p>New access requires owner approval. Existing approvals are retained.</p>{onesaSignInPath && <><p>Linking keeps your existing Engineering Docs approval. After linking, use your Onesa account to sign in.</p><p>Signing out of Onesa does not sign out of an existing Engineering Docs access session.</p></>}{sent && <p><a href="/access/register?audience=engineering">Register for Engineering Docs</a></p>}<p><a href="/engineering">Start a new sign-in</a> · <a href="https://onesa.eu/en/contact">Contact Onesa</a></p></details>
       </div>
       </>}

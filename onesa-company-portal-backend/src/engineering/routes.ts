@@ -1,5 +1,7 @@
 import {
   requestEngineeringLink,
+  requestAdministratorDocsAccess,
+  accessConfiguration,
   consumeEngineeringLink,
   engineeringPasswordAccount,
   engineeringLinkResendSeconds,
@@ -14,8 +16,8 @@ import { db, transaction, inTransaction } from "../services/db.js";
 import { HttpError } from "../services/workflows.js";
 import { reauthenticate } from "../auth/reauthenticate.js";
 import { onesaSession } from "../auth/onesa-session.js";
-import { lockAccountSession, type AccountSession } from "../identity/accounts.js";
-import { engineeringCentralAccount, engineeringLinkChoice, engineeringProofSession, linkedEngineeringSession, sharedEngineeringEnabled } from "./onesa-account.js";
+import { lockAccountSession, identityAccount, isGlobalAdmin, type AccountSession } from "../identity/accounts.js";
+import { linkEngineeringAccount, engineeringCentralAccount, engineeringLinkChoice, engineeringProofSession, linkedEngineeringSession, sharedEngineeringEnabled } from "./onesa-account.js";
 import type { Role } from "../access/roles.js";
 import { error } from "../api/contracts.js";
 import { createEngineeringProvider } from "./provider.js";
@@ -182,7 +184,7 @@ export async function registerEngineeringIdentity(
         ...meta("engineeringSignInDetails"),
         params,
         response: {
-          200: z.object({ csrf: proof, emailSent: z.boolean(), linkResendSeconds: z.number().int().min(0).max(30), linkEmail: z.email().optional(), onesaAccount: z.object({email:z.email()}).optional(), onesaLink:z.object({email:z.email()}).optional(), onesaSignInPath:z.string().optional(), onesaReauthRequired:z.literal(true).optional() }),
+          200: z.object({ csrf: proof, emailSent: z.boolean(), linkResendSeconds: z.number().int().min(0).max(30), linkEmail: z.email().optional(), onesaAccount: z.object({email:z.email()}).optional(), onesaLink:z.object({email:z.email()}).optional(), onesaEnrollment:z.enum(["available", "pending"]).optional(), onesaSignInPath:z.string().optional(), onesaReauthRequired:z.literal(true).optional() }),
           ...errors,
         },
       },
@@ -194,7 +196,21 @@ export async function registerEngineeringIdentity(
       const session = await approvedOnesaSession(req, details);
       const linkChoice = await engineeringLinkChoice(req, config.externalEmails);
       const linked = sharedEngineeringEnabled() ? await linkedEngineeringSession(req, config.externalEmails) : null;
-      const reauthRequired = Boolean(linked && !(await centralSessionFresh(details,linked.session)));
+      let enrollmentRequiresReauth = false;
+      let enrollment: "available" | "pending" | undefined;
+      if (!session && !linkChoice && !linked && accessConfiguration()) {
+        const central = await engineeringCentralAccount(req);
+        if (central && isGlobalAdmin(central.account.role)) {
+          const { email, id } = central.account;
+          const state = (await db.query(
+            "SELECT (SELECT state FROM access_registrations WHERE email=$1 AND audience='engineering') AS state WHERE NOT EXISTS (SELECT 1 FROM engineering_memberships WHERE email=$1) AND NOT EXISTS (SELECT 1 FROM identity_engineering_links WHERE user_id=$2)", [email, id],
+          )).rows[0];
+          if (state?.state === "pending") enrollment = "pending";
+          if (state && state.state == null) enrollment = "available";
+          if (enrollment === "available") enrollmentRequiresReauth = !(await centralSessionFresh(details, central));
+        }
+      }
+      const reauthRequired = enrollmentRequiresReauth || Boolean(linked && !(await centralSessionFresh(details,linked.session)));
       const cookie = req.cookies[engineeringHandoffCookie];
       let linkEmail: string | undefined;
       if (cookie) {
@@ -208,6 +224,7 @@ export async function registerEngineeringIdentity(
         ...(linkEmail ? { linkEmail } : {}),
         ...(session ? { onesaAccount: {email:session.email} } : {}),
         ...(linkChoice ? { onesaLink:linkChoice } : {}),
+        ...(enrollment ? { onesaEnrollment: enrollment } : {}),
         ...(reauthRequired ? {onesaReauthRequired:true as const} : {}),
         ...(sharedEngineeringEnabled() ? { onesaSignInPath:"/account?returnTo="+encodeURIComponent("/engineering/sign-in/"+req.params.uid) } : {}),
       };
@@ -246,6 +263,34 @@ export async function registerEngineeringIdentity(
       );
     return {...configured(), details};
   };
+  api.post("/api/v1/engineering-sign-in/:uid/enroll", {
+    logLevel: "silent",
+    schema: { ...meta("enrollOnesaAdministratorForDocs"), params, body: z.object({ csrf: proof }).strict(),
+      response: { 200: z.object({status: z.enum(["pending","approved"])}), ...errors } },
+  }, async (req, reply) => {
+    const {config, details} = await verifiedInteraction(req, reply, req.body.csrf);
+    const registration = accessConfiguration();
+    const session = await engineeringCentralAccount(req);
+    if (!registration || !session || !isGlobalAdmin(session.account.role) || !session.amr.includes("otp"))
+      throw new HttpError(403, "ENGINEERING_ACCOUNT_PROOF", "Sign in with your verified Onesa administrator account and authenticator.");
+    if (!(await centralSessionFresh(details, session)))
+      throw new HttpError(403, "ONESA_REAUTH_REQUIRED", "Sign in again to your Onesa account.");
+    await limits.limit("engineering-enrollment:" + session.account.id, 10, 900);
+    return transaction(async c => {
+      await lockAccountSession(c, session);
+      const account = await identityAccount(session.account.id, c);
+      if (!account?.email_verified_at || !isGlobalAdmin(account.role))
+        throw new HttpError(403, "ENGINEERING_ACCOUNT_PROOF", "Current administrator approval is required.");
+      if ((await c.query("SELECT 1 FROM identity_engineering_links WHERE user_id=$1", [account.id])).rowCount)
+        throw new HttpError(409, "ENGINEERING_MEMBERSHIP", "Use your existing Engineering Docs membership.");
+      const status = await requestAdministratorDocsAccess(c, registration, account, config.externalEmails);
+      if (status === "approved") {
+        const membership = (await c.query("SELECT id FROM engineering_memberships WHERE email=$1 AND enabled", [account.email])).rows[0];
+        await linkEngineeringAccount(c, session, membership.id, config.externalEmails, req.id);
+      }
+      return {status};
+    });
+  });
   async function approvedOnesaSession(req: FastifyRequest, details: Awaited<ReturnType<NonNullable<typeof provider>["interactionDetails"]>>) {
     if (sharedEngineeringEnabled()) {
       const linked = config ? await linkedEngineeringSession(req, config.externalEmails) : null;
