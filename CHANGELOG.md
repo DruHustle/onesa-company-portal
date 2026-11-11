@@ -1,5 +1,9 @@
 # Changelog
 
+- Prepare the English and German mobile app directory on the Company Products page.
+  Each product links to its own website. Platform-specific install links appear
+  when that product has a verified release destination.
+
 - Restore current Portal source and its product history to the standalone
   repository, with billing source retained as an independent service. Keep the
   existing standalone release bindings and historical consolidated records.

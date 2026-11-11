@@ -16,15 +16,20 @@ FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures/portal_frontend_v1"
 # split retains these exact blobs even though commit IDs and paths have changed.
 # Their bundled copies also support API-published snapshots without that ancestry.
 PREFIX = "onesa-company-portal-frontend/"
-# Only the four previously pinned files changed by the separate billing source.
+# Public inputs changed by later billing or mobile-directory work.
+# The original footer and product view are retained from f44dee4ef2c3c7ada580e37647fce463dc319970.
 # Sizes and hashes identify actual original public bytes, not a generated mock.
 REVIEWED_FILES = {
+    PREFIX + "src/components/site-footer.tsx": (2925, "aee902a898185551b5d7abb3ff511a57b9a84a30ff1e372919d2146366ce284d"),
+    PREFIX + "src/components/product-overview.tsx": (8843, "8ccf113f761c363933f64c0d7f611d199eda8849e23a70bba2d6d0c2f8ce615f"),
     PREFIX + "package.json": (3038, "e3cbc621f1713824ec3f621588ac0d13e0c3cd6d6c7688e7d64dfe85aa00774e"),
     PREFIX + "src/app/api/v1/[...path]/route.ts": (5293, "7fbb4b327152af662956b0f2410c204349874ec7bda59bd6ac60f81dbb158794"),
     PREFIX + "src/features/account/account.tsx": (20006, "e2352fc9b926dece9de5262f6e1fe02890ceeeb09aa081c598e088a8681027c1"),
     PREFIX + "src/lib/api/generated/schema.d.ts": (787032, "e84ad11bf072ba1c2aee94b70af9ea73e98d8dea426979d55e09479d23cf37f8"),
 }
 REVIEWED_BLOBS = {
+    PREFIX + "src/components/site-footer.tsx": "117a384565a5855fe103253f962b3d8fe2aefda4",
+    PREFIX + "src/components/product-overview.tsx": "edd985c57114704bba320b1679937b702047abb6",
     PREFIX + "package.json": "63c3ba4fafad01f84071c7590034710017d7f2b5",
     PREFIX + "src/app/api/v1/[...path]/route.ts": "5271c8e0089adc388805172f47a955787a856be8",
     PREFIX + "src/features/account/account.tsx": "5aec07bad5bfbc5383c0fc7b0088359360aa908a",
