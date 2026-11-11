@@ -1,5 +1,14 @@
 # Changelog
 
+- Add a fresh-MFA administrator action to disable and restore ordinary Onesa members
+  while preserving the member role and existing product approvals.
+
+- Scope the signed Onesa sign-in interaction cookies to the exact session API path
+  used by browsers while directing the user to the existing Portal sign-in form.
+
+- Let verified Portal users initiate account and associated product-data deletion at
+  `/account/delete` and receive a reference for follow-up with the privacy team.
+
 - Add the independently commissioned `frontend-identity-v2` release profile for
   the seven-product account launcher. It verifies the retained and candidate
   frontend Git trees and reads both Vercel callback variables against the

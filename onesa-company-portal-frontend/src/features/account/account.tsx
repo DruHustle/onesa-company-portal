@@ -85,6 +85,7 @@ export function OnesaAccount({ mode = "login", interactionId }: { mode?: Mode; i
         const result = await accountRequest<AccountSession>("/api/v1/account/login", body); setSession(result);
         const destination = accountReturnPath(window.location.search);
         if (destination) window.location.assign(destination);
+        else if (new URLSearchParams(window.location.search).get("next") === "/account/delete") window.location.assign("/account/delete");
         else if (new URLSearchParams(window.location.search).get("next") === "/admin" && result.account.portalAccess) window.location.assign("/admin");
       }
     });
@@ -116,7 +117,7 @@ export function OnesaAccount({ mode = "login", interactionId }: { mode?: Mode; i
         <a className={"button " + styles.action} href={accountApplicationUrl(app.product, app.url, session.account.globalAdmin)}>{t.open}</a>
       </article>)}</section>
       <h2>{t.futureProducts}</h2>{futureProducts}
-      <nav className={styles.accountLinks} aria-label={language === "de" ? "Kontoeinstellungen" : "Account settings"}>{session.account.portalAccess && <a className={styles.action} href="/admin">{t.admin}</a>}<a className={styles.action} href="/engineering">Engineering Docs</a>{!session.account.mfaEnrolled && <a className={styles.action} href={setupUrl}>{t.setup}</a>}<a className={styles.action} href="/account/billing">{language === "de" ? "Abrechnung" : "Billing"}</a><a className={styles.action} href="/account/security">{language === "de" ? "Passwort und Sicherheit" : "Password and security"}</a></nav>
+      <nav className={styles.accountLinks} aria-label={language === "de" ? "Kontoeinstellungen" : "Account settings"}>{session.account.portalAccess && <a className={styles.action} href="/admin">{t.admin}</a>}<a className={styles.action} href="/engineering">Engineering Docs</a>{!session.account.mfaEnrolled && <a className={styles.action} href={setupUrl}>{t.setup}</a>}<a className={styles.action} href="/account/billing">{language === "de" ? "Abrechnung" : "Billing"}</a><a className={styles.action} href="/account/security">{language === "de" ? "Passwort und Sicherheit" : "Password and security"}</a><a className={styles.action} href="/account/delete">{language === "de" ? "Kontolöschung beantragen" : "Request account deletion"}</a></nav>
       {session.account.globalAdmin && <AccessManager session={session} language={language} />}
     </div> : <section className={styles.card} aria-labelledby="account-title">
       <h1 id="account-title">{mode === "register" ? t.register : mode === "confirm" ? t.confirm : interaction?.freshRequired ? t.fresh : t.login}</h1>

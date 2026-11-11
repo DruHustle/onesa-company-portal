@@ -52,7 +52,7 @@ export function createIdentityProvider(config: IdentityConfig) {
     },
     interactions: {
       url: (_ctx, interaction) =>
-        new URL("/account/sign-in/" + interaction.uid, config.issuer).href,
+        new URL("/api/v1/account/interaction/" + interaction.uid, config.issuer).href,
     },
     issueRefreshToken: () => false,
     extraTokenClaims: (ctx, token) => {
@@ -93,6 +93,19 @@ export function createIdentityProvider(config: IdentityConfig) {
     },
   };
   const provider = new Provider(config.issuer, options);
+  // The provider scopes its signed interaction cookies to interactions.url.
+  // Only the account API reads them. Present the separate HTML form to the browser.
+  const interactionApi = new URL("/api/v1/account/interaction/", config.issuer).href;
+  provider.use(async (ctx, next) => {
+    await next();
+    if (ctx.status !== 303) return;
+    const location = ctx.response.get("Location");
+    if (!location.startsWith(interactionApi)) return;
+    const uid = location.slice(interactionApi.length);
+    if (/^[A-Za-z0-9_-]{8,128}$/.test(uid)) {
+      ctx.redirect(new URL("/account/sign-in/" + uid, config.issuer).href);
+    }
+  });
   provider.proxy = true;
   return provider;
 }
