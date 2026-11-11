@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import oracle_portal as r
+from portal_profile_test_fixtures import schema_016_migrations
 import oracle_portal_identity as identity
 import oracle_portal_identity_restore as restore
 
@@ -41,8 +42,7 @@ class RestoreMigrationOwnershipTests(unittest.TestCase):
             "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY",
         )}
         root = Path(__file__).resolve().parents[2]
-        migrations = {path.name: path.read_bytes() for path in sorted(
-            (root / "onesa-company-portal-backend/migrations").glob("*.sql"))}
+        migrations = schema_016_migrations(root)
         manifest = {key: hashlib.sha256(raw).hexdigest() for key, raw in migrations.items()}
         files = {identity.PREFIX + "migrations/" + key: digest for key, digest in manifest.items()}
         for required in ("Dockerfile", "package.json", "package-lock.json", "src/identity/config.ts",
