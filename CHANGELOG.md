@@ -1,5 +1,10 @@
 # Changelog
 
+- Add the independently commissioned `frontend-identity-v2` release profile for
+  the seven-product account launcher. It verifies the retained and candidate
+  frontend Git trees and reads both Vercel callback variables against the
+  issuer's registered environment origins before publication.
+
 - Prepare the English and German mobile app directory on the Company Products page.
   Each product links to its own website. Platform-specific install links appear
   when that product has a verified release destination.
