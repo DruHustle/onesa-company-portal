@@ -1,3 +1,4 @@
+import {MobileApps} from './mobile-apps';
 import {ResponsiveLink as Link} from './responsive-link';
 import {products} from '@/config/products';
 import type {Locale} from '@/config/copy';
@@ -72,7 +73,7 @@ function ApplicationDirections({locale}:{locale:Locale}) {
 
 /** Product information renders with the page, without waiting for the content API. */
 export function ProductOverview({locale}:{locale:Locale}) {
-  return <><section aria-label={locale==='de'?'Onesa Produkte':'Onesa products'}>
+  return <><MobileApps locale={locale}/><section aria-label={locale==='de'?'Onesa Produkte':'Onesa products'}>
     {products[locale].map(product=><Fragment key={product.id}><article className={`product-section ${styles.product}`} aria-labelledby={`product-${product.id}`}>
       <div>
       <p className="eyebrow">{product.category}</p>
