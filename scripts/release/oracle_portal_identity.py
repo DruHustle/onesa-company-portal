@@ -25,6 +25,25 @@ import oracle_portal as r
 import oracle_portal_scanner as common
 
 PROFILE = "portal-shared-identity-v1"
+PROFILE_V2 = "portal-shared-identity-v2"
+ACCEPTANCE_V2 = "portal-shared-identity-acceptance-v2"
+LEGACY_PRODUCTS = ("ai", "drone", "robot")
+CALLBACKS = {
+    "ai": "/api/v1/auth/onesa/callback",
+    "drone": "/api/v1/auth/identity/callback",
+    "robot": "/api/v1/auth/identity/callback",
+    "farmer": "/auth/onesa/callback",
+    "logistics": "/api/auth/onesa/callback",
+    "pasofi": "/onesa-callback.html",
+    "mobile": "/api/v1/auth/onesa/callback",
+}
+PRODUCTION_ORIGINS = {
+    "portal": "https://portal.onesa.eu", "ai": "https://platform.onesa.eu",
+    "drone": "https://drone.onesa.eu", "robot": "https://robot.onesa.eu",
+    "farmer": "https://farmer.onesa.eu", "logistics": "https://logistics.onesa.eu",
+    "pasofi": "https://pasofi.mobile.onesa.eu", "mobile": "https://mobile.onesa.eu",
+}
+PLAN_V2 = Path("/etc/onesa/oracle-portal-identity-release-v2.json")
 PLAN = Path("/etc/onesa/oracle-portal-identity-release.json")
 ROOT = Path("/var/lib/onesa/release-verification/portal/identity")
 PREFIX = "onesa-company-portal-backend/"
@@ -51,6 +70,9 @@ CHECKS["staging"] |= {
 }
 CHECKS["operations"] |= {"identity_restore"}
 CHECKS["production"] |= {"identity_migration", "identity_hosted_acceptance"}
+CHECKS_V2 = {phase: set(required) for phase, required in CHECKS.items()}
+for phase in ("staging", "deploy", "production"):
+    CHECKS_V2[phase] |= {"seven_client_registry", "portal_mfa_administrator"}
 HOSTED_CHECKS = {
     "registration_verification_delivery",
     "portal_member_access",
@@ -78,6 +100,20 @@ ACCOUNT_CHECKS = HOSTED_CHECKS - {
     "two_product_entitlements",
     "access_request_approval",
 }
+
+
+def seven_client_profile(plan):
+    return plan.get("qualification_profile") in (PROFILE_V2, ACCEPTANCE_V2)
+
+
+def hosted_checks(plan, scope):
+    r.require(scope in {"account", "integrated"}, "IDENTITY_HOSTED_SCOPE")
+    checks = set(ACCOUNT_CHECKS if scope == "account" else HOSTED_CHECKS)
+    if seven_client_profile(plan):
+        checks.add("portal_mfa_administrator")
+        if scope == "integrated":
+            checks.update(product + "_administrator" for product in CALLBACKS)
+    return checks
 
 
 def digest(value):
@@ -204,7 +240,26 @@ def validate_recipe(value, env, kind):
     pinned(value["environment_file"], expected_env)
 
 
-def validate_plan(binding, plan):
+def validate_origins(origins, env, *, v2):
+    products = CALLBACKS if v2 else LEGACY_PRODUCTS
+    exact(origins, ["portal", *products], "IDENTITY_ORIGINS")
+    for origin in origins.values():
+        parsed = urlsplit(origin)
+        r.require(
+            parsed.scheme == "https" and parsed.netloc == parsed.hostname
+            and not parsed.path and not parsed.query and not parsed.fragment
+            and (not v2 or (parsed.hostname
+                            and re.fullmatch(r"[a-z0-9-]+(?:\.[a-z0-9-]+)+", parsed.hostname)
+                            and origin == "https://" + parsed.hostname)),
+            "IDENTITY_HTTPS_ORIGIN",
+        )
+    r.require(len(set(origins.values())) == len(origins), "IDENTITY_DISTINCT_ORIGINS")
+    if env == "production":
+        r.require(origins == {key: PRODUCTION_ORIGINS[key] for key in origins},
+                  "IDENTITY_CANONICAL_PRODUCTION_ORIGINS")
+
+
+def validate_plan(binding, plan, expected_profile=PROFILE):
     exact(
         plan,
         r.component_plan_fields(binding, [
@@ -222,7 +277,8 @@ def validate_plan(binding, plan):
     )
     r.require(
         r.component_plan_source(binding, plan, "identity")
-        and plan["qualification_profile"] == PROFILE
+        and expected_profile in (PROFILE, PROFILE_V2)
+        and plan["qualification_profile"] == expected_profile
         and binding["component"] == "identity"
         and binding["target_environment"] == "production"
         and re.fullmatch(r"[a-f0-9]{40}", binding["candidate_commit"])
@@ -249,38 +305,16 @@ def validate_plan(binding, plan):
                 "database_file",
                 "browser_file",
                 "origins",
+                *(["retained_identity_file"] if expected_profile == PROFILE_V2 else []),
             ],
             "IDENTITY_ENVIRONMENT_SCHEMA",
         )
         for key in ["identity_file", "database_file", "browser_file"]:
             pinned(selected[key])
-        exact(
-            selected["origins"], ["portal", "ai", "drone", "robot"], "IDENTITY_ORIGINS"
-        )
-        for origin in selected["origins"].values():
-            parsed = urlsplit(origin)
-            r.require(
-                parsed.scheme == "https"
-                and parsed.netloc == parsed.hostname
-                and not parsed.path
-                and not parsed.query
-                and not parsed.fragment,
-                "IDENTITY_HTTPS_ORIGIN",
-            )
-        r.require(
-            len(set(selected["origins"].values())) == 4, "IDENTITY_DISTINCT_ORIGINS"
-        )
-        if env == "production":
-            r.require(
-                selected["origins"]
-                == {
-                    "portal": "https://portal.onesa.eu",
-                    "ai": "https://platform.onesa.eu",
-                    "drone": "https://drone.onesa.eu",
-                    "robot": "https://robot.onesa.eu",
-                },
-                "IDENTITY_CANONICAL_PRODUCTION_ORIGINS",
-            )
+        v2 = expected_profile == PROFILE_V2
+        if v2 and selected["retained_identity_file"] is not None:
+            pinned(selected["retained_identity_file"])
+        validate_origins(selected["origins"], env, v2=v2)
         for kind in ["api", "worker"]:
             runtime = selected[kind]
             exact(
@@ -529,9 +563,7 @@ def rendered(runtime, env, kind, override=None):
     )
 
 
-def identity_values(binding, plan, env):
-    selected = plan["environments"][env]
-    values = json.loads(private_bytes(selected["identity_file"]))
+def decode_registration(values):
     exact(values, IDENTITY_KEYS, "IDENTITY_ONLY_APPROVED_CONFIGURATION_KEYS")
     r.require(
         values["ONESA_IDENTITY_ENABLED"] == "true"
@@ -539,21 +571,46 @@ def identity_values(binding, plan, env):
         and len(values["ONESA_IDENTITY_CONFIG_B64"]) <= 65536,
         "IDENTITY_EXPLICIT_ENABLE_REQUIRED",
     )
-    decoded = json.loads(
-        base64.b64decode(values["ONESA_IDENTITY_CONFIG_B64"], validate=True)
-    )
-    r.require(
-        decoded["issuer"] == selected["origins"]["portal"] + "/api/v1/identity"
-        and {c["product"] for c in decoded["clients"]} == {"ai", "drone", "robot"}
-        and len(decoded["clients"]) == 3,
-        "IDENTITY_ALL_PRODUCTS_REQUIRED",
-    )
+    return json.loads(base64.b64decode(values["ONESA_IDENTITY_CONFIG_B64"], validate=True))
+
+
+def validate_registration(values, origins, *, v2):
+    decoded = decode_registration(values)
+    products = set(CALLBACKS if v2 else LEGACY_PRODUCTS)
+    r.require(decoded["issuer"] == origins["portal"] + "/api/v1/identity"
+              and {c["product"] for c in decoded["clients"]} == products
+              and len(decoded["clients"]) == len(products),
+              "IDENTITY_ALL_PRODUCTS_REQUIRED")
+    if v2:
+        for field in ("clientId", "clientSecret"):
+            r.require(len({client[field] for client in decoded["clients"]}) == len(products),
+                      "IDENTITY_DUPLICATE_CLIENT_CREDENTIAL")
     for client in decoded["clients"]:
-        r.require(
-            client["applicationUrl"] == selected["origins"][client["product"]]
-            and client["redirectUri"].startswith(client["applicationUrl"] + "/"),
-            "IDENTITY_EXACT_PRODUCT_ORIGIN",
-        )
+        product = client["product"]
+        origin = origins[product]
+        if v2:
+            url = urlsplit(client["applicationUrl"])
+            r.require(re.fullmatch(r"[A-Za-z0-9_-]{16,128}", client["clientId"])
+                      and isinstance(client["clientSecret"], str)
+                      and 48 <= len(client["clientSecret"]) <= 256
+                      and not any(char in client["clientSecret"] for char in ("\x00", "\r", "\n"))
+                      and (product != "drone" or len(client["clientId"]) <= 100)
+                      and (product != "mobile" or client["clientSecret"].strip() == client["clientSecret"])
+                      and url.scheme == "https" and url.netloc == urlsplit(origin).netloc
+                      and not url.query and not url.fragment
+                      and client["redirectUri"] == origin + CALLBACKS[product],
+                      "IDENTITY_EXACT_PRODUCT_CALLBACK")
+        else:
+            r.require(client["applicationUrl"] == origin
+                      and client["redirectUri"].startswith(origin + "/"),
+                      "IDENTITY_EXACT_PRODUCT_ORIGIN")
+    return decoded
+
+
+def identity_values(binding, plan, env):
+    selected = plan["environments"][env]
+    values = json.loads(private_bytes(selected["identity_file"]))
+    validate_registration(values, selected["origins"], v2=seven_client_profile(plan))
     # Use the actual reviewed backend parser, including RSA validation. Values
     # travel only on stdin, never in Docker arguments, stdout or release records.
     program = "import fs from 'node:fs';import {identityConfiguration} from '/app/dist/src/identity/config.js';const x=JSON.parse(fs.readFileSync(0,'utf8'));if(!identityConfiguration(x.values,x.origin))throw Error();console.log('IDENTITY_CONFIGURATION_VALID');"
@@ -586,6 +643,51 @@ def identity_values(binding, plan, env):
         "IDENTITY_CONFIGURATION_REJECTED",
     )
     return values
+
+
+def retained_identity(selected):
+    pointer = selected["retained_identity_file"]
+    return json.loads(private_bytes(pointer)) if pointer is not None else None
+
+
+def identity_environment(environment):
+    return {key: value for key, value in environment.items() if key in IDENTITY_KEYS}
+
+
+def check_retained_identity(selected, candidate, live_environments):
+    """An expansion cannot revoke, rotate or claim another issuer's existing grants."""
+    previous = retained_identity(selected)
+    if previous is None:
+        r.require(all(values in ({}, {"ONESA_IDENTITY_ENABLED": "false"})
+                      for values in live_environments), "IDENTITY_UNDECLARED_ACTIVE_ISSUER")
+        return
+    r.require(all(values == previous for values in live_environments),
+              "IDENTITY_RETAINED_ISSUER_CUSTODY_CHANGED")
+    old = decode_registration(previous)
+    new = validate_registration(candidate, selected["origins"], v2=True)
+    r.require(all(old[key] == new[key] for key in ["issuer", "jwks", "cookieKeys"]),
+              "IDENTITY_ACTIVE_KEYS_CHANGED")
+    registry = {client["product"]: client for client in new["clients"]}
+    r.require(isinstance(old["clients"], list) and old["clients"]
+              and len({c["product"] for c in old["clients"]}) == len(old["clients"])
+              and all(registry.get(c["product"]) == c for c in old["clients"]),
+              "IDENTITY_ACTIVE_REGISTRATION_CHANGED")
+
+
+def require_independent_credentials(staging, production):
+    def material(values):
+        registry = decode_registration(values)
+        return {*registry["cookieKeys"], *(c["clientSecret"] for c in registry["clients"]),
+                *(jwk["n"] for jwk in registry["jwks"]["keys"])}
+    r.require(material(staging).isdisjoint(material(production)),
+              "IDENTITY_STAGING_PRODUCTION_CREDENTIAL_REUSE")
+
+
+def check_live_transition(plan, env, candidate, inventory):
+    if seven_client_profile(plan):
+        live = [identity_environment(dict(v.split("=", 1) for v in inventory[name]["Config"]["Env"]))
+                for name in TARGETS[env].values()]
+        check_retained_identity(plan["environments"][env], candidate, live)
 
 
 def database_custody(pointer):
@@ -627,10 +729,12 @@ def validate_custody(plan):
                 values.get("ONESA_DATABASE_CA_PEM_B64") == expected_ca,
                 "IDENTITY_RUNTIME_DATABASE_CA_MISMATCH",
             )
-            r.require(
-                not IDENTITY_KEYS & set(values),
-                "IDENTITY_BASELINE_MUST_BE_FEATURE_DISABLED",
-            )
+            base = identity_environment(values)
+            if seven_client_profile(plan):
+                r.require(base in ({}, {"ONESA_IDENTITY_ENABLED": "false"}, retained_identity(selected)),
+                          "IDENTITY_BASELINE_ISSUER_CUSTODY_CHANGED")
+            else:
+                r.require(not base, "IDENTITY_BASELINE_MUST_BE_FEATURE_DISABLED")
             uri = urlsplit(values["DATABASE_URL"])
             r.require(
                 uri.scheme in {"postgres", "postgresql"}
@@ -753,7 +857,7 @@ def compose_change(
     expected = json.loads(json.dumps(original))
     chosen = expected["services"][service]
     # Historical images cannot safely serialize accounts created with schema 013.
-    # The qualified candidate itself is the fallback, with identity disabled.
+    # The qualified candidate is the fallback, with the incumbent issuer state restored.
     image = binding["artifact_digest"]
     labels = dict(chosen.get("labels") or {})
     labels.update(
@@ -763,14 +867,16 @@ def compose_change(
         }
     )
     environment = dict(chosen.get("environment") or {})
-    r.require(
-        not (IDENTITY_KEYS & set(environment)),
-        "IDENTITY_BASELINE_MUST_BE_FEATURE_DISABLED",
-    )
-    if rollback:
-        environment["ONESA_IDENTITY_ENABLED"] = "false"
+    if seven_client_profile(plan):
+        previous = retained_identity(plan["environments"][env])
+        r.require(identity_environment(environment) in ({}, {"ONESA_IDENTITY_ENABLED": "false"}, previous),
+                  "IDENTITY_BASELINE_ISSUER_CUSTODY_CHANGED")
+        # Compose merges environment mappings. Explicitly disable a new issuer, or restore
+        # the exact known incumbent registration when qualifying an incremental rollout.
+        environment.update((previous or {"ONESA_IDENTITY_ENABLED": "false"}) if rollback else values)
     else:
-        environment.update(values)
+        r.require(not identity_environment(environment), "IDENTITY_BASELINE_MUST_BE_FEATURE_DISABLED")
+        environment.update({"ONESA_IDENTITY_ENABLED": "false"} if rollback else values)
     chosen.update(image=image, labels=labels, environment=environment)
     override = target / (kind + "-override.json")
     r.write(
@@ -855,7 +961,7 @@ def compose_change(
     return recovery_target(row)
 
 
-def read_health(plan, env, enabled):
+def read_health(plan, env, enabled, *, previous=False):
     origin = plan["environments"][env]["origins"]["portal"]
     fixtures = json.loads(private_bytes(plan["environments"][env]["browser_file"]))
     preview = fixtures.get("preview_sessions", {}).get("portal")
@@ -868,6 +974,27 @@ def read_health(plan, env, enabled):
     if enabled:
         value = r.http_read(origin, "/api/v1/account/config", 200, bypass)
         r.require(value.get("enabled") is True, "IDENTITY_CONFIG_NOT_ENABLED")
+        if seven_client_profile(plan):
+            selected = plan["environments"][env]
+            desired = (retained_identity(selected) if previous else
+                       json.loads(private_bytes(selected["identity_file"])))
+            registration = decode_registration(desired)
+            expected = sorted((c["product"], c["applicationUrl"]) for c in registration["clients"])
+            actual = sorted((c["product"], c["url"]) for c in value.get("applications", []))
+            metadata = r.http_read(origin, "/api/v1/identity/.well-known/openid-configuration", 200, bypass)
+            issuer = registration["issuer"]
+            endpoints = {"issuer": issuer, "authorization_endpoint": issuer + "/auth",
+                         "token_endpoint": issuer + "/token", "jwks_uri": issuer + "/jwks"}
+            r.require(actual == expected and all(metadata.get(k) == v for k, v in endpoints.items()),
+                      "IDENTITY_SERVED_REGISTRY_OR_ISSUER_DIFFERS")
+            jwks = r.http_read(origin, "/api/v1/identity/jwks", 200, bypass)
+            fields = ("kty", "kid", "n", "e")
+            expected_keys = {tuple(key[field] for field in fields) for key in registration["jwks"]["keys"]}
+            public_keys = jwks.get("keys", [])
+            r.require(len(public_keys) == len(expected_keys)
+                      and {tuple(key.get(field) for field in fields) for key in public_keys} == expected_keys
+                      and all(not (set(key) & {"d", "p", "q", "dp", "dq", "qi", "oth"}) for key in public_keys),
+                      "IDENTITY_SERVED_PUBLIC_KEYS_DIFFER")
     else:
         value = r.http_read(origin, "/api/v1/account/config", 200, bypass)
         r.require(value.get("enabled") is False, "IDENTITY_CONFIG_NOT_DISABLED")
@@ -916,6 +1043,7 @@ def verify_probe_image(plan):
         "oracle_portal_identity_browser.mjs",
         "oracle_portal_identity_mail.mjs",
         "oracle_portal_browser_session.mjs",
+        *(["oracle_portal_identity_browser_v2.mjs"] if seven_client_profile(plan) else []),
     ]
     expected = {
         "/opt/onesa-company-portal/scripts/release/" + name: files[
@@ -944,59 +1072,12 @@ def verify_probe_image(plan):
     return image["Id"]
 
 
-def hosted(binding, plan, env, operation, target, *, scope="account"):
-    r.require(scope in {"account", "integrated"}, "IDENTITY_HOSTED_SCOPE")
-    selected = plan["environments"][env]
-    fixtures = json.loads(private_bytes(selected["browser_file"]))
-    exact(
-        fixtures,
-        ["fixtures", "preview_sessions"],
-        "IDENTITY_PRIVATE_BROWSER_INPUT_SCHEMA",
-    )
-    fixtures = fixture_aliases(fixtures, operation)
-    issuer = json.loads(private_bytes(selected["identity_file"]))
-    exact(issuer, IDENTITY_KEYS, "IDENTITY_HOSTED_ISSUER_CONFIGURATION")
-    r.require(
-        issuer["ONESA_IDENTITY_ENABLED"] == "true", "IDENTITY_HOSTED_ISSUER_DISABLED"
-    )
-    registration = json.loads(
-        base64.b64decode(issuer["ONESA_IDENTITY_CONFIG_B64"], validate=True)
-    )
-    clients = {value["product"]: value["clientId"] for value in registration["clients"]}
-    r.require(
-        len(registration["clients"]) == 3
-        and set(clients) == {"ai", "drone", "robot"}
-        and registration["issuer"] == selected["origins"]["portal"] + "/api/v1/identity"
-        and fixtures["fixtures"].get("product_clients", clients) == clients,
-        "IDENTITY_HOSTED_CLIENT_BINDING",
-    )
-    fixtures["fixtures"]["product_clients"] = clients
-    request = {
-        "schema_version": 1,
-        "scope": scope,
-        "binding": binding,
-        "environment": env,
-        "operation_id": operation,
-        "origins": selected["origins"],
-        **fixtures,
-    }
-    r.write(
-        target / "hosted-intent.json",
-        {
-            "binding": binding,
-            "environment": env,
-            "operation_id": operation,
-            "scope": scope,
-            "request_budget": 1,
-            "automatic_retry": False,
-        },
-    )
-    program = Path(__file__).with_name("oracle_portal_identity_browser.mjs")
+def run_hosted_probe(plan, request, image, name):
+    program = Path(__file__).with_name(name)
     pin_value = r.trusted_toolchain(plan)["workflow_files"][
         "scripts/release/" + program.name
     ]
     r.pinned_public_file(program, pin_value)
-    image = verify_probe_image(plan)
     # The executable closure is read back from the actual immutable browser
     # image; provider bypass and fixture credentials travel only on private stdin.
     raw = r.docker(
@@ -1026,7 +1107,44 @@ def hosted(binding, plan, env, operation, target, *, scope="account"):
         data=r.canonical(request),
         timeout=1250,
     )
-    value = json.loads(raw)
+    return json.loads(raw)
+
+
+def hosted(binding, plan, env, operation, target, *, scope="account"):
+    r.require(scope in {"account", "integrated"}, "IDENTITY_HOSTED_SCOPE")
+    selected = plan["environments"][env]
+    fixtures = json.loads(private_bytes(selected["browser_file"]))
+    exact(fixtures, ["fixtures", "preview_sessions"], "IDENTITY_PRIVATE_BROWSER_INPUT_SCHEMA")
+    fixtures = fixture_aliases(fixtures, operation)
+    issuer = json.loads(private_bytes(selected["identity_file"]))
+    v2 = seven_client_profile(plan)
+    if v2:
+        registration = validate_registration(issuer, selected["origins"], v2=True)
+    else:
+        registration = decode_registration(issuer)
+    clients = {v["product"]: v["clientId"] for v in registration["clients"]}
+    expected_products = CALLBACKS if v2 else LEGACY_PRODUCTS
+    r.require(len(registration["clients"]) == len(expected_products)
+              and set(clients) == set(expected_products)
+              and registration["issuer"] == selected["origins"]["portal"] + "/api/v1/identity"
+              and fixtures["fixtures"].get("product_clients", clients) == clients,
+              "IDENTITY_HOSTED_CLIENT_BINDING")
+    old_origins = {k: selected["origins"][k] for k in ("portal", *LEGACY_PRODUCTS)}
+    preview = fixtures["preview_sessions"]
+    if v2:
+        r.require(set(preview) <= set(selected["origins"]), "IDENTITY_PREVIEW_ORIGIN")
+    request = {
+        "schema_version": 1, "scope": scope, "binding": binding, "environment": env,
+        "operation_id": operation, "origins": old_origins if v2 else selected["origins"],
+        "preview_sessions": {k: v for k, v in preview.items() if k in old_origins} if v2 else preview,
+        "fixtures": {**fixtures["fixtures"], "product_clients": {k: clients[k] for k in LEGACY_PRODUCTS}},
+    }
+    r.write(target / "hosted-intent.json", {
+        "binding": binding, "environment": env, "operation_id": operation, "scope": scope,
+        "request_budget": 1, "automatic_retry": False,
+    })
+    image = verify_probe_image(plan)
+    value = run_hosted_probe(plan, request, image, "oracle_portal_identity_browser.mjs")
     r.require(
         value["state"] == "HOSTED_IDENTITY_OBSERVED_NOT_AUTHORIZATION"
         and value["binding"] == binding
@@ -1047,6 +1165,32 @@ def hosted(binding, plan, env, operation, target, *, scope="account"):
         and all(v is True for v in value["checks"].values()),
         "IDENTITY_HOSTED_ACCEPTANCE_INCOMPLETE",
     )
+    if v2:
+        admin_request = {
+            **request, "schema_version": 2, "origins": selected["origins"],
+            "preview_sessions": preview,
+            "fixtures": {key: fixtures["fixtures"][key] for key in ["owner", "drone_workspace"]}
+                        | {"product_clients": clients},
+        }
+        # The administrator observer receives no generated member credentials or mailbox access.
+        admin = run_hosted_probe(plan, admin_request, image, "oracle_portal_identity_browser_v2.mjs")
+        exact(admin, ["schema_version", "state", "scope", "binding", "environment", "operation_id",
+                      "checks", "physical_hardware_authorized", "physical_operations", "observed_at"],
+              "IDENTITY_ADMIN_BROWSER_RECEIPT_SCHEMA")
+        r.require(type(admin["schema_version"]) is int and admin["schema_version"] == 2
+                  and admin["state"] == "HOSTED_ADMINISTRATOR_SIGNIN_OBSERVED_NOT_AUTHORIZATION"
+                  and all(admin[k] == admin_request[k] for k in ["scope", "binding", "environment", "operation_id"])
+                  and admin["physical_hardware_authorized"] is False
+                  and type(admin["physical_operations"]) is int and admin["physical_operations"] == 0
+                  and set(admin["checks"]) == hosted_checks(plan, scope) - set(value["checks"])
+                  and all(result is True for result in admin["checks"].values()),
+                  "IDENTITY_ADMIN_BROWSER_ACCEPTANCE_INCOMPLETE")
+        observed_at = dt.datetime.fromisoformat(admin["observed_at"])
+        r.require(observed_at.tzinfo is not None
+                  and dt.timedelta() <= r.now() - observed_at < dt.timedelta(minutes=30),
+                  "IDENTITY_ADMIN_BROWSER_RECEIPT_EXPIRED")
+        value = {**value, "checks": {**value["checks"], **admin["checks"]},
+                 "administrator_observation": admin}
     r.write(target / "hosted.json", value)
     return value
 
@@ -1098,12 +1242,16 @@ def stage_receipt(binding, records):
 def staging(binding, plan, context, folder, records):
     with component_lock():
         common.capacity()
-        preserved(plan)
+        inventory = preserved(plan)
         validate_custody(plan)
         migrations = source_and_image(binding, plan, folder)
         values = identity_values(binding, plan, "staging")
         # Validate production pairing/custody before touching the staging schema.
-        identity_values(binding, plan, "production")
+        production_values = identity_values(binding, plan, "production")
+        check_live_transition(plan, "staging", values, inventory)
+        check_live_transition(plan, "production", production_values, inventory)
+        if seven_client_profile(plan):
+            require_independent_credentials(values, production_values)
         operation = common.identifier(context["context_id"])
         target = reserve(
             ROOT / "observations",
@@ -1142,7 +1290,10 @@ def staging(binding, plan, context, folder, records):
                     rollback=rollback,
                 )
                 preserved(plan, scope)
-            read_health(plan, "staging", not rollback)
+            fallback_enabled = (seven_client_profile(plan)
+                                and plan["environments"]["staging"]["retained_identity_file"] is not None)
+            read_health(plan, "staging", not rollback or fallback_enabled,
+                        previous=rollback and fallback_enabled)
         browser = hosted(binding, plan, "staging", operation, target)
         rows = preserved(plan, scope)
         r.require(
@@ -1174,8 +1325,20 @@ def staging(binding, plan, context, folder, records):
         }
 
 
+def require_account_observation(binding, plan, receipt):
+    if not seven_client_profile(plan):
+        return
+    proof = receipt["hosted"]
+    r.require(proof["binding"] == binding and proof["scope"] == "account"
+              and set(proof["checks"]) == hosted_checks(plan, "account")
+              and all(v is True for v in proof["checks"].values())
+              and proof["administrator_observation"]["checks"] == {"portal_mfa_administrator": True},
+              "IDENTITY_SEVEN_CLIENT_RECEIPT_REQUIRED")
+
+
 def operations(binding, plan, records):
     _, stage = stage_receipt(binding, records)
+    require_account_observation(binding, plan, stage)
     rows = preserved(plan, TARGETS["staging"].values())
     r.require(
         all(
@@ -1216,6 +1379,8 @@ def deploy(binding, plan, context, folder, records):
         validate_custody(plan)
         migrations = source_and_image(binding, plan, folder)
         values = identity_values(binding, plan, "production")
+        if seven_client_profile(plan):
+            check_live_transition(plan, "production", values, r.inventory())
         operation = common.identifier(context["operation_id"])
         target = reserve(
             ROOT / "deployments",
@@ -1287,6 +1452,8 @@ def production(binding, plan, context, folder, records):
                 and r.healthy(rows[name]),
                 "IDENTITY_RUNTIME_ACCEPTANCE_CHANGED",
             )
+    require_account_observation(binding, plan, stage)
+    require_account_observation(binding, plan, value)
     # The source/image and actual public routes are freshly re-observed. No
     # account-session or database-write helper runs in the read-only phase.
     source_and_image(binding, plan, folder)
@@ -1312,12 +1479,13 @@ def production(binding, plan, context, folder, records):
     }
 
 
-def runner(phase, binding, context):
-    r.require(phase in CHECKS, "IDENTITY_PHASE_SCOPE")
-    plan = r.read(r.component_plan_path(binding, PLAN))
-    folder = validate_plan(binding, plan)
+def runner(phase, binding, context, expected_profile=PROFILE):
+    checks = CHECKS_V2 if expected_profile == PROFILE_V2 else CHECKS
+    r.require(phase in checks, "IDENTITY_PHASE_SCOPE")
+    plan = r.read(r.component_plan_path(binding, PLAN_V2 if expected_profile == PROFILE_V2 else PLAN))
+    folder = validate_plan(binding, plan, expected_profile)
     records = r.verify_invocation(binding, context, phase, plan)
-    r.verify_canonical_component_custody(binding, plan, CHECKS)
+    r.verify_canonical_component_custody(binding, plan, checks)
     if phase == "staging":
         observed = staging(binding, plan, context, folder, records)
     elif phase == "operations":
@@ -1332,7 +1500,7 @@ def runner(phase, binding, context):
         "environment": "staging" if phase == "staging" else "production",
         "workflow_run_id": 0,
         "observed_at": r.now().isoformat(),
-        "checks": {key: "PASS" for key in CHECKS[phase]},
+        "checks": {key: "PASS" for key in checks[phase]},
     }
 
 
@@ -1371,7 +1539,7 @@ def record_failure(phase, request, error, *, component="identity"):
         pass
 
 
-def main():
+def main(expected_profile=PROFILE):
     request = None
     try:
         r.require(
@@ -1387,7 +1555,7 @@ def main():
         exact(request, ["binding", "context"], "IDENTITY_REQUEST_SCHEMA")
         print(
             json.dumps(
-                runner(sys.argv[1], request["binding"], request["context"]),
+                runner(sys.argv[1], request["binding"], request["context"], expected_profile),
                 sort_keys=True,
             )
         )

@@ -85,6 +85,14 @@ IDENTITY_ALLOWED = {
     "runners/oracle_backup_open.mjs": "scripts/oracle_backup_open.mjs",
 }
 
+IDENTITY_V2_ALLOWED = {
+    **IDENTITY_ALLOWED,
+    **{"runners/" + name: "scripts/release/" + name for name in (
+        "oracle_portal_identity_v2.py", "oracle_portal_identity_acceptance_v2.py",
+        "oracle_portal_identity_browser_v2.mjs",
+    )},
+}
+
 MAX_BYTES = 2 * 1024 * 1024
 
 
@@ -178,6 +186,10 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "oracle_portal_api.py",
             "portal-api-",
         )
+    elif set(m["files"]) == set(IDENTITY_V2_ALLOWED):
+        allowed, component, script, prefix = (
+            IDENTITY_V2_ALLOWED, "identity", "oracle_portal_identity_v2.py", "portal-identity-v2-",
+        )
     elif set(m["files"]) == set(IDENTITY_ALLOWED):
         # The same complete reviewed closure supports two independent owner
         # profiles. Neither may inherit authority from the other's component.
@@ -199,12 +211,13 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         and policy["schema_version"] == (2 if consolidated else 1),
         "Installation policy schema",
     )
-    if allowed is IDENTITY_ALLOWED and set(policy["components"]) == {
+    if (allowed is IDENTITY_ALLOWED or allowed is IDENTITY_V2_ALLOWED) and set(policy["components"]) == {
         verifier.component_scope({**m, "component": "identity-acceptance"})
     }:
         component, script, prefix = (
-            "identity-acceptance", "oracle_portal_identity_acceptance.py",
-            "portal-identity-acceptance-",
+            "identity-acceptance",
+            "oracle_portal_identity_acceptance_v2.py" if allowed is IDENTITY_V2_ALLOWED else "oracle_portal_identity_acceptance.py",
+            "portal-identity-acceptance-v2-" if allowed is IDENTITY_V2_ALLOWED else "portal-identity-acceptance-",
         )
     if consolidated:
         prefix += "canonical-"

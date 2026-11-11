@@ -90,7 +90,7 @@ jobs:
     - name: Verify bounded owner deployment transport
       run: node --test scripts/release/oracle_vercel_transport_guard.test.cjs
     - name: 'Release requirement: shared identity hosted observer boundaries'
-      run: node --test scripts/release/oracle_portal_identity_browser.test.mjs
+      run: node --test scripts/release/oracle_portal_identity_browser.test.mjs scripts/release/oracle_portal_identity_browser_v2.test.mjs
     - name: 'Release requirement: owned worker fixture and TLS mail guards'
       run: node --test scripts/release/oracle_portal_worker_fixture.test.mjs scripts/release/oracle_portal_worker_smtp.test.mjs scripts/release/oracle_portal_worker_probe.test.mjs scripts/release/oracle_portal_scanner_workflows.test.mjs scripts/release/oracle_portal_worker_production.test.mjs scripts/release/oracle_portal_api_production.test.mjs
     - name: 'Release requirement: shared identity migration boundaries'
