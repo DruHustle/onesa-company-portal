@@ -1550,3 +1550,47 @@ test("An unconfigured Mobile client does not enable registration, access request
     process.env.ONESA_IDENTITY_CONFIG_B64 = saved;
   }
 });
+
+test("Farmer admits verified Portal staff and approved customers, and enforces later revocation", async () => {
+  const farmer = config.clients.findIndex((client) => client.product === "farmer");
+  const first = await signIn("member");
+  const requested = await first.request({
+    method: "POST", url: "/api/v1/account/products/farmer/request",
+    headers: {"x-csrf-token": first.session.csrf}, payload: {},
+  });
+  assert.equal(requested.statusCode, 200, requested.body);
+  assert.equal(requested.json().access.find((grant: {product: string}) => grant.product === "farmer").status, "pending");
+  const waiting = await authorization("member", farmer, first);
+  const denied = await waiting.request({method: "POST", url: "/api/v1/account/interaction/" + waiting.uid + "/continue", payload: {csrf: waiting.details.csrf}});
+  assert.equal(denied.statusCode, 403);
+
+  const reviewer = await signIn("admin");
+  const decision = async (id: string, status: "active" | "revoked", revision: number) => {
+    const result = await reviewer.request({
+      method: "PUT", url: "/api/v1/admin/identity/accounts/" + id + "/products/farmer",
+      headers: {"x-csrf-token": reviewer.session.csrf},
+      payload: {role: "user", status, expectedRevision: revision, memberships: [],
+        stepUp: {password, code: await factor(admin)}},
+    });
+    assert.equal(result.statusCode, 200, result.body);
+  };
+  await decision(member, "active", 1);
+  const grant = await complete(await authorization("member", farmer, first), true);
+  const claims = (await inspect(grant.token, farmer)).json();
+  assert.deepEqual(claims.onesa_product_roles, {farmer: "user"});
+  assert.deepEqual(claims.onesa_applications, ["farmer"]);
+  assert.deepEqual(claims.onesa_roles, []);
+  assert.deepEqual(claims.onesa_memberships, []);
+
+  await db.query("UPDATE users SET role='viewer',mfa_secret=$2 WHERE id=$1", [outsider, encrypt("JBSWY3DPEHPK3PXP")]);
+  const staffBrowser = browser();
+  const login = await staffBrowser.request({method:"POST", url:"/api/v1/account/login",
+    payload: {email: emails.outsider, password, code: await factor(outsider)}});
+  assert.equal(login.statusCode, 200, login.body);
+  const staff = await complete(await authorization("outsider", farmer, staffBrowser), true);
+  assert.deepEqual((await inspect(staff.token, farmer)).json().onesa_product_roles, {farmer: "user"});
+  await decision(outsider, "revoked", 0);
+  await decision(member, "revoked", 2);
+  assert.deepEqual((await inspect(staff.token, farmer)).json(), {active: false});
+  assert.deepEqual((await inspect(grant.token, farmer)).json(), {active: false});
+});

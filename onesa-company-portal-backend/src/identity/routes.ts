@@ -153,11 +153,11 @@ export async function registerIdentity(
     return { config, provider };
   };
   // Existing three products retain their behavior; Mobile is opt-in per client.
-  const requireMobileConfigured = (selected: string) => {
+  const requireProductConfigured = (selected: string) => {
     const { config } = configured();
     if (
-      selected === "mobile" &&
-      !config.clients.some((client) => client.product === "mobile")
+      (selected === "mobile" || selected === "farmer") &&
+      !config.clients.some((client) => client.product === selected)
     )
       throw new HttpError(
         503,
@@ -261,7 +261,7 @@ export async function registerIdentity(
                 drone: z.enum(["viewer", "operator", "admin"]).optional(),
                 robot: z.enum(["viewer", "operator", "admin"]).optional(),
                 mobile: z.enum(mobileRoles).optional(),
-                farmer: z.literal("admin").optional(),
+                farmer: z.enum(["user", "admin"]).optional(),
                 logistics: z.literal("admin").optional(),
                 pasofi: z.literal("admin").optional(),
               }),
@@ -334,16 +334,17 @@ export async function registerIdentity(
       } = await accountAccess(account);
       // Legacy clients validate the whole vocabulary. New clients receive only
       // their own entitlement and no information about other product workspaces.
-      const visibleProducts: readonly string[] = isAdminProduct(client.product)
+      const ownProductOnly = client.product === "farmer" || isAdminProduct(client.product);
+      const visibleProducts: readonly string[] = ownProductOnly
         ? [client.product]
-        : client.product === "mobile" ? products : ["ai", "drone", "robot"];
+        : client.product === "mobile" ? ["ai", "drone", "robot", "mobile"] : ["ai", "drone", "robot"];
       const claims = {
         onesa_roles,
         onesa_applications: onesa_applications.filter((name) => visibleProducts.includes(name)),
         onesa_product_roles: Object.fromEntries(
           Object.entries(onesa_product_roles).filter(([name]) => visibleProducts.includes(name)),
         ),
-        onesa_memberships: isAdminProduct(client.product) ? [] : onesa_memberships,
+        onesa_memberships: ownProductOnly ? [] : onesa_memberships,
       };
       if (!claims.onesa_applications.includes(client.product))
         return { active: false as const };
@@ -580,7 +581,7 @@ export async function registerIdentity(
           .object({
             email: z.email().max(254),
             name: z.string().trim().min(1).max(200),
-            products: z.array(product).min(1).max(4),
+            products: z.array(product).min(1).max(products.length),
           })
           .strict(),
         response: { 202: z.object({ ok: z.literal(true) }), ...failures },
@@ -589,7 +590,7 @@ export async function registerIdentity(
     async (req, reply) => {
       configured();
       for (const requested of req.body.products)
-        requireMobileConfigured(requested);
+        requireProductConfigured(requested);
       const email = req.body.email.toLowerCase();
       await limits.limit(
         "identity-registration-ip:" + limits.address(req),
@@ -1107,7 +1108,7 @@ export async function registerIdentity(
       },
     },
     async (req) => {
-      requireMobileConfigured(req.params.product);
+      requireProductConfigured(req.params.product);
       const session = await requireAccount(req, true);
       if (!session.account.email_verified_at)
         throw new HttpError(
@@ -1457,7 +1458,7 @@ export async function registerIdentity(
       await limits.limit("identity-admin-change:" + req.actor!.id, 20, 900);
       const input = req.body,
         selected = req.params.product;
-      requireMobileConfigured(selected);
+      requireProductConfigured(selected);
       if (
         !validProductRole(selected, input.role) ||
         (selected !== "drone" && input.memberships.length) ||

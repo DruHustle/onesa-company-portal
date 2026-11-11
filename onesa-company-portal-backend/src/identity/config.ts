@@ -2,9 +2,9 @@ import { createPrivateKey, createPublicKey } from "node:crypto";
 import { z } from "zod";
 
 export const identityPath = "/api/v1/identity";
-export const products = ["ai", "drone", "robot", "mobile"] as const;
+export const products = ["ai", "drone", "robot", "mobile", "farmer"] as const;
 // These clients accept a verified platform administrator without creating product grants.
-export const adminProducts = ["farmer", "logistics", "pasofi"] as const;
+export const adminProducts = ["logistics", "pasofi"] as const;
 export const clientProducts = [...products, ...adminProducts] as const;
 export type ClientProduct = (typeof clientProducts)[number];
 export function isAdminProduct(product: ClientProduct): product is (typeof adminProducts)[number] {
@@ -20,7 +20,7 @@ export const mobileRoles = [
   "customer",
 ] as const;
 export function defaultProductRole(product: Product): string {
-  return product === "ai"
+  return product === "ai" || product === "farmer"
     ? "user"
     : product === "mobile"
       ? "customer"
@@ -28,7 +28,9 @@ export function defaultProductRole(product: Product): string {
 }
 export function validProductRole(product: Product, role: string): boolean {
   const allowed: readonly string[] =
-    product === "ai"
+    product === "farmer"
+      ? ["user"]
+      : product === "ai"
       ? ["user", "admin"]
       : product === "mobile"
         ? mobileRoles

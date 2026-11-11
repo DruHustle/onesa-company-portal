@@ -299,3 +299,15 @@ It exposes no arbitrary upstream path, usage-ingestion endpoint or webhook proxy
 The page starts catalog Checkout and reads invoice status; direct invoice creation
 and finalization remain explicit authorized API operations. Metronome usage and
 Stripe webhook processing stay in the independent billing service.
+
+When a Farmer client is configured, a verified Onesa customer with active Farmer
+access receives `onesa_product_roles.farmer = "user"`. Verified Portal staff can
+enter Farmer under their existing Portal approval. An explicit pending, rejected
+or revoked Farmer decision takes precedence for ordinary staff. Platform
+administrators retain the existing MFA requirement. Farmer receives only its own
+product assertion and resolves all farm memberships within Smart Farmer. With no
+membership, the user may create a farm or accept an invitation.
+A self-service account with the ordinary `member` role requests Farmer from
+`/account` using `POST /api/v1/account/products/farmer/request`. A Portal
+administrator can approve the existing account in the product-access manager.
+An approval for another product grants access only to that product.

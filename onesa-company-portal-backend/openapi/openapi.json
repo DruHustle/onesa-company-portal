@@ -26439,6 +26439,7 @@
                             "farmer": {
                               "type": "string",
                               "enum": [
+                                "user",
                                 "admin"
                               ]
                             },
@@ -27625,7 +27626,8 @@
                               "ai",
                               "drone",
                               "robot",
-                              "mobile"
+                              "mobile",
+                              "farmer"
                             ]
                           },
                           "role": {
@@ -28081,7 +28083,7 @@
                   },
                   "products": {
                     "minItems": 1,
-                    "maxItems": 4,
+                    "maxItems": 5,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -28089,7 +28091,8 @@
                         "ai",
                         "drone",
                         "robot",
-                        "mobile"
+                        "mobile",
+                        "farmer"
                       ]
                     }
                   }
@@ -28878,7 +28881,8 @@
                               "ai",
                               "drone",
                               "robot",
-                              "mobile"
+                              "mobile",
+                              "farmer"
                             ]
                           },
                           "role": {
@@ -30376,7 +30380,8 @@
                 "ai",
                 "drone",
                 "robot",
-                "mobile"
+                "mobile",
+                "farmer"
               ]
             },
             "in": "path",
@@ -30459,7 +30464,8 @@
                               "ai",
                               "drone",
                               "robot",
-                              "mobile"
+                              "mobile",
+                              "farmer"
                             ]
                           },
                           "role": {
@@ -32127,7 +32133,8 @@
                                     "ai",
                                     "drone",
                                     "robot",
-                                    "mobile"
+                                    "mobile",
+                                    "farmer"
                                   ]
                                 },
                                 "role": {
@@ -32630,7 +32637,8 @@
                 "ai",
                 "drone",
                 "robot",
-                "mobile"
+                "mobile",
+                "farmer"
               ]
             },
             "in": "path",

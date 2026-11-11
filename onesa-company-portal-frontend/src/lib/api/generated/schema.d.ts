@@ -12365,7 +12365,7 @@ export interface operations {
                             /** @enum {string} */
                             mobile?: "admin" | "operations" | "support" | "finance" | "agent" | "auditor" | "customer";
                             /** @enum {string} */
-                            farmer?: "admin";
+                            farmer?: "user" | "admin";
                             /** @enum {string} */
                             logistics?: "admin";
                             /** @enum {string} */
@@ -12841,7 +12841,7 @@ export interface operations {
                         csrf: string;
                         access: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer";
                             role: string;
                             /** @enum {string} */
                             status: "pending" | "active" | "revoked" | "rejected";
@@ -13004,7 +13004,7 @@ export interface operations {
                     /** Format: email */
                     email: string;
                     name: string;
-                    products: ("ai" | "drone" | "robot" | "mobile")[];
+                    products: ("ai" | "drone" | "robot" | "mobile" | "farmer")[];
                 };
             };
         };
@@ -13336,7 +13336,7 @@ export interface operations {
                         csrf: string;
                         access: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer";
                             role: string;
                             /** @enum {string} */
                             status: "pending" | "active" | "revoked" | "rejected";
@@ -13940,7 +13940,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                product: "ai" | "drone" | "robot" | "mobile";
+                product: "ai" | "drone" | "robot" | "mobile" | "farmer";
             };
             cookie?: never;
         };
@@ -13972,7 +13972,7 @@ export interface operations {
                         csrf: string;
                         access: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer";
                             role: string;
                             /** @enum {string} */
                             status: "pending" | "active" | "revoked" | "rejected";
@@ -14625,7 +14625,7 @@ export interface operations {
                             };
                             access: {
                                 /** @enum {string} */
-                                product: "ai" | "drone" | "robot" | "mobile";
+                                product: "ai" | "drone" | "robot" | "mobile" | "farmer";
                                 role: string;
                                 /** @enum {string} */
                                 status: "pending" | "active" | "revoked" | "rejected";
@@ -14772,7 +14772,7 @@ export interface operations {
             header?: never;
             path: {
                 id: string;
-                product: "ai" | "drone" | "robot" | "mobile";
+                product: "ai" | "drone" | "robot" | "mobile" | "farmer";
             };
             cookie?: never;
         };
