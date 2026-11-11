@@ -616,6 +616,34 @@ test("ordinary product membership cannot authorize an administrator-only client"
   }
 });
 
+test("switching from AI to PasoFi and Mobile keeps OIDC state, enforces max_age and preserves prior proof", async () => {
+  const central = await signIn("admin");
+  const oldTime = Math.floor(Date.now() / 1000) - 600;
+  await db.query("UPDATE identity_sessions SET authenticated_at=to_timestamp($2) WHERE user_id=$1", [admin, oldTime]);
+  const first = await complete(await authorization("admin", 0, central), true);
+  const original = (await inspect(first.token, 0)).json();
+  assert.equal(original.auth_time, oldTime);
+  const pasofi = config.clients.findIndex(client => client.product === "pasofi");
+  const mobile = config.clients.findIndex(client => client.product === "mobile");
+  const stepUp = { max_age: "300", acr_values: "urn:onesa:mfa" };
+  const stale = await authorization("admin", pasofi, central, stepUp);
+  assert.equal(stale.details.freshRequired, true);
+  const refused = await stale.request({method: "POST", url: "/api/v1/account/interaction/" + stale.uid + "/continue", payload: {csrf: stale.details.csrf}});
+  assert.equal(refused.statusCode, 403);
+  const refreshed = await complete(stale);
+  const fresh = (await inspect(refreshed.token, pasofi)).json();
+  assert.equal(fresh.active, true);
+  assert.ok(fresh.auth_time > oldTime);
+  const next = await authorization("admin", mobile, central, stepUp);
+  assert.equal(next.details.freshRequired, false);
+  const continued = await complete(next, true);
+  assert.equal((await inspect(continued.token, mobile)).json().auth_time, fresh.auth_time);
+  assert.deepEqual((await inspect(first.token, 0)).json(), original);
+  await db.query("UPDATE users SET role='member' WHERE id=$1", [admin]);
+  for (const [index, grant] of [[0, first], [pasofi, refreshed], [mobile, continued]] as const)
+    assert.deepEqual((await inspect(grant.token, index)).json(), { active: false });
+});
+
 test("Fresh step-up cannot reuse an existing login session", async () => {
   const central = await signIn("admin"),
     flow = await authorization("admin", 0, central, {

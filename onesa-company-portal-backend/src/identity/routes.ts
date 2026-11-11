@@ -738,6 +738,7 @@ export async function registerIdentity(
     reply: FastifyReply,
     input: z.infer<typeof credentials>,
     mfaRequired: boolean,
+    interactionAccountId?: string,
   ): Promise<AccountSession> {
     const email = input.email.toLowerCase();
     await limits.limit("identity-login-ip:" + limits.address(req), 15, 900);
@@ -892,8 +893,12 @@ export async function registerIdentity(
       ...cookieOptions(),
       ...(input.rememberBrowser ? { maxAge: 28800 } : {}),
     });
-    reply.clearCookie("onesa_identity_session", { path: "/" });
-    reply.clearCookie("onesa_identity_session.sig", { path: "/" });
+    // OIDC binds a pending interaction to the original provider session UID.
+    // During same-account step-up the central credential rotates independently.
+    if (interactionAccountId !== result.account.id) {
+      reply.clearCookie("onesa_identity_session", { path: "/" });
+      reply.clearCookie("onesa_identity_session.sig", { path: "/" });
+    }
     if (result.account.role === "member") clearSessionCookies(reply);
     if (result.account.role !== "member")
       setSessionCookie(
@@ -1167,10 +1172,13 @@ export async function registerIdentity(
       );
     return { details, client };
   }
-  const freshRequired = (params: Record<string, unknown>) =>
-    String(params.prompt ?? "")
-      .split(" ")
-      .includes("login") || params.max_age !== undefined;
+  function freshRequired(params: Record<string, unknown>, session: AccountSession | null) {
+    if (String(params.prompt ?? "").split(" ").includes("login")) return true;
+    if (params.max_age === undefined) return false;
+    const maxAge = Number(params.max_age);
+    const age = session && Math.floor(Date.now() / 1000) - session.authenticatedAt;
+    return !Number.isSafeInteger(maxAge) || maxAge <= 0 || age === null || age < 0 || age >= maxAge;
+  }
   const mfaRequired = (params: Record<string, unknown>) =>
     String(params.acr_values ?? "")
       .split(" ")
@@ -1200,7 +1208,7 @@ export async function registerIdentity(
       return {
         csrf: interactionProof(details.uid),
         product: client.product,
-        freshRequired: freshRequired(details.params),
+        freshRequired: freshRequired(details.params, session),
         mfaRequired: mfaRequired(details.params),
         account: session ? safeAccount(session.account) : null,
       };
@@ -1344,13 +1352,14 @@ export async function registerIdentity(
       const { details, client } = await interaction(req, reply);
       if (!same(req.body.csrf, interactionProof(details.uid)))
         throw new HttpError(403, "CSRF", "Refresh this sign-in request.");
-      if (freshRequired(details.params))
+      const session = await requireAccount(req);
+      if (freshRequired(details.params, session))
         throw new HttpError(
           403,
           "REAUTH_REQUIRED",
           "Confirm your password and authenticator to continue.",
         );
-      return finish(req, reply, await requireAccount(req), client);
+      return finish(req, reply, session, client);
     },
   );
   api.post(
@@ -1374,7 +1383,7 @@ export async function registerIdentity(
       return finish(
         req,
         reply,
-        await authenticate(req, reply, req.body, mfaRequired(details.params)),
+        await authenticate(req, reply, req.body, mfaRequired(details.params), details.session?.accountId),
         client,
       );
     },

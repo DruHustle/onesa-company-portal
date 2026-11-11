@@ -222,6 +222,11 @@ Drone additionally requires explicit membership in an existing workspace; its
 product role caps each workspace role. Robot actuation and safety confirmations
 remain independently enforced by Robot.
 
+For positive OIDC `max_age`, the issuer checks the actual central authentication time.
+A fresh verified session can continue. An expired freshness window, `prompt=login`
+or `max_age=0` requires new proof. Same-account step-up retains the OIDC browser
+session during the pending interaction and rotates the central credential.
+
 Every issued grant is bound to the exact account or MFA Portal session that
 approved it. Sign-out, credential changes, disablement and global-role changes
 invalidate that source. Held-lock regressions prove that admitted requests and
