@@ -199,23 +199,30 @@ def protection(plan, binding=None):
     )
     for env, target in [("staging", "preview"), ("production", "production")]:
         r.require(
-            set(plan["server_public_configuration"][env]) == r.PUBLIC_SERVER_KEYS
-            and set(plan["server_public_variable_ids"][env]) == r.PUBLIC_SERVER_KEYS,
+            set(plan["server_public_configuration"][env]) == r.public_server_keys(plan)
+            and set(plan["server_public_variable_ids"][env]) == r.public_server_keys(plan),
             "COMPLETE_SERVER_CONFIGURATION_REQUIRED",
         )
-        for key in sorted(r.PUBLIC_SERVER_KEYS):
+        for key in sorted(r.public_server_keys(plan)):
             identifier = plan["server_public_variable_ids"][env][key]
             r.require(
                 re.fullmatch("[A-Za-z0-9_-]{8,128}", identifier),
                 "NAMED_PUBLIC_SERVER_VARIABLE_ID",
             )
-            named(
+            metadata_row = named(
                 identifier,
                 key,
                 target,
                 [None, "staging"] if env == "staging" else [None],
             )
+            if key == "ONESA_IDENTITY_CALLBACKS_JSON":
+                r.require(metadata_row.get("target") == [target]
+                          and metadata_row.get("gitBranch") == ("staging" if env == "staging" else None),
+                          "ISOLATED_FRONTEND_CALLBACK_VARIABLE_REQUIRED")
             row = provider("/v1/projects/" + cfg["project_id"] + "/env/" + identifier)
+            if key == "ONESA_IDENTITY_CALLBACKS_JSON":
+                r.require(row.get("target") == [target] and row.get("gitBranch") == metadata_row.get("gitBranch"),
+                          "ISOLATED_FRONTEND_CALLBACK_VARIABLE_REQUIRED")
             r.require(
                 row.get("id") == identifier
                 and row.get("key") == key

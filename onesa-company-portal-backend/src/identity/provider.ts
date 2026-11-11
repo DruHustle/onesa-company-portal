@@ -67,7 +67,7 @@ export function createIdentityProvider(config: IdentityConfig) {
     interactions: {
       policy,
       url: (_ctx, interaction) =>
-        new URL("/account/sign-in/" + interaction.uid, config.issuer).href,
+        new URL("/api/v1/account/interaction/" + interaction.uid, config.issuer).href,
     },
     issueRefreshToken: () => false,
     extraTokenClaims: (ctx, token) => {
@@ -108,20 +108,19 @@ export function createIdentityProvider(config: IdentityConfig) {
     },
   };
   const provider = new Provider(config.issuer, options);
-  provider.proxy = true;
-  // The HTML prompt and its API have distinct paths. Bind both signed
-  // interaction cookies to this request's API subtree; keep resume/session
-  // cookies at the paths chosen by the provider.
+  // The provider scopes its signed interaction cookies to interactions.url.
+  // Only the account API reads them. Present the separate HTML form to the browser.
+  const interactionApi = new URL("/api/v1/account/interaction/", config.issuer).href;
   provider.use(async (ctx, next) => {
     await next();
-    const headers = ctx.res.getHeader("set-cookie");
-    if (!Array.isArray(headers)) return;
-    const prefix = provider.cookieName("interaction");
-    ctx.res.setHeader("set-cookie", headers.map((cookie) => {
-      if (!cookie.startsWith(prefix + "=") && !cookie.startsWith(prefix + ".sig=")) return cookie;
-      return cookie.replace(/(;\s*path=)\/account\/sign-in\/([A-Za-z0-9_-]{8,128})(?=;|$)/i,
-        "$1/api/v1/account/interaction/$2");
-    }));
+    if (ctx.status !== 303) return;
+    const location = ctx.response.get("Location");
+    if (!location.startsWith(interactionApi)) return;
+    const uid = location.slice(interactionApi.length);
+    if (/^[A-Za-z0-9_-]{8,128}$/.test(uid)) {
+      ctx.redirect(new URL("/account/sign-in/" + uid, config.issuer).href);
+    }
   });
+  provider.proxy = true;
   return provider;
 }
