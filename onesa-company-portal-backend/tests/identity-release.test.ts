@@ -65,7 +65,7 @@ test("creates private issuer and product inputs and preserves an existing issuer
     Object.values(callbacks).sort(),
   );
   const files = await readdir(output);
-  assert.equal(files.length, 10);
+  assert.equal(files.length, 11);
   assert.equal((await stat(output)).mode & 0o777, 0o700);
   for (const file of files)
     assert.equal((await stat(join(output, file))).mode & 0o777, 0o600);
@@ -78,16 +78,22 @@ test("creates private issuer and product inputs and preserves an existing issuer
       product === "pasofi"
         ? "PASOFI_ONESA_"
         : product === "mobile"
-          ? "ONESA_"
+          ? "MOBILE_ONESA_"
           : "ONESA_IDENTITY_";
     assert.equal(env[prefix + "CLIENT_ID"], client.clientId);
     assert.equal(env[prefix + "ISSUER"], initial.issuer);
-    if (product === "pasofi") {
+    if (product === "pasofi" || product === "mobile") {
       assert.equal(
-        await readFile(join(output, "pasofi_onesa_client_secret"), "utf8"),
+        await readFile(join(output, product + "_onesa_client_secret"), "utf8"),
         client.clientSecret,
       );
       assert.equal(keys.has(prefix + "CLIENT_SECRET"), false);
+      assert.equal(Object.values(env).includes(client.clientSecret), false);
+      if (product === "mobile")
+        assert.equal(
+          env.MOBILE_ONESA_SECRET_FILE,
+          join(output, "mobile_onesa_client_secret"),
+        );
     } else assert.equal(env[prefix + "CLIENT_SECRET"], client.clientSecret);
     if (product !== "mobile" && product !== "pasofi")
       assert.equal(env.ONESA_IDENTITY_ENABLED, "true");
@@ -97,7 +103,7 @@ test("creates private issuer and product inputs and preserves an existing issuer
       robot: "ONESA_IDENTITY_CALLBACK_URL",
       logistics: "ONESA_IDENTITY_REDIRECT_URI",
       pasofi: "PASOFI_ONESA_REDIRECT_URI",
-      mobile: "PUBLIC_ORIGIN",
+      mobile: "MOBILE_PUBLIC_ORIGIN",
       farmer: "WEB_ORIGIN",
     }[product];
     assert.equal(
@@ -178,6 +184,21 @@ test("creates private issuer and product inputs and preserves an existing issuer
   assert.equal(child.stderr.includes(source.clients[0].clientSecret), false);
   assert.equal(child.stderr.includes(source.jwks.keys[0].d), false);
   await assert.rejects(stat(failed), { code: "ENOENT" });
+  for (const [product, suffix] of [
+    ["mobile", " "],
+    ["pasofi", "\n"],
+    ["ai", "\0"],
+  ]) {
+    const incompatible = structuredClone(initial);
+    incompatible.clients.find((c) => c.product === product)!.clientSecret +=
+      suffix;
+    await writeFile(existing, encoded(incompatible));
+    await assert.rejects(
+      prepareIdentityRelease(invalid),
+      /cannot be installed/,
+    );
+    await assert.rejects(stat(failed), { code: "ENOENT" });
+  }
   await chmod(existing, 0o644);
   await assert.rejects(prepareIdentityRelease(invalid), /private/);
   await chmod(existing, 0o600);

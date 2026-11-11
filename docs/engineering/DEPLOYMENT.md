@@ -359,7 +359,7 @@ node dist/src/identity/prepare-release.js \
 
 An environment with **no existing issuer** can use `--initialize` in place of `--existing PATH` to generate its first signing key, session cookie key and client credentials. For staging, use `--environment staging --staging-origins /private/onesa/staging-origins.json`. Supply an object with eight distinct HTTPS origins under the keys `portal`, `ai`, `drone`, `robot`, `farmer`, `logistics`, `pasofi` and `mobile`. Production uses the canonical Onesa hosts built into the preparer. The tool checks the exact callback for every existing registration and preserves the issuer signing key, cookie keys, previously issued client credentials and application URLs. To retry with the same new registrations, use the generated issuer JSON as the next `--existing` input.
 
-Install the values from each JSON object in the named service's protected environment. Restrict `portal-issuer.env.json` to the Portal issuer. The Portal frontend takes only the callback list in `portal-frontend.env.json`. Preserve the existing Portal frontend-to-backend routing, Portal domain and private signing credentials. Each of the seven product environments receives its own binding. Additional product settings belong to the corresponding service:
+Install the values from each JSON object in the named service's protected environment. Restrict `portal-issuer.env.json` to the Portal issuer. The Portal frontend takes only the callback list in `portal-frontend.env.json`. Preserve the existing Portal frontend-to-backend routing, Portal domain and private signing credentials. Each of the seven product environments receives its own binding. Mobile and PasoFi take their deployment inputs through Compose. Install their raw secret files for the designated service UID with owner-only read permissions. Additional product settings belong to the corresponding service:
 
 | Service | Existing deployment inputs to retain or configure |
 | --- | --- |
@@ -368,7 +368,7 @@ Install the values from each JSON object in the named service's protected enviro
 | Farmer | Its durable application database and session configuration. |
 | Logistics | Its database, migration 009, existing `JWT_SECRET` and the exact Logistics frontend origin in `CORS_ALLOWED_ORIGINS`. |
 | PasoFi | Install the separate `pasofi_onesa_client_secret` file under `PAMOFI_SECRETS_DIR` and use the identity-service staff Compose overlay, trusted origin and staff MFA encryption key. The production overlay pins the production origins. Staging needs its own matching issuer and callback. |
-| Mobile | Its durable database, `AUTH_ENCRYPTION_KEY`, exact public origin in `CORS_ALLOWED_ORIGINS` and the frontend's `MOBILE_ACCOUNT_GATEWAY_ORIGIN` pointing at the published account backend. |
+| Mobile | The production Compose overlay uses the four `MOBILE_*` inputs in `mobile.env.json`, including the protected file path `MOBILE_ONESA_SECRET_FILE`. Retain the durable database and existing `MOBILE_AUTH_KEY_FILE`. The frontend needs `MOBILE_ACCOUNT_GATEWAY_ORIGIN` pointing at the published account backend. |
 
 Engineering Docs uses the separate engineering identity issuer and Cloudflare Access. Its exact-address policy, owner approval, first-time MFA and linking/enrollment procedure are described in [Engineering Docs identity](ENGINEERING_DOCS_IDENTITY.md).
 

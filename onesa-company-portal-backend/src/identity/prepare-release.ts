@@ -9,7 +9,7 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
-import { dirname, isAbsolute } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { z } from "zod";
@@ -134,6 +134,18 @@ function completeConfiguration(config: IdentityConfig, origins: Origins) {
       (client) => client.product === product,
     );
     if (registered) {
+      const secret = registered.clientSecret;
+      if (
+        secret.includes("\0") ||
+        secret.includes("\n") ||
+        secret.includes("\r") ||
+        (product === "mobile" && secret.trim() !== secret) ||
+        (product === "drone" && registered.clientId.length > 100)
+      ) {
+        throw Error(
+          "Existing registration cannot be installed without changing its credential",
+        );
+      }
       if (
         registered.redirectUri !== redirectUri ||
         new URL(registered.applicationUrl).origin !== origin
@@ -163,7 +175,11 @@ function completeConfiguration(config: IdentityConfig, origins: Origins) {
   return env;
 }
 
-function bindings(config: IdentityConfig, origins: Origins) {
+function bindings(
+  config: IdentityConfig,
+  origins: Origins,
+  destination: string,
+) {
   const files: Record<string, string> = {};
   function environment(name: string, env: Record<string, string>) {
     files[name + ".env.json"] = JSON.stringify(env, null, 2) + "\n";
@@ -188,12 +204,15 @@ function bindings(config: IdentityConfig, origins: Origins) {
         PASOFI_ONESA_REDIRECT_URI: redirectUri,
       });
     } else if (product === "mobile") {
+      files.mobile_onesa_client_secret = clientSecret;
       environment(product, {
-        APP_MODE: "production",
-        PUBLIC_ORIGIN: origins.mobile,
-        ONESA_ISSUER: config.issuer,
-        ONESA_CLIENT_ID: clientId,
-        ONESA_CLIENT_SECRET: clientSecret,
+        MOBILE_PUBLIC_ORIGIN: origins.mobile,
+        MOBILE_ONESA_ISSUER: config.issuer,
+        MOBILE_ONESA_CLIENT_ID: clientId,
+        MOBILE_ONESA_SECRET_FILE: join(
+          destination,
+          "mobile_onesa_client_secret",
+        ),
       });
     } else {
       const env: Record<string, string> = {
@@ -282,7 +301,7 @@ export async function prepareIdentityRelease(args: string[]) {
   const issuerEnv = completeConfiguration(config, origins);
   await publish(values.output, {
     "portal-issuer.env.json": JSON.stringify(issuerEnv, null, 2) + "\n",
-    ...bindings(config, origins),
+    ...bindings(config, origins, values.output),
   });
 }
 
