@@ -5,11 +5,12 @@
 This is a **prepared procedure**, not a performed visibility change. The owner alone
 changes visibility. Public repositories currently use standard GitHub-hosted runners;
 private repositories will also use hosted runners **only within the included allowance**.
-The later request to remove local runners supersedes the earlier private-first plan.
-No self-hosted workflow, registration, provisioning or local-result substitution remains.
+Product repositories keep their hosted PR checks. The [private controller](../engineering/SELF_HOSTED_RUNNER.md)
+can separately check reviewed public main source on the owner’s dedicated local guest
+and reproduce those checks on GitHub-hosted infrastructure.
 
 1. Before changing visibility, record current refs, required check names and successful
-   exact-source CI, runner inventory (must be zero), Actions permissions, collaborators,
+   exact-source CI, product-repository runner inventory (must be zero), Actions permissions, collaborators,
    environment settings, provider integration access, existing security features and
    rollback receipts. Keep all three permanent branches and temporary security exceptions.
 2. Inspect actual GitHub account Actions minutes/storage, artifact retention, caches and
