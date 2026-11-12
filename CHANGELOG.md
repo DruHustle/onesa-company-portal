@@ -100,6 +100,9 @@
   and Robot API incidents; shared/mixed incidents and simulations retain the
   configured Portal sender. Offline regressions do not activate a monitor,
   change deployed mail configuration or establish inbox delivery.
+- Add a rollback-only local database rehearsal for customer identity migrations
+  017 and 018. It exercises the application migrator and checks retained grants
+  and all eight ordinary product roles from an exact schema 016, 017 or 018 copy.
 - Preserve the reviewed private PostgreSQL CA integration from the pending
   standalone change. The API, worker and isolated migration helper accept one
   bounded certificate through existing private configuration, require
