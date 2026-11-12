@@ -35,6 +35,15 @@ def registry():
 
 
 class Issuer(unittest.TestCase):
+    def test_issuer_receipt_cannot_certify_product_sessions(self):
+        binding, plan = inputs()
+        self.assertIn("portal_mfa_administrator", identity.hosted_checks(plan, "account"))
+        with self.assertRaisesRegex(runtime.Refused, "V3_ISSUER_ACCOUNT_SCOPE_ONLY"):
+            identity.hosted_checks(plan, "integrated")
+        with patch.object(identity, "private_bytes", side_effect=AssertionError("read private fixture")):
+            with self.assertRaisesRegex(runtime.Refused, "V3_ISSUER_ACCOUNT_SCOPE_ONLY"):
+                identity.hosted(binding, plan, "staging", "unused", Path("/unused"), scope="integrated")
+
     def test_schema_and_plan_stay_separate(self):
         binding, plan = inputs()
         identity.validate_plan(binding, plan, identity.PROFILE_V3)

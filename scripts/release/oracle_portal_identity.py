@@ -137,6 +137,7 @@ def scoped_callbacks(v2, v3):
 
 
 def hosted_checks(plan, scope):
+    r.require(not eight_client_profile(plan) or scope == "account", "V3_ISSUER_ACCOUNT_SCOPE_ONLY")
     r.require(scope in {"account", "integrated"}, "IDENTITY_HOSTED_SCOPE")
     checks = set(ACCOUNT_CHECKS if scope == "account" else HOSTED_CHECKS)
     if expanded_profile(plan):
@@ -1144,6 +1145,8 @@ def run_hosted_probe(plan, request, image, name):
 
 def hosted(binding, plan, env, operation, target, *, scope="account"):
     r.require(scope in {"account", "integrated"}, "IDENTITY_HOSTED_SCOPE")
+    if eight_client_profile(plan):
+        r.require(scope == "account", "V3_ISSUER_ACCOUNT_SCOPE_ONLY")
     selected = plan["environments"][env]
     fixtures = json.loads(private_bytes(selected["browser_file"]))
     exact(fixtures, ["fixtures", "preview_sessions"], "IDENTITY_PRIVATE_BROWSER_INPUT_SCHEMA")
@@ -1151,7 +1154,6 @@ def hosted(binding, plan, env, operation, target, *, scope="account"):
     issuer = json.loads(private_bytes(selected["identity_file"]))
     v2 = expanded_profile(plan)
     v3 = eight_client_profile(plan)
-    r.require(not v3 or scope == "account", "V3_ISSUER_ACCOUNT_SCOPE_ONLY")
     if v2:
         registration = validate_registration(issuer, selected["origins"], v2=True, v3=v3)
     else:
