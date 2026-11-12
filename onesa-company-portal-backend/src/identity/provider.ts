@@ -1,10 +1,22 @@
-import Provider, { type Configuration } from "oidc-provider";
+import Provider, { interactionPolicy, type Configuration } from "oidc-provider";
 import { IdentityAdapter } from "./adapter.js";
-import { identityAccount } from "./accounts.js";
+import { identityAccount, liveGrantSession } from "./accounts.js";
 import type { IdentityConfig } from "./config.js";
 
 /** One established protocol implementation, explicitly configured confidential product clients. */
 export function createIdentityProvider(config: IdentityConfig) {
+  const policy = interactionPolicy.base();
+  // The issuer cookie can outlive the Portal session that authorized this client's grant.
+  policy.get("login")!.checks.add(new interactionPolicy.Check(
+    "portal_source_session_expired", "Fresh Portal authentication is required",
+    async ({ oidc }) => {
+      const session = oidc.session;
+      const clientId = oidc.client?.clientId;
+      if (!session?.accountId || !clientId) return false;
+      const grant = session.grantIdFor(clientId);
+      return grant ? !(await liveGrantSession(grant, session.accountId)) : false;
+    },
+  ));
   const options: Configuration = {
     adapter: IdentityAdapter,
     clients: config.clients.map((client) => ({
@@ -51,6 +63,7 @@ export function createIdentityProvider(config: IdentityConfig) {
       rpInitiatedLogout: { enabled: false },
     },
     interactions: {
+      policy,
       url: (_ctx, interaction) =>
         new URL("/api/v1/account/interaction/" + interaction.uid, config.issuer).href,
     },
@@ -107,5 +120,19 @@ export function createIdentityProvider(config: IdentityConfig) {
     }
   });
   provider.proxy = true;
+  // The HTML prompt and its API have distinct paths. Bind both signed
+  // interaction cookies to this request's API subtree; keep resume/session
+  // cookies at the paths chosen by the provider.
+  provider.use(async (ctx, next) => {
+    await next();
+    const headers = ctx.res.getHeader("set-cookie");
+    if (!Array.isArray(headers)) return;
+    const prefix = provider.cookieName("interaction");
+    ctx.res.setHeader("set-cookie", headers.map((cookie) => {
+      if (!cookie.startsWith(prefix + "=") && !cookie.startsWith(prefix + ".sig=")) return cookie;
+      return cookie.replace(/(;\s*path=)\/account\/sign-in\/([A-Za-z0-9_-]{8,128})(?=;|$)/i,
+        "$1/api/v1/account/interaction/$2");
+    }));
+  });
   return provider;
 }

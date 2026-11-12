@@ -14,6 +14,7 @@ from unittest.mock import patch
 import oracle_install as installer
 import oracle_owner as verifier
 import oracle_portal as runner
+from portal_profile_test_fixtures import schema_016_migrations
 
 
 class Source:
@@ -113,7 +114,10 @@ class InstallTests(unittest.TestCase):
                 ["git", "-C", str(repo), "ls-files", "onesa-company-portal-backend"],
                 text=True,
             ).splitlines():
-                files[name] = (repo / name).read_bytes()
+                if not name.startswith("onesa-company-portal-backend/migrations/"):
+                    files[name] = (repo / name).read_bytes()
+            for name, data in schema_016_migrations(repo).items():
+                files["onesa-company-portal-backend/migrations/" + name] = data
         for name, data in files.items():
             path = source_root / name
             path.parent.mkdir(parents=True, exist_ok=True)

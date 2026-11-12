@@ -88,6 +88,7 @@ h1,h2,h3{overflow-wrap:anywhere;hyphens:auto}
 button:disabled{cursor:not-allowed}
 button,input,select{min-height:var(--onesa-control-size)}
 .admin-workspace{display:grid;grid-template-columns:210px minmax(0,1fr);gap:var(--onesa-space-8);align-items:start}
+.infrastructure-services{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:18px;margin-top:24px}.infrastructure-services .admin-card{min-width:0;overflow-wrap:anywhere;margin:0}.infrastructure-services h3{margin-top:0}.infrastructure-services strong{display:inline-block;font-size:1rem}.infrastructure-services a{text-decoration:underline;text-underline-offset:3px}
 .admin-tabs{position:sticky;top:24px;display:grid;margin:0}
 .admin-tabs button{text-align:left}
 .admin-content{min-width:0}

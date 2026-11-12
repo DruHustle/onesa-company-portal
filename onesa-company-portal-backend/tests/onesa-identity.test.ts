@@ -26,7 +26,7 @@ const origin = process.env.PUBLIC_ORIGIN;
 const key = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const config = {
   issuer: origin + "/api/v1/identity",
-  clients: ["ai", "drone", "robot", "mobile", "farmer", "logistics", "pasofi"].map((product) => ({
+  clients: ["ai", "drone", "robot", "mobile", "farmer", "logistics", "pasofi", "factory"].map((product) => ({
     product,
     clientId: "synthetic_onesa_" + product,
     clientSecret: randomBytes(48).toString("hex") + "+%",
@@ -278,7 +278,7 @@ const inspect = (token: string, index = 0) =>
 
 test("Configuration is opt-in, fixed-client, exact issuer/callback and strong-key only", () => {
   assert.equal(identityConfiguration({}, origin), null);
-  assert.equal(identityConfiguration(process.env, origin)?.clients.length, 7);
+  assert.equal(identityConfiguration(process.env, origin)?.clients.length, 8);
   assert.equal(
     identityConfiguration(
       {
@@ -589,7 +589,7 @@ test("Global Administrators need MFA and receive all applications without per-pr
   });
   assert.ok(claims.amr.includes("otp"));
 });
-test("an MFA platform session signs into all seven clients with the contract for that audience", async () => {
+test("an MFA platform session signs into all configured clients with the contract for that audience", async () => {
   const central = await signIn("admin");
   const legacy = ["ai", "drone", "robot"];
   const tokens: string[] = [];
@@ -1564,6 +1564,321 @@ test("An unconfigured Mobile client does not enable registration, access request
   }
 });
 
+test("A deletion request belongs to the verified session and concurrent retries queue one privacy case", async () => {
+  const url = "/api/v1/account/deletion-requests";
+  const input = { method: "POST" as const, url, payload: { confirmed: true } };
+  assert.equal((await browser().request(input)).statusCode, 401);
+  const client = await signIn();
+  assert.equal((await client.request(input)).statusCode, 403);
+  const headers = { "x-csrf-token": client.session.csrf };
+  assert.equal(
+    (await client.request({ ...input, headers, payload: { confirmed: false } }))
+      .statusCode,
+    400,
+  );
+  const offOrigin = await client.request({
+    ...input,
+    headers: { ...headers, origin: "https://foreign.example.invalid" },
+  });
+  assert.equal(offOrigin.statusCode, 403);
+  const replies = await Promise.all([
+    client.request({ ...input, headers }),
+    client.request({ ...input, headers }),
+  ]);
+  for (const reply of replies) assert.equal(reply.statusCode, 202);
+  const id = replies[0].json().reference;
+  assert.match(id, /^[a-f\d-]{36}$/);
+  assert.equal(replies[1].json().reference, id);
+  const jobs = (
+    await db.query(
+      "SELECT payload FROM jobs WHERE dedupe_key LIKE 'identity-deletion-request:%'",
+    )
+  ).rows;
+  assert.equal(jobs.length, 1);
+  assert.equal(jobs[0].payload.text, undefined);
+  assert.ok(decrypt(jobs[0].payload.encryptedText).includes(member));
+  assert.equal(
+    (
+      await db.query(
+        "SELECT count(*)::int n FROM audit WHERE action='identity.deletion_requested' AND actor_id=$1 AND record_id=$2",
+        [member, id],
+      )
+    ).rows[0].n,
+    1,
+  );
+  assert.equal(
+    (await client.request({ url: "/api/v1/account/me" })).statusCode,
+    200,
+  );
+});
+async function enableDroneOperator() {
+  await db.query(
+    "INSERT INTO identity_product_access(user_id,product,role,status) VALUES($1,'drone','operator','active')",
+    [member],
+  );
+  const tenant = randomUUID();
+  await db.query(
+    "INSERT INTO identity_drone_memberships VALUES($1,$2,'operator','Simulation only')",
+    [member, tenant],
+  );
+  return tenant;
+}
+test("Drone password recovery ends live grants, preserves the subject and workspace, and consumes the email link once", async () => {
+  const tenant = await enableDroneOperator();
+  const flow = await authorization("member", 1);
+  const { token } = await complete(flow);
+  const previous = (await inspect(token, 1)).json();
+  assert.equal(previous.active, true);
+  assert.equal(previous.sub, member);
+  assert.deepEqual(previous.onesa_memberships, [
+    { product: "drone", tenant_id: tenant, role: "operator" },
+  ]);
+  const client = browser();
+  assert.equal(
+    (
+      await client.request({
+        method: "POST",
+        url: "/api/v1/account/password/request",
+        payload: { email: emails.member },
+      })
+    ).statusCode,
+    202,
+  );
+  const { payload } = (
+    await db.query("SELECT payload FROM jobs WHERE payload->>'to'=$1", [
+      emails.member,
+    ])
+  ).rows[0];
+  const secret = decrypt(payload.encryptedText).match(
+    /#access-link=([a-f0-9]{64})/,
+  )?.[1];
+  assert.ok(secret);
+  const newPassword = randomBytes(36).toString("base64url");
+  const reset = () =>
+    client.request({
+      method: "POST",
+      url: "/api/v1/auth/password/reset",
+      payload: { token: secret, password: newPassword },
+    });
+  assert.equal((await reset()).statusCode, 200);
+  assert.equal((await reset()).statusCode, 400);
+  assert.deepEqual((await inspect(token, 1)).json(), { active: false });
+  const old = await client.request({
+    method: "POST",
+    url: "/api/v1/account/login",
+    payload: { email: emails.member, password },
+  });
+  assert.equal(old.statusCode, 401);
+  const fresh = await client.request({
+    method: "POST",
+    url: "/api/v1/account/login",
+    payload: { email: emails.member, password: newPassword },
+  });
+  assert.equal(fresh.statusCode, 200);
+  const { token: newToken } = await complete(
+    await authorization("member", 1, client),
+    true,
+  );
+  const now = (await inspect(newToken, 1)).json();
+  assert.equal(now.active, true);
+  assert.equal(now.sub, member);
+  assert.deepEqual(now.onesa_memberships, previous.onesa_memberships);
+});
+test("An expired central account session invalidates the issued Drone grant", async () => {
+  await enableDroneOperator();
+  const { token } = await complete(await authorization("member", 1));
+  assert.equal((await inspect(token, 1)).json().active, true);
+  await db.query(
+    "UPDATE identity_sessions SET expires_at=now()-interval '1 second' WHERE user_id=$1",
+    [member],
+  );
+  assert.deepEqual((await inspect(token, 1)).json(), { active: false });
+});
+
+test("An administrator can disable and restore an ordinary member with fresh MFA and retained Drone assignments", async () => {
+  const tenant = await enableDroneOperator();
+  const { token } = await complete(await authorization("member", 1));
+  const staff = await signIn("admin");
+  const url = "/api/v1/admin/identity/accounts/" + member + "/member-status";
+  const headers = { "x-csrf-token": staff.session.csrf };
+  const fresh = async () => ({ password, code: await factor(admin) });
+  const setStatus = async (disabled: boolean) =>
+    staff.request({
+      method: "PUT",
+      url,
+      headers,
+      payload: { disabled, stepUp: await fresh() },
+    });
+  const ordinary = await signIn("member");
+  assert.equal(
+    (
+      await ordinary.request({
+        method: "PUT",
+        url,
+        headers: { "x-csrf-token": ordinary.session.csrf },
+        payload: { disabled: true, stepUp: await fresh() },
+      })
+    ).statusCode,
+    401,
+  );
+  assert.equal(
+    (
+      await staff.request({
+        method: "PUT",
+        url,
+        headers,
+        payload: { disabled: true },
+      })
+    ).statusCode,
+    400,
+  );
+  assert.equal(
+    (
+      await staff.request({
+        method: "PUT",
+        url,
+        headers,
+        payload: { disabled: true, stepUp: { password, code: "invalid" } },
+      })
+    ).statusCode,
+    403,
+  );
+  assert.equal((await setStatus(true)).statusCode, 200);
+  assert.deepEqual((await inspect(token, 1)).json(), { active: false });
+  assert.equal(
+    (await ordinary.request({ url: "/api/v1/account/me" })).statusCode,
+    401,
+  );
+  assert.equal(
+    (
+      await browser().request({
+        method: "POST",
+        url: "/api/v1/account/login",
+        payload: { email: emails.member, password },
+      })
+    ).statusCode,
+    401,
+  );
+  const directory = await staff.request({
+    url:
+      "/api/v1/admin/identity/accounts?search=" +
+      encodeURIComponent(emails.member),
+  });
+  assert.equal(directory.json().items[0].disabled, true);
+  const protectedStaff = await staff.request({
+    method: "PUT",
+    url: url.replace(member, owner),
+    headers,
+    payload: { disabled: true, stepUp: await fresh() },
+  });
+  assert.equal(protectedStaff.statusCode, 409);
+  assert.equal((await setStatus(false)).statusCode, 200);
+  assert.deepEqual((await inspect(token, 1)).json(), { active: false });
+  const { token: newToken } = await complete(await authorization("member", 1));
+  const restored = (await inspect(newToken, 1)).json();
+  assert.equal(restored.sub, member);
+  assert.deepEqual(restored.onesa_roles, []);
+  assert.equal(restored.onesa_product_roles.drone, "operator");
+  assert.deepEqual(restored.onesa_memberships, [
+    { product: "drone", tenant_id: tenant, role: "operator" },
+  ]);
+});
+
+test("Farmer admits verified Portal staff and approved customers, and enforces later revocation", async () => {
+  const farmer = config.clients.findIndex((client) => client.product === "farmer");
+  const first = await signIn("member");
+  const requested = await first.request({
+    method: "POST", url: "/api/v1/account/products/farmer/request",
+    headers: {"x-csrf-token": first.session.csrf}, payload: {},
+  });
+  assert.equal(requested.statusCode, 200, requested.body);
+  assert.equal(requested.json().access.find((grant: {product: string}) => grant.product === "farmer").status, "pending");
+  const waiting = await authorization("member", farmer, first);
+  const denied = await waiting.request({method: "POST", url: "/api/v1/account/interaction/" + waiting.uid + "/continue", payload: {csrf: waiting.details.csrf}});
+  assert.equal(denied.statusCode, 403);
+
+  const reviewer = await signIn("admin");
+  const decision = async (id: string, status: "active" | "revoked", revision: number) => {
+    const result = await reviewer.request({
+      method: "PUT", url: "/api/v1/admin/identity/accounts/" + id + "/products/farmer",
+      headers: {"x-csrf-token": reviewer.session.csrf},
+      payload: {role: "user", status, expectedRevision: revision, memberships: [],
+        stepUp: {password, code: await factor(admin)}},
+    });
+    assert.equal(result.statusCode, 200, result.body);
+  };
+  await decision(member, "active", 1);
+  const grant = await complete(await authorization("member", farmer, first), true);
+  const claims = (await inspect(grant.token, farmer)).json();
+  assert.deepEqual(claims.onesa_product_roles, {farmer: "user"});
+  assert.deepEqual(claims.onesa_applications, ["farmer"]);
+  assert.deepEqual(claims.onesa_roles, []);
+  assert.deepEqual(claims.onesa_memberships, []);
+
+  await db.query("UPDATE users SET role='viewer',mfa_secret=$2 WHERE id=$1", [outsider, encrypt("JBSWY3DPEHPK3PXP")]);
+  const staffBrowser = browser();
+  const login = await staffBrowser.request({method:"POST", url:"/api/v1/account/login",
+    payload: {email: emails.outsider, password, code: await factor(outsider)}});
+  assert.equal(login.statusCode, 200, login.body);
+  const staff = await complete(await authorization("outsider", farmer, staffBrowser), true);
+  assert.deepEqual((await inspect(staff.token, farmer)).json().onesa_product_roles, {farmer: "user"});
+  await decision(outsider, "revoked", 0);
+  await decision(member, "revoked", 2);
+  assert.deepEqual((await inspect(staff.token, farmer)).json(), {active: false});
+  assert.deepEqual((await inspect(grant.token, farmer)).json(), {active: false});
+});
+
+test("Farmer asks the same browser to authenticate again when its original Portal session expires", async () => {
+  const farmer = config.clients.findIndex((client) => client.product === "farmer");
+  await db.query("INSERT INTO identity_product_access(user_id,product,role,status) VALUES($1,'farmer','user','active')", [member]);
+  const client = browser();
+  const first = await complete(await authorization("member", farmer, client));
+  assert.equal((await inspect(first.token, farmer)).json().active, true);
+  const expired = await db.query("UPDATE identity_sessions SET expires_at=now()-interval '1 second' WHERE user_id=$1", [member]);
+  assert.equal(expired.rowCount, 1);
+  assert.equal((await inspect(first.token, farmer)).json().active, false);
+  const retry = await authorization("member", farmer, client);
+  assert.equal(retry.details.account, null);
+  const fresh = await complete(retry);
+  const identity = (await inspect(fresh.token, farmer)).json();
+  assert.equal(identity.active, true);
+  assert.equal(identity.sub, member);
+  assert.equal((await inspect(first.token, farmer)).json().active, false);
+  await db.query("UPDATE identity_sessions SET expires_at=now()-interval '1 second' WHERE user_id=$1", [member]);
+  const reviewer = await signIn("admin");
+  const revoked = await reviewer.request({
+    method: "PUT", url: "/api/v1/admin/identity/accounts/" + member + "/products/farmer",
+    headers: {"x-csrf-token": reviewer.session.csrf},
+    payload: {role: "user", status: "revoked", expectedRevision: 1, memberships: [],
+      stepUp: {password, code: await factor(admin)}},
+  });
+  assert.equal(revoked.statusCode, 200, revoked.body);
+  assert.equal((await inspect(fresh.token, farmer)).json().active, false);
+  const denied = await authorization("member", farmer, client);
+  const attempt = await denied.request({
+    method: "POST", url: "/api/v1/account/interaction/" + denied.uid + "/login",
+    payload: {csrf: denied.details.csrf, email: emails.member, password},
+  });
+  assert.equal(attempt.statusCode, 403, attempt.body);
+  assert.equal(attempt.json().error.code, "PRODUCT_ACCESS_REQUIRED");
+});
+
+test("Cancelling Farmer sign-in returns the original state without issuing a grant", async () => {
+  const farmer = config.clients.findIndex((client) => client.product === "farmer");
+  const flow = await authorization("member", farmer);
+  const url = "/api/v1/account/interaction/" + flow.uid + "/cancel";
+  assert.equal((await flow.request({method:"POST", url, payload:{csrf: "0".repeat(64)}})).statusCode, 403);
+  const cancelled = await flow.request({method:"POST", url, payload:{csrf:flow.details.csrf}});
+  assert.equal(cancelled.statusCode, 200, cancelled.body);
+  const resumed = await flow.request({url:cancelled.json().continuePath});
+  assert.equal(resumed.statusCode, 303, resumed.body);
+  const callback = new URL(String(resumed.headers.location));
+  assert.equal(callback.origin + callback.pathname, config.clients[farmer].redirectUri);
+  assert.equal(callback.searchParams.get("state"), flow.state);
+  assert.equal(callback.searchParams.get("error"), "access_denied");
+  assert.equal(callback.searchParams.has("code"), false);
+  assert.equal((await db.query("SELECT count(*) FROM identity_grant_sessions")).rows[0].count, "0");
+});
 
 test("A real HTTPS cookie jar carries an administrator's signed interaction through the account API", async () => {
   const run = promisify(execFile);
@@ -1636,3 +1951,55 @@ test("A real HTTPS cookie jar carries an administrator's signed interaction thro
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+for (const [product, role] of [["logistics", "user"], ["pasofi", "customer"], ["factory", "user"]] as const) {
+  test(`${product} customers need explicit approval, receive only their own role and lose access on revocation`, async () => {
+    const index = config.clients.findIndex(client => client.product === product);
+    const customer = await signIn("member");
+    const requested = await customer.request({method: "POST", url: `/api/v1/account/products/${product}/request`, headers: {"x-csrf-token": customer.session.csrf}, payload: {}});
+    assert.equal(requested.statusCode, 200, requested.body);
+    assert.equal(requested.json().access.find((grant: {product: string}) => grant.product === product).status, "pending");
+    const pending = await authorization("member", index, customer);
+    assert.equal((await pending.request({method: "POST", url: `/api/v1/account/interaction/${pending.uid}/continue`, payload: {csrf: pending.details.csrf}})).statusCode, 403);
+    const administrator = await signIn("admin");
+    async function decision(status: "active" | "revoked", revision: number, selectedRole: string = role) {
+      return administrator.request({method: "PUT", url: `/api/v1/admin/identity/accounts/${member}/products/${product}`, headers: {"x-csrf-token": administrator.session.csrf}, payload: {role: selectedRole, status, expectedRevision: revision, memberships: [], stepUp: {password, code: await factor(admin)}}});
+    }
+    assert.equal((await decision("active", 1, "admin")).statusCode, 400, "An ordinary product grant cannot grant global administration");
+    const approved = await decision("active", 1);
+    assert.equal(approved.statusCode, 200, approved.body);
+    const grant = await complete(await authorization("member", index, customer), true);
+    const claims = (await inspect(grant.token, index)).json();
+    assert.equal(claims.active, true);
+    assert.equal(claims.sub, member);
+    assert.deepEqual(claims.onesa_roles, []);
+    assert.deepEqual(claims.onesa_product_roles, {[product]: role});
+    assert.deepEqual(claims.onesa_applications, [product]);
+    assert.deepEqual(claims.onesa_memberships, []);
+    const repeated = await complete(await authorization("member", index));
+    assert.equal((await inspect(repeated.token, index)).json().sub, member);
+    assert.equal((await decision("revoked", 2)).statusCode, 200);
+    assert.equal((await inspect(repeated.token, index)).json().active, false);
+  });
+}
+
+for (const [index, clientConfig] of config.clients.entries()) {
+  test(`An expired Portal session requires fresh administrator authentication for ${clientConfig.product}`, async () => {
+    const client = browser();
+    const original = await complete(await authorization("admin", index, client));
+    assert.equal((await inspect(original.token, index)).json().active, true);
+
+    await db.query("UPDATE identity_sessions SET expires_at = now() - interval '1 second' WHERE user_id = $1", [admin]);
+    await db.query("UPDATE sessions SET expires_at = now() - interval '1 second' WHERE user_id = $1", [admin]);
+    assert.equal((await inspect(original.token, index)).json().active, false);
+
+    const login = await authorization("admin", index, client);
+    assert.equal(login.details.account, null);
+    const renewed = await complete(login);
+    const claims = (await inspect(renewed.token, index)).json();
+    assert.equal(claims.active, true);
+    assert.equal(claims.sub, admin);
+    assert.ok(claims.amr.includes("otp"));
+    assert.equal((await inspect(original.token, index)).json().active, false);
+  });
+}

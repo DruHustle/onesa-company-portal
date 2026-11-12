@@ -1,3 +1,4 @@
+import { registerInfrastructure } from "./operations/infrastructure.js";
 import { revokeAccountIdentity } from "./identity/accounts.js";
 import { registerIdentity } from "./identity/routes.js";
 import { registerBillingBridge } from "./billing/bridge.js";
@@ -122,6 +123,7 @@ export async function buildApp(options:{logging?:boolean}={}){
  await registerAccess(app,allow,{limit,address:clientAddress});
  metrics(app);
  await registerProcessing(app,allow);
+ await registerInfrastructure(app,allow);
  transfers(app,{allow,fileRoles:permissions.files,address:clientAddress,publication:ensurePublication,limit});
  for(const visibility of ['admin','public'] as const){app.get(`/api/v1/${visibility}/files/:id/chunks/:index`,{schema:{... (visibility==='admin'?adminSchema('privateFileChunk','Documents'):publicSchema('publicFileChunk','Documents')),params:z.object({id,index:z.coerce.number().int().min(0).max(10)}),response:{200:z.string().meta({format:'binary'}),...errors}}},async(req,reply)=>{const f=normalize<z.infer<typeof C.file>&{storage_key:string;sha256:string}>(required((await db.query('SELECT * FROM files WHERE id=$1',[req.params.id])).rows[0]));if(visibility==='admin')await filePermission(req,f);else{if(f.classification!=='public'||f.approval!=='approved'||f.archived)throw new HttpError(404,'FILE','Document unavailable');await ensurePublication();}if(f.scan_status!=='clean')throw new HttpError(409,'QUARANTINE','Document is awaiting a clean malware scan');const bytes=await retrieve(f.storage_key);const start=req.params.index*1024*1024;if(start>=bytes.length)throw new HttpError(400,'FILE_RANGE','Invalid document chunk');reply.type(f.mime).header('X-File-Size',String(bytes.length)).header('X-File-Sha256',f.sha256).header('X-Content-Type-Options','nosniff');return (reply as FastifyReply).send(bytes.subarray(start,start+1024*1024));});}
  await app.register(async instance=>{await registerGovernance(instance,allow,async req=>{await limit('privacy-step-up:'+req.actor!.id+':'+req.routeOptions.url,20,900);await limit('privacy-step-up-peer:'+clientAddress(req),60,900);});});
