@@ -89,7 +89,7 @@ available GitHub secret protection and human classification before publication.
 
 ## Repository governance and CI/CD
 
-Credential-free PR jobs use hosted runners; local runners are removed. GitHub Free
+Use hosted PR checks and the private controller for trusted local checks. GitHub Free
 is permanent; only the owner changes current public visibility. Keep main as default;
 no billing/access change is authorized. Public main protection includes administrators;
 private eligibility requires readback. Administrators can still edit settings. Restrict
