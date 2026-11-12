@@ -1,3 +1,4 @@
+import { legacyEngineeringFixture } from "@/lib/engineering-test-fixture";
 import { notFound, redirect } from "next/navigation";
 import { OnesaAccount } from "@/features/account/account";
 import { EngineeringSignIn } from "@/features/engineering/sign-in";
@@ -18,7 +19,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   if (docs !== undefined) {
     if (typeof docs !== "string" || !docsAccountPath(docs) || next !== undefined || returnTo !== undefined || process.env.ENGINEERING_SIGNIN_ENABLED !== "true") notFound();
     const environment = process.env.VERCEL_ENV === "production" ? "Production" : process.env.VERCEL_ENV === "preview" ? "Staging" : "Development";
-    return <EngineeringSignIn uid={docs} environment={environment} shared={process.env.ONESA_IDENTITY_ENABLED === "true"} fresh={reauthenticate === "1"} />;
+    return <EngineeringSignIn uid={docs} environment={environment} shared={process.env.ONESA_IDENTITY_ENABLED === "true"} legacyFixture={legacyEngineeringFixture()} fresh={reauthenticate === "1"} />;
   }
   return <OnesaAccount adminEntry={next === "/admin"} accessEnabled={accessEnabled} legacyAdmin={next === "/admin" && process.env.ONESA_IDENTITY_ENABLED !== "true"} />;
 }
