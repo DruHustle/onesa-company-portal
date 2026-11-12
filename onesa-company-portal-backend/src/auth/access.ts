@@ -212,6 +212,26 @@ export async function provisionAccess(
         "INSERT INTO engineering_memberships(id,email,enabled,access_policy_evidence,approved_by) VALUES($1,$2,true,$3,$4)",
         [id, request.email, evidence, reviewer],
       );
+    if (!request.password_hash) {
+      const binding = (await c.query(
+        "SELECT user_id FROM engineering_enrollment_accounts WHERE registration_id=$1 FOR UPDATE",
+        [request.id],
+      )).rows[0];
+      if (binding) {
+        // This owner approval can create a new membership only for its original requester.
+        if (existing) throw new HttpError(409, "ENGINEERING_MEMBERSHIP", "Review the existing Docs membership before linking it.");
+        const linked = await c.query(
+          `INSERT INTO identity_engineering_links(membership_id,user_id)
+           SELECT $1,u.id FROM users u JOIN identity_profiles p ON p.user_id=u.id
+           WHERE u.id=$2 AND u.email=$3 AND NOT u.disabled AND p.email_verified_at IS NOT NULL
+           ON CONFLICT DO NOTHING RETURNING membership_id`,
+          [id, binding.user_id, request.email],
+        );
+        if (!linked.rowCount)
+          throw new HttpError(409, "ENGINEERING_ACCOUNT_CONFLICT", "Review the original Onesa account before approving Docs access.");
+        await c.query("INSERT INTO audit(actor_id,action,record_id) VALUES($1,'identity.engineering_linked',$2)", [reviewer, id]);
+      }
+    }
     if (request.password_hash) await c.query(
       "INSERT INTO engineering_credentials(membership_id,password_hash) VALUES($1,$2) ON CONFLICT(membership_id) DO NOTHING",
       [id, request.password_hash],
@@ -229,7 +249,7 @@ export async function provisionAccess(
 /** Requests Docs membership for an authenticated, email-verified Onesa account. */
 export async function requestOnesaDocsAccess(
   c: PoolClient, config: AccessConfiguration,
-  account: { email: string; display_name: string; role: string }, externalEmails: readonly string[],
+  account: { id: string; email: string; display_name: string; role: string }, externalEmails: readonly string[],
 ) {
   const reviewer = await owner(c, config);
   const email = account.email;
@@ -246,6 +266,10 @@ export async function requestOnesaDocsAccess(
     await provisionAccess(c, {id, email, audience: "engineering", state: "pending", password_hash: null}, reviewer.id, config.policyEvidence);
     return "approved" as const;
   }
+  await c.query(
+    "INSERT INTO engineering_enrollment_accounts(registration_id,user_id) VALUES($1,$2)",
+    [id, account.id],
+  );
   await enqueue(c, "access-approval:" + id, {
     to: reviewer.email, subject: "Engineering Docs access awaiting approval",
     encryptedText: encrypt("A verified Onesa account requested Engineering Docs. Review the exact email policy and request " + id + " in Onesa Portal → Users → Access requests.\n" + env.PUBLIC_ORIGIN + "/admin"),

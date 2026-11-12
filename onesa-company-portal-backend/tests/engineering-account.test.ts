@@ -680,6 +680,42 @@ test("an MFA administrator enrolls in Docs without a second password; exact prea
     assert.equal((await submit(pending, "session")).statusCode, 401);
     assert.equal((await db.query("SELECT role FROM users WHERE id=$1", [member.id])).rows[0].role, "member");
     assert.equal((await db.query("SELECT 1 FROM engineering_memberships WHERE email=$1", [member.email])).rowCount, 0);
+    // Exercise the owner review endpoint with a fresh factor, then finish the same Docs interaction.
+    const reviewApp = await buildApp({ logging: false });
+    try {
+      const ownerSession = randomBytes(32).toString("hex");
+      const csrf = randomBytes(32).toString("hex");
+      await db.query("UPDATE users SET mfa_secret=$1 WHERE id=$2", [encrypt("JBSWY3DPEHPK3PXP"), owner]);
+      await db.query("INSERT INTO sessions(token_hash,user_id,csrf,expires_at) VALUES($1,$2,$3,now()+interval '1 hour')", [hash(ownerSession),owner,csrf]);
+      async function approve(email: string) {
+        const request = (await db.query("SELECT id,revision FROM access_registrations WHERE email=$1 AND audience='engineering'", [email])).rows[0];
+        const code = randomUUID();
+        await db.query("INSERT INTO mfa_recovery(user_id,code_hash) VALUES($1,$2)", [owner,hash(code)]);
+        return reviewApp.inject({
+          method: "POST", url: `/api/v1/admin/access/requests/${request.id}/review`,
+          headers: {origin, "x-portal-proxy-key":process.env.PROXY_SHARED_KEY!,cookie:"onesa_session="+ownerSession,"x-csrf-token":csrf},
+          payload: {decision:"approve",expectedRevision:request.revision,evidence:"Synthetic owner-approved new Docs reader",role:"viewer",password,code},
+        });
+      }
+      const approval = await approve(member.email);
+      assert.equal(approval.statusCode, 200, approval.body);
+      const granted = await authorization(memberBrowser);
+      assert.deepEqual(granted.details.onesaAccount, {email:member.email});
+      const admitted = await submit(granted, "session");
+      assert.equal(admitted.statusCode, 200, admitted.body);
+      assert.equal((await exchange(granted, admitted.json().continuePath)).statusCode, 200);
+      assert.equal((await db.query("SELECT 1 FROM engineering_credentials c JOIN engineering_memberships m ON m.id=c.membership_id WHERE m.email=$1", [member.email])).rowCount,0);
+
+      const disabled = await fixture("disabled-while-awaiting-docs");
+      await db.query("DELETE FROM engineering_memberships WHERE id=$1", [disabled.membership]);
+      assert.equal((await submit(await authorization(await signIn(disabled)), "enroll")).json().status,"pending");
+      await db.query("UPDATE users SET disabled=true WHERE id=$1", [disabled.id]);
+      assert.equal((await approve(disabled.email)).statusCode,409);
+      assert.equal((await db.query("SELECT 1 FROM engineering_memberships WHERE email=$1", [disabled.email])).rowCount,0);
+    } finally {
+      await reviewApp.close();
+    }
+
   } finally {
     for (const key of ["ACCESS_REGISTRATION_ENABLED","ACCESS_APPROVAL_OWNER_ID","ACCESS_POLICY_EVIDENCE","ACCESS_PREAPPROVED_EMAILS"]) delete process.env[key];
   }

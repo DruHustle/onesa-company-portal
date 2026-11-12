@@ -68,9 +68,13 @@ A verified Onesa account holder opening Docs for the first
 time can choose **Use my Onesa account for Docs** when access registration is
 enabled. A new membership can be linked immediately only for an individually
 preapproved eligible address with recorded owner policy evidence. Other new
-addresses enter the existing owner review queue. After manual approval the
-member proves the approved Docs mailbox with a one-use sign-in link
-and elects to link the Onesa account. No separate Docs password is required.
+addresses enter the existing owner review queue. Migration 019 records the
+verified account ID that initiated a new pending request. On approval, the
+owner's fresh-MFA action rechecks that identity and the eligible mailbox before
+linking the new membership. The member can continue the original browser
+interaction using their Onesa session. Existing unbound requests and old
+memberships still require explicit ownership proof. Apply migration 019 before
+rolling out the matching API.
 Existing, disabled, previously rejected and conflicting identities stay in their
 existing review or recovery paths. The Cloudflare Access policy must allow the
 individual email address at the protected Docs hostname.
