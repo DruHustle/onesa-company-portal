@@ -1,5 +1,16 @@
 # Changelog
 
+- Use Onesa Account for Portal staff and Engineering Docs sign-in and signup.
+  A new member can verify their email and request Docs access without selecting
+  another product. The owner reviews new access requests. Existing staff MFA,
+  individual Docs approvals and browser-bound authorization exchanges continue
+  through the shared entry. Migration 019 binds new pending Docs requests to the
+  requesting verified account, so that session can continue after owner approval.
+  Apply the migration before the matching API. Previously issued email links
+  remain usable.
+
+- Use operator readiness for Robot and inference readiness for AI in Admin Infrastructure. A live process can now report unavailable when journal recovery or an inference dependency blocks work.
+
 - Recognize the live status reported by the Factory and Robot APIs in Admin Infrastructure,
   observe the public Mobile API and PasoFi gateway, and show the responding AI Platform
   and Logistics backend revisions when supplied.

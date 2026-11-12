@@ -15,7 +15,7 @@ test('rehearsal accepts only explicit local test databases', () => {
   ]) assert.throws(() => localConnection(invalid));
 });
 
-test('real customer grant upgrades from 016 and 017 and the 018 no-op all restore their baseline', async () => {
+test('real upgrades from 016–018 and the 019 no-op restore their grants and schema baseline', async () => {
   const source = process.env.TEST_DATABASE_URL;
   assert.ok(source);
   const config = localConnection(source);
@@ -44,22 +44,22 @@ test('real customer grant upgrades from 016 and 017 and the 018 no-op all restor
         await copy.query("INSERT INTO users(id,email,password_hash,role,disabled) VALUES($1,$2,'disabled-test-fixture','viewer',true)", [user, user + '@example.invalid']);
         await copy.query("INSERT INTO identity_product_access(user_id,product,role,status,revision) VALUES($1,'ai','user','active',4),($1,'mobile','customer','revoked',7)", [user]);
         await copy.query('COMMIT');
-        for (const baseline of [16, 17, 18]) {
+        for (const baseline of [16, 17, 18, 19]) {
           assert.deepEqual(await rehearse(uri.href), {
-            baseline, migrations_rehearsed: 18 - baseline, ordinary_roles: 8,
+            baseline, migrations_rehearsed: 19 - baseline, ordinary_roles: 8,
             restricted_admin_roles_denied: 4, grants_preserved: true, rollback_verified: true,
           });
           const grants = await copy.query('SELECT product,status,revision FROM identity_product_access ORDER BY product');
           assert.deepEqual(grants.rows, [
             {product: 'ai', status: 'active', revision: 4}, {product: 'mobile', status: 'revoked', revision: 7},
           ]);
-          if (baseline < 18) {
+          if (baseline < 19) {
             await copy.query('BEGIN');
             await apply(names[baseline]);
             await copy.query('COMMIT');
           }
         }
-        await copy.query("UPDATE schema_migrations SET checksum=repeat('0',64) WHERE name=$1", [names[17]]);
+        await copy.query("UPDATE schema_migrations SET checksum=repeat('0',64) WHERE name=$1", [names[18]]);
         await assert.rejects(rehearse(uri.href));
       } finally {
         await copy.end();

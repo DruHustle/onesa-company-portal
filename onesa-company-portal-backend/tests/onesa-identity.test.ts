@@ -404,6 +404,30 @@ test("Registration verifies email once and grants no product or administrator au
     401,
   );
 });
+test("A Docs-only signup verifies the central identity without creating any product or Docs membership", async () => {
+  const client = browser();
+  const email = "docs-only-signup@example.invalid";
+  const registration = await client.request({
+    method: "POST", url: "/api/v1/account/register",
+    payload: { email, name: "Docs reader", products: [] },
+  });
+  assert.equal(registration.statusCode, 202, registration.body);
+  const queued = await db.query("SELECT payload FROM jobs WHERE payload->>'to'=$1", [email]);
+  const token = decrypt(queued.rows[0].payload.encryptedText).match(/#access-link=([a-f0-9]{64})/)?.[1];
+  assert.ok(token);
+  const verified = await client.request({
+    method: "POST", url: "/api/v1/account/confirm", payload: { token, password },
+  });
+  assert.equal(verified.statusCode, 200, verified.body);
+  const account = (await db.query(
+    `SELECT u.id, u.role, p.email_verified_at FROM users u
+     JOIN identity_profiles p ON p.user_id=u.id WHERE u.email=$1`, [email],
+  )).rows[0];
+  assert.equal(account.role, "member");
+  assert.ok(account.email_verified_at);
+  assert.equal((await db.query("SELECT 1 FROM identity_product_access WHERE user_id=$1", [account.id])).rowCount, 0);
+  assert.equal((await db.query("SELECT 1 FROM engineering_memberships WHERE email=$1", [email])).rowCount, 0);
+});
 test("Existing account verification cannot replace its password or link with email alone", async () => {
   await db.query("DELETE FROM identity_profiles WHERE user_id=$1", [member]);
   const client = browser();

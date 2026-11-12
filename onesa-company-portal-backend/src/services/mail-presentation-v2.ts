@@ -20,10 +20,14 @@ function accessAction(subject:string, text:string, origin?:string){
   : 'Open this Onesa link to sign in:'))return null;
  try{
   const trusted=new URL(origin),url=new URL(lines[1]);
-  if(trusted.protocol!=='https:'||trusted.username||trusted.password||trusted.search||trusted.hash||trusted.pathname!=='/'||url.origin!==trusted.origin||url.username||url.password||url.search)return null;
-  if(!/^#access-link=[A-Za-z0-9_-]{43}$/.test(url.hash))return null;
-  if(subject==='Complete your Onesa registration' ? url.pathname!=='/access/confirm'
-   : !(url.pathname==='/admin'||/^\/engineering\/sign-in\/[A-Za-z0-9_-]{1,256}$/.test(url.pathname)))return null;
+  if(trusted.protocol!=='https:'||trusted.username||trusted.password||trusted.search||trusted.hash||trusted.pathname!=='/'||url.origin!==trusted.origin||url.username||url.password)return null;
+  const registration=subject==='Complete your Onesa registration';
+  const legacy=!url.search && /^#access-link=[A-Za-z0-9_-]{43}$/.test(url.hash) &&
+    (registration ? url.pathname==='/access/confirm' : url.pathname==='/admin'||/^\/engineering\/sign-in\/[A-Za-z0-9_-]{1,256}$/.test(url.pathname));
+  const canonical=/^#access-link=[a-f0-9]{64}$/.test(url.hash) &&
+    (registration ? url.pathname==='/account/confirm' && url.search==='?approval=1'
+      : url.pathname==='/account' && (url.search==='?next=/admin'||/^\?docs=[A-Za-z0-9_-]{8,128}$/.test(url.search)));
+  if(!legacy&&!canonical)return null;
   return {url:lines[1],label:profiles[subject].action!,instructions:lines.slice(2).join('\n')};
  }catch{return null;}
 }

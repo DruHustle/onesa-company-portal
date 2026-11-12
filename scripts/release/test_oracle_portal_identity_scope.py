@@ -33,9 +33,11 @@ class FrontendIdentityScopeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "IDENTITY_FRONTEND_REVIEWED_SOURCE_CHANGED"):
             identity.reviewed_delta(old, current)
 
-    def test_catalog_and_browser_label_updates_do_not_repin_the_legacy_identity_profile(self):
+    def test_current_catalog_and_shared_account_entry_do_not_qualify_as_legacy_identity(self):
         old, reviewed = self.inventories()
-        for path in ["src/features/account/api.ts", "scripts/test-onesa-account.mjs"]:
+        for path in ["src/features/account/api.ts", "scripts/test-onesa-account.mjs",
+                     "src/app/account/page.tsx", "src/app/access/register/page.tsx",
+                     "src/lib/account-return.ts", "scripts/test-engineering-sign-in.mjs"]:
             name = identity.PREFIX + path
             current = dict(reviewed)
             current[name] = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()

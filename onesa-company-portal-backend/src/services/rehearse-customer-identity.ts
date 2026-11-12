@@ -7,7 +7,7 @@ import {pathToFileURL} from 'node:url';
 import pg from 'pg';
 import {applyMigrationPlan} from './migration-plan.js';
 
-const reviewedInventory = '066e2b82f4ea6678df211ec57b7ff86ae3da326a4a4e8d5ba09ec463944a9a3b';
+const reviewedInventory = '49fc970fd6781ab6ad3bdf29949d6003f7bd52d52d3297788adcc59895a5d1fa';
 const ordinaryRoles = {
   ai: 'user', drone: 'viewer', robot: 'viewer', mobile: 'customer',
   farmer: 'user', logistics: 'user', pasofi: 'customer', factory: 'user',
@@ -82,25 +82,32 @@ export async function rehearse(connectionString: string) {
       await client.query('SET LOCAL search_path=public,pg_catalog');
       await client.query('SELECT pg_advisory_xact_lock(757830)');
       before = await storedMigrations(client);
-      assert.ok([16, 17, 18].includes(before.length));
+      assert.ok([16, 17, 18, 19].includes(before.length));
       assert.deepEqual(before, inventory.slice(0, before.length));
       await client.query('LOCK TABLE public.identity_product_access IN SHARE ROW EXCLUSIVE MODE');
       await client.query('CREATE TEMP TABLE retained_grants ON COMMIT DROP AS TABLE public.identity_product_access');
       const applied = await applyMigrationPlan(client);
-      assert.equal(applied, 18 - before.length);
+      assert.equal(applied, inventory.length - before.length);
       assert.deepEqual(await storedMigrations(client), inventory);
       const differences = await client.query(`
         (TABLE pg_temp.retained_grants EXCEPT ALL TABLE public.identity_product_access)
         UNION ALL
         (TABLE public.identity_product_access EXCEPT ALL TABLE pg_temp.retained_grants) LIMIT 1`);
       assert.equal(differences.rowCount, 0);
+      const bindingTable = await client.query("SELECT to_regclass('public.engineering_enrollment_accounts') IS NOT NULL AS present");
+      assert.equal(bindingTable.rows[0].present, true);
+      if (before.length < 19) {
+        assert.equal((await client.query('SELECT 1 FROM public.engineering_enrollment_accounts LIMIT 1')).rowCount, 0);
+      }
       assert.equal(await applyMigrationPlan(client), 0);
       await checkRoles(client);
     } finally {
       await client.query('ROLLBACK');
     }
     assert.deepEqual(await storedMigrations(client), before);
-    return {baseline: before.length, migrations_rehearsed: 18 - before.length, ordinary_roles: 8,
+    const rolledBackBinding = await client.query("SELECT to_regclass('public.engineering_enrollment_accounts') IS NOT NULL AS present");
+    assert.equal(rolledBackBinding.rows[0].present, before.length >= 19);
+    return {baseline: before.length, migrations_rehearsed: inventory.length - before.length, ordinary_roles: 8,
       restricted_admin_roles_denied: 4, grants_preserved: true, rollback_verified: true};
   } finally {
     await client.end();

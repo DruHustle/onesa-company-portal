@@ -1,25 +1,17 @@
 "use client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiError } from "@/lib/api/client";
-import { accessLinkToken } from "@/lib/access-link";
 import type { operations } from "@/lib/api/generated/schema";
 type SignedIn = operations["login"]["responses"][200]["content"]["application/json"];
-export function AdminSignIn({ onSignedIn, accessEnabled }: { accessEnabled: boolean; onSignedIn: (value: SignedIn) => void }) {
+export function AdminSignIn({ onSignedIn, accessEnabled, linkOnly = false, initialToken }: { accessEnabled: boolean; linkOnly?: boolean; initialToken?: string | null; onSignedIn: (value: SignedIn) => void }) {
   const [rememberBrowser, setRememberBrowser] = useState(false);
-  const [method, setMethod] = useState<"password" | "link">("password"), [link, setLink] = useState<string | null>(null), [busy, setBusy] = useState(false), [notice, setNotice] = useState(""), [error, setError] = useState(false);
+  const [method, setMethod] = useState<"password" | "link">(linkOnly ? "link" : "password"), [link, setLink] = useState<string | null>(initialToken ?? null), [busy, setBusy] = useState(false), [notice, setNotice] = useState(""), [error, setError] = useState(false);
   const [email, setEmail] = useState(""), [factor, setFactor] = useState<"unknown" | "required" | "setup">("unknown");
   const [sent, setSent] = useState(false), [resendUntil, setResendUntil] = useState(0), [resendSeconds, setResendSeconds] = useState(0);
   const pending = useRef(false), formRef = useRef<HTMLFormElement>(null), codeRef = useRef<HTMLInputElement>(null), statusRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    if (!accessEnabled) return;
-    const receiveLink = () => {
-      const raw = accessLinkToken(window.location.hash);
-      if (raw) { setLink(raw); setMethod("link"); setFactor("unknown"); setSent(false); setNotice(""); setError(false); window.history.replaceState(null, "", window.location.pathname + window.location.search); }
-    };
-    receiveLink();
-    window.addEventListener("hashchange", receiveLink);
-    return () => window.removeEventListener("hashchange", receiveLink);
-  }, [accessEnabled]);
+    if (initialToken) { setLink(initialToken); setMethod("link"); setFactor("unknown"); setSent(false); setNotice(""); setError(false); }
+  }, [initialToken]);
   useEffect(() => {
     if (!resendUntil) return;
     const tick = () => setResendSeconds(Math.max(0, Math.ceil((resendUntil - performance.now()) / 1000)));
@@ -57,8 +49,8 @@ export function AdminSignIn({ onSignedIn, accessEnabled }: { accessEnabled: bool
   }
   const linkSent = method === "link" && !link && sent;
   return <section aria-label="Administrator sign-in">
-    <p>Protected administration for approved accounts.</p>
-    {accessEnabled && <div className="signin-methods" role="group" aria-label="Sign-in method">
+
+    {accessEnabled && !linkOnly && <div className="signin-methods" role="group" aria-label="Sign-in method">
       <button type="button" aria-pressed={method === "link"} disabled={busy} onClick={() => chooseMethod("link")}>Email a sign-in link</button>
       <button type="button" aria-pressed={method === "password"} disabled={busy} onClick={() => chooseMethod("password")}>Email and password</button>
     </div>}
@@ -76,7 +68,7 @@ export function AdminSignIn({ onSignedIn, accessEnabled }: { accessEnabled: bool
     {linkSent && <div className="engineering-link-sent"><p ref={statusRef} tabIndex={-1} role="status">Sent.</p><button className="button" type="button" disabled={busy || resendSeconds > 0} onClick={() => formRef.current?.requestSubmit()}>Send another link{resendSeconds > 0 ? ` (${resendSeconds}s)` : ""}</button></div>}
     {notice && <p role={error ? "alert" : "status"}>{notice}</p>}
     {factor === "setup" && <a className="button" href="/access/setup-authenticator">Set up your authenticator</a>}
-    {accessEnabled && <p className="signin-registration">First time here? <a href="/access/register?audience=admin">Register for administrator access</a>.</p>}
+
     <details className="signin-help"><summary>Access and security</summary><p>{accessEnabled?"New access requires email verification and owner approval. Existing approvals are retained. ":""}After verifying your password or email link, Onesa checks whether you need authenticator setup or your existing MFA code. Administrator access requires MFA. Signing in here grants no Engineering Docs or Robot role.</p></details>
   </section>;
 }
