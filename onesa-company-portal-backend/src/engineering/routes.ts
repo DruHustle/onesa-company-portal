@@ -1,6 +1,6 @@
 import {
   requestEngineeringLink,
-  requestAdministratorDocsAccess,
+  requestOnesaDocsAccess,
   accessConfiguration,
   consumeEngineeringLink,
   engineeringPasswordAccount,
@@ -200,7 +200,7 @@ export async function registerEngineeringIdentity(
       let enrollment: "available" | "pending" | undefined;
       if (!session && !linkChoice && !linked && accessConfiguration()) {
         const central = await engineeringCentralAccount(req);
-        if (central && isGlobalAdmin(central.account.role)) {
+        if (central) {
           const { email, id } = central.account;
           const state = (await db.query(
             "SELECT (SELECT state FROM access_registrations WHERE email=$1 AND audience='engineering') AS state WHERE NOT EXISTS (SELECT 1 FROM engineering_memberships WHERE email=$1) AND NOT EXISTS (SELECT 1 FROM identity_engineering_links WHERE user_id=$2)", [email, id],
@@ -271,19 +271,19 @@ export async function registerEngineeringIdentity(
     const {config, details} = await verifiedInteraction(req, reply, req.body.csrf);
     const registration = accessConfiguration();
     const session = await engineeringCentralAccount(req);
-    if (!registration || !session || !isGlobalAdmin(session.account.role) || !session.amr.includes("otp"))
-      throw new HttpError(403, "ENGINEERING_ACCOUNT_PROOF", "Sign in with your verified Onesa administrator account and authenticator.");
+    if (!registration || !session)
+      throw new HttpError(403, "ENGINEERING_ACCOUNT_PROOF", "Sign in with your verified Onesa account to request Engineering Docs access.");
     if (!(await centralSessionFresh(details, session)))
       throw new HttpError(403, "ONESA_REAUTH_REQUIRED", "Sign in again to your Onesa account.");
     await limits.limit("engineering-enrollment:" + session.account.id, 10, 900);
     return transaction(async c => {
       await lockAccountSession(c, session);
       const account = await identityAccount(session.account.id, c);
-      if (!account?.email_verified_at || !isGlobalAdmin(account.role))
-        throw new HttpError(403, "ENGINEERING_ACCOUNT_PROOF", "Current administrator approval is required.");
+      if (!account?.email_verified_at || (isGlobalAdmin(account.role) && !session.amr.includes("otp")))
+        throw new HttpError(403, "ENGINEERING_ACCOUNT_PROOF", "Verify your Onesa account and its required sign-in factors.");
       if ((await c.query("SELECT 1 FROM identity_engineering_links WHERE user_id=$1", [account.id])).rowCount)
         throw new HttpError(409, "ENGINEERING_MEMBERSHIP", "Use your existing Engineering Docs membership.");
-      const status = await requestAdministratorDocsAccess(c, registration, account, config.externalEmails);
+      const status = await requestOnesaDocsAccess(c, registration, account, config.externalEmails);
       if (status === "approved") {
         const membership = (await c.query("SELECT id FROM engineering_memberships WHERE email=$1 AND enabled", [account.email])).rows[0];
         await linkEngineeringAccount(c, session, membership.id, config.externalEmails, req.id);

@@ -628,7 +628,7 @@ export async function registerIdentity(
           .object({
             email: z.email().max(254),
             name: z.string().trim().min(1).max(200),
-            products: z.array(product).min(1).max(products.length),
+            products: z.array(product).max(products.length),
           })
           .strict(),
         response: { 202: z.object({ ok: z.literal(true) }), ...failures },

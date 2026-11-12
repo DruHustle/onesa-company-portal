@@ -8,13 +8,13 @@ import styles from "./registration.module.css";
 type Enrollment = operations["startMfaEnrollment"]["responses"][200]["content"]["application/json"];
 
 export function AuthenticatorSetup({ sharedAccount = false }: { sharedAccount?: boolean }) {
-  const [returnPath, setReturnPath] = useState(sharedAccount ? "/account" : "/admin");
+  const [returnPath, setReturnPath] = useState(sharedAccount ? "/account" : "/account?next=/admin");
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [codes, setCodes] = useState<string[]>([]);
   const [saved, setSaved] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const pending = useRef(false), heading = useRef<HTMLHeadingElement>(null);
   const step = codes.length ? 3 : enrollment ? 2 : 1;
-  useEffect(() => { setReturnPath(sharedAccount ? accountSetupReturnPath(window.location.search) : "/admin"); }, [sharedAccount]);
+  useEffect(() => { setReturnPath(sharedAccount ? accountSetupReturnPath(window.location.search) : "/account?next=/admin"); }, [sharedAccount]);
   useEffect(() => { if (step > 1) heading.current?.focus(); }, [step]);
   useEffect(() => {
     if (!codes.length || saved) return;
@@ -75,7 +75,7 @@ export function AuthenticatorSetup({ sharedAccount = false }: { sharedAccount?: 
     {error && <p role="alert" className={styles.notice}>{error}</p>}
     <div className={styles.support}>
       {step !== 3 && <a href={returnPath}>Already enrolled? Sign in</a>}
-      <details><summary>Help with setup</summary><p>{sharedAccount ? "Use your verified Onesa account and its password. Setup adds MFA for all your products; it does not grant additional product access or replace an existing authenticator." : "You need an approved administrator account and its registered password. This page cannot replace existing MFA or reset your account. Engineering Docs has a separate sign-in flow."}</p><a href={sharedAccount ? "/account/register" : "/access/register?audience=admin"}>{sharedAccount ? "Create your Onesa account" : "Register for administrator access"}</a><p><a href="https://onesa.eu/en/contact">Contact Onesa</a></p></details>
+      <details><summary>Help with setup</summary><p>{sharedAccount ? "Use your verified Onesa account and its password. Setup adds MFA for all your products; it does not grant additional product access or replace an existing authenticator." : "You need an approved administrator account and its registered password. This page cannot replace existing MFA or reset your account. Engineering Docs access requires its own approval."}</p><a href={sharedAccount ? "/account/register" : "/account/register?next=/admin"}>{sharedAccount ? "Create your Onesa account" : "Register for administrator access"}</a><p><a href="https://onesa.eu/en/contact">Contact Onesa</a></p></details>
     </div>
   </section></main>;
 }
