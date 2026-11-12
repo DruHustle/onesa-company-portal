@@ -1828,6 +1828,41 @@ test("Farmer admits verified Portal staff and approved customers, and enforces l
   assert.deepEqual((await inspect(grant.token, farmer)).json(), {active: false});
 });
 
+test("Farmer asks the same browser to authenticate again when its original Portal session expires", async () => {
+  const farmer = config.clients.findIndex((client) => client.product === "farmer");
+  await db.query("INSERT INTO identity_product_access(user_id,product,role,status) VALUES($1,'farmer','user','active')", [member]);
+  const client = browser();
+  const first = await complete(await authorization("member", farmer, client));
+  assert.equal((await inspect(first.token, farmer)).json().active, true);
+  const expired = await db.query("UPDATE identity_sessions SET expires_at=now()-interval '1 second' WHERE user_id=$1", [member]);
+  assert.equal(expired.rowCount, 1);
+  assert.equal((await inspect(first.token, farmer)).json().active, false);
+  const retry = await authorization("member", farmer, client);
+  assert.equal(retry.details.account, null);
+  const fresh = await complete(retry);
+  const identity = (await inspect(fresh.token, farmer)).json();
+  assert.equal(identity.active, true);
+  assert.equal(identity.sub, member);
+  assert.equal((await inspect(first.token, farmer)).json().active, false);
+  await db.query("UPDATE identity_sessions SET expires_at=now()-interval '1 second' WHERE user_id=$1", [member]);
+  const reviewer = await signIn("admin");
+  const revoked = await reviewer.request({
+    method: "PUT", url: "/api/v1/admin/identity/accounts/" + member + "/products/farmer",
+    headers: {"x-csrf-token": reviewer.session.csrf},
+    payload: {role: "user", status: "revoked", expectedRevision: 1, memberships: [],
+      stepUp: {password, code: await factor(admin)}},
+  });
+  assert.equal(revoked.statusCode, 200, revoked.body);
+  assert.equal((await inspect(fresh.token, farmer)).json().active, false);
+  const denied = await authorization("member", farmer, client);
+  const attempt = await denied.request({
+    method: "POST", url: "/api/v1/account/interaction/" + denied.uid + "/login",
+    payload: {csrf: denied.details.csrf, email: emails.member, password},
+  });
+  assert.equal(attempt.statusCode, 403, attempt.body);
+  assert.equal(attempt.json().error.code, "PRODUCT_ACCESS_REQUIRED");
+});
+
 test("Cancelling Farmer sign-in returns the original state without issuing a grant", async () => {
   const farmer = config.clients.findIndex((client) => client.product === "farmer");
   const flow = await authorization("member", farmer);
@@ -1945,5 +1980,26 @@ for (const [product, role] of [["logistics", "user"], ["pasofi", "customer"], ["
     assert.equal((await inspect(repeated.token, index)).json().sub, member);
     assert.equal((await decision("revoked", 2)).statusCode, 200);
     assert.equal((await inspect(repeated.token, index)).json().active, false);
+  });
+}
+
+for (const [index, clientConfig] of config.clients.entries()) {
+  test(`An expired Portal session requires fresh administrator authentication for ${clientConfig.product}`, async () => {
+    const client = browser();
+    const original = await complete(await authorization("admin", index, client));
+    assert.equal((await inspect(original.token, index)).json().active, true);
+
+    await db.query("UPDATE identity_sessions SET expires_at = now() - interval '1 second' WHERE user_id = $1", [admin]);
+    await db.query("UPDATE sessions SET expires_at = now() - interval '1 second' WHERE user_id = $1", [admin]);
+    assert.equal((await inspect(original.token, index)).json().active, false);
+
+    const login = await authorization("admin", index, client);
+    assert.equal(login.details.account, null);
+    const renewed = await complete(login);
+    const claims = (await inspect(renewed.token, index)).json();
+    assert.equal(claims.active, true);
+    assert.equal(claims.sub, admin);
+    assert.ok(claims.amr.includes("otp"));
+    assert.equal((await inspect(original.token, index)).json().active, false);
   });
 }

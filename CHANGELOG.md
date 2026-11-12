@@ -1,5 +1,7 @@
 # Changelog
 
+- Prompt users to sign back in to any Onesa product when the Portal session that authorized its grant expires. Signing back in preserves the user’s identity and leaves the previous grant inactive.
+
 - Add a fresh-MFA administrator action to disable and restore ordinary Onesa members
   while preserving the member role and existing product approvals.
 

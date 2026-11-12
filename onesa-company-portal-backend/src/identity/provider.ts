@@ -1,10 +1,22 @@
-import Provider, { type Configuration } from "oidc-provider";
+import Provider, { interactionPolicy, type Configuration } from "oidc-provider";
 import { IdentityAdapter } from "./adapter.js";
-import { identityAccount } from "./accounts.js";
+import { identityAccount, liveGrantSession } from "./accounts.js";
 import type { IdentityConfig } from "./config.js";
 
 /** One established protocol implementation, explicitly configured confidential product clients. */
 export function createIdentityProvider(config: IdentityConfig) {
+  const policy = interactionPolicy.base();
+  // The issuer cookie can outlive the Portal session that authorized this client's grant.
+  policy.get("login")!.checks.add(new interactionPolicy.Check(
+    "portal_source_session_expired", "Fresh Portal authentication is required",
+    async ({ oidc }) => {
+      const session = oidc.session;
+      const clientId = oidc.client?.clientId;
+      if (!session?.accountId || !clientId) return false;
+      const grant = session.grantIdFor(clientId);
+      return grant ? !(await liveGrantSession(grant, session.accountId)) : false;
+    },
+  ));
   const options: Configuration = {
     adapter: IdentityAdapter,
     clients: config.clients.map((client) => ({
@@ -51,6 +63,7 @@ export function createIdentityProvider(config: IdentityConfig) {
       rpInitiatedLogout: { enabled: false },
     },
     interactions: {
+      policy,
       url: (_ctx, interaction) =>
         new URL("/api/v1/account/interaction/" + interaction.uid, config.issuer).href,
     },
