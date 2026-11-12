@@ -19,7 +19,7 @@ const names: Record<(typeof catalogProducts)[number], string> = {
   farmer: "Smart Farmer",
   logistics: "Smart Logistics",
   factory: "Smart Factory",
-  pasofi: "Pasofi",
+  pasofi: "PasoFi",
   mobile: "Onesa Mobile",
 };
 export function identityCatalog(config: IdentityConfig | null) {

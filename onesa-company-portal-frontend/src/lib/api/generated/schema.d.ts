@@ -896,6 +896,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/account/deletion-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Shared identity and explicit product access. No product data or physical-control permission is granted by registration. */
+        post: operations["requestOnesaAccountDeletion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/account/register": {
         parameters: {
             query?: never;
@@ -1093,6 +1110,23 @@ export interface paths {
         /** @description Shared identity and explicit product access. No product data or physical-control permission is granted by registration. */
         get: operations["listOnesaAccounts"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/identity/accounts/{id}/member-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Shared identity and explicit product access. No product data or physical-control permission is granted by registration. */
+        put: operations["setOnesaMemberStatus"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1655,6 +1689,23 @@ export interface paths {
         };
         /** @description INTERNAL owner/administrator queue diagnostics; no personal payloads, recipients, storage keys or raw logs. */
         get: operations["listProcessingJobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/infrastructure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Administrator-only sanitized, timestamped infrastructure observations. No provider credentials or raw diagnostics. */
+        get: operations["infrastructureOverview"];
         put?: never;
         post?: never;
         delete?: never;
@@ -12371,7 +12422,7 @@ export interface operations {
                         auth_time: number;
                         amr: string[];
                         onesa_roles: "global_admin"[];
-                        onesa_applications: ("ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi")[];
+                        onesa_applications: ("ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi" | "factory")[];
                         onesa_product_roles: {
                             /** @enum {string} */
                             ai?: "user" | "admin";
@@ -12384,9 +12435,11 @@ export interface operations {
                             /** @enum {string} */
                             farmer?: "user" | "admin";
                             /** @enum {string} */
-                            logistics?: "admin";
+                            logistics?: "user" | "admin";
                             /** @enum {string} */
-                            pasofi?: "admin";
+                            factory?: "user" | "admin";
+                            /** @enum {string} */
+                            pasofi?: "customer" | "admin";
                         };
                         onesa_memberships: {
                             /** Format: uuid */
@@ -12692,7 +12745,7 @@ export interface operations {
                         enabled: boolean;
                         applications: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi" | "factory";
                             /** Format: uri */
                             url: string;
                         }[];
@@ -12858,7 +12911,7 @@ export interface operations {
                         csrf: string;
                         access: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile" | "farmer";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi" | "factory";
                             role: string;
                             /** @enum {string} */
                             status: "pending" | "active" | "revoked" | "rejected";
@@ -12873,7 +12926,7 @@ export interface operations {
                         }[];
                         applications: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi" | "factory";
                             /** Format: uri */
                             url: string;
                         }[];
@@ -12883,6 +12936,156 @@ export interface operations {
                             name: string;
                             connected: boolean;
                         }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    requestOnesaAccountDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {boolean} */
+                    confirmed: true;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        reference: string;
                     };
                 };
             };
@@ -13021,7 +13224,7 @@ export interface operations {
                     /** Format: email */
                     email: string;
                     name: string;
-                    products: ("ai" | "drone" | "robot" | "mobile" | "farmer")[];
+                    products: ("ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi" | "factory")[];
                 };
             };
         };
@@ -13353,7 +13556,7 @@ export interface operations {
                         csrf: string;
                         access: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile" | "farmer";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi" | "factory";
                             role: string;
                             /** @enum {string} */
                             status: "pending" | "active" | "revoked" | "rejected";
@@ -13368,7 +13571,7 @@ export interface operations {
                         }[];
                         applications: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi" | "factory";
                             /** Format: uri */
                             url: string;
                         }[];
@@ -13957,7 +14160,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                product: "ai" | "drone" | "robot" | "mobile" | "farmer";
+                product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi" | "factory";
             };
             cookie?: never;
         };
@@ -13989,7 +14192,7 @@ export interface operations {
                         csrf: string;
                         access: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile" | "farmer";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi" | "factory";
                             role: string;
                             /** @enum {string} */
                             status: "pending" | "active" | "revoked" | "rejected";
@@ -14004,7 +14207,7 @@ export interface operations {
                         }[];
                         applications: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi";
+                            product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi" | "factory";
                             /** Format: uri */
                             url: string;
                         }[];
@@ -14159,7 +14362,7 @@ export interface operations {
                     "application/json": {
                         csrf: string;
                         /** @enum {string} */
-                        product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi";
+                        product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi" | "factory";
                         freshRequired: boolean;
                         mfaRequired: boolean;
                         account: {
@@ -14791,9 +14994,10 @@ export interface operations {
                                 emailVerified: boolean;
                                 mfaEnrolled: boolean;
                             };
+                            disabled: boolean;
                             access: {
                                 /** @enum {string} */
-                                product: "ai" | "drone" | "robot" | "mobile" | "farmer";
+                                product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi" | "factory";
                                 role: string;
                                 /** @enum {string} */
                                 status: "pending" | "active" | "revoked" | "rejected";
@@ -14934,13 +15138,168 @@ export interface operations {
             };
         };
     };
+    setOnesaMemberStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    disabled: boolean;
+                    stepUp: {
+                        password: string;
+                        code: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
     setOnesaProductAccess: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 id: string;
-                product: "ai" | "drone" | "robot" | "mobile" | "farmer";
+                product: "ai" | "drone" | "robot" | "mobile" | "farmer" | "logistics" | "pasofi" | "factory";
             };
             cookie?: never;
         };
@@ -21023,6 +21382,129 @@ export interface operations {
             };
             /** @description Default Response */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    infrastructureOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date-time */
+                        checkedAt: string;
+                        /** @enum {number} */
+                        staleAfterSeconds: 300;
+                        /** @enum {string} */
+                        observationState: "loaded" | "not_configured" | "unavailable";
+                        services: {
+                            /** @enum {string} */
+                            id: "portal" | "ai" | "robot" | "farmer" | "drone" | "logistics" | "mobile" | "factory" | "pasofi" | "kubernetes" | "portainer";
+                            name: string;
+                            hosting: string;
+                            /** Format: uri */
+                            url: string;
+                            dependencies: string[];
+                            /** @enum {string} */
+                            status: "available" | "unavailable" | "not_observed" | "stale";
+                            /** @enum {string|null} */
+                            lastObservedState: "available" | "unavailable" | "not_observed" | null;
+                            /** Format: date-time */
+                            observedAt: string | null;
+                            /** @enum {string|null} */
+                            source: "public_http" | "owner_runtime" | null;
+                            /** @enum {string|null} */
+                            environment: "production" | "staging" | "local" | null;
+                            revision: string | null;
+                            scope: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            requestId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

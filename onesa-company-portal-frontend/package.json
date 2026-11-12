@@ -28,7 +28,8 @@
     "test:drone-product": "node --test unit/drone-product-diagnostics.test.mjs && node scripts/test-drone-product.mjs",
     "test:nvidia-assets": "node scripts/validate-nvidia-assets.mjs && node --test unit/nvidia-assets.test.mjs",
     "test:nvidia-browser": "node scripts/test-nvidia-library.mjs",
-    "test:dependency-security": "node --test unit/dependency-security.test.mjs"
+    "test:dependency-security": "node --test unit/dependency-security.test.mjs",
+    "test:infrastructure": "node scripts/test-infrastructure.mjs"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.17",
@@ -53,10 +54,20 @@
     "minimatch": "file:vendor/onesa-portal-minimatch-callable-1.0.0.tgz"
   },
   "overrides": {
-    "eslint@9.39.5": { "minimatch": "$minimatch" },
-    "@eslint/config-array@0.21.2": { "minimatch": "$minimatch" },
-    "@eslint/eslintrc@3.3.7": { "minimatch": "$minimatch" },
-    "@redocly/openapi-core@1.34.20": { "minimatch": "$minimatch" },
-    "@typescript-eslint/typescript-estree@8.71.1": { "minimatch": "11.0.1" }
+    "eslint@9.39.5": {
+      "minimatch": "$minimatch"
+    },
+    "@eslint/config-array@0.21.2": {
+      "minimatch": "$minimatch"
+    },
+    "@eslint/eslintrc@3.3.7": {
+      "minimatch": "$minimatch"
+    },
+    "@redocly/openapi-core@1.34.20": {
+      "minimatch": "$minimatch"
+    },
+    "@typescript-eslint/typescript-estree@8.71.1": {
+      "minimatch": "11.0.1"
+    }
   }
 }

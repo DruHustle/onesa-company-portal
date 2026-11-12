@@ -30,8 +30,10 @@ export const productionOrigins = {
   farmer: "https://farmer.onesa.eu",
   logistics: "https://logistics.onesa.eu",
   pasofi: "https://pasofi.mobile.onesa.eu",
+  factory: "https://factory.onesa.eu",
 } as const;
-type Origins = Record<keyof typeof productionOrigins, string>;
+type Origins = Record<Exclude<keyof typeof productionOrigins, "factory">, string> & { factory?: string };
+export const qualifiedClientProducts = clientProducts.filter(product => product !== "factory");
 
 const callbacks: Record<ClientProduct, string> = {
   ai: "/api/v1/auth/onesa/callback",
@@ -41,10 +43,11 @@ const callbacks: Record<ClientProduct, string> = {
   farmer: "/auth/onesa/callback",
   logistics: "/api/auth/onesa/callback",
   pasofi: "/onesa-callback.html",
+  factory: "/api/auth/onesa/callback",
 };
 const credential = () => randomBytes(48).toString("base64url");
 
-function stagingOrigins(value: unknown): Origins {
+function stagingOrigins(value: unknown, includeFactory: boolean): Origins {
   const httpsOrigin = z.string().refine((value) => {
     try {
       const origin = new URL(value);
@@ -58,7 +61,7 @@ function stagingOrigins(value: unknown): Origins {
     }
   });
   const result = z
-    .record(z.enum(["portal", ...clientProducts]), httpsOrigin)
+    .record(z.enum(["portal", ...(includeFactory ? clientProducts : qualifiedClientProducts)]), httpsOrigin)
     .parse(value);
   const values = Object.values(result);
   if (
@@ -126,9 +129,12 @@ function initialize(issuer: string): IdentityConfig {
   };
 }
 
-function completeConfiguration(config: IdentityConfig, origins: Origins) {
-  for (const product of clientProducts) {
+function completeConfiguration(config: IdentityConfig, origins: Origins, includeFactory: boolean) {
+  if (!includeFactory && config.clients.some(client => client.product === "factory"))
+    throw Error("Existing Factory registration requires explicit Factory preparation");
+  for (const product of includeFactory ? clientProducts : qualifiedClientProducts) {
     const origin = origins[product];
+    if (!origin) throw Error("Missing selected product origin");
     const redirectUri = origin + callbacks[product];
     const registered = config.clients.find(
       (client) => client.product === product,
@@ -237,7 +243,7 @@ function bindings(
           ONESA_IDENTITY_CALLBACK_URL: redirectUri,
         });
       if (product === "farmer") env.WEB_ORIGIN = origins.farmer;
-      if (product === "logistics")
+      if (product === "logistics" || product === "factory")
         env.ONESA_IDENTITY_REDIRECT_URI = redirectUri;
       environment(product, env);
     }
@@ -282,6 +288,7 @@ export async function prepareIdentityRelease(args: string[]) {
       "staging-origins": { type: "string" },
       existing: { type: "string" },
       initialize: { type: "boolean" },
+      "include-factory": { type: "boolean" },
       output: { type: "string" },
     },
   });
@@ -293,12 +300,13 @@ export async function prepareIdentityRelease(args: string[]) {
   else if (values.environment === "staging" && values["staging-origins"]) {
     origins = stagingOrigins(
       JSON.parse(await readFile(values["staging-origins"], "utf8")),
+      Boolean(values["include-factory"]),
     );
   } else throw Error("Select production or supply explicit staging origins");
   const config = values.existing
     ? await existingConfiguration(values.existing, origins.portal)
     : initialize(origins.portal + identityPath);
-  const issuerEnv = completeConfiguration(config, origins);
+  const issuerEnv = completeConfiguration(config, origins, Boolean(values["include-factory"]));
   await publish(values.output, {
     "portal-issuer.env.json": JSON.stringify(issuerEnv, null, 2) + "\n",
     ...bindings(config, origins, values.output),
@@ -312,7 +320,7 @@ if (
   try {
     await prepareIdentityRelease(process.argv.slice(2));
     console.log(
-      "Prepared the Portal issuer, frontend callbacks and seven private product bindings.",
+      "Prepared the Portal issuer, frontend callbacks and selected private product bindings.",
     );
   } catch {
     // Parse, filesystem and validation errors may contain private input. Keep them out of release logs.

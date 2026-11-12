@@ -5,6 +5,7 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db, transaction, inTransaction } from "../services/db.js";
 import { env } from "../config/env.js";
+import { company } from "../config/company.js";
 import { error } from "../api/contracts.js";
 import { HttpError, enqueue } from "../services/workflows.js";
 import {
@@ -27,6 +28,8 @@ import {
   accountAccess,
   currentAccount,
   identityAccount,
+  identityAccountQuery,
+  type IdentityAccount,
   isGlobalAdmin,
   requireAccount,
   revokeAccountIdentity,
@@ -39,7 +42,6 @@ import {
   identityPath,
   products,
   clientProducts,
-  isAdminProduct,
   mobileRoles,
   defaultProductRole,
   validProductRole,
@@ -156,7 +158,7 @@ export async function registerIdentity(
   const requireProductConfigured = (selected: string) => {
     const { config } = configured();
     if (
-      (selected === "mobile" || selected === "farmer") &&
+      !["ai", "drone", "robot"].includes(selected) &&
       !config.clients.some((client) => client.product === selected)
     )
       throw new HttpError(
@@ -262,8 +264,9 @@ export async function registerIdentity(
                 robot: z.enum(["viewer", "operator", "admin"]).optional(),
                 mobile: z.enum(mobileRoles).optional(),
                 farmer: z.enum(["user", "admin"]).optional(),
-                logistics: z.literal("admin").optional(),
-                pasofi: z.literal("admin").optional(),
+                logistics: z.enum(["user", "admin"]).optional(),
+                factory: z.enum(["user", "admin"]).optional(),
+                pasofi: z.enum(["customer", "admin"]).optional(),
               }),
               onesa_memberships: z.array(
                 membershipSchema
@@ -334,7 +337,7 @@ export async function registerIdentity(
       } = await accountAccess(account);
       // Legacy clients validate the whole vocabulary. New clients receive only
       // their own entitlement and no information about other product workspaces.
-      const ownProductOnly = client.product === "farmer" || isAdminProduct(client.product);
+      const ownProductOnly = ["farmer", "logistics", "pasofi", "factory"].includes(client.product);
       const visibleProducts: readonly string[] = ownProductOnly
         ? [client.product]
         : client.product === "mobile" ? ["ai", "drone", "robot", "mobile"] : ["ai", "drone", "robot"];
@@ -568,6 +571,50 @@ export async function registerIdentity(
     async (req) => {
       configured();
       return snapshot(await requireAccount(req));
+    },
+  );
+
+  api.post(
+    "/api/v1/account/deletion-requests",
+    {
+      logLevel: "silent",
+      schema: {
+        ...meta("requestOnesaAccountDeletion", true),
+        body: z.object({ confirmed: z.literal(true) }).strict(),
+        response: { 202: z.object({ reference: z.uuid() }), ...failures },
+      },
+    },
+    async (req, reply) => {
+      configured();
+      const session = await requireAccount(req, true);
+      if (!session.account.email_verified_at)
+        throw new HttpError(403, "VERIFICATION_REQUIRED", "Verify your Onesa email first.");
+      await limits.limit("identity-deletion-request:" + session.account.id, 10, 3600);
+      const reference = await transaction(async (c) => {
+        await lockAccountSession(c, session);
+        const previous = await c.query(
+          "SELECT record_id FROM audit WHERE actor_id=$1 AND action='identity.deletion_requested' AND created_at>now()-interval '24 hours' ORDER BY created_at DESC LIMIT 1",
+          [session.account.id],
+        );
+        if (previous.rows.length) return String(previous.rows[0].record_id);
+        const id = randomUUID();
+        await enqueue(c, "identity-deletion-request:" + id, {
+          to: company.privacyEmail,
+          subject: "Onesa account deletion request",
+          encryptedText: encrypt([
+            "Review the request to delete the shared Onesa account and associated product data.",
+            "Reference: " + id, "Portal user ID: " + session.account.id,
+            "Verified contact: " + session.account.email,
+          ].join("\n")),
+        });
+        await c.query(
+          "INSERT INTO audit(actor_id,action,record_id,request_id) VALUES($1,'identity.deletion_requested',$2,$3)",
+          [session.account.id, id, req.id],
+        );
+        return id;
+      });
+      reply.code(202);
+      return { reference };
     },
   );
 
@@ -1434,6 +1481,7 @@ export async function registerIdentity(
             items: z.array(
               z.object({
                 account: accountSchema,
+                disabled: z.boolean(),
                 access: z.array(accessSchema),
                 memberships: z.array(membershipSchema),
               }),
@@ -1448,18 +1496,56 @@ export async function registerIdentity(
     async (req) => {
       configured();
       const rows = (
-        await db.query(
-          "SELECT u.id FROM users u WHERE NOT u.disabled AND u.email ILIKE $1 ORDER BY u.email,u.id OFFSET $2 LIMIT 51",
+        await db.query<IdentityAccount & { disabled: boolean }>(
+          identityAccountQuery + " WHERE (NOT u.disabled OR u.role='member') AND u.email ILIKE $1 ORDER BY u.email,u.id OFFSET $2 LIMIT 51",
           ["%" + req.query.search + "%", (req.query.page - 1) * 50],
         )
       ).rows;
       const items = [];
-      for (const row of rows.slice(0, 50)) {
-        const account = (await identityAccount(row.id))!;
+      for (const account of rows.slice(0, 50)) {
         const { access, memberships } = await accountAccess(account);
-        items.push({ account: safeAccount(account), access, memberships });
+        items.push({ account: safeAccount(account), disabled: account.disabled, access, memberships });
       }
       return { items, page: req.query.page, hasMore: rows.length > 50 };
+    },
+  );
+  api.put(
+    "/api/v1/admin/identity/accounts/:id/member-status",
+    {
+      preHandler: admin,
+      schema: {
+        ...meta("setOnesaMemberStatus", true),
+        params: z.object({ id: z.uuid() }),
+        body: z.object({ disabled: z.boolean(), stepUp }).strict(),
+        response: { 200: z.object({ ok: z.literal(true) }), ...failures },
+      },
+    },
+    async (req) => {
+      configured();
+      await limits.limit("identity-admin-change:" + req.actor!.id, 20, 900);
+      const id = req.params.id;
+      await transaction(async c => {
+        const role = await reauthenticate(c, {
+          userId: req.actor!.id, token: req.cookies.onesa_session!, csrf: req.actor!.csrf,
+        }, req.body.stepUp);
+        if (!isGlobalAdmin(role))
+          throw new HttpError(403, "FORBIDDEN", "Administrator access is required.");
+        const target = (await c.query(
+          "SELECT disabled FROM users WHERE id=$1 AND role='member' FOR NO KEY UPDATE", [id],
+        )).rows[0];
+        if (!target || id === req.actor!.id)
+          throw new HttpError(409, "MEMBER_REQUIRED", "This action is available for ordinary Onesa members only.");
+        if (target.disabled === req.body.disabled) return;
+        // The existing user-state trigger revokes shared identity sessions and provider grants.
+        await c.query("UPDATE users SET disabled=$1 WHERE id=$2", [req.body.disabled, id]);
+        await c.query("DELETE FROM sessions WHERE user_id=$1", [id]);
+        await c.query("DELETE FROM recovery_tokens WHERE user_id=$1", [id]);
+        await c.query(
+          "INSERT INTO audit(actor_id,action,record_id,request_id) VALUES($1,$2,$3,$4)",
+          [req.actor!.id, req.body.disabled ? "identity.member_disabled" : "identity.member_restored", id, req.id],
+        );
+      });
+      return { ok: true as const };
     },
   );
   api.put(
