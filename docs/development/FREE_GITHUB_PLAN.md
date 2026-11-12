@@ -7,7 +7,7 @@ changes visibility. Public repositories currently use standard GitHub-hosted run
 private repositories will also use hosted runners **only within the included allowance**.
 Product repositories keep their hosted PR checks. The [private controller](../engineering/SELF_HOSTED_RUNNER.md)
 can separately check reviewed public main source on the owner’s dedicated local guest
-and reproduce those checks on GitHub-hosted infrastructure.
+and match its source SHA to independent public GitHub-hosted verification.
 
 1. Before changing visibility, record current refs, required check names and successful
    exact-source CI, product-repository runner inventory (must be zero), Actions permissions, collaborators,
