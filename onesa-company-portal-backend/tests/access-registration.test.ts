@@ -9,6 +9,7 @@ process.env.SESSION_KEY = randomBytes(32).toString("hex");
 process.env.PUBLIC_ORIGIN = "https://portal.example.invalid";
 const ownerId = randomUUID(),
   ownerPassword = randomBytes(32).toString("hex");
+process.env.ENGINEERING_LEGACY_TEST_FIXTURE = "true";
 process.env.ACCESS_REGISTRATION_ENABLED = "true";
 process.env.ACCESS_APPROVAL_OWNER_ID = ownerId;
 process.env.ACCESS_PREAPPROVED_EMAILS = JSON.stringify([

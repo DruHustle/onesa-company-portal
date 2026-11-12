@@ -309,7 +309,8 @@ test("linking is explicit, requires both passwords' authorities, and preserves i
     email: identity.email,
     password: docsPassword,
   });
-  assert.equal(ordinary.statusCode, 200, ordinary.body);
+  assert.equal(ordinary.statusCode, 403, ordinary.body);
+  assert.equal(ordinary.json().error.code, "ENGINEERING_ACCOUNT_PROOF");
   assert.equal(
     (
       await db.query(
@@ -377,12 +378,13 @@ test("linking is explicit, requires both passwords' authorities, and preserves i
   });
   assert.equal(refused.statusCode, 401);
   assert.equal(refused.json().error.code, "ONESA_SESSION_REQUIRED");
+  const fallback = await authorization();
   const enabled = process.env.ONESA_IDENTITY_ENABLED;
   process.env.ONESA_IDENTITY_ENABLED = "false";
   try {
-    const fallback = await authorization();
-    assert.equal(fallback.details.onesaAccount, undefined);
-    assert.equal(fallback.details.onesaSignInPath, undefined);
+    const details = await fallback.request({url:"/api/v1/engineering-sign-in/" + fallback.uid + "/details"});
+    assert.equal(details.statusCode, 503);
+    assert.equal(details.json().error.code, "IDENTITY_UNAVAILABLE");
     const blocked = await submit(fallback, "password", {
       email: identity.email,
       password: docsPassword,
@@ -473,6 +475,8 @@ test("approved mail proof links once under concurrency and failed account proof 
   const identity = await fixture("email-link"),
     wrongIdentity = await fixture("email-wrong");
   const flow = await authorization(await signIn(wrongIdentity));
+  assert.equal((await submit(flow, "link", { email: identity.email })).statusCode, 403);
+  await signIn(identity, flow);
   assert.equal(
     (await submit(flow, "link", { email: identity.email })).statusCode,
     200,
@@ -487,6 +491,7 @@ test("approved mail proof links once under concurrency and failed account proof 
     /#access-link=([a-f0-9]{64})/,
   )?.[1];
   assert.ok(raw);
+  await signIn(wrongIdentity, flow);
   assert.equal(
     (await submit(flow, "link-verify", { token: raw, linkOnesaAccount: true }))
       .statusCode,
@@ -526,6 +531,8 @@ test("approved mail proof links once under concurrency and failed account proof 
 test("cross-browser email handoff survives central-login recovery without extending or consuming its proof", async () => {
   const identity = await fixture("handoff-link"),
     original = await authorization();
+  assert.equal((await submit(original, "link", {email: identity.email})).statusCode, 403);
+  await signIn(identity, original);
   assert.equal(
     (await submit(original, "link", { email: identity.email })).statusCode,
     200,

@@ -27,6 +27,8 @@ PREFIX = "onesa-company-portal-frontend/"
 # The historical Admin screen is also from f104f81, before infrastructure monitoring.
 # Additional shared-entry predecessors are public blobs from Portal a746c55e.
 REVIEWED_FILES = {
+    PREFIX + "public/brand/sources.json": (34382, "feacf92edbd620e3c86af5546a5eb7f0df6423af389eb568f1b29735cd3c5e8c"),
+    PREFIX + "src/app/account/sign-in/[uid]/page.tsx": (322, "487659424b193ee47164c7c8e9732d63da685db1d2fa309f6a79c55b0b10d5f4"),
     PREFIX + "scripts/test-engineering-sign-in.mjs": (55610, "33b6b31a69763986837b3a902328534404e6ceb56ea3e33bb86a9068b85afd1c"),
     PREFIX + "src/app/access/register/page.tsx": (595, "fe8918cfa167c6efd48e006f680c63c73fdbe25f2315780b79f648d36774169c"),
     PREFIX + "src/app/account/confirm/page.tsx": (137, "7a5d4935e7c1e36b643f72acc1ea0d3f9e47708e5ce14b2e2536e70a86d8fa21"),
@@ -54,6 +56,8 @@ REVIEWED_FILES = {
     PREFIX + "src/lib/api/generated/schema.d.ts": (787032, "e84ad11bf072ba1c2aee94b70af9ea73e98d8dea426979d55e09479d23cf37f8"),
 }
 REVIEWED_BLOBS = {
+    PREFIX + "public/brand/sources.json": "655eca043d51594e4be4165b8555a047cf0f5adc",
+    PREFIX + "src/app/account/sign-in/[uid]/page.tsx": "6b10afd5bf15ac1db29eda8e4081530edc9688cf",
     PREFIX + "scripts/test-engineering-sign-in.mjs": "77e37248f103438cd06cd2a5d58cbdd836b997de",
     PREFIX + "src/app/access/register/page.tsx": "fabdc98f4f2434cb9c67cd17a4718e084151f2b1",
     PREFIX + "src/app/account/confirm/page.tsx": "9a5070ea2ae63a7118c9337045f2d7e5d36a6646",

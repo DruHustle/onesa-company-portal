@@ -17,7 +17,7 @@ import { HttpError } from "../services/workflows.js";
 import { reauthenticate } from "../auth/reauthenticate.js";
 import { onesaSession } from "../auth/onesa-session.js";
 import { lockAccountSession, identityAccount, isGlobalAdmin, type AccountSession } from "../identity/accounts.js";
-import { linkEngineeringAccount, engineeringCentralAccount, engineeringLinkChoice, engineeringProofSession, linkedEngineeringSession, sharedEngineeringEnabled } from "./onesa-account.js";
+import { linkEngineeringAccount, legacyEngineeringFixture, engineeringCentralAccount, engineeringLinkChoice, engineeringProofSession, linkedEngineeringSession, sharedEngineeringEnabled } from "./onesa-account.js";
 import type { Role } from "../access/roles.js";
 import { error } from "../api/contracts.js";
 import { createEngineeringProvider } from "./provider.js";
@@ -193,6 +193,8 @@ export async function registerEngineeringIdentity(
       await limits.limit("engineering-details:" + limits.address(req), 60, 900);
       const details = await interaction(req, reply);
       const { config } = configured();
+      if (!sharedEngineeringEnabled() && !legacyEngineeringFixture())
+        throw new HttpError(503, "IDENTITY_UNAVAILABLE", "Company Portal sign-in is temporarily unavailable.");
       const session = await approvedOnesaSession(req, details);
       const linkChoice = await engineeringLinkChoice(req, config.externalEmails);
       const linked = sharedEngineeringEnabled() ? await linkedEngineeringSession(req, config.externalEmails) : null;
@@ -297,6 +299,7 @@ export async function registerEngineeringIdentity(
       if (!linked || !(await centralSessionFresh(details, linked.session))) return null;
       return {id:linked.session.account.id,email:linked.session.account.email,authenticated_at:new Date(linked.session.authenticatedAt*1000),membershipId:linked.membershipId,central:linked.session};
     }
+    if (!legacyEngineeringFixture()) return null;
     const session = await onesaSession(req);
     if (!session || !config || !engineeringEmailAllowed(session.email, config.externalEmails)) return null;
     // A forced reauthentication cannot be satisfied by a previously established session.
@@ -354,6 +357,7 @@ export async function registerEngineeringIdentity(
     async (req, reply) => {
       const { config } = await verifiedInteraction(req, reply, req.body.csrf),
         email = req.body.email.toLowerCase();
+      if (!legacyEngineeringFixture()) throw new HttpError(403, "ONESA_SESSION_REQUIRED", "Sign in through Company Portal, then link your existing Engineering access.");
       await limits.limit(
         "engineering-start-ip:" + limits.address(req),
         10,
@@ -437,7 +441,9 @@ export async function registerEngineeringIdentity(
   async function finishProof(req:FastifyRequest,reply:FastifyReply,proofAccount:()=>Promise<string>,method:string,rememberBrowser:boolean,linkRequested=false){
     return transaction(c=>inTransaction(c,async()=>{
       // Keep account-before-membership ordering, including concurrent link redemption.
+      if(!sharedEngineeringEnabled()&&!legacyEngineeringFixture())throw new HttpError(503,"IDENTITY_UNAVAILABLE","Company Portal sign-in is temporarily unavailable.");
       const source=await engineeringCentralAccount(req);
+      if(!source&&!legacyEngineeringFixture())throw new HttpError(401,"ONESA_SESSION_REQUIRED","Sign in to your verified Onesa account before confirming Engineering access.");
       if(source)await lockAccountSession(c,source);
       const accountId=await proofAccount();
       const {config}=configured();
@@ -505,6 +511,10 @@ export async function registerEngineeringIdentity(
         );
         if (action === "link") {
           const email = input.email!.toLowerCase();
+          if (!legacyEngineeringFixture()) {
+            const choice = await engineeringLinkChoice(req, config.externalEmails);
+            if (!choice || choice.email !== email) throw new HttpError(403, "ENGINEERING_ACCOUNT_PROOF", "Sign in to the matching Onesa account before requesting a membership proof.");
+          }
           await limits.limit(
             "engineering-link-email:" + emailRateKey(config, email),
             3,
