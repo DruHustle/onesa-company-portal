@@ -6,19 +6,17 @@ import type { IdentityConfig } from "./config.js";
 /** One established protocol implementation, explicitly configured confidential product clients. */
 export function createIdentityProvider(config: IdentityConfig) {
   const policy = interactionPolicy.base();
-  const farmer = config.clients.find((client) => client.product === "farmer");
-  if (farmer) {
-    // An issuer cookie can outlive the Portal session that authorized its Farmer grant.
-    // Prompt before issuing another code with that expired source.
-    policy.get("login")!.checks.add(new interactionPolicy.Check(
-      "farmer_source_session_expired", "Fresh Portal authentication is required for Smart Farmer",
-      async ({ oidc }) => {
-        if (oidc.client?.clientId !== farmer.clientId || !oidc.session?.accountId) return false;
-        const grant = oidc.session.grantIdFor(farmer.clientId);
-        return grant ? !(await liveGrantSession(grant, oidc.session.accountId)) : false;
-      },
-    ));
-  }
+  // The issuer cookie can outlive the Portal session that authorized this client's grant.
+  policy.get("login")!.checks.add(new interactionPolicy.Check(
+    "portal_source_session_expired", "Fresh Portal authentication is required",
+    async ({ oidc }) => {
+      const session = oidc.session;
+      const clientId = oidc.client?.clientId;
+      if (!session?.accountId || !clientId) return false;
+      const grant = session.grantIdFor(clientId);
+      return grant ? !(await liveGrantSession(grant, session.accountId)) : false;
+    },
+  ));
   const options: Configuration = {
     adapter: IdentityAdapter,
     clients: config.clients.map((client) => ({

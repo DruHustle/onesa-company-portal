@@ -1982,3 +1982,24 @@ for (const [product, role] of [["logistics", "user"], ["pasofi", "customer"], ["
     assert.equal((await inspect(repeated.token, index)).json().active, false);
   });
 }
+
+for (const [index, clientConfig] of config.clients.entries()) {
+  test(`An expired Portal session requires fresh administrator authentication for ${clientConfig.product}`, async () => {
+    const client = browser();
+    const original = await complete(await authorization("admin", index, client));
+    assert.equal((await inspect(original.token, index)).json().active, true);
+
+    await db.query("UPDATE identity_sessions SET expires_at = now() - interval '1 second' WHERE user_id = $1", [admin]);
+    await db.query("UPDATE sessions SET expires_at = now() - interval '1 second' WHERE user_id = $1", [admin]);
+    assert.equal((await inspect(original.token, index)).json().active, false);
+
+    const login = await authorization("admin", index, client);
+    assert.equal(login.details.account, null);
+    const renewed = await complete(login);
+    const claims = (await inspect(renewed.token, index)).json();
+    assert.equal(claims.active, true);
+    assert.equal(claims.sub, admin);
+    assert.ok(claims.amr.includes("otp"));
+    assert.equal((await inspect(original.token, index)).json().active, false);
+  });
+}
