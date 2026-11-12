@@ -670,17 +670,21 @@
       },
       {
         "path": "onesa-company-portal-frontend/public/images/robot-workspace-example-light.png",
-        "bytes": 116126,
-        "sha256": "fa8859bf1f044698a9d82ad108cfb9a7a82c84b24f21468b668e2e2e90025816",
+        "bytes": 80454,
+        "sha256": "9569504d52ac790e3db0a5799f631bf555c4399fee2dcb0344b3261f3d3c5c83",
         "product": "robot",
-        "scheme": "light"
+        "scheme": "light",
+        "captured_at": "2026-11-12",
+        "source_revision": "12a7bfddd465d564976a123d2e896fd407a2bbbd"
       },
       {
         "path": "onesa-company-portal-frontend/public/images/robot-workspace-example-dark.png",
-        "bytes": 118349,
-        "sha256": "6208a295108c23e3fcbb0e100af28fbaf72b856678ad10291ff533782f151244",
+        "bytes": 81295,
+        "sha256": "99de8dcc0db448f793b9b66f1d174bc070878ca4b3ff7d564e50ff5133147620",
         "product": "robot",
-        "scheme": "dark"
+        "scheme": "dark",
+        "captured_at": "2026-11-12",
+        "source_revision": "12a7bfddd465d564976a123d2e896fd407a2bbbd"
       }
     ]
   },
