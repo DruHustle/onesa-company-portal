@@ -70,9 +70,15 @@ test("The collector maps deployed health contracts to the administrator's observ
     const health = new Map([
       ["https://factory.onesa.eu/health/live", [{ status: "live" }, 200]],
       ["https://robot.onesa.eu/api/v1/health", [{ status: "live", mode: "simulation" }, 200]],
+      ["https://robot.onesa.eu/api/v1/ready", process.env.ROBOT_FIXTURE_READY === "1"
+        ? [{ status: "ready", mode: "simulation", physical_actuation: false }, 200]
+        : [{ detail: "Remote simulation journal requires recovery" }, 503]],
       ["https://mobile.onesa.eu/api/healthz", [{ status: "ok", serviceStatus: "prelaunch" }, 200]],
       ["https://api.pasofi.onesa.eu/health/live", [{ status: "ok", service: "gateway" }, 200]],
       ["https://portal.onesa.eu/api/v1/health", [{ status: "ok" }, 503]],
+      ["https://platform.onesa.eu/ready", process.env.AI_FIXTURE_READY === "1"
+        ? [{ status: "ready", backend: "cloudflare" }, 200]
+        : [{ detail: "dependency_unavailable" }, 503]],
       ["https://platform.onesa.eu/health", [{ status: "ok", source_commit: "a".repeat(40) }, 200]],
       ["https://logistics.onesa.eu/health", [{ status: "ok", release: { revision: "b".repeat(40) } }, 200]],
       ["https://drone.onesa.eu/api/v1/health", [{ status: "live", source_commit: "c".repeat(40) }, 200]],
@@ -84,16 +90,25 @@ test("The collector maps deployed health contracts to the administrator's observ
     };
   `);
   const collector = new URL("../../scripts/observe-infrastructure.mts", import.meta.url);
-  execFileSync(process.execPath, ["--import", "tsx", "--import", transport, collector.pathname, file], { timeout: 10000 });
+  const collect = (robotReady: boolean, aiReady: boolean) => execFileSync(process.execPath,
+    ["--import", "tsx", "--import", transport, collector.pathname, file],
+    { timeout: 10000, env: { ...process.env, AI_FIXTURE_READY: aiReady ? "1" : "0", ROBOT_FIXTURE_READY: robotReady ? "1" : "0" } });
+  collect(false, true);
   const result = await infrastructureOverview(file);
   assert.equal(result.observationState, "loaded");
   const states = Object.fromEntries(result.services.map(service => [service.id, service.status]));
   assert.deepEqual(states, {
-    portal: "unavailable", ai: "available", robot: "available", farmer: "unavailable",
+    portal: "unavailable", ai: "available", robot: "unavailable", farmer: "unavailable",
     drone: "unavailable", logistics: "available", mobile: "available", factory: "available",
     pasofi: "available", kubernetes: "not_observed", portainer: "not_observed",
   });
   assert.deepEqual(result.services.filter(service => service.revision !== null).map(service => [service.id, service.revision]), [
     ["ai", "a".repeat(40)], ["logistics", "b".repeat(40)],
   ]);
+  collect(true, false);
+  const recovered = await infrastructureOverview(file);
+  assert.equal(recovered.services.find(service => service.id === "robot")?.status, "available");
+  const ai = recovered.services.find(service => service.id === "ai");
+  assert.equal(ai?.status, "unavailable");
+  assert.equal(ai?.revision, null);
 });

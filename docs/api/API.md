@@ -376,8 +376,12 @@ unobserved status. Observations at least five minutes old display stale status,
 retaining the previous result separately.
 
 `scripts/observe-infrastructure.mts` performs only credential-free public API
-liveness probes with bounded timeouts and fixed destinations. Factory and Robot return
-`live` for a responsive process. The Mobile prelaunch API and the PasoFi public
+probes with bounded timeouts and fixed destinations. Factory returns `live` for a
+responsive process. Robot uses its operator readiness endpoint at `/api/v1/ready`.
+A Robot journal recovery failure produces an unavailable observation even while
+the process responds to liveness checks. Simulation readiness does not certify
+physical operation. AI Platform must pass both process health and inference readiness
+at `/ready` before the dashboard reports availability. The Mobile prelaunch API and the PasoFi public
 gateway each have their own liveness endpoint. Availability at these endpoints
 applies only to the responding API or gateway. Successful AI Platform and Logistics
 responses can provide their own backend Git SHA in the revision field. Other
