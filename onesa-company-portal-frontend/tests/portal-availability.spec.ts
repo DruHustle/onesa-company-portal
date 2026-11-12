@@ -9,7 +9,7 @@ test("an unavailable session service offers a retry and sends a signed-out visit
     return route.fulfill({status,contentType:"application/json",body:JSON.stringify({error:{code:"SYNTHETIC",message:"Synthetic session result",requestId:"session-fixture"}})});
   });
   await page.goto("/admin#privacy/overview");
-  await expect(page.getByRole("alert")).toContainText("We could not check your Portal session");
+  await expect(page.getByRole("alert").filter({hasText:"We could not check your Portal session"})).toBeVisible();
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
   const entry = page.getByRole("link",{name:"Continue with Onesa"});
   await expect(entry).toHaveAttribute("href","/account?next=/admin#workspace=%23privacy%2Foverview");
