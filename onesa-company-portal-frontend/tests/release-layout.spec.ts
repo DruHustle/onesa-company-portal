@@ -17,9 +17,10 @@ for(const [hour,mode] of [[20,'light'],[12,'dark']] as const) test(`release audi
    const policy=response?.headers()['content-security-policy']||'';
    expect(policy).toContain("'nonce-");expect(policy).toContain("frame-ancestors 'none'");
    expect(policy).not.toContain("'unsafe-eval'");
-expect(await page.evaluate(()=>getComputedStyle(document.documentElement).colorScheme)).toBe(mode);
+   if(route==='/admin') await expect(page).toHaveURL('/account?next=/admin');
+   await expect(page.locator('html')).toHaveCSS('color-scheme',mode);
    await expect(page.locator('.appearance-control')).toHaveCount(0);
-await expect(page.locator('main')).toBeVisible();
+   await expect(page.locator('main')).toBeVisible();
    const fits=await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth);expect(fits,`${mode} ${route} at ${width}px`).toBe(true);
    const violations=(await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze()).violations;
    expect(violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)}))).toEqual([]);
