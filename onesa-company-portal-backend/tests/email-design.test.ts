@@ -50,3 +50,18 @@ test('security codes never appear in the inbox preview and recovery retains MFA 
  const recovery=brandedMailV2('Onesa password recovery','Password reset token: '+'x'.repeat(43)+'\nIt expires in 30 minutes. MFA remains required.').html;
  assert.match(recovery,/MFA remains required/);assert.match(recovery,/word-break:break-all/);
 });
+
+test('canonical account mail renders only the approved action, with proof in the fragment', () => {
+  const fragment = '#access-link=' + 'a'.repeat(64);
+  const registration = 'Complete your Onesa registration', signIn = 'Your Onesa sign-in link';
+  function render(subject: string, path: string) {
+    const intro = subject === registration ? 'verify your email and complete registration' : 'sign in';
+    return brandedMailV2(subject, 'Open this Onesa link to ' + intro + ':\n' + origin + path + fragment + '\nUse this link once.', origin).html;
+  }
+  for (const [subject, path] of [[registration, '/account/confirm?approval=1'], [signIn, '/account?next=/admin'], [signIn, '/account?docs=synthetic_interaction']]) {
+    assert.ok(render(subject, path).includes('href="' + origin + path + fragment + '"'));
+  }
+  for (const path of ['/account?docs=short', '/account?next=//example.invalid', '/account?docs=synthetic_interaction&next=/admin', '/account?docs=synthetic_interaction&docs=another_uid', '/account/confirm?approval=1']) {
+    assert.ok(!render(signIn, path).includes('href="' + origin + '/account'));
+  }
+});

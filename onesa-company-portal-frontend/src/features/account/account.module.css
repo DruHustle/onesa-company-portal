@@ -44,3 +44,6 @@
 @media(max-width:760px){.grid{grid-template-columns:1fr}.header{margin-bottom:32px}.formGrid{grid-template-columns:1fr}.product{padding:24px}.accountLinks>*{flex:1 1 100%}.toolbar{align-items:flex-start}.shell{padding-top:20px}.brand span{margin-left:9px}}
 @media(prefers-reduced-motion:reduce){.shell *{scroll-behavior:auto!important}}
 @media(forced-colors:active){.product,.card,.person,.badge,.notice{border:1px solid CanvasText}.shell :is(a,button,input,select,summary):focus-visible{outline-color:Highlight}}
+.card :is(input,button,select):disabled{cursor:not-allowed;background:var(--onesa-surface);color:var(--onesa-muted);border-color:var(--onesa-divider)}
+.card :global(.signin-remember){display:flex;align-items:center;gap:12px}
+.card :global(.signin-remember) input{width:24px;min-height:24px;height:24px}

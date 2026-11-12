@@ -25,7 +25,19 @@ PREFIX = "onesa-company-portal-frontend/"
 # Additional historical identity inputs are the exact bytes at Portal 2686929ba0a8e1491dd45734bf4156c46eeebb7e.
 # The historical access manager is preserved verbatim from Portal f104f81.
 # The historical Admin screen is also from f104f81, before infrastructure monitoring.
+# Additional shared-entry predecessors are public blobs from Portal a746c55e.
 REVIEWED_FILES = {
+    PREFIX + "scripts/test-engineering-sign-in.mjs": (55610, "33b6b31a69763986837b3a902328534404e6ceb56ea3e33bb86a9068b85afd1c"),
+    PREFIX + "src/app/access/register/page.tsx": (595, "fe8918cfa167c6efd48e006f680c63c73fdbe25f2315780b79f648d36774169c"),
+    PREFIX + "src/app/account/confirm/page.tsx": (137, "7a5d4935e7c1e36b643f72acc1ea0d3f9e47708e5ce14b2e2536e70a86d8fa21"),
+    PREFIX + "src/app/account/page.tsx": (122, "5a8e96097730cc9ac1495c85e65ac7cf35d48d36cbbebaca38ab5811ae63ed58"),
+    PREFIX + "src/app/account/register/page.tsx": (138, "cb3486c1924d1809bdef9ca25940342ad54ad815ce1f9ad3e90691d9084a6787"),
+    PREFIX + "src/app/account/security/page.tsx": (130, "665df823dc94eb83a0b66874ff60250476657c247890893c1cf709bc549f733e"),
+    PREFIX + "src/features/access/authenticator-setup.tsx": (7258, "ba6325d91c1e839f2cf162eb8cdd6a56a32914f538ec7244209bc02cf819cb86"),
+    PREFIX + "src/features/account/account.module.css": (4659, "d8505f9ea39cb9e505e7c6285c308947d77594c47a167cb709ce6d2880d06ad9"),
+    PREFIX + "src/features/account/security.tsx": (7231, "bbdeb339758445978c49ae30345424ee487a45e6003617a35de6e59a1102bf83"),
+    PREFIX + "src/lib/account-return.ts": (1482, "5094d6ce4bcd29bc05f7d1bc0b6f73666af6406eb6a7b1094f363e1a973a9043"),
+    PREFIX + "unit/account-return.test.ts": (2734, "10a0af98ef261f9b282d039b4a210c8701c6be2ee15b7cf415857dd8380cfa5f"),
     PREFIX + "src/features/admin/portal.tsx": (67332, "deeb9722ccf7434a2835e24f9e2425ea2fcab7c32a46da9dc0306a7621fdcd6e"),
     PREFIX + "src/features/account/access-manager.tsx": (11966, "24400fcf47357b6e7951a40a36bf3b9c5e28ac6c97099cd837cfe0fe3471f6d4"),
     PREFIX + "src/features/engineering/sign-in.tsx": (16421, "2c69fe4bc96f695561d8a38493dedd8892bee85e6e2fb218a8db25ab078c7499"),
@@ -42,6 +54,17 @@ REVIEWED_FILES = {
     PREFIX + "src/lib/api/generated/schema.d.ts": (787032, "e84ad11bf072ba1c2aee94b70af9ea73e98d8dea426979d55e09479d23cf37f8"),
 }
 REVIEWED_BLOBS = {
+    PREFIX + "scripts/test-engineering-sign-in.mjs": "77e37248f103438cd06cd2a5d58cbdd836b997de",
+    PREFIX + "src/app/access/register/page.tsx": "fabdc98f4f2434cb9c67cd17a4718e084151f2b1",
+    PREFIX + "src/app/account/confirm/page.tsx": "9a5070ea2ae63a7118c9337045f2d7e5d36a6646",
+    PREFIX + "src/app/account/page.tsx": "6776558fa1264785b071e829c608639aee3f6ec6",
+    PREFIX + "src/app/account/register/page.tsx": "3da937d2e3d9c018f68e64625c6d1c05a4f25e7b",
+    PREFIX + "src/app/account/security/page.tsx": "e9b32d9282fa6708bba8e9a36f3be08a74e7a44f",
+    PREFIX + "src/features/access/authenticator-setup.tsx": "20f909f78ea1643f8b2f4a1b16f3618a363a2089",  # gitleaks:allow -- Git blob ID of immutable public source fixture.
+    PREFIX + "src/features/account/account.module.css": "bd9d7b06600c5c67280ba91795584be3d354f109",
+    PREFIX + "src/features/account/security.tsx": "e60235b1d98b12f66c65653e639d3aa70fde99ba",
+    PREFIX + "src/lib/account-return.ts": "e7c21407031de4becde6c01cf71c83dcf26906b7",
+    PREFIX + "unit/account-return.test.ts": "05660c3945eeda53fd154801a931f773ae8d5ea1",
     PREFIX + "src/features/admin/portal.tsx": "78ff42da23691e12c28be6ac4439d1cb694213db",
     PREFIX + "src/features/account/access-manager.tsx": "f84c3503551a5897befac16730895a59bd26effb",  # gitleaks:allow -- Git blob of the reviewed public access manager.
     PREFIX + "src/features/engineering/sign-in.tsx": "ed871e21ef90c4be1e214cc3d1a75a968216cb76",

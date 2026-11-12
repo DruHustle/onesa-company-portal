@@ -109,16 +109,19 @@ async function mailToken(
   const p = jobs[0].payload;
   assert.equal(p.text, undefined);
   assert.ok(!JSON.stringify(p).includes("#access-link="));
-  const raw = decrypt(p.encryptedText).match(
-    /#access-link=([a-f0-9]{64})/,
-  )?.[1];
+  const url = new URL(decrypt(p.encryptedText).split("\n")[1]);
+  const raw = /^#access-link=([a-f0-9]{64})$/.exec(url.hash)?.[1];
   assert.ok(raw);
+  assert.equal(url.origin, process.env.PUBLIC_ORIGIN);
   const stored = (
-    await db.query("SELECT token_hash FROM access_links WHERE token_hash=$1", [
+    await db.query("SELECT token_hash,purpose,interaction_uid FROM access_links WHERE token_hash=$1", [
       hash(raw),
     ])
   ).rows[0];
   assert.ok(stored);
+  const expected = stored.purpose === "registration" ? "/account/confirm?approval=1" :
+    stored.purpose === "admin" ? "/account?next=/admin" : "/account?docs=" + stored.interaction_uid;
+  assert.equal(url.pathname + url.search, expected);
   assert.notEqual(stored.token_hash, raw);
   return raw;
 }
@@ -212,6 +215,12 @@ test("Already-approved address completes registration without another decision, 
   ).rows[0];
   assert.equal(u.role, "administrator");
   assert.ok(passwordValid(chosenPassword, u.password_hash));
+  const profile = await db.query(
+    `SELECT p.email_verified_at = r.email_verified_at AS carries_proof
+     FROM identity_profiles p JOIN access_registrations r ON r.email=$2 AND r.audience='admin'
+     WHERE p.user_id=$1`, [u.id, u.email],
+  );
+  assert.equal(profile.rows[0]?.carries_proof, true);
   await requestAdminLink(u.email);
   await assert.rejects(
     consumeAdminLink(

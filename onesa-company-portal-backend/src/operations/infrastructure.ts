@@ -12,7 +12,7 @@ import { error } from "../api/contracts.js";
 export const serviceRegistry = [
   { id: "portal", name: "Company Portal", hosting: "Vercel frontend · Oracle API", url: "https://portal.onesa.eu", health: "https://portal.onesa.eu/api/v1/health", dependencies: ["Portal PostgreSQL", "private file storage", "email", "scanner"] },
   { id: "ai", name: "Onesa AI Platform", hosting: "Vercel frontend · Oracle API", url: "https://platform.onesa.eu", health: "https://platform.onesa.eu/health", dependencies: ["Portal identity", "PostgreSQL/pgvector", "configured inference provider"] },
-  { id: "robot", name: "Onesa Robot", hosting: "Vercel frontend · independent Robot API", url: "https://robot.onesa.eu", health: "https://robot.onesa.eu/api/v1/health", dependencies: ["Portal identity", "Robot API", "supervised device bridge"] },
+  { id: "robot", name: "Onesa Robot", hosting: "Vercel frontend · independent Robot API", url: "https://robot.onesa.eu", health: "https://robot.onesa.eu/api/v1/ready", dependencies: ["Portal identity", "Robot API", "supervised device bridge"] },
   { id: "farmer", name: "Smart Farmer", hosting: "Independent Farmer service; hosting requires readback", url: "https://farmer.onesa.eu", health: "https://farmer.onesa.eu/health", dependencies: ["Portal identity", "Farmer PostgreSQL", "field gateways"] },
   { id: "drone", name: "Onesa Drone", hosting: "Vercel frontend · independent Drone API", url: "https://drone.onesa.eu", health: "https://drone.onesa.eu/api/v1/health", dependencies: ["Portal identity", "Drone database", "supported aircraft interface"] },
   { id: "logistics", name: "Smart Logistics", hosting: "Vercel frontend · Oracle services", url: "https://logistics.onesa.eu", health: "https://logistics.onesa.eu/health", dependencies: ["Portal identity", "Logistics database", "warehouse/GPS integrations"] },
@@ -75,7 +75,7 @@ export async function infrastructureOverview(file = process.env.INFRASTRUCTURE_O
         status: !observed ? "not_observed" : now - Date.parse(observed.observedAt) >= 300000 ? "stale" : observed.state,
         lastObservedState: observed?.state ?? null, observedAt: observed?.observedAt ?? null,
         source: observed?.source ?? null, environment: observed?.environment ?? null, revision: observed?.revision ?? null,
-        scope: observed?.source === "public_http" ? "Public API liveness only; account, provider and customer journeys require separate acceptance." : "Private runtime observation required for workloads, storage and operational readiness.",
+        scope: observed?.source === "public_http" ? "Public API observation. Account, provider and customer journeys require separate acceptance." : "Private runtime observation required for workloads, storage and operational readiness.",
       };
     }),
   });
