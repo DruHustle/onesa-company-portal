@@ -73,6 +73,7 @@ const api = http.createServer(async (req, res) => {
     const input = raw ? JSON.parse(raw) : null;
     if (req.method !== "GET") state.writes.push({ path, method: req.method, input, csrf: req.headers["x-csrf-token"] });
     if (state.gate && path === state.gate.path) await state.gate.promise;
+    if (path === "/api/v1/account/config" && state.configMissing) return fail(404, "NOT_FOUND", "Route not found");
     if (path === "/api/v1/account/config") return send(200, { enabled: state.enabled !== false, applications: (state.catalog || catalog()).filter(item => item.connected).map(({product}) => ({product})), ...(state.legacyCatalog ? {} : {catalog: state.catalog || catalog()}) });
     if (path === "/api/v1/auth/me") return fail(401, "UNAUTHENTICATED", "Protected staff session required");
     if (path === "/api/v1/access/link") return send(202, {ok:true});
@@ -657,12 +658,41 @@ try {
         assert.equal(state.writes[0].input.token, proof); receipts.push({ engine, flow: "fragment-safe-explicit-password-reset", language });
       });
     }
-    await isolated({ enabled: false }, async (page, state) => {
-      await page.goto(origin + "/account");
-      await expect(page.getByRole("heading", { name: "Shared sign-in is being prepared", exact: true })).toBeVisible();
-      await expect(page.locator("form")).toHaveCount(0); assert.equal(state.writes.length, 0);
-      receipts.push({ engine, flow: "disabled-service" });
+    await isolated({}, async (page, state) => {
+      const path = "/account/sign-in/synthetic_product_return";
+      await page.goto(origin + path);
+      await page.getByRole("link", {name: "New to Onesa? Create one account"}).click();
+      await expect(page).toHaveURL(origin + "/account/register?interaction=synthetic_product_return");
+      await page.getByLabel("Your name", {exact: true}).fill("Synthetic Product Member");
+      await page.getByLabel("Email address", {exact: true}).fill("member@example.test");
+      await page.getByRole("button", {name: "Email my verification link"}).click();
+      await expect(page.getByRole("status")).toContainText("Check your email");
+      await page.goto(origin + "/account/confirm#access-link=" + proof);
+      await page.getByLabel("Password", {exact:true}).fill(password);
+      await page.getByLabel("Confirm password", {exact:true}).fill(password);
+      await page.getByRole("button", {name:"Verify your email"}).click();
+      await page.getByRole("link", {name:"Already registered? Sign in"}).click();
+      await expect(page).toHaveURL(origin + path);
+      await expect(page.getByLabel("Email address", {exact:true})).toBeEnabled();
+      assert.equal(state.writes.length, 2);
+      receipts.push({engine, flow:"signup-confirm-return-to-product-interaction"});
     });
+    for (const [entry, failure] of [["/account", { enabled: false }], ["/account/register", { configMissing: true }], ["/account/confirm#access-link=" + proof, { configMissing: true }]]) {
+      await isolated(failure, async (page, state) => {
+        await page.goto(origin + entry);
+        await expect(page.getByRole("heading", { name: "Onesa Account is temporarily unavailable" })).toBeVisible();
+        await expect(page.getByText(/use your Company Portal account/i)).toBeVisible();
+        await expect(page.locator("form")).toHaveCount(0);
+        assert.equal(state.writes.length, 0);
+        state.enabled = true;
+        state.configMissing = false;
+        await page.getByRole("button", { name: "Try again" }).click();
+        const field = entry.includes("/confirm") ? "Confirm password" : "Email address";
+        await expect(page.getByLabel(field, { exact: true })).toBeEnabled();
+        assert.equal(state.writes.length, 0);
+        receipts.push({ engine, flow: "central-account-outage-and-retry", path: entry.split("#")[0] });
+      });
+    }
     console.log(JSON.stringify({ browser: engine, version, supplemental: engine === "chromium" && Boolean(supplemental), completedFlows: receipts.filter(item => item.engine === engine).length }));
     await browser.close(); browser = undefined;
   }

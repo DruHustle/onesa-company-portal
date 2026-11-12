@@ -55,3 +55,11 @@ test("staff sign-in restores only Portal workspace filters and privacy anchors",
     assert.equal(adminWorkspaceReturn(hash), "/admin");
   }
 });
+
+test("Product registration retains one validated interaction identifier", () => {
+  const query = "?interaction=synthetic_product_123";
+  assert.equal(accountDestination(query), "/account" + query);
+  for (const value of [query + "&next=/admin", query + "&interaction=x", "?interaction=short", "?interaction=%2Fadmin", "?interaction=https://example.invalid"]) {
+    assert.equal(accountDestination(value), "/account");
+  }
+});

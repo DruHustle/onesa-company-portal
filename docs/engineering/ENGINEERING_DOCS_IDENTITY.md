@@ -80,3 +80,5 @@ rolling out the matching API.
 Existing, disabled, previously rejected and conflicting identities stay in their
 existing review or recovery paths. The Cloudflare Access policy must allow the
 individual email address at the protected Docs hostname.
+
+For a connected product, opening registration keeps the original authorization interaction on Company Portal. After email verification, continue from that browser to resume the product request. When email opens in another browser, finish verification there and return to the originating tab. If the interaction has expired, start sign-in again from the intended product screen.

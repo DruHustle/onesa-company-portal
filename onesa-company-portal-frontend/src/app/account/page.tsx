@@ -1,10 +1,15 @@
 import { notFound, redirect } from "next/navigation";
 import { OnesaAccount } from "@/features/account/account";
 import { EngineeringSignIn } from "@/features/engineering/sign-in";
-import { accountReturnPath, docsAccountPath } from "@/lib/account-return";
+import { accountReturnPath, docsAccountPath, productAccountPath } from "@/lib/account-return";
 
 export default async function Account({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { docs, next, returnTo, reauthenticate } = await searchParams;
+  const params = await searchParams;
+  const { docs, next, returnTo, reauthenticate, interaction } = params;
+  if (interaction !== undefined) {
+    if (Object.keys(params).length !== 1 || typeof interaction !== "string" || !productAccountPath(interaction)) notFound();
+    redirect("/account/sign-in/" + interaction);
+  }
   const accessEnabled = process.env.ACCESS_REGISTRATION_ENABLED === "true";
   if (typeof returnTo === "string" && docs === undefined && next === undefined) {
     const legacy = accountReturnPath(new URLSearchParams({returnTo}).toString());
