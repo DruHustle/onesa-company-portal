@@ -8,6 +8,18 @@ assert.ok(['127.0.0.1','localhost'].includes(origin.hostname),'Only the isolated
 function request(host,path,extra={}){return new Promise((resolve,reject)=>{const req=http.get(new URL(path,origin),{headers:{Host:host,'X-Forwarded-Host':host,'X-Forwarded-Proto':'https',...extra}},res=>{const chunks=[];res.on('data',chunk=>chunks.push(chunk));res.on('end',()=>resolve({status:res.statusCode,headers:res.headers,body:Buffer.concat(chunks)}));});req.setTimeout(25000,()=>req.destroy(new Error('Local probe timed out')));req.on('error',reject);});}
 const cases=[['portal.onesa.eu','/',307,'https://portal.onesa.eu/admin'],['onesa.eu','/privacy-policy',308,'/en/privacy'],['onesa.eu','/admin/users',307,'https://portal.onesa.eu/admin/users'],['portal.onesa.eu','/en/contact',307,'https://onesa.eu/en/contact'],['unknown.invalid','/',421],['onesa.eu','/api/v1/auth/me',403],['portal.onesa.eu','/api/v1/auth/me',503]];
 for(const [host,path,status,location] of cases){const response=await request(host,path);assert.equal(response.status,status,`${host}${path}`);if(location)assert.equal(response.headers.location,location);console.log(`PASS ${host}${path} → ${status}`);}
+
+for (const path of ['/account', '/account/register', '/account/register?next=%2Fengineering']) {
+  const company = await request('onesa.eu', path);
+  assert.equal(company.status, 307, path);
+  assert.equal(company.headers.location, 'https://portal.onesa.eu' + path, path);
+
+  const portal = await request('portal.onesa.eu', path);
+  assert.equal(portal.status, 200, path);
+  assert.equal(portal.headers.location, undefined, path);
+  assert.match(portal.body.toString(), /<title>Onesa Account(?: \| [^<]+)?<\/title>/, path);
+  console.log(`PASS central account entry on the Portal hostname ${path}`);
+}
 const spoof=await request('unknown.invalid','/',{'X-Forwarded-Host':'portal.onesa.eu'});assert.equal(spoof.status,421);
 for(const host of ['onesa.eu','portal.onesa.eu']){const response=await request(host,'/favicon.ico');assert.equal(response.status,200,`${host} favicon`);assert.match(response.headers['content-type'],/image\/(x-icon|vnd.microsoft.icon)/);assert.equal(createHash('sha256').update(response.body).digest('hex'),createHash('sha256').update(readFileSync('public/favicon.ico')).digest('hex'));console.log(`PASS ${host} same-origin favicon`);}
 for(const [host,path] of [['onesa.eu','/en'],['portal.onesa.eu','/admin']]){const response=await request(host,path);assert.equal(response.status,200);assert.match(response.body.toString(),/<link[^>]*rel="icon"[^>]*href="\/favicon\.ico\?v=onesa-icons-1"/);console.log(`PASS ${host} explicit favicon metadata`);}
