@@ -475,6 +475,42 @@ try {
       await expect(page.getByRole("link", {name: "Already registered? Sign in"})).toHaveAttribute("href", canonicalDocs);
       receipts.push({engine, flow: "old-docs-entry-shares-account-signup-and-verification-return"});
     });
+    await isolated({session:session()}, async (page, state) => {
+      let membership = "available", enrollmentRequests = 0, continuations = 0;
+      await page.route(origin + docsReturn + "/details", route => route.fulfill({json: {csrf:proof, ...(membership === "approved" ? {onesaAccount:{email:state.session.account.email}} : {onesaEnrollment:membership})}}));
+      await page.route(origin + docsReturn + "/enroll", route => {
+        assert.deepEqual(route.request().postDataJSON(), {csrf:proof});
+        membership = "pending"; enrollmentRequests++;
+        return route.fulfill({json:{status:"pending"}});
+      });
+      await page.route(origin + docsReturn + "/session", route => {
+        assert.equal(membership, "approved"); continuations++;
+        return route.fulfill({json:{continuePath:"/api/v1/engineering-identity/auth/synthetic_central_return"}});
+      });
+      await page.route("**/api/v1/engineering-identity/auth/synthetic_central_return", route => route.fulfill({contentType:"text/html", body:"<html lang=en><h1>Synthetic Docs continuation</h1></html>"}));
+      await page.goto(origin + docsReturn);
+      await expect(page).toHaveURL(origin + canonicalDocs);
+      await page.getByRole("button", {name:"Use my Onesa account for Docs"}).click();
+      await expect(page.getByRole("status")).toContainText("owner is reviewing");
+      assert.equal(enrollmentRequests, 1); assert.equal(continuations, 0);
+      membership = "approved"; // Independent owner decision in this isolated API fixture.
+      await page.reload();
+      await expect(page.getByLabel("Password", {exact:true})).toHaveCount(0);
+      await page.getByRole("button", {name:"Continue with Onesa",exact:true}).click();
+      await expect(page.getByRole("heading", {name:"Synthetic Docs continuation"})).toBeVisible();
+      assert.equal(continuations, 1); assert.equal(state.writes.length, 0);
+      receipts.push({engine, flow:"ordinary-member-requests-Docs-and-continues-after-owner-approval"});
+    });
+    await isolated({session:session()}, async (page, state) => {
+      await page.route(origin + docsReturn + "/details", route => route.fulfill({json: {csrf:proof}}));
+      await page.goto(origin + docsReturn);
+      await expect(page.getByRole("status")).toContainText("Engineering Docs access is unavailable");
+      await expect(page.getByLabel("Password", {exact:true})).toHaveCount(0);
+      await page.getByRole("link", {name:"Use another account"}).click();
+      await expect(page.getByLabel("Password", {exact:true})).toBeEnabled();
+      assert.equal(state.writes.length, 0);
+      receipts.push({engine, flow:"denied-Docs-session-explained-without-credential-loop"});
+    });
     for (const fresh of [false, true]) await isolated({session: session(), mfa: true}, async (page, state) => {
       await docsFixture(page, state);
       await page.goto(origin + "/account?returnTo=" + encodeURIComponent(docsReturn) + (fresh ? "&reauthenticate=1" : ""));

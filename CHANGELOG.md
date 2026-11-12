@@ -6,6 +6,8 @@
   individual Docs approvals and browser-bound authorization exchanges continue
   through the shared entry. Previously issued email links remain usable.
 
+- Use operator readiness for Robot and inference readiness for AI in Admin Infrastructure. A live process can now report unavailable when journal recovery or an inference dependency blocks work.
+
 - Recognize the live status reported by the Factory and Robot APIs in Admin Infrastructure,
   observe the public Mobile API and PasoFi gateway, and show the responding AI Platform
   and Logistics backend revisions when supplied.
