@@ -36,6 +36,7 @@ const config = {
     ],
   },
 };
+process.env.ENGINEERING_LEGACY_TEST_FIXTURE = "true";
 process.env.ENGINEERING_IDENTITY_ENABLED = "true";
 process.env.ENGINEERING_OIDC_CONFIG_B64 = Buffer.from(
   JSON.stringify(config),
