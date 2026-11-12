@@ -15,7 +15,7 @@ const mark="M5.43,13.12 5.58,13.12 5.58,12.39 5.72,12.39 5.72,11.67 5.87,11.67 6
 const products=[
  {id:'company',title:'Onesa Company',accent:'#407cce',frame:'<rect x="1" y="1" width="30" height="30" rx="7"/>'},
  {id:'ai',title:'Onesa AI Platform',accent:'#9c90ed',frame:'<path d="M13 2Q16-1 19 2L30 13Q33 16 30 19L19 30Q16 33 13 30L2 19Q-1 16 2 13Z"/>'},
- {id:'robot',title:'Onesa AI Robot',accent:'#2da8a0',frame:'<circle cx="16" cy="16" r="15"/>'},
+ {id:'robot',title:'Onesa Robot',accent:'#2da8a0',frame:'<circle cx="16" cy="16" r="15"/>'},
  {id:'docs',title:'Onesa Developer Docs',accent:'#a1b0c6',frame:'<path d="M3 1H23L31 9V31H3Z"/><path d="M23 1V9H31" fill="none"/>'},
 ];
 const output=process.argv[2]?resolve(process.argv[2]):join(root,'onesa-company-portal-frontend/public/brand/icons/v1');
