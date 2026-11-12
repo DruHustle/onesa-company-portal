@@ -60,7 +60,7 @@ REVIEWED_BLOBS = {
     PREFIX + "src/app/account/page.tsx": "6776558fa1264785b071e829c608639aee3f6ec6",
     PREFIX + "src/app/account/register/page.tsx": "3da937d2e3d9c018f68e64625c6d1c05a4f25e7b",
     PREFIX + "src/app/account/security/page.tsx": "e9b32d9282fa6708bba8e9a36f3be08a74e7a44f",
-    PREFIX + "src/features/access/authenticator-setup.tsx": "20f909f78ea1643f8b2f4a1b16f3618a363a2089",
+    PREFIX + "src/features/access/authenticator-setup.tsx": "20f909f78ea1643f8b2f4a1b16f3618a363a2089",  # gitleaks:allow -- Git blob ID of immutable public source fixture.
     PREFIX + "src/features/account/account.module.css": "bd9d7b06600c5c67280ba91795584be3d354f109",
     PREFIX + "src/features/account/security.tsx": "e60235b1d98b12f66c65653e639d3aa70fde99ba",
     PREFIX + "src/lib/account-return.ts": "e7c21407031de4becde6c01cf71c83dcf26906b7",
