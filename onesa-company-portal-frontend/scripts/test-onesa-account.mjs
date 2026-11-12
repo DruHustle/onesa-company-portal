@@ -448,8 +448,13 @@ try {
     });
     const docsReturn = "/engineering/sign-in/synthetic_central_return";
     const canonicalDocs = "/account?docs=synthetic_central_return";
+    const onesaSignInPath = "/account?returnTo=" + encodeURIComponent(docsReturn);
     async function docsFixture(page, state) {
-      await page.route(origin + docsReturn + "/details", route => route.fulfill({json: {csrf: proof, ...(state.session ? {onesaAccount: {email: state.session.account.email}} : {})}}));
+      await page.route(origin + docsReturn + "/details", route => route.fulfill({json: {
+        csrf: proof,
+        onesaSignInPath,
+        ...(state.session ? {onesaAccount: {email: state.session.account.email}} : {}),
+      }}));
       await page.route(origin + docsReturn + "/session", route => {
         assert.equal(route.request().postDataJSON().csrf, proof);
         return route.fulfill({json: {continuePath: "/api/v1/engineering-identity/auth/synthetic_central_return"}});
@@ -478,7 +483,7 @@ try {
     });
     await isolated({session:session()}, async (page, state) => {
       let membership = "available", enrollmentRequests = 0, continuations = 0;
-      await page.route(origin + docsReturn + "/details", route => route.fulfill({json: {csrf:proof, ...(membership === "approved" ? {onesaAccount:{email:state.session.account.email}} : {onesaEnrollment:membership})}}));
+      await page.route(origin + docsReturn + "/details", route => route.fulfill({json: {csrf:proof, onesaSignInPath, ...(membership === "approved" ? {onesaAccount:{email:state.session.account.email}} : {onesaEnrollment:membership})}}));
       await page.route(origin + docsReturn + "/enroll", route => {
         assert.deepEqual(route.request().postDataJSON(), {csrf:proof});
         membership = "pending"; enrollmentRequests++;
@@ -503,7 +508,7 @@ try {
       receipts.push({engine, flow:"ordinary-member-requests-Docs-and-continues-after-owner-approval"});
     });
     await isolated({session:session()}, async (page, state) => {
-      await page.route(origin + docsReturn + "/details", route => route.fulfill({json: {csrf:proof}}));
+      await page.route(origin + docsReturn + "/details", route => route.fulfill({json: {csrf:proof, onesaSignInPath}}));
       await page.goto(origin + docsReturn);
       await expect(page.getByRole("status")).toContainText("Engineering Docs access is unavailable");
       await expect(page.getByLabel("Password", {exact:true})).toHaveCount(0);
