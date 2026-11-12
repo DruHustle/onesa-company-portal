@@ -1,16 +1,29 @@
 # Onesa engineering and agent policies
 
-Do not create setup/status/handoff documents. Read README, release checklist
-and affected architecture/code; finish incomplete work. Update changelog, contracts
-and affected docs with behavior changes; record unverified scope honestly. Current
-user scope takes precedence. Preserve concurrent work, history and data; stage only
-reviewed paths. Free services only; paid resources require explicit budget approval.
+## Canonical checkout and local artifacts
+
+`DruHustle/onesa-company-portal` contains frontend, backend and billing with
+independent runtimes. Inspect remote refs, deployments
+and open PRs; reuse compatible work in flight.
+
+Use ignored repo-local `local-tools/worktrees`, `local-tools/deployment-evidence`,
+`local-tools/release-verification` and `local-tools/migrations` for their named
+artifacts. Keep versioned migrations in source. No shared parent evidence folder.
+
+Use CI's Node 24 (locally verified 24.12 and npm 11.21.2). npm 11.6.2 misresolves
+nested local overrides; retain lockfiles and security overrides. Use disposable
+loopback PostgreSQL databases ending `_test`. Check native tools at installed
+Xcode/Android paths as well as PATH.
+
+Read README, release checklist and affected architecture/code; finish incomplete
+work and update contracts/docs. Do not create setup/status/handoff documents unless
+requested. Current user scope takes precedence. Preserve concurrent work, history
+and data; stage reviewed paths only. Paid services need explicit budget approval.
 
 ## Contribution rules
 
-Path base: `DruHustle/onesa-company-portal`. Keep independent frontend, backend
-and `onesa-billing` runtimes and releases; no sibling submodules or coupled
-releases. Repository migration grants no deployment authority.
+Keep independent component releases; no sibling submodules or coupled releases.
+Repository migration grants no deployment authority.
 
 Keep exactly three permanent branches: `dev`, `staging`, `main`. Normal integration
 follows `dev → staging → main`. Temporary branches are permitted for Dependabot
@@ -44,21 +57,18 @@ production promotion and visibility changes need current authorization. Read
 records actual enforcement and prerequisites.
 
 
-Detailed deployment/recovery documents in public Git are safe reference pages.
-Read the protected canonical or approved local engineering source bundle before
-operations; preserve its original hashes/revisions. Do not copy full runbooks back
-into public sources or give private bundles to PR jobs. Historical Git exposure
-is not removed by active-source cleanup.
+Public deployment docs are reference pages. Operations require the protected
+canonical or approved local bundle with preserved hashes. Never publish full
+runbooks or expose private bundles to PR jobs; cleanup does not erase history.
 
 ## Security policy
 
 Supported software: the latest reviewed revision of `main`; no historical release
 support promise is made before a release/support policy is approved.
 
-Report vulnerabilities privately through GitHub's private vulnerability reporting
-if enabled, or an organization owner using an existing private channel. Do not file
-credentials, customer records, exploitation details or personal data in public issues.
-The approved private reporting contact is info@onesa.eu. Do not invent a mailbox, bounty, response guarantee or support promise.
+Report vulnerabilities privately through enabled GitHub reporting or the owner
+(approved contact info@onesa.eu). Never publish credentials, customer data or
+exploitation details, or invent a contact, bounty or response guarantee.
 
 Do not store API credentials, production environment files, private corporate records,
 model weights, database dumps or user uploads in Git or CI artifacts. Use a secret
@@ -73,11 +83,9 @@ historical removal requires a separately approved, coordinated remediation plan.
 Never automatically rewrite history or force-push. Confidential documents already
 in history block publication until an owner approves an appropriate remediation.
 
-Add `--history` to the hygiene command above to scan available reachable history,
-staged content and publishable working files without printing matched values.
-This heuristic cannot prove absence of secrets or confidential prose. Enable GitHub
-secret scanning/push protection where the organization plan supports it, and conduct
-human data-classification review before publishing or uploading CI artifacts.
+Hygiene `--history` scans reachable history, staged and publishable files without
+printing matched values; it cannot prove absence of confidential material. Use
+available GitHub secret protection and human classification before publication.
 
 ## Repository governance and CI/CD
 
@@ -144,8 +152,7 @@ resolve ambiguous calendar units through actual owner review, not inferred conve
 
 ## Verified local command matrix and risky-work references
 
-Use Node 24, locked npm installs and the commands in
-`docs/engineering/BUILD_AND_TEST.md`; they distinguish local tests from provider actions.
+Use locked installs and `docs/engineering/BUILD_AND_TEST.md` commands.
 Local checks: `node scripts/test_system_appearance.mjs` (pins/contrast),
 `python3 scripts/validate-docs.py` (docs), and
 the history hygiene command above (paths, never matched values). Backend `npm test` truncates only a disposable database ending
@@ -160,10 +167,9 @@ Never dump environment/configuration files or arbitrary provider/database respon
 
 ## Documentation, cleanup and Definition of Done
 
-AGENTS owns agent rules; README introduces humans and private reporting; CHANGELOG
-records verified live releases. Human contributions belong in Engineering Onboarding.
-Keep technical docs/evidence restricted and publication explicitly classified; do not
-recreate CONTRIBUTING.md or SECURITY.md.
+AGENTS owns rules; README introduces humans/private reporting; CHANGELOG records
+verified live releases. Use Engineering Onboarding for contributions. Keep evidence
+restricted/classified; do not recreate CONTRIBUTING.md or SECURITY.md.
 Use small changes, validated inputs/parameterized SQL, cancellation/timeouts,
 bounded retries, UTC event storage with explicit local display and compatible schemas.
 Inspect staged paths and concurrent worktrees; no reset/stash/broad clean/history rewrite.

@@ -51,7 +51,7 @@ function session(admin = false) {
   };
 }
 function directory() {
-  return { items: [{ account: { ...account(), id: memberId, name: "Synthetic Applicant", email: "synthetic-applicant@example.test" }, access: [{ product: "drone", role: "viewer", status: "pending", revision: 4 }], memberships: [] }], page: 1, hasMore: false };
+  return { items: [{ account: { ...account(), id: memberId, name: "Synthetic Applicant", email: "synthetic-applicant@example.test" }, disabled: false, access: [{ product: "drone", role: "viewer", status: "pending", revision: 4 }], memberships: [] }], page: 1, hasMore: false };
 }
 const api = http.createServer(async (req, res) => {
   res.setHeader("content-type", "application/json");
@@ -118,12 +118,13 @@ const api = http.createServer(async (req, res) => {
       assert.equal(input.token, proof); return send(200, { ok: true });
     }
     if (path === "/api/v1/admin/identity/accounts") return send(200, state.directory || directory());
-    if (/^\/api\/v1\/admin\/identity\/accounts\/[a-f0-9-]+\/(products\/(ai|drone|robot)|administrator)$/.test(path)) {
+    if (/^\/api\/v1\/admin\/identity\/accounts\/[a-f0-9-]+\/(products\/(ai|drone|robot)|administrator|member-status)$/.test(path)) {
       assert.equal(req.headers["x-csrf-token"], csrf);
       assert.deepEqual(input.stepUp, { password, code: "123456" });
       if (state.grantError) return fail(409, "REVISION", "Access changed. Reload this account and review it again.");
       const record = (state.directory ||= directory()).items[0];
-      if (path.endsWith("/administrator")) record.account.globalAdmin = input.administrator;
+      if (path.endsWith("/member-status")) record.disabled = input.disabled;
+      else if (path.endsWith("/administrator")) record.account.globalAdmin = input.administrator;
       else { record.access = [{ product: path.split("/").at(-1), role: input.role, status: input.status, revision: input.expectedRevision + 1 }]; record.memberships = input.memberships; }
       return send(200, { ok: true });
     }
@@ -512,7 +513,17 @@ try {
       await expect(card.getByRole("status")).toContainText(t.saved);
       assert.deepEqual(state.writes.at(-1).input.memberships, [{ tenant_id: workspaceId, role: "viewer", label: "Synthetic review workspace" }]);
       assert.equal(state.writes.at(-1).input.expectedRevision, 4); assert.equal(state.writes.at(-1).input.role, "operator");
-      const adminForm = card.locator("form").last();
+      const disable = language === "en" ? "Disable member account" : "Mitgliedskonto deaktivieren";
+      const restore = language === "en" ? "Restore member account" : "Mitgliedskonto wiederherstellen";
+      for (const [action, expected] of [[disable, true], [restore, false]]) {
+        const statusForm = card.locator("form").filter({ has: page.getByRole("button", { name: action, exact: true }) });
+        await statusForm.getByLabel(t.ownPassword, { exact: true }).fill(password);
+        await statusForm.getByLabel(t.ownCode, { exact: true }).fill("123456");
+        await statusForm.getByRole("button", { name: action, exact: true }).click();
+        await expect(card.getByRole("button", { name: expected ? restore : disable, exact: true })).toBeVisible();
+        assert.equal(state.writes.at(-1).input.disabled, expected);
+      }
+      const adminForm = card.locator("form").filter({ has: page.getByRole("button", { name: t.administrator, exact: true }) });
       await adminForm.getByLabel(t.ownPassword, { exact: true }).fill(password);
       await adminForm.getByLabel(t.ownCode, { exact: true }).fill("123456");
       await adminForm.getByRole("button", { name: t.administrator, exact: true }).click();
