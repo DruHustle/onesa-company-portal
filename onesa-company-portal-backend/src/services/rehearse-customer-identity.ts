@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {createHash, randomUUID} from 'node:crypto';
 import {readFile, readdir} from 'node:fs/promises';
+import {Socket} from 'node:net';
 import {pathToFileURL} from 'node:url';
 import pg from 'pg';
 import {applyMigrationPlan} from './migration-plan.js';
@@ -65,16 +66,18 @@ async function checkRoles(client: pg.Client) {
 export async function rehearse(connectionString: string) {
   const config = localConnection(connectionString);
   const inventory = await reviewedMigrations();
-  const client = new pg.Client(config);
+  // A loopback-published Docker database reports its container interface in SQL.
+  // Verify the peer of the actual client connection, where local delivery occurs.
+  const transport = new Socket();
+  const client = new pg.Client({...config, stream: () => transport});
   await client.connect();
   try {
+    assert.equal(transport.remoteAddress, config.host);
     await client.query('BEGIN');
     let before;
     try {
-      const identity = (await client.query(
-        "SELECT current_database() AS database, inet_server_addr() <<= inet '127.0.0.0/8' OR inet_server_addr() = inet '::1' AS loopback")).rows[0];
+      const identity = (await client.query('SELECT current_database() AS database')).rows[0];
       assert.equal(identity.database, config.database);
-      assert.equal(identity.loopback, true);
       await client.query("SET LOCAL lock_timeout='2s'");
       await client.query('SET LOCAL search_path=public,pg_catalog');
       await client.query('SELECT pg_advisory_xact_lock(757830)');

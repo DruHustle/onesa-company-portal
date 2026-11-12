@@ -250,7 +250,8 @@ qualification and a compatible release profile. Product databases remain indepen
 For a disposable local copy restored at schema 016, 017 or 018, set
 `TEST_DATABASE_URL` to its loopback PostgreSQL URL (database name ending in
 `_test`) and run `npm run rehearse:customer-identity` from the backend. It checks
-the exact reviewed migration inventory, runs the application migration plan, verifies
+the actual loopback TCP peer (including a loopback-published Docker port) and the
+exact reviewed migration inventory, runs the application migration plan, verifies
 existing product grants and the eight ordinary product roles, repeats the plan for
 idempotency, and rolls back the whole rehearsal. Output gives counts and the original
 schema version. A production upgrade still requires a separately commissioned release
