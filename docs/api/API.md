@@ -375,7 +375,10 @@ unobserved status. Observations at least five minutes old display stale status,
 retaining the previous result separately.
 
 `scripts/observe-infrastructure.mts` performs only credential-free public API
-liveness probes with bounded timeouts and fixed destinations. It writes a mode0600
+liveness probes with bounded timeouts and fixed destinations. Factory and Robot return
+`live` for a responsive process. The Mobile prelaunch API and the PasoFi public
+gateway each have their own liveness endpoint. Availability at these endpoints
+applies only to the responding API or gateway. The collector writes a mode0600
 snapshot atomically; HTML success responses do not establish API health. Private
 cluster/node/workload/volume and Portainer observations require the commissioned
 runtime observer and must not be inferred from an installed binary or manifest.

@@ -34,7 +34,9 @@ const observations = await Promise.all(serviceRegistry.filter(service => service
         }
       } finally { reader.releaseLock(); }
       const data = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-      state = response.ok && data && ["ok", "healthy", "ready"].includes(data.status) ? "available" : "unavailable";
+      const liveStatus = (service.id === "factory" || service.id === "robot") && data?.status === "live";
+      const available = ["ok", "healthy", "ready"].includes(data?.status) || liveStatus;
+      state = response.ok && available ? "available" : "unavailable";
     } catch { state = "unavailable"; }
   }
   return { id: service.id, observedAt: new Date().toISOString(), state, source: "public_http" as const, environment: "production" as const, revision: null };
