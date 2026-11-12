@@ -62,3 +62,38 @@ test("A FIFO without a writer is rejected without blocking a filesystem worker",
   execFileSync(process.execPath, ["--import", "tsx", "--input-type=module", "-e", script, moduleUrl, fifo],
     { timeout: 5000, killSignal: "SIGKILL", stdio: "pipe" });
 });
+
+test("The collector maps deployed health contracts to the administrator's observations", async () => {
+  const file = join(directory, "public-observations.json");
+  const transport = join(directory, "public-health-fixture.mjs");
+  await writeFile(transport, `
+    const health = new Map([
+      ["https://factory.onesa.eu/health/live", [{ status: "live" }, 200]],
+      ["https://robot.onesa.eu/api/v1/health", [{ status: "live", mode: "simulation" }, 200]],
+      ["https://mobile.onesa.eu/api/healthz", [{ status: "ok", serviceStatus: "prelaunch" }, 200]],
+      ["https://api.pasofi.onesa.eu/health/live", [{ status: "ok", service: "gateway" }, 200]],
+      ["https://portal.onesa.eu/api/v1/health", [{ status: "ok" }, 503]],
+      ["https://platform.onesa.eu/health", [{ status: "ok", source_commit: "a".repeat(40) }, 200]],
+      ["https://logistics.onesa.eu/health", [{ status: "ok", release: { revision: "b".repeat(40) } }, 200]],
+      ["https://drone.onesa.eu/api/v1/health", [{ status: "live", source_commit: "c".repeat(40) }, 200]],
+    ]);
+    globalThis.fetch = async url => {
+      const entry = health.get(String(url));
+      return entry ? Response.json(entry[0], { status: entry[1] })
+        : new Response("<html>maintenance</html>", { headers: { "Content-Type": "text/html" } });
+    };
+  `);
+  const collector = new URL("../../scripts/observe-infrastructure.mts", import.meta.url);
+  execFileSync(process.execPath, ["--import", "tsx", "--import", transport, collector.pathname, file], { timeout: 10000 });
+  const result = await infrastructureOverview(file);
+  assert.equal(result.observationState, "loaded");
+  const states = Object.fromEntries(result.services.map(service => [service.id, service.status]));
+  assert.deepEqual(states, {
+    portal: "unavailable", ai: "available", robot: "available", farmer: "unavailable",
+    drone: "unavailable", logistics: "available", mobile: "available", factory: "available",
+    pasofi: "available", kubernetes: "not_observed", portainer: "not_observed",
+  });
+  assert.deepEqual(result.services.filter(service => service.revision !== null).map(service => [service.id, service.revision]), [
+    ["ai", "a".repeat(40)], ["logistics", "b".repeat(40)],
+  ]);
+});

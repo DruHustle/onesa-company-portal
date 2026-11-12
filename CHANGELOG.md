@@ -1,5 +1,9 @@
 # Changelog
 
+- Recognize the live status reported by the Factory and Robot APIs in Admin Infrastructure,
+  observe the public Mobile API and PasoFi gateway, and show the responding AI Platform
+  and Logistics backend revisions when supplied.
+
 - Prompt users to sign back in to any Onesa product when the Portal session that authorized its grant expires. Signing back in preserves the user’s identity and leaves the previous grant inactive.
 
 - Add a fresh-MFA administrator action to disable and restore ordinary Onesa members
