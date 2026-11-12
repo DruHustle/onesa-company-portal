@@ -32,7 +32,11 @@ const api = http.createServer(async (req, res) => {
     res.writeHead(403).end("{}");
     return;
   }
-  if (req.url === "/api/v1/auth/me") {
+  if (req.url === "/api/v1/engineering-identity/auth?synthetic=1") {
+    res.writeHead(303, {location: "/engineering/sign-in/synthetic_proxy_uid", "set-cookie": ["interaction=fixture; Path=/engineering/sign-in/synthetic_proxy_uid; HttpOnly; SameSite=Lax", "resume=fixture; Path=/api/v1/engineering-identity/auth/synthetic_proxy_uid; HttpOnly; SameSite=Lax"]}).end(); return;
+  }
+  if (req.url === "/api/v1/account/config") { res.end(JSON.stringify({enabled:true, applications:[]})); return; }
+  if (req.url === "/api/v1/auth/me" || req.url === "/api/v1/account/me") {
     res.writeHead(401).end('{"error":{"message":"Sign in required"}}'); return;
   }
   if (req.url === "/api/v1/auth/mfa/enroll") {
@@ -209,6 +213,15 @@ try {
     await delay(250);
   }
   if (!ready) throw Error("Isolated renderer readiness deadline");
+  if (accessEnabled) {
+    const start = await fetch(origin + "/api/v1/engineering-identity/auth?synthetic=1", {redirect:"manual"});
+    expect(start.status).toBe(303);
+    expect(start.headers.get("location")).toBe(origin + "/account?docs=synthetic_proxy_uid");
+    expect(start.headers.getSetCookie()).toEqual(["interaction=fixture; Path=/engineering/sign-in/synthetic_proxy_uid; HttpOnly; SameSite=Lax", "resume=fixture; Path=/api/v1/engineering-identity/auth/synthetic_proxy_uid; HttpOnly; SameSite=Lax"]);
+    const bookmark = await fetch(origin + "/engineering/sign-in/synthetic_proxy_uid", {redirect:"manual"});
+    expect(bookmark.status).toBe(307);
+    expect(new URL(bookmark.headers.get("location"), origin).href).toBe(origin + "/account?docs=synthetic_proxy_uid");
+  }
   browser = await engines[engineName].launch(supplemental ? {executablePath: supplemental, args: ["--disable-dev-shm-usage"]} : {});
   if (accessEnabled) {
     const context = await browser.newContext({ viewport: { width: 320, height: 568 } });
@@ -350,11 +363,11 @@ try {
         await page.getByRole("button", {name: "Email and password", exact: true}).click();
         await page.getByLabel("Email address").fill("synthetic-engineer@onesa.eu");
         await page.getByLabel("Password", {exact: true}).fill("synthetic-invalid-password");
-        await page.getByRole("button", {name: "Sign in to Docs", exact: true}).click();
+        await page.getByRole("button", {name: "Continue", exact: true}).click();
         await expect(page.locator("#engineering-sign-in").getByRole("alert")).toContainText(message);
         await expect(page.getByLabel("Password", {exact: true})).toHaveValue("synthetic-invalid-password");
-        await expect(page.getByRole("button", {name: "Sign in to Docs", exact: true})).toBeEnabled();
-        if (code === "ENGINEERING_REGISTRATION_REQUIRED") await expect(page.locator("#engineering-sign-in").getByRole("alert").getByRole("link", {name: "Register for Engineering Docs"})).toHaveAttribute("href", "/access/register?audience=engineering");
+        await expect(page.getByRole("button", {name: "Continue", exact: true})).toBeEnabled();
+        if (code === "ENGINEERING_REGISTRATION_REQUIRED") await expect(page.locator("#engineering-sign-in").getByRole("alert").getByRole("link", {name: "Register for Engineering Docs"})).toHaveAttribute("href", "/account/register?next=/engineering");
         await page.getByRole("button", {name: "Email a sign-in link", exact: true}).click();
         await expect(page.locator("#engineering-sign-in").getByRole("alert")).toHaveCount(0);
       }
@@ -389,7 +402,8 @@ try {
       try {
         if (method === "handoff") await context.addCookies([{name: "onesa_ui_handoff", value: "fixture", url: origin, httpOnly: true, sameSite: "Lax"}]);
         await page.goto(origin + "/engineering/sign-in/" + uid, {waitUntil: "networkidle"});
-        await expect(page.getByRole("link", {name: "Sign in with your Onesa account", exact: true})).toHaveAttribute("href", "/account?returnTo=" + encodeURIComponent("/engineering/sign-in/" + uid));
+        await expect(page).toHaveURL(origin + "/account?docs=" + uid);
+        await expect(page.getByRole("link", {name: "Sign in with your Onesa account", exact: true})).toHaveCount(0);
         if (method === "password") {
           await expect(page.getByRole("checkbox", {name: "Use my Onesa account for future Docs sign-ins", exact: true})).toHaveCount(0);
           await page.getByRole("button", {name: "Email and password", exact: true}).click();
@@ -409,7 +423,7 @@ try {
         if (consent) await checkbox.check();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         expect((await new AxeBuilder({page}).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
-        await verifyOpeningHandoff(page, uid, page.getByRole("button", {name: method === "password" ? "Sign in to Docs" : "Confirm sign-in and open Docs", exact: true}));
+        await verifyOpeningHandoff(page, uid, page.getByRole("button", {name: method === "password" ? "Confirm existing Docs access" : "Confirm sign-in and open Docs", exact: true}));
         expect(accountLinkChoices.get(uid + "/" + (method === "password" ? "password" : "handoff-verify"))).toBe(consent ? true : undefined);
         views.push({type: "explicit-existing-Docs-proof-link", method, consent, width: 320, axeViolations: 0});
       } finally { await context.close(); }
@@ -433,13 +447,14 @@ try {
       await page.goto(origin + "/engineering/sign-in/" + fresh, {waitUntil: "networkidle"});
       await page.route(origin + "/engineering/sign-in/" + fresh + "/session", route => route.fulfill({status: 403, json: {error: {code: "ONESA_REAUTH_REQUIRED"}}}));
       await page.getByRole("button", {name: "Continue with Onesa", exact: true}).click();
-      await expect(page.locator("#engineering-sign-in").getByRole("alert")).toContainText("confirm your identity");
-      await expect(page.getByRole("link", {name: "Sign in to Onesa again", exact: true})).toHaveAttribute("href", "/account?returnTo=" + encodeURIComponent("/engineering/sign-in/" + fresh) + "&reauthenticate=1");
+      await expect(page.getByRole("heading", {name: "Sign in to Onesa", exact: true})).toBeVisible();
+      await expect(page.getByLabel("Password", {exact:true})).toBeEnabled();
       views.push({type: "fresh-Docs-request-uses-existing-central-MFA-flow"});
       const initiallyFresh = "synthetic_shared_session_initial_fresh";
       await page.goto(origin + "/engineering/sign-in/" + initiallyFresh, {waitUntil: "networkidle"});
       await expect(page.getByRole("button", {name: "Continue with Onesa", exact: true})).toHaveCount(0);
-      await expect(page.getByRole("link", {name: "Sign in to Onesa again", exact: true})).toHaveAttribute("href", "/account?returnTo=" + encodeURIComponent("/engineering/sign-in/" + initiallyFresh) + "&reauthenticate=1");
+      await expect(page.getByRole("heading", {name: "Sign in to Onesa", exact: true})).toBeVisible();
+      await expect(page.getByLabel("Password", {exact:true})).toBeEnabled();
       expect(signInChoices.has(initiallyFresh + "/session")).toBe(false);
       views.push({type: "initial-forced-Docs-reauthentication-cannot-loop-through-existing-account"});
       const invalid = "synthetic_shared_invalid_return";
@@ -532,7 +547,7 @@ try {
         waitUntil: "networkidle",
       });
       await expect(
-        page.getByRole("heading", { name: "Sign in to Engineering Docs" }),
+        page.getByRole("heading", { name: "Sign in to Onesa" }),
       ).toBeVisible();
       if (screenshotDir) await page.screenshot({ path: join(screenshotDir, `signin-${width}-${mode}.png`), fullPage: true });
       const email = page.getByLabel("Email address");
@@ -567,11 +582,11 @@ try {
       const password = page.getByLabel("Password", {exact:true});
       await expect(remember).toBeChecked();
       await password.fill("synthetic-invalid-password");
-      await page.getByRole("button", {name:"Sign in to Docs",exact:true}).click();
+      await page.getByRole("button", {name:"Continue",exact:true}).click();
       await expect(page.locator("#engineering-sign-in").getByRole("alert")).toBeVisible();
       expect(signInChoices.get(uid+"/password")).toBe(true);
       await expect(password).toHaveValue("synthetic-invalid-password");
-      await expect(page.getByRole("button", {name:"Sign in to Docs",exact:true})).toBeEnabled();
+      await expect(page.getByRole("button", {name:"Continue",exact:true})).toBeEnabled();
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -586,7 +601,7 @@ try {
       ).toEqual([]);
       expect(errors).toEqual([]);
       await password.fill("synthetic-valid-password");
-      await verifyOpeningHandoff(page, uid, page.getByRole("button", { name: "Sign in to Docs" }));
+      await verifyOpeningHandoff(page, uid, page.getByRole("button", { name: "Continue" }));
       const linkUid = uid + "_same_page", beforeConfirmation = engineeringConfirmations;
       await page.goto(origin + "/engineering/sign-in/" + linkUid, {waitUntil: "networkidle"});
       await page.getByLabel("Email address", {exact: true}).fill("synthetic-engineer@onesa.eu");
@@ -597,7 +612,7 @@ try {
       await page.evaluate(() => { window.__onesaLinkDocumentMarker = "old-request"; });
       await page.goto(origin + "/engineering/sign-in/" + linkUid + "#access-link=" + proof);
       await expect(page.getByRole("button", {name: "Confirm sign-in and open Docs", exact: true})).toBeEnabled();
-      await page.waitForURL(origin + "/engineering/sign-in/" + freshUid);
+      await page.waitForURL(origin + "/account?docs=" + freshUid);
       expect(await page.evaluate(() => window.__onesaLinkDocumentMarker)).toBeUndefined();
       await expect(page.getByText("synthetic-engineer@onesa.eu", {exact: true})).toBeVisible();
       expect(await page.evaluate(() => [localStorage,sessionStorage].some(store=>Object.values(store).some(value=>value.includes("a".repeat(64)))))).toBe(false);
@@ -633,7 +648,7 @@ try {
     const remember=page.getByRole("checkbox",{name:"Remember this browser",exact:true});
     await expect(remember).not.toBeChecked();
     await remember.check();
-    await expect(page.getByRole("link", { name: "Register for administrator access" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "New to Onesa? Create one account" })).toBeVisible();
     await page.getByRole("button", { name: "Email a sign-in link", exact: true }).click();
     await page.clock.install();
     let sends=0, releaseSend;
@@ -665,7 +680,7 @@ try {
     await page.unroute("**/api/v1/access/link");
     const adminProofsBefore = adminConfirmations;
     await page.evaluate(() => { window.__onesaLinkDocumentMarker = "same-document"; });
-    await page.goto(origin + "/admin#access-link=" + proof);
+    await page.goto(origin + "/account?next=/admin#access-link=" + proof);
     const adminSignIn = page.locator('section[aria-label="Administrator sign-in"]');
     await expect(adminSignIn.getByLabel("Authenticator or recovery code", {exact: true})).toHaveCount(0);
     await page.route("**/api/v1/access/link/verify", async route => { await route.fulfill({status:401,json:{error:{code:"MFA_REQUIRED",message:"Enter your authenticator code"}}}); });
@@ -687,40 +702,40 @@ try {
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
     views.push({ type: "admin-signin", mode, width: 390, bothMethodsAvailable: true, sameDocumentLinkRetainsMfa: true });
     await page.goto(origin + "/access/register?audience=engineering", { waitUntil: "networkidle" });
-    await expect(page.locator('input[name="name"]')).toHaveCount(0);
+    await page.getByLabel("Your name", {exact:true}).fill("Synthetic Applicant");
     await page.getByLabel("Email address", { exact: true }).fill("Synthetic@Onesa.eu");
-    await expect(page.getByLabel("Access requested")).toHaveValue("engineering");
-    await page.getByRole("button", { name: "Email my registration link" }).click();
+    await expect(page).toHaveURL(origin + "/account/register?next=/engineering");
+    await page.getByRole("button", { name: "Email my verification link" }).click();
     await expect(page.getByRole("status")).toContainText("Check your email");
-    expect(registrationRequests.at(-1)).toEqual({email: "synthetic@onesa.eu", name: "synthetic@onesa.eu", audience: "engineering"});
+    expect(registrationRequests.at(-1)).toEqual({email: "synthetic@onesa.eu", name: "Synthetic Applicant", audience: "engineering"});
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
     views.push({ type: "registration", mode, width: 390, approvalExplained: true });
     await page.goto(origin + "/access/register", {waitUntil: "networkidle"});
     const longEmail = "a".repeat(60) + "@" + "b".repeat(60) + "." + "c".repeat(60) + ".example.eu";
-    await expect(page.locator('input[name="name"]')).toHaveCount(0);
-    await expect(page.getByLabel("Access requested")).toHaveValue("admin");
+    await page.getByLabel("Your name", {exact:true}).fill("Synthetic Applicant");
+    await expect(page).toHaveURL(origin + "/account/register?next=/admin");
     await page.getByLabel("Email address", {exact: true}).fill(longEmail);
-    await page.getByRole("button", {name: "Email my registration link"}).click();
+    await page.getByRole("button", {name: "Email my verification link"}).click();
     await expect(page.getByRole("status")).toContainText("Check your email");
-    expect(registrationRequests.at(-1)).toEqual({email: longEmail, name: longEmail.slice(0, 120), audience: "admin"});
+    expect(registrationRequests.at(-1)).toEqual({email: longEmail, name: "Synthetic Applicant", audience: "admin"});
     views.push({type: "registration-email-identifier", mode, width: 390, fullEmailPreserved: true});
     registrationConfirmation = {status: "pending", audience: "engineering"};
     let confirmations = 0;
     page.on("request", r => { if (r.url().endsWith("/api/v1/access/confirm")) confirmations++; });
     await page.goto(origin + "/access/confirm?source=synthetic", {waitUntil: "networkidle"});
-    await expect(page.getByRole("button", {name: "Verify email and complete registration"})).toBeDisabled();
+    await expect(page.getByRole("button", {name: "Verify your email"})).toBeDisabled();
     await page.evaluate(() => { window.__onesaLinkDocumentMarker = "same-document"; });
-    await page.goto(origin + "/access/confirm?source=synthetic#access-link=" + proof);
-    await expect(page.getByRole("button", {name: "Verify email and complete registration"})).toBeEnabled();
+    await page.goto(origin + "/account/confirm?approval=1#access-link=" + proof);
+    await expect(page.getByRole("button", {name: "Verify your email"})).toBeEnabled();
     expect(await page.evaluate(() => window.__onesaLinkDocumentMarker)).toBe("same-document");
-    expect(new URL(page.url()).search).toBe("?source=synthetic");
+    expect(new URL(page.url()).search).toBe("?approval=1");
     expect(confirmations).toBe(0); expect(new URL(page.url()).hash).toBe("");
-    await page.getByLabel("Password (at least 14 characters)").fill("synthetic-registration-password");
+    await page.getByLabel("Password", {exact:true}).fill("synthetic-registration-password");
     await page.getByLabel("Confirm password", { exact: true }).fill("different-password");
-    await page.getByRole("button", { name: "Verify email and complete registration" }).click();
-    await expect(page.locator('section[aria-labelledby="registration-title"]').getByRole("alert")).toContainText("passwords must match"); expect(confirmations).toBe(0);
+    await page.getByRole("button", { name: "Verify your email" }).click();
+    await expect(page.locator('section[aria-labelledby="account-title"]').getByRole("alert")).toContainText("passwords must match"); expect(confirmations).toBe(0);
     await page.getByLabel("Confirm password", { exact: true }).fill("synthetic-registration-password");
-    await page.getByRole("button", { name: "Verify email and complete registration" }).click();
+    await page.getByRole("button", { name: "Verify your email" }).click();
     await expect(page.getByRole("status")).toContainText("sent to the owner for approval"); expect(confirmations).toBe(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
@@ -728,10 +743,10 @@ try {
     for (const audience of ["engineering", "admin"]) {
       registrationConfirmation = {status: "approved", audience};
       await page.goto(origin + "/access/confirm?approved=" + audience + "#access-link=" + proof, {waitUntil: "networkidle"});
-      await page.getByLabel("Password (at least 14 characters)").fill("synthetic-registration-password");
+      await page.getByLabel("Password", {exact:true}).fill("synthetic-registration-password");
       await page.getByLabel("Confirm password", {exact: true}).fill("synthetic-registration-password");
-      await page.getByRole("button", {name: "Verify email and complete registration"}).click();
-      await expect(page.getByRole("status")).toContainText("Registration is complete");
+      await page.getByRole("button", {name: "Verify your email"}).click();
+      await expect(page.getByRole("status")).toContainText("your existing approval is recognized");
       if (audience === "engineering") {
         await expect(page.getByRole("status")).toContainText("You can now sign in to Engineering Docs");
         await expect(page.getByRole("status")).not.toContainText("authenticator");
@@ -769,7 +784,7 @@ try {
         expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa","wcag22aa"]).analyze()).violations).toEqual([]);
         await page.getByLabel("I have saved my recovery codes securely.", {exact:true}).check();
         await page.getByRole("button", {name: "Continue to administrator sign-in"}).click();
-        await expect(page.getByRole("heading", {name: "Sign in",exact:true})).toBeVisible();
+        await expect(page.getByRole("heading", {name: "Sign in to Onesa",exact:true})).toBeVisible();
         await expect(page.getByRole("list", {name: "One-use recovery codes"})).toHaveCount(0);
         views.push({type:"first-admin-authenticator-setup",mode,width:390,passwordRequired:true,duplicateBlocked:true,invalidCodeRetainsSetup:true,recoveryAcknowledged:true,sessionNotCreated:true});
       }
@@ -785,7 +800,7 @@ try {
       await expect(page.getByLabel("Password",{exact:true}).first()).toBeVisible();
       await expect(page.getByLabel("Authenticator or recovery code",{exact:true})).toHaveCount(0);
       await expect(page.getByRole("button",{name:"Email a sign-in link",exact:true})).toHaveCount(0);
-      await expect(page.getByRole("link",{name:"Register for administrator access"})).toHaveCount(0);
+      await expect(page.getByRole("link",{name:"New to Onesa? Create one account"})).toHaveCount(0);
       for(const path of ["/access/register","/access/confirm","/engineering/sign-in/synthetic_disabled_01"]){
         const response=await page.request.get(origin+path);expect(response.status()).toBe(404);
       }

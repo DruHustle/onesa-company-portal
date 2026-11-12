@@ -74,6 +74,13 @@ const api = http.createServer(async (req, res) => {
     if (req.method !== "GET") state.writes.push({ path, method: req.method, input, csrf: req.headers["x-csrf-token"] });
     if (state.gate && path === state.gate.path) await state.gate.promise;
     if (path === "/api/v1/account/config") return send(200, { enabled: state.enabled !== false, applications: (state.catalog || catalog()).filter(item => item.connected).map(({product}) => ({product})), ...(state.legacyCatalog ? {} : {catalog: state.catalog || catalog()}) });
+    if (path === "/api/v1/auth/me") return fail(401, "UNAUTHENTICATED", "Protected staff session required");
+    if (path === "/api/v1/access/link") return send(202, {ok:true});
+    if (path === "/api/v1/access/link/verify") {
+      assert.equal(input.token, proof);
+      if (input.code !== "123456") return fail(401, "MFA_REQUIRED", "Enter your authenticator or recovery code.");
+      state.staffProofVerified = true; return send(200, {user: {id:accountId, role:"owner"}, csrf});
+    }
     if (path === "/api/v1/account/me") return state.session ? send(200, state.session) : fail(401, "UNAUTHENTICATED", "Sign in required");
     if (path === "/api/v1/account/register") return send(202, { ok: true });
     if (path === "/api/v1/account/confirm") {
@@ -225,7 +232,7 @@ async function signInFields(page) {
 
 try {
   child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "-p", String(port)], {
-    env: { PATH: process.env.PATH, NODE_ENV: "production", PUBLIC_ORIGIN: origin, SITE_URL: origin, BACKEND_URL: "http://127.0.0.1:" + apiPort, PROXY_SHARED_KEY: proxyKey, ONESA_IDENTITY_ENABLED: "true", ACCESS_REGISTRATION_ENABLED: "true", NEXT_TELEMETRY_DISABLED: "1", AWS_EC2_METADATA_DISABLED: "true" },
+    env: { PATH: process.env.PATH, NODE_ENV: "production", PUBLIC_ORIGIN: origin, SITE_URL: origin, BACKEND_URL: "http://127.0.0.1:" + apiPort, PROXY_SHARED_KEY: proxyKey, ONESA_IDENTITY_ENABLED: "true", ACCESS_REGISTRATION_ENABLED: "true", ENGINEERING_SIGNIN_ENABLED: "true", NEXT_TELEMETRY_DISABLED: "1", AWS_EC2_METADATA_DISABLED: "true" },
     stdio: ["ignore", "pipe", "pipe"],
   });
   let startup = "";
@@ -259,8 +266,6 @@ try {
         await expect(page.getByRole("heading", { name: t.register })).toBeVisible();
         await page.getByLabel(t.name, { exact: true }).fill("Synthetic Onesa Member");
         await page.getByLabel(t.email, { exact: true }).fill("synthetic-member@example.test");
-        await page.getByRole("button", { name: t.submit, exact: true }).click();
-        await expect(page.getByRole("main").getByRole("alert")).toHaveText(t.choose); assert.equal(state.writes.length, 0);
         for (const product of products) await page.getByRole("checkbox", { name: product, exact: true }).check();
         for (const name of ["Onesa AI Platform", "Onesa Drone", "Onesa Robot"]) {
           const geometry = await page.getByRole("checkbox", { name, exact: true }).evaluate(input => {
@@ -419,9 +424,59 @@ try {
       await expect(page.getByLabel("Password", {exact: true})).toHaveValue("");
       receipts.push({engine, flow: "sso-proof-rejects-repeat-password-without-submission"});
     });
+    await isolated({}, async (page, state) => {
+      await page.goto(origin + "/admin");
+      await expect(page).toHaveURL(origin + "/account?next=/admin");
+      await expect(page.getByRole("heading", {name:"Sign in to Onesa", exact:true})).toBeVisible();
+      await expect(page.getByLabel("Password", {exact:true})).toBeEnabled();
+      await expect(page.getByRole("link", {name:"New to Onesa? Create one account"})).toHaveAttribute("href", "/account/register?next=/admin");
+      await page.getByRole("button", {name:"Email a sign-in link", exact:true}).click();
+      await page.getByLabel("Email", {exact:true}).fill("synthetic-staff@example.test");
+      await page.getByRole("button", {name:"Send sign-in link", exact:true}).click();
+      await expect(page.getByRole("status")).toHaveText("Sent.");
+      await page.goto(origin + "/admin#access-link=" + proof);
+      await expect(page).toHaveURL(origin + "/account?next=/admin");
+      expect(state.writes.filter(item => item.path.endsWith("/verify")).length).toBe(0);
+      await page.getByRole("button", {name:"Confirm sign-in link", exact:true}).click();
+      await page.getByLabel("Authenticator or recovery code", {exact:true}).fill("123456");
+      await page.route(origin + "/admin", route => route.fulfill({contentType:"text/html", body:"<html lang=en><h1>Synthetic staff destination</h1></html>"}));
+      await page.getByRole("button", {name:"Sign in", exact:true}).click();
+      await expect(page.getByRole("heading", {name:"Synthetic staff destination"})).toBeVisible();
+      assert.equal(state.staffProofVerified, true);
+      receipts.push({engine, flow:"canonical-staff-password-signup-and-existing-mail-link-with-MFA"});
+    });
     const docsReturn = "/engineering/sign-in/synthetic_central_return";
+    const canonicalDocs = "/account?docs=synthetic_central_return";
+    async function docsFixture(page, state) {
+      await page.route(origin + docsReturn + "/details", route => route.fulfill({json: {csrf: proof, ...(state.session ? {onesaAccount: {email: state.session.account.email}} : {})}}));
+      await page.route(origin + docsReturn + "/session", route => {
+        assert.equal(route.request().postDataJSON().csrf, proof);
+        return route.fulfill({json: {continuePath: "/api/v1/engineering-identity/auth/synthetic_central_return"}});
+      });
+      await page.route("**/api/v1/engineering-identity/auth/synthetic_central_return", route => route.fulfill({contentType: "text/html", body: "<html lang=en><h1>Synthetic Docs continuation</h1></html>"}));
+    }
+    await isolated({}, async (page, state) => {
+      await docsFixture(page, state);
+      await page.goto(origin + docsReturn);
+      await expect(page).toHaveURL(origin + canonicalDocs);
+      await expect(page.getByRole("heading", {name: "Sign in to Onesa", exact: true})).toBeVisible();
+      await expect(page.getByText("Sign in to Engineering Docs", {exact: true})).toHaveCount(0);
+      await page.getByRole("link", {name: "New to Onesa? Create one account"}).click();
+      await expect(page).toHaveURL(origin + "/account/register?docs=synthetic_central_return");
+      await page.getByLabel("Your name", {exact:true}).fill("Synthetic Docs Member");
+      await page.getByLabel("Email address", {exact:true}).fill("synthetic-docs@example.test");
+      await page.getByRole("button", {name:"Email my verification link"}).click();
+      await expect(page.getByRole("status")).toContainText("Check your email");
+      assert.deepEqual(state.writes[0].input.products, []);
+      await page.goto(origin + "/account/confirm#access-link=" + proof);
+      await page.getByLabel("Password", {exact:true}).fill(password);
+      await page.getByLabel("Confirm password", {exact:true}).fill(password);
+      await page.getByRole("button", {name:"Verify your email"}).click();
+      await expect(page.getByRole("link", {name: "Already registered? Sign in"})).toHaveAttribute("href", canonicalDocs);
+      receipts.push({engine, flow: "old-docs-entry-shares-account-signup-and-verification-return"});
+    });
     for (const fresh of [false, true]) await isolated({session: session(), mfa: true}, async (page, state) => {
-      await page.route(origin + docsReturn, route => route.fulfill({status: 200, contentType: "text/html", body: "<!doctype html><html lang=en><title>Synthetic Docs interaction</title><h1>Synthetic Docs interaction</h1></html>"}));
+      await docsFixture(page, state);
       await page.goto(origin + "/account?returnTo=" + encodeURIComponent(docsReturn) + (fresh ? "&reauthenticate=1" : ""));
       if (fresh) {
         await expect(page.getByRole("heading", {name: "Sign in to Onesa", exact: true})).toBeVisible();
@@ -430,18 +485,17 @@ try {
         await expect(page.getByLabel("Authenticator or recovery code", {exact: true})).toBeVisible();
         await page.getByLabel("Authenticator or recovery code", {exact: true}).fill("123456");
         await page.getByRole("button", {name: "Continue", exact: true}).click();
-      } else {
-        await expect(page.getByRole("link", {name: "Continue to Engineering Docs", exact: true})).toHaveAttribute("href", docsReturn);
-        await page.getByRole("link", {name: "Continue to Engineering Docs", exact: true}).click();
       }
-      await expect(page).toHaveURL(origin + docsReturn);
+      await expect(page).toHaveURL(origin + canonicalDocs);
+      await page.getByRole("button", {name: "Continue with Onesa", exact: true}).click();
+      await expect(page.getByRole("heading", {name:"Synthetic Docs continuation"})).toBeVisible();
       assert.equal(state.writes.length, fresh ? 2 : 0);
       if (fresh) assert.equal(state.writes.at(-1).input.code, "123456");
       receipts.push({engine, flow: fresh ? "docs-fresh-central-mfa-return" : "docs-central-return-without-new-password"});
     });
     await isolated({enrollmentRequired: true}, async (page, state) => {
       const gateway = "/account?returnTo=" + encodeURIComponent(docsReturn) + "&reauthenticate=1";
-      await page.route(origin + docsReturn, route => route.fulfill({status: 200, contentType: "text/html", body: "<!doctype html><html lang=en><title>Synthetic Docs interaction</title><h1>Synthetic Docs interaction</h1></html>"}));
+      await docsFixture(page, state);
       await page.goto(origin + gateway);
       await signInFields(page);
       await page.getByRole("button", {name: "Continue", exact: true}).click();
@@ -459,12 +513,12 @@ try {
       assert.equal(Boolean(state.session), false, "Enrollment must not create an authenticated session");
       await page.getByLabel("I have saved my recovery codes securely.", {exact: true}).check();
       await page.getByRole("button", {name: "Continue to Onesa sign-in", exact: true}).click();
-      await expect(page).toHaveURL(origin + gateway);
+      await expect(page).toHaveURL(origin + canonicalDocs + "&reauthenticate=1");
       await signInFields(page);
       await page.getByRole("button", {name: "Continue", exact: true}).click();
       await page.getByLabel("Authenticator or recovery code", {exact: true}).fill("123456");
       await page.getByRole("button", {name: "Continue", exact: true}).click();
-      await expect(page).toHaveURL(origin + docsReturn);
+      await expect(page).toHaveURL(origin + canonicalDocs);
       assert.equal(state.writes.length, 5);
       receipts.push({engine, flow: "docs-return-survives-MFA-enrollment-and-fresh-login"});
     });

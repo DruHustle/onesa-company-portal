@@ -1,5 +1,11 @@
 # Changelog
 
+- Use Onesa Account for Portal staff and Engineering Docs sign-in and signup.
+  A new member can verify their email and request Docs access without selecting
+  another product. The owner reviews new access requests. Existing staff MFA,
+  individual Docs approvals and browser-bound authorization exchanges continue
+  through the shared entry. Previously issued email links remain usable.
+
 - Recognize the live status reported by the Factory and Robot APIs in Admin Infrastructure,
   observe the public Mobile API and PasoFi gateway, and show the responding AI Platform
   and Logistics backend revisions when supplied.

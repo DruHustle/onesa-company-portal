@@ -15,6 +15,8 @@ import {
 } from "./crypto.js";
 import { engineeringEmailAllowed } from "../engineering/config.js";
 
+import { isGlobalAdmin } from "../identity/accounts.js";
+
 export type Audience = "admin" | "engineering";
 export type AccessConfiguration = {
   ownerId: string;
@@ -177,9 +179,19 @@ export async function provisionAccess(
   if (request.audience === "admin") {
     if (!request.password_hash) throw new HttpError(409, "ACCESS_REVIEW", "Review this account registration before granting access.");
     // No public registration or approval route can create an owner or overwrite an existing account.
-    await c.query(
-      "INSERT INTO users(id,email,password_hash,role) VALUES($1,$2,$3,$4) ON CONFLICT(email) DO NOTHING",
+    const inserted = await c.query(
+      "INSERT INTO users(id,email,password_hash,role) VALUES($1,$2,$3,$4) ON CONFLICT(email) DO NOTHING RETURNING id",
       [randomUUID(), request.email, request.password_hash, role],
+    );
+    if (!inserted.rowCount)
+      throw new HttpError(409, "ACCESS_REVIEW", "This account already exists. Review its current access separately.");
+    // Carry the verified registration into the new account within this transaction.
+    // An earlier identity with the same email is never linked through this path.
+    await c.query(
+      `INSERT INTO identity_profiles(user_id,display_name,email_verified_at)
+       SELECT $1,display_name,email_verified_at FROM access_registrations
+       WHERE id=$2 AND email=$3 AND email_verified_at IS NOT NULL`,
+      [inserted.rows[0].id, request.id, request.email],
     );
   } else {
     const existing = (
@@ -214,10 +226,10 @@ export async function provisionAccess(
     [reviewer, request.id],
   );
 }
-/** Creates a first-time Docs approval request after MFA proof of a verified platform account. */
-export async function requestAdministratorDocsAccess(
+/** Requests Docs membership for an authenticated, email-verified Onesa account. */
+export async function requestOnesaDocsAccess(
   c: PoolClient, config: AccessConfiguration,
-  account: { email: string; display_name: string }, externalEmails: readonly string[],
+  account: { email: string; display_name: string; role: string }, externalEmails: readonly string[],
 ) {
   const reviewer = await owner(c, config);
   const email = account.email;
@@ -230,13 +242,13 @@ export async function requestAdministratorDocsAccess(
   if (previous) throw new HttpError(409, "ACCESS_REVIEW", "An Engineering registration already exists. Contact the owner.");
   const id = randomUUID();
   await c.query("INSERT INTO access_registrations(id,email,audience,display_name,state,email_verified_at) VALUES($1,$2,'engineering',$3,'pending',now())", [id, email, account.display_name]);
-  if (config.preapprovedEmails.includes(email) && engineeringEmailAllowed(email, externalEmails)) {
+  if (isGlobalAdmin(account.role) && config.preapprovedEmails.includes(email) && engineeringEmailAllowed(email, externalEmails)) {
     await provisionAccess(c, {id, email, audience: "engineering", state: "pending", password_hash: null}, reviewer.id, config.policyEvidence);
     return "approved" as const;
   }
   await enqueue(c, "access-approval:" + id, {
     to: reviewer.email, subject: "Engineering Docs access awaiting approval",
-    encryptedText: encrypt("A verified Onesa administrator requested Engineering Docs. Review the exact email policy and request " + id + " in Onesa Portal → Users → Access requests.\n" + env.PUBLIC_ORIGIN + "/admin"),
+    encryptedText: encrypt("A verified Onesa account requested Engineering Docs. Review the exact email policy and request " + id + " in Onesa Portal → Users → Access requests.\n" + env.PUBLIC_ORIGIN + "/admin"),
   });
   await c.query("INSERT INTO audit(action,record_id) VALUES('access.registration_requested',$1)", [id]);
   return "pending" as const;

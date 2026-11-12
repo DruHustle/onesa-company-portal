@@ -666,7 +666,20 @@ test("an MFA administrator enrolls in Docs without a second password; exact prea
     }
     const unprivileged = await fixture("must-prove-existing");
     const existing = await authorization(await signIn(unprivileged));
-    assert.equal((await submit(existing, "enroll")).statusCode, 403);
+    assert.equal((await submit(existing, "enroll")).statusCode, 409);
+
+    const member = await fixture("pending-member");
+    await db.query("DELETE FROM engineering_memberships WHERE id=$1", [member.membership]);
+    process.env.ACCESS_PREAPPROVED_EMAILS = JSON.stringify([member.email]);
+    const memberBrowser = await signIn(member);
+    const first = await authorization(memberBrowser);
+    assert.equal(first.details.onesaEnrollment, "available");
+    assert.equal((await submit(first, "enroll")).json().status, "pending");
+    const pending = await authorization(memberBrowser);
+    assert.equal(pending.details.onesaEnrollment, "pending");
+    assert.equal((await submit(pending, "session")).statusCode, 401);
+    assert.equal((await db.query("SELECT role FROM users WHERE id=$1", [member.id])).rows[0].role, "member");
+    assert.equal((await db.query("SELECT 1 FROM engineering_memberships WHERE email=$1", [member.email])).rowCount, 0);
   } finally {
     for (const key of ["ACCESS_REGISTRATION_ENABLED","ACCESS_APPROVAL_OWNER_ID","ACCESS_POLICY_EVIDENCE","ACCESS_PREAPPROVED_EMAILS"]) delete process.env[key];
   }

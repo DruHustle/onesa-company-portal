@@ -212,6 +212,12 @@ test("Already-approved address completes registration without another decision, 
   ).rows[0];
   assert.equal(u.role, "administrator");
   assert.ok(passwordValid(chosenPassword, u.password_hash));
+  const profile = await db.query(
+    `SELECT p.email_verified_at = r.email_verified_at AS carries_proof
+     FROM identity_profiles p JOIN access_registrations r ON r.email=$2 AND r.audience='admin'
+     WHERE p.user_id=$1`, [u.id, u.email],
+  );
+  assert.equal(profile.rows[0]?.carries_proof, true);
   await requestAdminLink(u.email);
   await assert.rejects(
     consumeAdminLink(

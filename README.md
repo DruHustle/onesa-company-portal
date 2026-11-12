@@ -66,7 +66,7 @@ First-time users register and verify their email before owner review. Existing
 explicit approvals are retained; new administrator access keeps MFA.
 Approved new administrators can enroll an authenticator and save recovery codes
 through the registration UI. An existing MFA enrollment cannot be overwritten.
-Administrator and Engineering Docs sign-in offer **Remember this browser**,
+Company administration and Engineering Docs open the Onesa Account sign-in or registration form. Staff approval and MFA, Docs membership and the original browser-bound authorization request still govern access. Both destinations offer **Remember this browser**,
 unchecked by default, for protected cookie persistence within the existing
 8-hour session lifetime. It does not save passwords or skip MFA. Use it only on
 a private device and sign out when finished. Browsers may restore session cookies
