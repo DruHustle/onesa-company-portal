@@ -610,7 +610,8 @@ try {
       const freshUid = linkUid + "_fresh";
       await page.route(origin + "/engineering", route => route.fulfill({status: 303, headers: {location: origin + "/engineering/sign-in/" + freshUid}}));
       await page.evaluate(() => { window.__onesaLinkDocumentMarker = "old-request"; });
-      await page.goto(origin + "/engineering/sign-in/" + linkUid + "#access-link=" + proof);
+      const emailedEntry = mode === "dark" ? "/account?docs=" + linkUid : "/engineering/sign-in/" + linkUid;
+      await page.goto(origin + emailedEntry + "#access-link=" + proof);
       await expect(page.getByRole("button", {name: "Confirm sign-in and open Docs", exact: true})).toBeEnabled();
       await page.waitForURL(origin + "/account?docs=" + freshUid);
       expect(await page.evaluate(() => window.__onesaLinkDocumentMarker)).toBeUndefined();

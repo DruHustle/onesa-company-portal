@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { accountApplicationUrl } from "@/lib/onesa-identity";
 import { accessLinkToken } from "@/lib/access-link";
-import { accountDestination, accountReturnPath, accountReauthenticationRequired, docsAccountPath } from "@/lib/account-return";
+import { adminWorkspaceReturn, accountDestination, accountReturnPath, accountReauthenticationRequired, docsAccountPath } from "@/lib/account-return";
 import { AccountError, accountRequest, productNames, adminProductNames, type ApplicationProduct, futureProductNames, enabledProducts, type Product, type ProductCatalog, type AccountConfig, type AccountSession, type Account } from "./api";
 import { AdminSignIn } from "@/features/admin/sign-in";
 import { AccessManager } from "./access-manager";
@@ -37,10 +37,12 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
   const t = copy[language];
   const [destination, setDestination] = useState("/account");
   const [emailLink, setEmailLink] = useState(false), [adminToken, setAdminToken] = useState<string | null>(null);
+  const [adminWorkspace, setAdminWorkspace] = useState("/admin");
   const [approvedAdmin, setApprovedAdmin] = useState(false);
   const approvalRequest = mode === "register" && Boolean(adminEntry || legacyDocsRegistration);
   const signupUrl = "/account/register" + destination.slice("/account".length);
   useEffect(() => {
+    if (adminEntry) setAdminWorkspace(adminWorkspaceReturn(window.location.hash));
     let target = accountDestination(window.location.search);
     if (mode === "confirm" && target === "/account") {
       try {
@@ -142,7 +144,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
         const destination = accountReturnPath(window.location.search);
         if (destination) window.location.assign(destination);
         else if (new URLSearchParams(window.location.search).get("next") === "/account/delete") window.location.assign("/account/delete");
-        else if (new URLSearchParams(window.location.search).get("next") === "/admin" && result.account.portalAccess) window.location.assign("/admin");
+        else if (new URLSearchParams(window.location.search).get("next") === "/admin" && result.account.portalAccess) window.location.assign(adminWorkspace);
       }
     });
   }
@@ -175,7 +177,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
         <a className={"button " + styles.action} href={accountApplicationUrl(app.product, app.url, session.account.globalAdmin)}>{t.open}</a>
       </article>)}</section>
       <h2>{t.futureProducts}</h2>{futureProducts}
-      <nav className={styles.accountLinks} aria-label={language === "de" ? "Kontoeinstellungen" : "Account settings"}>{session.account.portalAccess && <a className={styles.action} href="/admin">{t.admin}</a>}<a className={styles.action} href="/engineering">Engineering Docs</a>{!session.account.mfaEnrolled && <a className={styles.action} href={setupUrl}>{t.setup}</a>}<a className={styles.action} href="/account/billing">{language === "de" ? "Abrechnung" : "Billing"}</a><a className={styles.action} href="/account/security">{language === "de" ? "Passwort und Sicherheit" : "Password and security"}</a><a className={styles.action} href="/account/delete">{language === "de" ? "Kontolöschung beantragen" : "Request account deletion"}</a></nav>
+      <nav className={styles.accountLinks} aria-label={language === "de" ? "Kontoeinstellungen" : "Account settings"}>{session.account.portalAccess && <a className={styles.action} href={adminWorkspace}>{t.admin}</a>}<a className={styles.action} href="/engineering">Engineering Docs</a>{!session.account.mfaEnrolled && <a className={styles.action} href={setupUrl}>{t.setup}</a>}<a className={styles.action} href="/account/billing">{language === "de" ? "Abrechnung" : "Billing"}</a><a className={styles.action} href="/account/security">{language === "de" ? "Passwort und Sicherheit" : "Password and security"}</a><a className={styles.action} href="/account/delete">{language === "de" ? "Kontolöschung beantragen" : "Request account deletion"}</a></nav>
       {session.account.globalAdmin && <AccessManager session={session} language={language} />}
     </div> : <section className={styles.card} aria-labelledby="account-title">
       <h1 id="account-title">{mode === "register" ? t.register : mode === "confirm" ? t.confirm : interaction?.freshRequired ? t.fresh : t.login}</h1>
@@ -185,7 +187,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
         <button type="button" className={styles.action} aria-pressed={!emailLink} onClick={() => { setEmailLink(false); setAdminToken(null); }}>{language === "de" ? "E-Mail und Passwort" : "Email and password"}</button>
         <button type="button" className={styles.action} aria-pressed={emailLink} onClick={() => setEmailLink(true)}>{language === "de" ? "Anmeldelink per E-Mail" : "Email a sign-in link"}</button>
       </div>}
-      {mode === "login" && adminEntry && (legacyAdmin || emailLink) ? <AdminSignIn accessEnabled={Boolean(accessEnabled)} linkOnly={!legacyAdmin || Boolean(adminToken)} initialToken={adminToken} onSignedIn={() => window.location.replace("/admin")}/> :
+      {mode === "login" && adminEntry && (legacyAdmin || emailLink) ? <AdminSignIn accessEnabled={Boolean(accessEnabled)} linkOnly={!legacyAdmin || Boolean(adminToken)} initialToken={adminToken} onSignedIn={() => window.location.replace(adminWorkspace)}/> :
       !done && <form onSubmit={submit} aria-busy={busy}><fieldset disabled={busy || enabled !== true || (Boolean(interactionId) && !interaction) || (mode === "confirm" && !link)}><legend className={styles.srOnly}>{t.login}</legend>
         {mode === "register" && <label>{t.name}<input name="name" autoComplete="name" required maxLength={approvalRequest ? 120 : 200}/></label>}
         {mode !== "confirm" && <label>{t.email}<input name="email" type="email" autoComplete="username" required maxLength={254} defaultValue={interaction?.account?.email || ""}/></label>}

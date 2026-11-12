@@ -84,6 +84,9 @@ async function link(
   },
   recipient: string,
 ) {
+  if (purpose === "engineering" && (!target.interaction || !/^[A-Za-z0-9_-]{8,128}$/.test(target.interaction))) {
+    throw new Error("Invalid Engineering Docs interaction");
+  }
   const raw = token();
   await client.query(
     "INSERT INTO access_links(token_hash,purpose,registration_id,user_id,membership_id,interaction_uid,identity_hash,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,now()+interval '15 minutes')",
@@ -99,10 +102,10 @@ async function link(
   );
   const path =
     purpose === "registration"
-      ? "/access/confirm"
+      ? "/account/confirm?approval=1"
       : purpose === "admin"
-        ? "/admin"
-        : "/engineering/sign-in/" + target.interaction;
+        ? "/account?next=/admin"
+        : "/account?docs=" + target.interaction;
   await enqueue(client, "access-link:" + hash(raw), {
     to: recipient,
     subject:

@@ -13,6 +13,7 @@ import { Infrastructure } from "./infrastructure";
 import { BackgroundProcessing } from "./background-processing";
 import { PrivacyGovernance } from "./privacy-governance";
 import { EngineeringMemberships } from "./engineering-memberships";
+import { adminAccountEntry } from "@/lib/account-return";
 import { accessLinkToken } from "@/lib/access-link";
 import { AccessRequests } from "./access-requests";
 import {ApplicationCv} from "./application-cv";
@@ -128,6 +129,7 @@ export function AdminPortal({
     [notice, setNotice] = useState(""),
     [tab, setTab] = useState<Tab>("Dashboard"),
     [total, setTotal] = useState(0);
+  const [accountEntry, setAccountEntry] = useState("/account?next=/admin");
   const [sessionAttempt,setSessionAttempt]=useState(0),[sessionError,setSessionError]=useState(''),[sessionChecking,setSessionChecking]=useState(false);
   const [queues, setQueues] = useState<Partial<Record<Tab, QueueState>>>({});
   const queue = queues[tab] || emptyQueue(),
@@ -203,6 +205,8 @@ export function AdminPortal({
         category: url.searchParams.get("category") || undefined,
       },
     });
+    const signIn = adminAccountEntry(url);
+    setAccountEntry(signIn);
     if (accessLinkToken(window.location.hash)) { window.location.replace("/account?next=/admin" + window.location.hash); return; }
     const sessionRequest=new AbortController();setSessionChecking(true);setSessionError('');
     api
@@ -217,7 +221,7 @@ export function AdminPortal({
           setCsrf(r.data.csrf);
         }
       })
-      .catch(error => {if(sessionRequest.signal.aborted)return;if(error instanceof ApiError&&error.status===401){const hash=window.location.hash;window.location.replace("/account?next=/admin" + (accessLinkToken(hash) ? hash : ""));return;}setSessionError(error instanceof ApiError&&error.status===403?'Access to this Portal session was denied. Use an approved account.':'We could not check your Portal session. The service may be unavailable; retry the session check or sign in when it recovers.');})
+      .catch(error => {if(sessionRequest.signal.aborted)return;if(error instanceof ApiError&&error.status===401){window.location.replace(signIn);return;}setSessionError(error instanceof ApiError&&error.status===403?'Access to this Portal session was denied. Use an approved account.':'We could not check your Portal session. The service may be unavailable; retry the session check or sign in when it recovers.');})
       .finally(() => {if(!sessionRequest.signal.aborted){setLoading(false);setSessionChecking(false);}});
     return()=>sessionRequest.abort();
   }, [sessionAttempt]);
@@ -465,7 +469,7 @@ export function AdminPortal({
         <div className="admin-login">
           <h1 style={{ fontSize: "2rem" }}>Sign in</h1>
           {sessionError&&<div role="alert"><p>{sessionError}</p><button type="button" disabled={sessionChecking} onClick={()=>setSessionAttempt(value=>value+1)}>Retry session check</button></div>}{sessionChecking&&<p role="status">Checking your Portal session…</p>}
-          <p><a className="button" href="/account?next=/admin">Continue with Onesa</a></p>
+          <p><a className="button" href={accountEntry}>Continue with Onesa</a></p>
           {recovery.length > 0 && (
             <div className="admin-notice">
               <p>Save these one-use recovery codes securely:</p>
@@ -504,6 +508,7 @@ export function AdminPortal({
                 await api.POST("/api/v1/auth/logout", { body: {} });
                 setCsrf(undefined);
                 setUser(null);
+                window.location.replace("/account?next=/admin");
               });
             })
           }
@@ -1532,6 +1537,7 @@ export function AdminPortal({
                       },
                     });
                     setUser(null);
+                    window.location.replace("/account?next=/admin");
                     setCsrf(undefined);
                     setRecovery([]);
                   })}
@@ -1589,6 +1595,7 @@ export function AdminPortal({
                         void perform(async () => {
                           await api.POST("/api/v1/auth/revoke", { body: {} });
                           setUser(null);
+                          window.location.replace("/account?next=/admin");
                           setCsrf(undefined);
                         }, "All sessions revoked")
                       }

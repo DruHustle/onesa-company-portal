@@ -47,7 +47,9 @@ After linking, Docs uses the central session and existing Continue with Onesa ac
 The retained Docs password cannot independently start a new session for that linked
 identity. An unlinked member signs in to or creates their Onesa account, then
 confirms their existing Docs approval. Previously mailed links can still be
-opened and confirmed. While central identity is disabled, the account entry
+opened and confirmed. New sign-in and registration messages link directly to
+Onesa Account, with their proof in the fragment. Deploy the compatible frontend
+before an API that emits the new links. While central identity is disabled, the account entry
 retains the existing working sign-in methods for the requested destination.
 An administrator still completes central MFA, and a forced fresh request uses new
 central authentication. The fixed account return path preserves the current browser's

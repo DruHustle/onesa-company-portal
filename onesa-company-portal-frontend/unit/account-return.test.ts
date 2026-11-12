@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { accountDestination, docsAccountPath, accountReturnPath, accountReauthenticationRequired, accountSetupReturnPath, engineeringAccountSignInPath } from "../src/lib/account-return.ts";
+import { adminAccountEntry, adminWorkspaceReturn, accountDestination, docsAccountPath, accountReturnPath, accountReauthenticationRequired, accountSetupReturnPath, engineeringAccountSignInPath } from "../src/lib/account-return.ts";
 
 test("Onesa login returns only to the exact local Engineering interaction", () => {
   const path = "/engineering/sign-in/synthetic_interaction-123";
@@ -42,4 +42,16 @@ test("shared registration retains one bounded, local destination", () => {
   assert.equal(accountDestination("?returnTo=" + encodeURIComponent("/engineering/sign-in/" + uid)), "/account?docs=" + uid);
   for (const next of ["/admin", "/engineering", "/account/delete"]) assert.equal(accountDestination("?next=" + next), "/account?next=" + next);
   for (const query of ["?docs=short", "?docs=" + uid + "&docs=" + uid, "?docs=" + uid + "&next=/admin", "?next=//example.test", "?returnTo=/admin", "?next=/admin&next=/engineering"]) assert.equal(accountDestination(query), "/account");
+});
+
+test("staff sign-in restores only Portal workspace filters and privacy anchors", () => {
+  const original = new URL("https://portal.example.invalid/admin?section=Users&page=2&unrelated=private#privacy/documents/abc-123");
+  const entry = new URL(adminAccountEntry(original), original.origin);
+  assert.equal(entry.pathname, "/account");
+  assert.equal(entry.search, "?next=/admin");
+  assert.equal(adminWorkspaceReturn(entry.hash), "/admin?section=Users&page=2#privacy/documents/abc-123");
+  assert.equal(adminAccountEntry(new URL("/admin#access-link=secret", original)), "/account?next=/admin");
+  for (const hash of ["#workspace=https%3A%2F%2Fother.example", "#workspace=//other.example", "#workspace=%23access-link%3Dsecret", "#workspace=%3FreturnTo%3D%2F%2Fother.example", "#workspace=%23privacy&workspace=%3Fpage%3D2"]) {
+    assert.equal(adminWorkspaceReturn(hash), "/admin");
+  }
 });
