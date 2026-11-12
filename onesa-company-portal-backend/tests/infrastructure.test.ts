@@ -1,5 +1,6 @@
 import { after, test } from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { chmod, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -48,4 +49,16 @@ test("Missing, oversized, writable or symlinked files cannot report healthy infr
   const link = join(directory, "link.json"); await symlink(target, link);
   for (const file of [join(directory, "missing"), writable, large, link, "relative.json"])
     assert.equal((await infrastructureOverview(file, now)).observationState, "unavailable");
+});
+test("A FIFO without a writer is rejected without blocking a filesystem worker", () => {
+  const fifo = join(directory, "observations.pipe");
+  execFileSync("mkfifo", ["-m", "600", fifo]);
+  // Isolate the regression: a blocked filesystem open cannot be cancelled by a
+  // Promise timeout, so kill the child if the regular-file guard is unreachable.
+  const moduleUrl = new URL("../src/operations/infrastructure.js", import.meta.url).href;
+  const script = `const { infrastructureOverview } = await import(process.argv[1]);
+    const result = await infrastructureOverview(process.argv[2]);
+    if (result.observationState !== "unavailable" || result.services.some(service => service.status !== "not_observed")) process.exit(1);`;
+  execFileSync(process.execPath, ["--import", "tsx", "--input-type=module", "-e", script, moduleUrl, fifo],
+    { timeout: 5000, killSignal: "SIGKILL", stdio: "pipe" });
 });

@@ -51,7 +51,8 @@ export async function infrastructureOverview(file = process.env.INFRASTRUCTURE_O
     let handle;
     try {
       if (!isAbsolute(file)) throw Error("Absolute observation file required");
-      handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+      // A FIFO must reach the regular-file check without waiting for a writer.
+      handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
       const stat = await handle.stat();
       if (!stat.isFile() || stat.size > 65536 || (stat.mode & 0o022) !== 0) throw Error("Unsafe observation file");
       // Bound allocation even if a producer changes the file after fstat.
