@@ -135,7 +135,7 @@ def build_source_fields(binding):
     return fields
 
 
-def canonical_install_files(component, *, identity_v2=False):
+def canonical_install_files(component, *, identity_v2=False, identity_v3=False):
     """Fixed backend closures mirror the independently source-checked installer."""
     require(component in PORTAL_COMPONENTS - {"frontend"}, "CANONICAL_BACKEND_COMPONENT_SCOPE")
     names = {"oracle_portal.py", "oracle_backup_store.mjs", "oracle_portal_frontend.py",
@@ -154,7 +154,10 @@ def canonical_install_files(component, *, identity_v2=False):
                   "oracle_portal_identity_restore.py", "oracle_portal_identity_acceptance.py",
                   "oracle_portal_identity_browser.mjs", "oracle_portal_identity_mail.mjs",
                   "restore_lockdown.py", "restore_replay.py", "oracle_backup_open.mjs"}
-    if identity_v2:
+    if identity_v3:
+        require(component == "identity", "IDENTITY_V3_ISSUER_SCOPE")
+        names.add("oracle_portal_identity_v3.py")
+    if identity_v2 or identity_v3:
         require(component in {"identity", "identity-acceptance"}, "IDENTITY_COMPONENT_SCOPE")
         names |= {"oracle_portal_identity_v2.py", "oracle_portal_identity_acceptance_v2.py",
                   "oracle_portal_identity_browser_v2.mjs"}
@@ -174,14 +177,16 @@ def verify_canonical_component_custody(binding, plan, checks):
                    and plan.get("qualification_profile") == (
                        "portal-shared-identity-v2" if component == "identity" else
                        "portal-shared-identity-acceptance-v2"))
-    if not consolidated and not identity_v2:
+    identity_v3 = component == "identity" and plan.get("qualification_profile") == "portal-shared-identity-v3"
+    suffix = "-v3" if identity_v3 else "-v2" if identity_v2 else ""
+    if not consolidated and not (identity_v2 or identity_v3):
         return
     source = portal_source_binding(binding) if consolidated else binding
     scope = portal_component_scope(binding)
-    files = canonical_install_files(component, identity_v2=identity_v2)
+    files = canonical_install_files(component, identity_v2=identity_v2, identity_v3=identity_v3)
     directory = VERIFIER.parent
     require(directory == INSTALL_PARENT /
-            ("portal-" + component + ("-v2" if identity_v2 else "") + ("-canonical-" if consolidated else "-") + source["source_tree"]),
+            ("portal-" + component + suffix + ("-canonical-" if consolidated else "-") + source["source_tree"]),
             "CANONICAL_COMPONENT_INSTALLATION_PATH")
     store = private(Path(plan["verifier_store"]), directory=True)
     trust = read(store / "trust.json")
@@ -208,10 +213,10 @@ def verify_canonical_component_custody(binding, plan, checks):
             and set(profile["runners"]) == set(checks)
             and all(set(required) <= set(profile["required_checks"][phase])
                     for phase, required in checks.items()), "CANONICAL_COMPONENT_CHECKS_REQUIRED")
-    if identity_v2:
+    if identity_v2 or identity_v3:
         require(profile.get("qualification_profile") == plan["qualification_profile"],
                 "CANONICAL_IDENTITY_COMMISSIONED_PROFILE")
-    script = "oracle_portal_" + component.replace("-", "_") + ("_v2" if identity_v2 else "") + ".py"
+    script = "oracle_portal_" + component.replace("-", "_") + suffix.replace("-", "_") + ".py"
     path = directory / "runners" / script
     require(all(item["path"] == str(path) and item["sha256"] == receipt["files"]["runners/" + script]
                 for item in profile["runners"].values()), "CANONICAL_COMPONENT_RUNNER_PIN")

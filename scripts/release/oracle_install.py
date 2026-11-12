@@ -97,6 +97,10 @@ IDENTITY_V2_ALLOWED = {
     )},
 }
 
+IDENTITY_V3_ALLOWED = {**IDENTITY_V2_ALLOWED,
+    "runners/oracle_portal_identity_v3.py": "scripts/release/oracle_portal_identity_v3.py",
+}
+
 MAX_BYTES = 2 * 1024 * 1024
 
 
@@ -196,6 +200,10 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "api",
             "oracle_portal_api.py",
             "portal-api-",
+        )
+    elif set(m["files"]) == set(IDENTITY_V3_ALLOWED):
+        allowed, component, script, prefix = (
+            IDENTITY_V3_ALLOWED, "identity", "oracle_portal_identity_v3.py", "portal-identity-v3-",
         )
     elif set(m["files"]) == set(IDENTITY_V2_ALLOWED):
         allowed, component, script, prefix = (
@@ -456,7 +464,7 @@ def validate(bundle, manifest_pin, github, *, uid=0):
                 identity_module.CHECKS[phase] <= set(profile["required_checks"][phase])
                 for phase in verifier.PHASES
             )
-            and tool["identity_files"] == source_module.identity_source_files(files),
+            and tool["identity_files"] == source_module.identity_source_files(files, profile=identity_module.PROFILE),
             "Explicit identity profile/source or mandatory observations missing",
         )
         images += ["probe_image", "postgres_image"]

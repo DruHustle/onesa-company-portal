@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 import {rootCertificates} from 'node:tls';
 import {readFile,readdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {additions,connectionScope,migrate,validateRequest,validateState} from './oracle_portal_identity_migrate.mjs';
+import {additions,connectionScope,migrate,migrateV3,validateRequest,validateState} from './oracle_portal_identity_migrate.mjs';
 
 const directory=fileURLToPath(new URL('../../onesa-company-portal-backend/migrations/',import.meta.url));
 // Positive fixtures cover the reviewed schema-016 profile. The source tree also
@@ -22,13 +22,13 @@ const request=()=>({action:'apply',environment:'staging',operation_id:'11111111-
  owner_uri:'postgresql://portal_owner:synthetic-owner@ep-identity.example.test/portal_test?sslmode=verify-full',
  runtime_uri:'postgresql://portal_app:synthetic-app@ep-identity.example.test/portal_test?sslmode=verify-full',migrations:structuredClone(manifest)});
 
-function fixture(count=12){
- let rows=Object.entries(manifest).slice(0,count).map(([name,checksum])=>({name,checksum}));
+function fixture(count=12, source=files, checksums=manifest){
+ let rows=Object.entries(checksums).slice(0,count).map(([name,checksum])=>({name,checksum}));
  const calls=[];let preserved='unchanged',committed=false;
  const io={
   async begin(readonly){calls.push(readonly?'read-only':'begin');},async lock(){calls.push('lock');},
-  async identity(){return true;},async files(){return structuredClone(files);},async rows(){return structuredClone(rows);},
-  async preservation(){return preserved;},async apply(name,sql,checksum){calls.push(name);assert.equal(sql,files[name]);rows.push({name,checksum});},
+  async identity(){return true;},async files(){return structuredClone(source);},async rows(){return structuredClone(rows);},
+  async preservation(){return preserved;},async apply(name,sql,checksum){calls.push(name);assert.equal(sql,source[name]);rows.push({name,checksum});},
   async grants(role){assert.equal(role,'portal_app');calls.push('existing-role-grants');},
   async commit(){committed=true;calls.push('commit');},async rollback(){calls.push(committed?'inspect-after-commit':'rollback');},
   async runtimeReady(){calls.push('runtime-readiness');return true;},async close(){calls.push('close');},
@@ -159,4 +159,46 @@ test('the schema-016 installer rejects the actual Farmer migration inventory', (
   const migrations = Object.fromEntries(Object.entries(currentFiles).map(([name, sql]) =>
     [name, createHash('sha256').update(sql).digest('hex')]));
   assert.throws(() => validateRequest({...request(), migrations}), /IDENTITY_MIGRATION_REFUSED/);
+});
+
+const fullManifest = Object.fromEntries(Object.entries(currentFiles).map(([name, sql]) =>
+ [name,createHash('sha256').update(sql).digest('hex')]));
+const requestV3 = () => ({...request(),migrations:{...fullManifest}});
+
+test('eight-client migration applies the exact missing suffix transactionally for each accepted baseline',async()=>{
+ for(const start of [12,14,15,16,17,18,19]){
+  const f=fixture(start,currentFiles,fullManifest);
+  const result=await migrateV3(requestV3(),f.io);
+  assert.equal(result.state,'IDENTITY_SCHEMA_019_APPLIED_NOT_AUTHORIZATION');
+  assert.equal(result.schema_version,19);
+  assert.equal(result.applied_migrations,19-start);
+  assert.deepEqual(f.calls,['begin','lock',...Object.keys(fullManifest).slice(start),'existing-role-grants','commit','runtime-readiness','close']);
+ }
+});
+
+test('historical and eight-client contracts cannot cross-select schema or inject migration bytes',async()=>{
+ const f=fixture(16,currentFiles,fullManifest);
+ await assert.rejects(()=>migrateV3(request(),f.io));
+ await assert.rejects(()=>migrate(requestV3(),f.io));
+ await assert.rejects(()=>migrateV3({...requestV3(),profile:'v3'},f.io));
+ for(const n of Object.keys(fullManifest).slice(16)){
+  const r=requestV3();r.migrations[n]='a'.repeat(64);
+  await assert.rejects(()=>migrateV3(r,f.io),/SOURCE_CHANGED/);
+ }
+ const corrupt=fixture(17,{...currentFiles,'018_customer_product_identity.sql':'-- other'},fullManifest);
+ await assert.rejects(()=>migrateV3(requestV3(),corrupt.io),/IMAGE_CHANGED/);
+ const bad=fixture(13,currentFiles,fullManifest);
+ await assert.rejects(()=>migrateV3(requestV3(),bad.io),/BASELINE_REQUIRED/);
+ assert.ok(!f.calls.length);
+});
+
+test('eight-client inspect does not apply and an enrollment failure rolls back before grants',async()=>{
+ const f=fixture(18,currentFiles,fullManifest);
+ const state=await migrateV3({...requestV3(),action:'inspect'},f.io);
+ assert.equal(state.schema_version,18);assert.deepEqual(f.calls,['read-only','lock','commit','close']);
+ const broken=fixture(16,currentFiles,fullManifest),apply=broken.io.apply;
+ broken.io.apply=async(...args)=>{if(args[0].startsWith('019'))throw Error('synthetic interrupted enrollment migration');await apply(...args);};
+ await assert.rejects(()=>migrateV3(requestV3(),broken.io),/interrupted/);
+ assert.ok(!broken.calls.includes('commit'));assert.ok(!broken.calls.includes('existing-role-grants'));
+ assert.deepEqual(broken.calls.slice(-2),['rollback','close']);
 });
