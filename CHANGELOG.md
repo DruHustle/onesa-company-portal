@@ -1,7 +1,8 @@
 # Changelog
 
 - Recognize the live status reported by the Factory and Robot APIs in Admin Infrastructure,
-  and observe the public Mobile API and PasoFi gateway.
+  observe the public Mobile API and PasoFi gateway, and show the responding AI Platform
+  and Logistics backend revisions when supplied.
 
 - Add a fresh-MFA administrator action to disable and restore ordinary Onesa members
   while preserving the member role and existing product approvals.

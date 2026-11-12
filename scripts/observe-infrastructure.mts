@@ -9,6 +9,7 @@ const output = process.argv[2];
 if (!output || !isAbsolute(output)) throw Error("Provide an absolute snapshot output path");
 const observations = await Promise.all(serviceRegistry.filter(service => service.health !== null).map(async service => {
   let state: "available" | "unavailable" | "not_observed" = "not_observed";
+  let revision: string | null = null;
   if (service.health) {
     try {
       const response = await fetch(service.health, { redirect: "error", signal: AbortSignal.timeout(8000), headers: { Accept: "application/json" } });
@@ -37,9 +38,14 @@ const observations = await Promise.all(serviceRegistry.filter(service => service
       const liveStatus = (service.id === "factory" || service.id === "robot") && data?.status === "live";
       const available = ["ok", "healthy", "ready"].includes(data?.status) || liveStatus;
       state = response.ok && available ? "available" : "unavailable";
+      // Only these two APIs publish the revision of their responding backend.
+      const reported = service.id === "ai" ? data?.source_commit
+        : service.id === "logistics" ? data?.release?.revision : null;
+      if (state === "available" && typeof reported === "string" && /^[a-f0-9]{40}$/.test(reported))
+        revision = reported;
     } catch { state = "unavailable"; }
   }
-  return { id: service.id, observedAt: new Date().toISOString(), state, source: "public_http" as const, environment: "production" as const, revision: null };
+  return { id: service.id, observedAt: new Date().toISOString(), state, source: "public_http" as const, environment: "production" as const, revision };
 }));
 const result = snapshotSchema.parse({ version: 1, observations });
 await mkdir(dirname(output), { recursive: true });
