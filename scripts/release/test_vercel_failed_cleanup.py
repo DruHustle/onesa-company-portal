@@ -1,4 +1,6 @@
 import copy
+import json
+import subprocess
 import unittest
 
 import vercel_failed_cleanup as cleanup
@@ -87,6 +89,26 @@ class CleanupTests(unittest.TestCase):
         result = cleanup.cleanup(missing, CONFIG, NOW, True)
         self.assertEqual(result["deleted"], [])
         self.assertEqual(result["alreadyAbsent"], ["dpl_old"])
+
+    def test_uncertain_delete_response_requires_readback(self):
+        for response in (subprocess.TimeoutExpired("vercel", 60), TimeoutError(),
+                         json.JSONDecodeError("no response", "", 0), {},
+                         {"uid": "dpl_other", "state": "DELETED"}):
+            with self.subTest(response=response):
+                provider = Provider()
+
+                def uncertain(path, method="GET", **query):
+                    if method == "DELETE":
+                        del provider.deployments["dpl_old"]
+                        if isinstance(response, Exception):
+                            raise response
+                        return response
+                    return provider(path, method, **query)
+
+                result = cleanup.cleanup(uncertain, CONFIG, NOW, True)
+                self.assertEqual(result["deleted"], [])
+                self.assertEqual(result["alreadyAbsent"], ["dpl_old"])
+                self.assertEqual(result["errors"], [])
 
     def test_changed_state_is_never_evidence_of_deletion(self):
         for uncertain_response in (False, True):
