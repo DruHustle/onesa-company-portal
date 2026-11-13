@@ -44,22 +44,27 @@ def verify_callbacks(binding, environment, encoded):
     issuer = portal.read(path)
     portal.require(issuer.get("qualification_profile") == "portal-shared-identity-v2",
                    "SEVEN_CLIENT_ISSUER_PLAN_REQUIRED")
+    verify_registered_urls(issuer, environment, encoded, PRODUCTION, CALLBACK_PATHS,
+                           "EXACT_ISOLATED_SEVEN_CLIENT_ORIGINS_REQUIRED")
+
+
+def verify_registered_urls(issuer, environment, encoded, production, callback_paths, origins_error):
     selected = issuer["environments"]
     origins = selected[environment]["origins"]
     staging = selected["staging"]["origins"]
-    portal.require(selected["production"]["origins"] == PRODUCTION
-                   and isinstance(staging, dict) and staging.keys() == PRODUCTION.keys()
+    portal.require(selected["production"]["origins"] == production
+                   and isinstance(staging, dict) and staging.keys() == production.keys()
                    and all(isinstance(value, str) and len(value) <= 255
                            and re.fullmatch(r"https://[a-z0-9-]+(?:\.[a-z0-9-]+)+", value)
                            for value in staging.values())
-                   and len(set(staging.values())) == len(PRODUCTION)
-                   and set(staging.values()).isdisjoint(PRODUCTION.values()),
-                   "EXACT_ISOLATED_SEVEN_CLIENT_ORIGINS_REQUIRED")
+                   and len(set(staging.values())) == len(production)
+                   and set(staging.values()).isdisjoint(production.values()),
+                   origins_error)
     try:
         urls = json.loads(encoded)
     except (TypeError, ValueError):
         urls = None
-    expected = {origins[product] + path for product, path in CALLBACK_PATHS.items()}
+    expected = {origins[product] + path for product, path in callback_paths.items()}
     portal.require(isinstance(urls, list) and len(urls) == len(expected)
                    and all(isinstance(url, str) for url in urls) and set(urls) == expected,
                    "FRONTEND_CALLBACKS_DIFFER_FROM_REGISTERED_CLIENT_ORIGINS")
