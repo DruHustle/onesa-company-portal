@@ -390,3 +390,44 @@ snapshot atomically; HTML success responses do not establish API health. Private
 cluster/node/workload/volume and Portainer observations require the commissioned
 runtime observer and must not be inferred from an installed binary or manifest.
 No scheduler or private runtime observation is activated by this source change.
+
+#### Publishing public and private observations together
+
+On the Oracle Linux observer, schedule the public producer to write its own file.
+Have the commissioned private observer write a separate mode-0600 version-1
+snapshot with production `owner_runtime` rows. Its observation time must be the
+time of the actual private check. Examples of private checks are Kubernetes API
+node/workload readiness and an authenticated Portainer environment connection.
+Keep private check credentials outside the snapshot. Run the collector and the
+merger from the same installed source and with the same Node/tsx loader as the
+existing public producer. In these commands `$OBSERVER` is the absolute path to
+`scripts/observe-infrastructure.mts` and `$STATE` is a protected directory:
+
+```sh
+node --import tsx "$OBSERVER" "$STATE/public.json"
+node --import tsx "$OBSERVER" --merge "$STATE/public.json" "$STATE/owner.json" "$STATE/dashboard.json"
+```
+
+Set the backend's `INFRASTRUCTURE_OBSERVATIONS_FILE` to the read-only view of
+`dashboard.json`. Mount its containing directory read-only so atomic replacements
+remain visible. Give the API read access under the established UID mapping.
+Keep both producer files in operator-controlled directories. Protect the directory
+entries and their parent path from untrusted writers so another user cannot
+replace a valid input by name. With a shared protected directory as above, run
+the producers and merger under the same trusted owner. With independent producer
+identities, give each producer its own protected input directory and give the
+merger read access. Only the merger writes the dashboard file. Its three paths
+must be distinct. The output directory must already exist and must not be group-
+or world-writable. Concurrent mergers on the
+same Linux filesystem serialize under a kernel directory lock using util-linux
+`flock`. No private file is required for an existing public-only deployment.
+
+The latest observation for each product wins, including an explicit unavailable
+or unobserved result. At equal times the private check takes precedence over
+public HTTP. Conflicting states or revisions from the same source at the same time
+reject the publish. Replaying an older batch or omitting a row preserves the last
+recorded time, so that row becomes stale normally. Each input must be a complete,
+valid snapshot from its own source. Public rows cannot report private Kubernetes
+or Portainer observations. A missing or invalid input or an unsafe previous file
+leaves the existing dashboard intact. Use an empty private version-1 snapshot
+when commissioning the first public-only observations for an aggregated dashboard.
