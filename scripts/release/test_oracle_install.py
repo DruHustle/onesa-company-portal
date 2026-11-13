@@ -116,7 +116,10 @@ class InstallTests(unittest.TestCase):
             ).splitlines():
                 if not name.startswith("onesa-company-portal-backend/migrations/"):
                     files[name] = (repo / name).read_bytes()
-            for name, data in schema_016_migrations(repo).items():
+            migration_inputs = schema_016_migrations(repo)
+            if self.allowed == installer.IDENTITY_V3_ALLOWED:
+                migration_inputs.update({path.name: path.read_bytes() for path in (repo / "onesa-company-portal-backend/migrations").glob("*.sql") if path.name[:3] in {"017", "018", "019"}})
+            for name, data in migration_inputs.items():
                 files["onesa-company-portal-backend/migrations/" + name] = data
         for name, data in files.items():
             path = source_root / name
@@ -220,6 +223,8 @@ class InstallTests(unittest.TestCase):
             import oracle_portal_identity_acceptance as acceptance
 
             selected = identity if self.component == "identity" else acceptance
+            if self.allowed == installer.IDENTITY_V3_ALLOWED:
+                import oracle_portal_identity_v3 as selected
             profile = self.policy["components"][
                 "DruHustle/onesa-company-portal:" + self.component
             ]
@@ -232,7 +237,7 @@ class InstallTests(unittest.TestCase):
                     {
                         name: hashlib.sha256(data).hexdigest()
                         for name, data in files.items()
-                    }
+                    }, profile=selected.PROFILE
                 ),
                 probe_image="sha256:" + "5" * 64,
                 postgres_image="sha256:" + "6" * 64,
