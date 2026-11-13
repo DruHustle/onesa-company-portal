@@ -509,6 +509,32 @@ class GateTests(unittest.TestCase):
         spec.loader.exec_module(module)
         self.assertEqual(e.source_hash(), module.source_hash())
 
+    def test_classic_governance_read_is_confined_to_the_exact_protected_main_endpoint(self):
+        gh = e.GitHub()
+        policy = f"repos/{e.REPOSITORY}/branches/main/protection"
+        routine = f"repos/{e.REPOSITORY}/branches/main"
+        env = {"GH_TOKEN": "synthetic-actions", "RELEASE_GOVERNANCE_READ_TOKEN": "synthetic-governance"}
+        with patch.dict("os.environ", env, clear=True), patch.object(e.subprocess, "run") as run:
+            run.return_value.returncode = 0
+            run.return_value.stdout = b"{}"
+            for path, expected in [(routine, "synthetic-actions"), (policy, "synthetic-governance"),
+                                   (policy + "/required_status_checks", "synthetic-actions")]:
+                gh.api(path)
+                child = run.call_args.kwargs["env"]
+                self.assertEqual(child["GH_TOKEN"], expected)
+                self.assertNotIn("RELEASE_GOVERNANCE_READ_TOKEN", child)
+                self.assertNotIn(expected, run.call_args.args[0])
+            run.return_value.returncode = 1
+            run.return_value.stderr = b"unexpected service error with private context"
+            with self.assertRaisesRegex(e.Rejected, "Administration read") as denied:
+                gh.api(policy)
+            self.assertNotIn("unexpected service error", str(denied.exception))
+        with patch.dict("os.environ", {"GH_TOKEN": "synthetic-existing"}, clear=True), patch.object(e.subprocess, "run") as run:
+            run.return_value.returncode = 0
+            run.return_value.stdout = b"{}"
+            gh.api(policy)
+            self.assertEqual(run.call_args.kwargs["env"]["GH_TOKEN"], "synthetic-existing")
+
     def test_freshness_expired_and_future(self):
         self.assertTrue(e.fresh(STAMP, NOW))
         self.assertFalse(e.fresh(STAMP, NOW + timedelta(days=1)))

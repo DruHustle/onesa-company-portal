@@ -18,6 +18,14 @@ test('Infrastructure observations require Portal administration, retain no-store
  assert.equal(allowed.statusCode,200,allowed.body);
  assert.equal(allowed.headers['cache-control'],'no-store');
  assert.equal(allowed.json().services.length,11);
+ const hosting = Object.fromEntries(allowed.json().services.map((service: {id: string; hosting: string}) => [service.id, service.hosting]));
+ assert.match(hosting.robot, /Vercel.*Oracle simulator API.*Turso/);
+ assert.match(hosting.farmer, /Cloudflare Tunnel.*Oracle ARM64.*maintenance/);
+ assert.match(hosting.drone, /Vercel.*simulation API.*origin host unverified/);
+ assert.match(hosting.logistics, /Vercel.*Oracle.*gateway.*two APIs/);
+ assert.match(hosting.mobile, /Vercel.*public gateway.*Oracle ARM64.*isolated qualification/);
+ assert.match(hosting.factory, /Vercel.*Oracle API and worker.*field gateway/);
+ assert.match(hosting.pasofi, /Vercel.*Oracle API.*field routers/);
  assert.ok(allowed.json().services.every((service:{status:string})=>service.status==='not_observed'));
 });
 
