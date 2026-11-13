@@ -411,9 +411,14 @@ node --import tsx "$OBSERVER" --merge "$STATE/public.json" "$STATE/owner.json" "
 Set the backend's `INFRASTRUCTURE_OBSERVATIONS_FILE` to the read-only view of
 `dashboard.json`. Mount its containing directory read-only so atomic replacements
 remain visible. Give the API read access under the established UID mapping.
-The public producer and private producer each own their own path. Only the merger
-writes the dashboard file. Its three paths must be distinct. Its directory must
-already exist and must not be group- or world-writable. Concurrent mergers on the
+Keep both producer files in operator-controlled directories. Protect the directory
+entries and their parent path from untrusted writers so another user cannot
+replace a valid input by name. With a shared protected directory as above, run
+the producers and merger under the same trusted owner. With independent producer
+identities, give each producer its own protected input directory and give the
+merger read access. Only the merger writes the dashboard file. Its three paths
+must be distinct. The output directory must already exist and must not be group-
+or world-writable. Concurrent mergers on the
 same Linux filesystem serialize under a kernel directory lock using util-linux
 `flock`. No private file is required for an existing public-only deployment.
 
