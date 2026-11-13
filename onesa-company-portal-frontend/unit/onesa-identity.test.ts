@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { accountApplicationUrl, identityProtocolPath, identityRedirectLocation } from "../src/lib/onesa-identity.ts";
-const origin = "https://account.example.invalid", callback = "https://ai.example.invalid/api/v1/auth/identity/callback";
+const origin = "https://account.example.invalid", callback = "https://ai.example.invalid/api/v1/auth/onesa/callback";
 const configured = JSON.stringify([callback]);
 test("Only exact shared identity protocol routes admit protocol punctuation and server credentials", () => {
   for (const path of ["identity/auth", "identity/auth/abcde123456", "identity/.well-known/openid-configuration", "identity/token", "identity/session", "identity/revoke", "identity/me", "identity/jwks"]) assert.equal(identityProtocolPath(path.split("/")), true);
@@ -20,11 +20,24 @@ test("Identity redirects admit only account interaction, protocol resume and exa
 
 test("Every registered product has an exact callback and legacy callbacks remain valid", () => {
   const mobile = "https://mobile.example.invalid/api/v1/auth/onesa/callback";
-  const callbacks = [callback, "https://drone.example.invalid/api/v1/auth/identity/callback", "https://robot.example.invalid/api/v1/auth/identity/callback", mobile, ...["farmer", "logistics", "pasofi"].map(product => "https://" + product + ".example.invalid/identity/callback")];
-  for (const destination of callbacks) {
-    const response = destination + "?code=synthetic&state=bound";
-    assert.equal(identityRedirectLocation(response, origin, JSON.stringify(callbacks)), response);
+  const previous = [
+    callback,
+    "https://drone.example.invalid/api/v1/auth/identity/callback",
+    "https://robot.example.invalid/api/v1/auth/identity/callback",
+    mobile,
+    "https://farmer.example.invalid/auth/onesa/callback",
+    "https://logistics.example.invalid/api/auth/onesa/callback",
+    "https://pasofi.example.invalid/onesa-callback.html",
+  ];
+  const factory = "https://factory.example.invalid/api/auth/onesa/callback";
+  const callbacks = [...previous, factory];
+  for (const registered of [previous, callbacks]) {
+    for (const destination of registered) {
+      const response = destination + "?code=synthetic&state=bound";
+      assert.equal(identityRedirectLocation(response, origin, JSON.stringify(registered)), response);
+    }
   }
+  assert.equal(identityRedirectLocation(factory + "?code=synthetic", origin, JSON.stringify(previous)), null);
   assert.equal(identityRedirectLocation(mobile + "?code=synthetic", origin, configured), null);
   assert.equal(identityRedirectLocation(mobile + "/foreign?code=synthetic", origin, JSON.stringify(callbacks)), null);
   assert.equal(identityRedirectLocation(mobile + "?code=synthetic", origin, JSON.stringify([...callbacks, "https://extra.example.invalid/callback"])), null);
