@@ -119,7 +119,17 @@ class GitHub:
         args = ["gh", "api", path]
         if pages:
             args += ["--paginate", "--slurp"]
-        result = subprocess.run(args, capture_output=True, check=False)
+        # Administration read applies only to this exact repository endpoint.
+        # Keep artifact downloads, pagination and CI on the ordinary Actions token.
+        environment = os.environ.copy()
+        governance_token = environment.pop("RELEASE_GOVERNANCE_READ_TOKEN", "")
+        protection_read = path == f"repos/{REPOSITORY}/branches/main/protection"
+        if protection_read and governance_token:
+            environment["GH_TOKEN"] = governance_token
+        result = subprocess.run(args, capture_output=True, check=False, env=environment)
+        if protection_read and result.returncode:
+            raise Rejected("Classic protection read failed for main. The credential for this "
+                           "repository needs Administration read. Release stays blocked.")
         require(result.returncode == 0, "GitHub API unavailable: release stays blocked")
         return result.stdout if binary else json.loads(result.stdout)
 
