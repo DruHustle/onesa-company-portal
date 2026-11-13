@@ -44,27 +44,36 @@ export const infrastructureSchema = z.object({
     revision: observation.shape.revision, scope: z.string(),
   })),
 });
+export type InfrastructureObservation = z.infer<typeof observation>;
+
+export async function readInfrastructureSnapshot(file: string, now = Date.now()) {
+  if (!isAbsolute(file)) throw Error("Absolute observation file required");
+  const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const stat = await handle.stat();
+    if (!stat.isFile() || stat.size > 65536 || (stat.mode & 0o022) !== 0) throw Error("Unsafe observation file");
+    const buffer = Buffer.alloc(65537);
+    let length = 0;
+    while (length < buffer.length) {
+      const { bytesRead } = await handle.read(buffer, length, buffer.length - length, null);
+      if (!bytesRead) break;
+      length += bytesRead;
+    }
+    if (length > 65536) throw Error("Oversized observation file");
+    const snapshot = snapshotSchema.parse(JSON.parse(buffer.toString("utf8", 0, length)));
+    if (snapshot.observations.some(item => Date.parse(item.observedAt) > now)) throw Error("Future observation");
+    return snapshot;
+  } finally { await handle.close(); }
+}
+
 export async function infrastructureOverview(file = process.env.INFRASTRUCTURE_OBSERVATIONS_FILE, now = Date.now()) {
-  let observations: z.infer<typeof observation>[] = [];
+  let observations: InfrastructureObservation[] = [];
   let observationState: "loaded" | "not_configured" | "unavailable" = "not_configured";
   if (file) {
-    let handle;
     try {
-      if (!isAbsolute(file)) throw Error("Absolute observation file required");
-      // A FIFO must reach the regular-file check without waiting for a writer.
-      handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
-      const stat = await handle.stat();
-      if (!stat.isFile() || stat.size > 65536 || (stat.mode & 0o022) !== 0) throw Error("Unsafe observation file");
-      // Bound allocation even if a producer changes the file after fstat.
-      const buffer = Buffer.alloc(65537);
-      const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
-      if (bytesRead > 65536) throw Error("Oversized observation file");
-      const content = buffer.toString("utf8", 0, bytesRead);
-      observations = snapshotSchema.parse(JSON.parse(content)).observations;
-      if (observations.some(item => Date.parse(item.observedAt) > now)) throw Error("Future observation");
+      observations = (await readInfrastructureSnapshot(file, now)).observations;
       observationState = "loaded";
-    } catch { observationState = "unavailable"; observations = []; }
-    finally { await handle?.close(); }
+    } catch { observationState = "unavailable"; }
   }
   return infrastructureSchema.parse({
     checkedAt: new Date(now).toISOString(), staleAfterSeconds: 300, observationState,
