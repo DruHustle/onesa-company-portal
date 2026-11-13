@@ -84,8 +84,8 @@ const credentials = z.object({
   code: z.string().max(64).default(""),
   rememberBrowser: z.boolean().default(false),
 });
-const emailCredentials = credentials.omit({password:true}).extend({emailToken:proof});
-const loginCredentials = z.union([emailCredentials.strict(), credentials]);
+export const accountEmailCredentials = credentials.omit({password:true}).extend({emailToken:proof});
+const loginCredentials = z.union([accountEmailCredentials.strict(), credentials]);
 const accountSchema = z.object({
   id: z.uuid(),
   email: z.email(),
@@ -1477,7 +1477,7 @@ export async function registerIdentity(
       schema: {
         ...meta("authenticateOnesaSignIn"),
         params: interactionParams,
-        body: z.union([emailCredentials.extend({csrf:proof}).strict(), credentials.extend({csrf:proof})]),
+        body: z.union([accountEmailCredentials.extend({csrf:proof}).strict(), credentials.extend({csrf:proof})]),
         response: {
           200: z.object({ continuePath: z.string(), issuer: z.string() }),
           ...failures,
@@ -1761,4 +1761,17 @@ export async function registerIdentity(
       return { ok: true as const };
     },
   );
+  // Engineering owns its provider cookies and independent Docs policy. Reuse
+  // the same account credentials, MFA, rate limits and session issuance.
+  return {
+    requestForDocs: async (req: FastifyRequest, email: string, docsUid: string) => {
+      configured();
+      await sendEmailSignIn(req, email, "docs:" + docsUid);
+    },
+    confirmForDocs: async (req: FastifyRequest, reply: FastifyReply, input: z.infer<typeof accountEmailCredentials>, docsUid: string) => {
+      configured();
+      await authenticate(req, reply, input, false, undefined, "docs:" + docsUid);
+    },
+  };
+
 }

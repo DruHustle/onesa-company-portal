@@ -492,6 +492,32 @@ try {
     }
     await isolated({}, async (page, state) => {
       await docsFixture(page, state);
+      const sent = [], confirmations = [];
+      await page.route(origin + docsReturn + "/account-email-link", route => {
+        sent.push(route.request().postDataJSON()); return route.fulfill({status: 202, json: {ok: true}});
+      });
+      await page.route(origin + docsReturn + "/account-email-login", route => {
+        confirmations.push(route.request().postDataJSON()); state.session = session();
+        return route.fulfill({json: {ok: true}});
+      });
+      await page.goto(origin + canonicalDocs);
+      await page.getByRole("button", {name: "Email a sign-in link", exact: true}).click();
+      await page.getByLabel("Email address", {exact: true}).fill("synthetic-member@example.test");
+      await page.getByRole("button", {name: "Send sign-in link", exact: true}).click();
+      await expect(page.getByRole("status")).toContainText("If your account is eligible");
+      assert.deepEqual(sent, [{email: "synthetic-member@example.test", csrf: proof}]);
+      await page.goto(origin + canonicalDocs + "#signin-link=" + proof);
+      await page.getByLabel("Email address", {exact: true}).fill("synthetic-member@example.test");
+      await page.getByRole("button", {name: "Confirm sign-in", exact: true}).click();
+      await expect(page.getByRole("button", {name: "Continue with Onesa", exact: true})).toBeVisible();
+      assert.equal(confirmations.length, 1); assert.equal(confirmations[0].csrf, proof);
+      assert.equal(confirmations[0].emailToken, proof);
+      await page.getByRole("button", {name: "Continue with Onesa", exact: true}).click();
+      await expect(page.getByRole("heading", {name: "Synthetic Docs continuation"})).toBeVisible();
+      receipts.push({engine, flow: "shared-email-docs-returns-to-original-protected-document-interaction"});
+    });
+    await isolated({}, async (page, state) => {
+      await docsFixture(page, state);
       await page.goto(origin + docsReturn);
       await expect(page).toHaveURL(origin + canonicalDocs);
       await expect(page.getByRole("heading", {name: "Sign in to Onesa", exact: true})).toBeVisible();

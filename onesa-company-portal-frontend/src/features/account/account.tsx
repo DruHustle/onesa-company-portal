@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { accountApplicationUrl } from "@/lib/onesa-identity";
-import { accessLinkToken } from "@/lib/access-link";
+import { accessLinkToken, sharedSignInToken } from "@/lib/access-link";
 import { adminWorkspaceReturn, accountDestination, accountReturnPath, accountReauthenticationRequired, docsAccountPath, productAccountPath } from "@/lib/account-return";
 import { AccountError, accountRequest, productNames, adminProductNames, type ApplicationProduct, futureProductNames, enabledProducts, type Product, type ProductCatalog, type AccountConfig, type AccountSession, type Account } from "./api";
 import { AdminSignIn } from "@/features/admin/sign-in";
@@ -19,6 +19,7 @@ type EntryProps = {
   mode?: Mode;
   interactionId?: string;
   docsInteractionId?: string;
+  docsInteractionCsrf?: string;
   forceLogin?: boolean;
   adminEntry?: boolean;
   accessEnabled?: boolean;
@@ -27,7 +28,7 @@ type EntryProps = {
   approvalConfirmation?: boolean;
 };
 
-export function OnesaAccount({ mode = "login", interactionId, docsInteractionId, forceLogin, adminEntry, accessEnabled, legacyAdmin, legacyDocsRegistration, approvalConfirmation }: EntryProps) {
+export function OnesaAccount({ mode = "login", interactionId, docsInteractionId, docsInteractionCsrf, forceLogin, adminEntry, accessEnabled, legacyAdmin, legacyDocsRegistration, approvalConfirmation }: EntryProps) {
   const [language, setLanguage] = useState<"en" | "de">("en"), [session, setSession] = useState<AccountSession | null>(null);
   const [interaction, setInteraction] = useState<Interaction | null>(null), [enabled, setEnabled] = useState<boolean | null>(null), [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState(""), [error, setError] = useState(false), [busy, setBusy] = useState(false), [done, setDone] = useState(false), [factor, setFactor] = useState(false), [help, setHelp] = useState("");
@@ -58,9 +59,8 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
     setDestination(target);
     if (mode !== "login") return;
     const receive = () => {
-      const params = new URLSearchParams(window.location.hash.slice(1));
-      const shared = params.size === 1 ? params.get("signin-link") : null;
-      if (!legacyAdmin && shared && /^[a-f0-9]{64}$/.test(shared)) {
+      const shared = sharedSignInToken(window.location.hash);
+      if (!legacyAdmin && shared) {
         setSharedToken(shared); setEmailLink(true); setFactor(false);
         window.history.replaceState(null,"",window.location.pathname + window.location.search);
         return;
@@ -159,7 +159,9 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
       }
       const email = String(data.get("email")).trim().toLowerCase();
       if (emailLink && !sharedToken) {
-        if (interactionId && interaction)
+        if (docsInteractionId && docsInteractionCsrf)
+          await accountRequest("/engineering/sign-in/" + encodeURIComponent(docsInteractionId) + "/account-email-link", {email, csrf: docsInteractionCsrf});
+        else if (interactionId && interaction)
           await accountRequest("/api/v1/account/interaction/" + encodeURIComponent(interactionId) + "/email-link", {email, csrf: interaction.csrf});
         else await accountRequest("/api/v1/account/email-link", {email});
         setLinkRequested(true);
@@ -168,6 +170,10 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
       }
       const body = { email, ...(emailLink && sharedToken ? {emailToken:sharedToken} : {password:String(data.get("password"))}),
         code:String(data.get("code") || ""),rememberBrowser:data.get("remember") === "on" };
+      if (docsInteractionId && docsInteractionCsrf && emailLink && sharedToken) {
+        await accountRequest("/engineering/sign-in/" + encodeURIComponent(docsInteractionId) + "/account-email-login", {...body, csrf: docsInteractionCsrf});
+        window.location.replace(docsAccountPath(docsInteractionId)!); return;
+      }
       if (interactionId && interaction) follow(await accountRequest("/api/v1/account/interaction/" + encodeURIComponent(interactionId) + "/login", { ...body, csrf: interaction.csrf }));
       else {
         const result = await accountRequest<AccountSession>("/api/v1/account/login", body); setSession(result); setSharedToken(null); setEmailLink(false);

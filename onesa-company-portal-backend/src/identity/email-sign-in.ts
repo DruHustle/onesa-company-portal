@@ -27,7 +27,8 @@ export async function requestAccountEmailLink(email: string, interactionId?: str
     const raw = token();
     await client.query("INSERT INTO identity_records(model,id,encrypted_payload,uid,account_id,expires_at) VALUES($1,$2,$3,$4,$5,now()+interval '15 minutes')",
       [model,hash(raw),encrypt(credentialBinding(account)),interactionId ?? null,account.id]);
-    const entry = interactionId ? "/admin?interaction=" + interactionId : "/admin?next=/admin";
+    const entry = interactionId?.startsWith("docs:") ? "/admin?docs=" + interactionId.slice(5)
+      : interactionId ? "/admin?interaction=" + interactionId : "/admin?next=/admin";
     await enqueue(client,"identity-sign-in:"+hash(raw),{
       to:account.email,subject:"Your Onesa account sign-in link",
       encryptedText:encrypt("Confirm your Onesa sign-in:\n"+env.PUBLIC_ORIGIN+entry+"#signin-link="+raw+"\nEnter the email address that received this link. It expires in 15 minutes and can be used once. If you did not request it, ignore this message."),
