@@ -702,7 +702,7 @@ try {
     await page.unroute("**/api/v1/access/link");
     const adminProofsBefore = adminConfirmations;
     await page.evaluate(() => { window.__onesaLinkDocumentMarker = "same-document"; });
-    await page.goto(origin + "/account?next=/admin#access-link=" + proof);
+    await page.goto(origin + "/admin?next=/admin#access-link=" + proof);
     const adminSignIn = page.locator('section[aria-label="Administrator sign-in"]');
     await expect(adminSignIn.getByLabel("Authenticator or recovery code", {exact: true})).toHaveCount(0);
     await page.route("**/api/v1/access/link/verify", async route => { await route.fulfill({status:401,json:{error:{code:"MFA_REQUIRED",message:"Enter your authenticator code"}}}); });
