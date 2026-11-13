@@ -1195,6 +1195,10 @@ PRESENTATION_PROFILE = "presentation-v1"
 NVIDIA_PROFILE = "frontend-nvidia-v1"
 IDENTITY_PROFILE = "frontend-identity-v1"
 IDENTITY_PROFILE_V2 = "frontend-identity-v2"
+IDENTITY_PROFILE_V3 = "frontend-identity-v3"
+REGISTERED_CALLBACK_PROFILES = {IDENTITY_PROFILE_V2, IDENTITY_PROFILE_V3}
+IDENTITY_PROFILES = {IDENTITY_PROFILE, *REGISTERED_CALLBACK_PROFILES}
+REVIEWED_FRONTEND_PROFILES = {NVIDIA_PROFILE, *IDENTITY_PROFILES}
 NVIDIA_PREFIX = "onesa-company-portal-frontend/"
 NVIDIA_CATALOG = NVIDIA_PREFIX + "public/models/nvidia/manifest.json"
 NVIDIA_LICENSE = NVIDIA_PREFIX + "public/licenses/three.txt"
@@ -1260,10 +1264,19 @@ NVIDIA_CONTRACT = {
 }
 
 
+def callback_profile(selected):
+    if selected == IDENTITY_PROFILE_V3:
+        import oracle_portal_frontend_identity_v3 as profile
+    else:
+        require(selected == IDENTITY_PROFILE_V2, "REGISTERED_CALLBACK_PROFILE_REQUIRED")
+        import oracle_portal_frontend_identity_v2 as profile
+    return profile
+
+
 def qualification_profile(value):
     selected = value.get("qualification_profile", PRESENTATION_PROFILE)
     require(
-        selected in {PRESENTATION_PROFILE, NVIDIA_PROFILE, IDENTITY_PROFILE, IDENTITY_PROFILE_V2},
+        selected in {PRESENTATION_PROFILE, *REVIEWED_FRONTEND_PROFILES},
         "UNKNOWN_FRONTEND_QUALIFICATION_PROFILE",
     )
     return selected
@@ -1272,7 +1285,7 @@ def qualification_profile(value):
 def profile_checks(plan, phase):
     extra = (
         NVIDIA_CHECKS
-        if qualification_profile(plan) in {NVIDIA_PROFILE, IDENTITY_PROFILE, IDENTITY_PROFILE_V2}
+        if qualification_profile(plan) in REVIEWED_FRONTEND_PROFILES
         and phase in {"staging", "production"}
         else set()
     )
@@ -1294,7 +1307,7 @@ def probe_source_files(files, selected=PRESENTATION_PROFILE):
         "onesa-company-portal-frontend/package-lock.json",
         "onesa-company-portal-frontend/vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
     }
-    if selected in {NVIDIA_PROFILE, IDENTITY_PROFILE, IDENTITY_PROFILE_V2}:
+    if selected in REVIEWED_FRONTEND_PROFILES:
         names |= {
             "scripts/release/oracle_portal_nvidia.mjs",
             "scripts/release/oracle_portal_nvidia_contract.mjs",
@@ -1302,7 +1315,9 @@ def probe_source_files(files, selected=PRESENTATION_PROFILE):
             NVIDIA_LICENSE,
             NVIDIA_PREFIX + "src/config/nvidia-reference-assets.json",
         }
-    if selected == IDENTITY_PROFILE_V2:
+    if selected == IDENTITY_PROFILE_V3:
+        names.add("scripts/release/oracle_portal_frontend_identity_v3.py")
+    if selected in REGISTERED_CALLBACK_PROFILES:
         names.add("scripts/release/oracle_portal_frontend_identity_v2.py")
     if selected == IDENTITY_PROFILE:
         names.add("scripts/release/oracle_portal_identity_scope.py")
@@ -1320,7 +1335,7 @@ def configuration_value(binding, plan, env):
                 "qualification_profile": qualification_profile(plan),
                 "nvidia_observation_contract": NVIDIA_CONTRACT,
             }
-            if qualification_profile(plan) in {NVIDIA_PROFILE, IDENTITY_PROFILE, IDENTITY_PROFILE_V2}
+            if qualification_profile(plan) in REVIEWED_FRONTEND_PROFILES
             else {}
         ),
         "schema_version": 1,
@@ -1599,17 +1614,17 @@ def source_scope(folder, binding, plan):
     require(sha(archive) == baseline["source_sha256"], "BASELINE_SOURCE_ARCHIVE_CHANGED")
     require(sha(private(folder / "source.tar")) == binding["source_sha256"], "SOURCE_ARCHIVE_DIGEST")
     selected = qualification_profile(plan)
-    if selected == IDENTITY_PROFILE_V2:
-        import oracle_portal_frontend_identity_v2 as seven
+    if selected in REGISTERED_CALLBACK_PROFILES:
+        profile = callback_profile(selected)
 
         _, old = source_inventory(archive, {"source_tree": baseline["source_tree"]},
-                                  frontend_trees=seven.RETAINED_TREES)
+                                  frontend_trees=profile.RETAINED_TREES)
         _, new = source_inventory(folder / "source.tar", binding,
-                                  frontend_trees={seven.CANDIDATE_TREE})
+                                  frontend_trees={profile.CANDIDATE_TREE})
     else:
         _, old = source_inventory(archive, {"source_tree": baseline["source_tree"]})
         _, new = source_inventory(folder / "source.tar", binding)
-    if selected in {IDENTITY_PROFILE, IDENTITY_PROFILE_V2}:
+    if selected in IDENTITY_PROFILES:
         if selected == IDENTITY_PROFILE:
             from oracle_portal_identity_scope import reviewed_delta
             changed = reviewed_delta(old, new)
@@ -2074,7 +2089,7 @@ def preflight(binding):
         == plan["retained_frontend"]["deployment_id"],
         "CONCURRENT_FRONTEND_PUBLICATION_PRESERVED",
     )
-    if qualification_profile(plan) in {NVIDIA_PROFILE, IDENTITY_PROFILE, IDENTITY_PROFILE_V2}:
+    if qualification_profile(plan) in REVIEWED_FRONTEND_PROFILES:
         retained = plan["retained_frontend"]
         actual = frontend.provider("/v13/deployments/" + retained["deployment_id"])
         require(
@@ -2110,7 +2125,7 @@ def probe(binding, env, operation, folder, plan):
     api = readiness_and_denials(plan, env, observation)
     scope = (
         source_scope(folder, binding, plan)
-        if qualification_profile(plan) in {NVIDIA_PROFILE, IDENTITY_PROFILE, IDENTITY_PROFILE_V2} else None
+        if qualification_profile(plan) in REVIEWED_FRONTEND_PROFILES else None
     )
     nvidia = scope["nvidia"] if scope is not None else None
     request = output / "browser-request.json"
@@ -2428,7 +2443,7 @@ def operational_observations(binding, plan, folder, context_id):
 
 
 def public_server_keys(plan):
-    if qualification_profile(plan) == IDENTITY_PROFILE_V2:
+    if qualification_profile(plan) in REGISTERED_CALLBACK_PROFILES:
         return PUBLIC_SERVER_KEYS | {"ONESA_IDENTITY_CALLBACKS_JSON"}
     return PUBLIC_SERVER_KEYS
 
@@ -2447,10 +2462,9 @@ def public_server_configuration(plan, env):
         and values["ACCESS_REGISTRATION_ENABLED"] in {"true", "false"},
         "EXISTING_FEATURE_FLAG_VALUE_REQUIRED",
     )
-    if qualification_profile(plan) == IDENTITY_PROFILE_V2:
-        import oracle_portal_frontend_identity_v2 as seven
-
-        seven.verify_callbacks(plan["binding"], env, values[seven.CALLBACK_KEY])
+    if qualification_profile(plan) in REGISTERED_CALLBACK_PROFILES:
+        profile = callback_profile(qualification_profile(plan))
+        profile.verify_callbacks(plan["binding"], env, values[profile.CALLBACK_KEY])
     callback = values["ENGINEERING_ACCESS_CALLBACK_URL"]
     if callback:
         url = urllib.parse.urlsplit(callback)

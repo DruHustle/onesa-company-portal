@@ -44,6 +44,10 @@ IDENTITY_FRONTEND_V2_ALLOWED = {
     **NVIDIA_ALLOWED,
     "runners/oracle_portal_frontend_identity_v2.py": "scripts/release/oracle_portal_frontend_identity_v2.py",
 }
+IDENTITY_FRONTEND_V3_ALLOWED = {
+    **IDENTITY_FRONTEND_V2_ALLOWED,
+    "runners/oracle_portal_frontend_identity_v3.py": "scripts/release/oracle_portal_frontend_identity_v3.py",
+}
 SCANNER_ALLOWED = {
     **ALLOWED,
     "runners/oracle_portal_scanner.py": "scripts/release/oracle_portal_scanner.py",
@@ -179,6 +183,10 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "frontend",
             "oracle_portal_frontend.py",
             "portal-",
+        )
+    elif set(m["files"]) == set(IDENTITY_FRONTEND_V3_ALLOWED):
+        allowed, component, script, prefix = (
+            IDENTITY_FRONTEND_V3_ALLOWED, "frontend", "oracle_portal_frontend.py", "portal-",
         )
     elif set(m["files"]) == set(SCANNER_ALLOWED):
         allowed, component, script, prefix = (
@@ -326,6 +334,11 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "Seven-client frontend requires its complete reviewed installation",
         )
         require(
+            (allowed is IDENTITY_FRONTEND_V3_ALLOWED)
+            == (selected == getattr(module, "IDENTITY_PROFILE_V3", None)),
+            "Eight-client frontend requires its complete reviewed installation",
+        )
+        require(
             all(
                 module.profile_checks(profile, phase)
                 <= set(profile["required_checks"][phase])
@@ -360,6 +373,7 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         module.NVIDIA_PROFILE,
         getattr(module, "IDENTITY_PROFILE", "frontend-identity-v1"),
         getattr(module, "IDENTITY_PROFILE_V2", "frontend-identity-v2"),
+        getattr(module, "IDENTITY_PROFILE_V3", "frontend-identity-v3"),
     }:
         tool_fields.add("frontend_baseline")
     require(
@@ -373,6 +387,7 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         module.NVIDIA_PROFILE,
         getattr(module, "IDENTITY_PROFILE", "frontend-identity-v1"),
         getattr(module, "IDENTITY_PROFILE_V2", "frontend-identity-v2"),
+        getattr(module, "IDENTITY_PROFILE_V3", "frontend-identity-v3"),
     }:
         baseline = tool["frontend_baseline"]
         require(
