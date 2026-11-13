@@ -1,5 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
 import {surface,routeDestination,applicationOrigin} from "./lib/domains";
+import {legacySignInEntry} from "./lib/sign-in-entry";
 import nvidiaCatalog from "./config/nvidia-reference-assets.json";
 const nvidiaModelPaths = new Set(nvidiaCatalog.assets.map(asset => `/models/nvidia/${asset.glb.path}`));
 /** Per-response nonces allow Next.js hydration without trusting injected inline scripts. */
@@ -14,6 +15,12 @@ export function proxy(request: NextRequest) {
     return new NextResponse('User-agent: *\nDisallow: /\n\nUser-agent: facebookexternalhit\nUser-agent: Facebot\nDisallow: /\nAllow: /$\nAllow: /en$\nAllow: /de$\nAllow: /social/onesa-social-card.png$\n',{
       headers:{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'},
     });
+  }
+  const entry = ["GET", "HEAD"].includes(request.method) ? legacySignInEntry(request.nextUrl.pathname, request.nextUrl.searchParams) : null;
+  if (entry) {
+    const response = NextResponse.redirect(new URL(entry, origin!), 307);
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
   }
   const nonce = btoa(crypto.randomUUID());
   const development = process.env.NODE_ENV === "development";

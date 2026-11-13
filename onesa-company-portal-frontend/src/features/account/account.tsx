@@ -42,7 +42,8 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
   const [adminWorkspace, setAdminWorkspace] = useState("/admin");
   const [approvedAdmin, setApprovedAdmin] = useState(false);
   const approvalRequest = mode === "register" && Boolean(adminEntry || legacyDocsRegistration);
-  const signupUrl = "/account/register" + destination.slice("/account".length);
+  const destinationSearch = destination.includes("?") ? destination.slice(destination.indexOf("?")) : "";
+  const signupUrl = adminEntry && !legacyAdmin ? "/admin?entry=register" : "/account/register" + destinationSearch;
   useEffect(() => {
     if (adminEntry) setAdminWorkspace(adminWorkspaceReturn(window.location.hash));
     let target = interactionId ? productAccountPath(interactionId) ?? "/account" : accountDestination(window.location.search);
@@ -125,7 +126,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
         const email = String(data.get("email")).trim().toLowerCase(), name = String(data.get("name")).trim();
         if (approvalRequest) await accountRequest("/api/v1/access/register", { email, name: name.slice(0, 120), audience: adminEntry ? "admin" : "engineering" });
         else await accountRequest("/api/v1/account/register", { email, name, products: selected });
-        try { sessionStorage.setItem("onesa.account.registrationReturn", JSON.stringify({ search: destination.slice("/account".length), until: Date.now() + 15 * 60 * 1000 })); } catch { /* The initiating tab remains available without storage. */ }
+        try { sessionStorage.setItem("onesa.account.registrationReturn", JSON.stringify({ search: destinationSearch, until: Date.now() + 15 * 60 * 1000 })); } catch { /* The initiating tab remains available without storage. */ }
         setDone(true); setNotice(t.sent); return;
       }
       if (mode === "confirm") {

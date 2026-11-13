@@ -18,7 +18,7 @@ export function engineeringRedirectLocation(
       const interaction = /^\/engineering\/sign-in\/([A-Za-z0-9_-]{8,128})$/.exec(url.pathname);
       if (interaction && (value === url.pathname || value === origin + url.pathname)) {
         // Only Location changes. The issuer's interaction cookies must retain their exact per-UID paths.
-        return origin + "/account?docs=" + interaction[1];
+        return origin + "/admin?docs=" + interaction[1];
       }
       if (new RegExp("^" + identityPath + "/auth/[A-Za-z0-9_-]{8,128}$").test(url.pathname)) return url.href;
     }
