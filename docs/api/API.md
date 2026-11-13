@@ -376,8 +376,9 @@ unobserved status. Observations at least five minutes old display stale status,
 retaining the previous result separately.
 
 `scripts/observe-infrastructure.mts` performs only credential-free public API
-probes with bounded timeouts and fixed destinations. Factory returns `live` for a
-responsive process. Robot uses its operator readiness endpoint at `/api/v1/ready`.
+probes with bounded timeouts and fixed destinations. Factory must return `ready`
+from `/health/ready`, which checks startup, database and real-time service readiness.
+Robot uses its operator readiness endpoint at `/api/v1/ready`.
 A Robot journal recovery failure produces an unavailable observation even while
 the process responds to liveness checks. Simulation readiness does not certify
 physical operation. AI Platform must pass both process health and inference readiness
