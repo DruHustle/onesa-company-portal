@@ -76,7 +76,7 @@ const api = http.createServer(async (req, res) => {
     if (path === "/api/v1/account/config" && state.configMissing) return fail(404, "NOT_FOUND", "Route not found");
     if (path === "/api/v1/account/config") return send(200, { enabled: state.enabled !== false, applications: (state.catalog || catalog()).filter(item => item.connected).map(({product}) => ({product})), ...(state.legacyCatalog ? {} : {catalog: state.catalog || catalog()}) });
     if (path === "/api/v1/auth/me") return fail(401, "UNAUTHENTICATED", "Protected staff session required");
-    if (path === "/api/v1/access/link") return send(202, {ok:true});
+    if (path === "/api/v1/access/link" || path === "/api/v1/account/email-link") return send(202, {ok:true});
     if (path === "/api/v1/access/link/verify") {
       assert.equal(input.token, proof);
       if (input.code !== "123456") return fail(401, "MFA_REQUIRED", "Enter your authenticator or recovery code.");
@@ -93,7 +93,7 @@ const api = http.createServer(async (req, res) => {
       if (state.loginError) return fail(state.loginError.status || 403, state.loginError.code, state.loginError.message);
       if (state.enrollmentRequired) return fail(403, "MFA_ENROLLMENT_REQUIRED", "Set up your authenticator to continue.");
       if (state.mfa && input.code !== "123456") return fail(401, "MFA_REQUIRED", "Enter your authenticator or recovery code.");
-      state.session = session(); return send(200, state.session);
+      state.session = session(state.sharedEmailAdmin === true); return send(200, state.session);
     }
     if (path === "/api/v1/auth/mfa/enroll") {
       assert.equal(input.password, password);
@@ -425,6 +425,34 @@ try {
       await expect(page.getByLabel("Password", {exact: true})).toHaveValue("");
       receipts.push({engine, flow: "sso-proof-rejects-repeat-password-without-submission"});
     });
+    await isolated({}, async (page,state) => {
+      await page.goto(origin+"/admin?next=/admin#signin-link="+proof);
+      await expect(page).toHaveURL(origin+"/admin?next=/admin");
+      await expect(page.getByLabel("Password",{exact:true})).toHaveCount(0);
+      await expect(page.getByRole("button",{name:"Confirm sign-in",exact:true})).toBeVisible();
+      await page.getByLabel("Email address",{exact:true}).fill("synthetic-member@example.test");
+      await page.getByRole("button",{name:"Confirm sign-in",exact:true}).click();
+      await expect(page.getByRole("heading",{name:"Your applications"})).toBeVisible();
+      const submitted=state.writes.find(item=>item.path==="/api/v1/account/login");
+      assert.equal(submitted.input.emailToken,proof);assert.equal("password" in submitted.input,false);
+      receipts.push({engine,flow:"ordinary-email-proof-enters-shared-account-without-admin-mfa"});
+    });
+    await isolated({mfa: true, sharedEmailAdmin: true}, async (page, state) => {
+      await page.goto(origin + "/admin?next=/admin#signin-link=" + proof);
+      const confirm = page.getByRole("button", {name: "Confirm sign-in", exact: true});
+      await expect(confirm).toBeVisible();
+      await page.getByLabel("Email address", {exact: true}).fill("synthetic-staff@example.test");
+      await confirm.click();
+      await page.getByLabel("Authenticator or recovery code", {exact: true}).fill("123456");
+      await page.route(origin + "/admin", route => route.fulfill({contentType: "text/html", body: "<html lang=en><h1>Synthetic staff destination</h1></html>"}));
+      await confirm.click();
+      await expect(page.getByRole("heading", {name: "Synthetic staff destination"})).toBeVisible();
+      const attempts = state.writes.filter(item => item.path === "/api/v1/account/login");
+      assert.equal(attempts.length, 2);
+      assert.ok(attempts.every(item => item.input.emailToken === proof && !("password" in item.input)));
+      assert.equal(attempts[1].input.code, "123456");
+      receipts.push({engine, flow: "shared-email-admin-requires-mfa-before-staff-destination"});
+    });
     await isolated({}, async (page, state) => {
       await page.goto(origin + "/admin");
       await expect(page).toHaveURL(origin + "/admin?next=/admin");
@@ -432,9 +460,10 @@ try {
       await expect(page.getByLabel("Password", {exact:true})).toBeEnabled();
       await expect(page.getByRole("link", {name:"New to Onesa? Create one account"})).toHaveAttribute("href", "/admin?entry=register");
       await page.getByRole("button", {name:"Email a sign-in link", exact:true}).click();
-      await page.getByLabel("Email", {exact:true}).fill("synthetic-staff@example.test");
+      await page.getByLabel("Email address", {exact:true}).fill("synthetic-staff@example.test");
       await page.getByRole("button", {name:"Send sign-in link", exact:true}).click();
-      await expect(page.getByRole("status")).toHaveText("Sent.");
+      await expect(page.getByRole("status")).toContainText("If your account is eligible");
+      assert.ok(state.writes.some(item=>item.path==="/api/v1/account/email-link"));
       await page.goto(origin + "/admin#access-link=" + proof);
       await expect(page).toHaveURL(origin + "/admin?next=/admin");
       expect(state.writes.filter(item => item.path.endsWith("/verify")).length).toBe(0);

@@ -405,7 +405,7 @@ export async function registerEngineeringIdentity(
     const membership=(await db.query("SELECT enabled FROM engineering_memberships WHERE id=$1 FOR SHARE",[accountId])).rows[0];
     if(!membership?.enabled)throw new HttpError(403,"ENGINEERING_ACCOUNT_PROOF","Engineering membership is required.");
     if(central){
-      method=central.amr.includes("otp")?"mfa":"pwd";
+      method=central.amr.includes("otp")?"mfa":central.amr.includes("email")?"email":"pwd";
       authenticatedAt=central.authenticatedAt;
     }
     const grant = new provider.Grant({ accountId, clientId: config.clientId });

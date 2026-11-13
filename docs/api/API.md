@@ -92,6 +92,12 @@ expected revision and access-policy evidence. An engineering identity has no Por
 role. The exact Cloudflare email policy remains an independent requirement. See
 [Engineering Docs access](../engineering/ENGINEERING_DOCS_IDENTITY.md).
 
+## Shared account email sign-in
+
+`POST /api/v1/account/email-link` accepts an email. For product sign-in, `POST /api/v1/account/interaction/:uid/email-link` also requires the initiating browser’s interaction cookie and CSRF proof. The response is 202 for an unknown or ineligible address as well as for a verified account. The recipient confirms the address and the one-use proof in the URL fragment. Proofs expire after 15 minutes. The same IP and address rate limits govern repeat requests, and repeat requests within 30 seconds send a single message.
+
+The shared login and the product interaction login accept `emailToken` in place of `password`. A product-bound link also requires its original interaction, browser cookies and CSRF proof. Account disablement, credential changes and global sign-out invalidate outstanding proofs. Email authentication preserves the account’s MFA requirements, memberships and product approvals. Only accounts that already have Portal access can receive an administration session. Previously sent administrator and Engineering links keep their existing confirmation paths.
+
 ## Prepared common-account Docs link
 
 Prepared additive account-link fields preserve older clients: current Docs details
@@ -376,8 +382,9 @@ unobserved status. Observations at least five minutes old display stale status,
 retaining the previous result separately.
 
 `scripts/observe-infrastructure.mts` performs only credential-free public API
-probes with bounded timeouts and fixed destinations. Factory returns `live` for a
-responsive process. Robot uses its operator readiness endpoint at `/api/v1/ready`.
+probes with bounded timeouts and fixed destinations. Factory must return `ready`
+from `/health/ready`, which checks startup, database and real-time service readiness.
+Robot uses its operator readiness endpoint at `/api/v1/ready`.
 A Robot journal recovery failure produces an unavailable observation even while
 the process responds to liveness checks. Simulation readiness does not certify
 physical operation. AI Platform must pass both process health and inference readiness

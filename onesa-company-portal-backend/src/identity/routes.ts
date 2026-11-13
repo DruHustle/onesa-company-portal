@@ -49,6 +49,7 @@ import {
   type IdentityClient,
   type Product,
 } from "./config.js";
+import { requestAccountEmailLink, consumeAccountEmailLink } from "./email-sign-in.js";
 import { createIdentityProvider } from "./provider.js";
 import { catalogProducts, identityCatalog } from "./catalog.js";
 
@@ -83,6 +84,8 @@ const credentials = z.object({
   code: z.string().max(64).default(""),
   rememberBrowser: z.boolean().default(false),
 });
+const emailCredentials = credentials.omit({password:true}).extend({emailToken:proof});
+const loginCredentials = z.union([emailCredentials.strict(), credentials]);
 const accountSchema = z.object({
   id: z.uuid(),
   email: z.email(),
@@ -784,9 +787,10 @@ export async function registerIdentity(
   async function authenticate(
     req: FastifyRequest,
     reply: FastifyReply,
-    input: z.infer<typeof credentials>,
+    input: z.infer<typeof loginCredentials>,
     mfaRequired: boolean,
     interactionAccountId?: string,
+    emailInteractionId?: string,
   ): Promise<AccountSession> {
     const email = input.email.toLowerCase();
     await limits.limit("identity-login-ip:" + limits.address(req), 15, 900);
@@ -797,10 +801,7 @@ export async function registerIdentity(
       ])
     ).rows[0];
     if (
-      !passwordValid(
-        input.password,
-        candidate?.password_hash ?? dummyPassword,
-      ) ||
+      ("password" in input && !passwordValid(input.password, candidate?.password_hash ?? dummyPassword)) ||
       !candidate
     )
       throw new HttpError(
@@ -836,6 +837,8 @@ export async function registerIdentity(
           "CREDENTIALS",
           "Unable to sign in with these credentials.",
         );
+      if ("emailToken" in input)
+        await consumeAccountEmailLink(c, input.emailToken, user, emailInteractionId);
       const account = await identityAccount(user.id, c);
       if (!account?.email_verified_at)
         throw new HttpError(
@@ -851,7 +854,7 @@ export async function registerIdentity(
         Object.entries(accessRoles).some(([product, role]) =>
           productRequiresMfa(product, role),
         );
-      const amr = ["pwd"];
+      const amr = ["emailToken" in input ? "email" : "pwd"];
       if (needsMfa) {
         if (!user.mfa_secret)
           throw new HttpError(
@@ -957,13 +960,31 @@ export async function registerIdentity(
       );
     return result;
   }
+  async function sendEmailSignIn(req: FastifyRequest, email: string, interactionId?: string) {
+    if (req.headers.origin !== env.PUBLIC_ORIGIN)
+      throw new HttpError(403, "ORIGIN", "Use the Onesa Portal.");
+    const address = email.toLowerCase();
+    await limits.limit("identity-email-link-ip:" + limits.address(req), 5, 900);
+    await limits.limit("identity-email-link-address:" + hash(address), 3, 3600);
+    await requestAccountEmailLink(address, interactionId);
+  }
+  const emailLinkRequest = z.object({email: z.email().max(254)}).strict();
+  const emailLinkResponse = {202: z.object({ok: z.literal(true)}), ...failures};
+  api.post("/api/v1/account/email-link", {
+    logLevel: "silent",
+    schema: {...meta("requestOnesaAccountEmailLink"), body: emailLinkRequest, response: emailLinkResponse},
+  }, async (req, reply) => {
+    configured();
+    await sendEmailSignIn(req, req.body.email);
+    return reply.code(202).send({ok: true});
+  });
   api.post(
     "/api/v1/account/login",
     {
       logLevel: "silent",
       schema: {
         ...meta("signInOnesaAccount"),
-        body: credentials,
+        body: loginCredentials,
         response: { 200: sessionSchema, ...failures },
       },
     },
@@ -1359,7 +1380,7 @@ export async function registerIdentity(
             amr: session.amr,
             acr: session.amr.includes("otp")
               ? "urn:onesa:mfa"
-              : "urn:onesa:password",
+              : session.amr.includes("email") ? "urn:onesa:email" : "urn:onesa:password",
             remember: true,
           },
           consent: { grantId },
@@ -1438,6 +1459,17 @@ export async function registerIdentity(
       return finish(req, reply, session, client);
     },
   );
+  api.post("/api/v1/account/interaction/:uid/email-link", {
+    logLevel: "silent",
+    schema: {...meta("requestOnesaInteractionEmailLink"), params: interactionParams,
+      body: emailLinkRequest.extend({csrf: proof}), response: emailLinkResponse},
+  }, async (req, reply) => {
+    const {details} = await interaction(req, reply);
+    if (!same(req.body.csrf, interactionProof(details.uid)))
+      throw new HttpError(403, "CSRF", "Refresh this sign-in request.");
+    await sendEmailSignIn(req, req.body.email, details.uid);
+    return reply.code(202).send({ok: true});
+  });
   api.post(
     "/api/v1/account/interaction/:uid/login",
     {
@@ -1445,7 +1477,7 @@ export async function registerIdentity(
       schema: {
         ...meta("authenticateOnesaSignIn"),
         params: interactionParams,
-        body: credentials.extend({ csrf: proof }),
+        body: z.union([emailCredentials.extend({csrf:proof}).strict(), credentials.extend({csrf:proof})]),
         response: {
           200: z.object({ continuePath: z.string(), issuer: z.string() }),
           ...failures,
@@ -1459,7 +1491,7 @@ export async function registerIdentity(
       return finish(
         req,
         reply,
-        await authenticate(req, reply, req.body, mfaRequired(details.params), details.session?.accountId),
+        await authenticate(req, reply, req.body, mfaRequired(details.params), details.session?.accountId, details.uid),
         client,
       );
     },
