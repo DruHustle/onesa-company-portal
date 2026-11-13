@@ -1,9 +1,10 @@
 import { after, test } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { chmod, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { execFile, execFileSync } from "node:child_process";
+import { chmod, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { promisify } from "node:util";
 import { infrastructureOverview } from "../src/operations/infrastructure.js";
 const directory = await mkdtemp(join(tmpdir(), "onesa-infrastructure-"));
 after(() => rm(directory, { recursive: true, force: true }));
@@ -111,4 +112,67 @@ test("The collector maps deployed health contracts to the administrator's observ
   const ai = recovered.services.find(service => service.id === "ai");
   assert.equal(ai?.status, "unavailable");
   assert.equal(ai?.revision, null);
+});
+
+test("Aggregation retains private observations and timestamps across scheduled public refreshes", async () => {
+  const collector = new URL("../../scripts/observe-infrastructure.mts", import.meta.url);
+  const output = join(directory, "published.json");
+  const publicFile = await snapshot("public-source.json", [observed("portal"), observed("ai")]);
+  const cluster = { ...observed("kubernetes", "available", 600000), source: "owner_runtime" };
+  const localProbe = { ...observed("ai", "unavailable"), source: "owner_runtime" };
+  const privateFile = await snapshot("private-source.json", [cluster, localProbe]);
+  function merge(publicPath = publicFile, ownerPath = privateFile, target = output) {
+    return execFileSync(process.execPath, ["--import", "tsx", collector.pathname, "--merge", publicPath, ownerPath, target],
+      { timeout: 8000, stdio: "pipe" });
+  }
+  merge();
+  const initial = await infrastructureOverview(output, now);
+  assert.equal(initial.observationState, "loaded");
+  const rows = Object.fromEntries(initial.services.map(row => [row.id, row]));
+  assert.equal(rows.kubernetes.status, "stale");
+  assert.equal(rows.kubernetes.observedAt, cluster.observedAt);
+  assert.equal(rows.kubernetes.lastObservedState, "available");
+  assert.equal(rows.portainer.status, "not_observed");
+  assert.equal(rows.ai.source, "owner_runtime", "Private runtime takes precedence at identical observation time");
+  assert.equal(rows.ai.status, "unavailable");
+  const newer = { ...observed("ai"), observedAt: new Date(now + 1000).toISOString() };
+  await snapshot("public-source.json", [newer]);
+  merge();
+  const refreshed = await infrastructureOverview(output, now + 1000);
+  assert.equal(refreshed.services.find(row => row.id === "ai")?.source, "public_http");
+  assert.equal(refreshed.services.find(row => row.id === "kubernetes")?.observedAt, cluster.observedAt);
+  const previous = await readFile(output);
+  await snapshot("public-source.json", [observed("ai", "unavailable")]);
+  await snapshot("private-source.json", []);
+  merge();
+  assert.deepEqual(await readFile(output), previous, "A stale replay or omitted row cannot roll back the published timestamp");
+  await snapshot("public-source.json", [newer]);
+  await snapshot("private-source.json", [cluster]);
+  const alternate = await snapshot("public-alternate.json", [observed("robot")]);
+  const concurrent = join(directory, "concurrent.json");
+  const asyncExec = promisify(execFile);
+  await Promise.all([publicFile, alternate].map(source => asyncExec(process.execPath,
+    ["--import", "tsx", collector.pathname, "--merge", source, privateFile, concurrent], {timeout: 10000})));
+  const combined = await infrastructureOverview(concurrent, now + 1000);
+  assert.deepEqual(combined.services.filter(row => row.observedAt).map(row => row.id), ["ai", "robot", "kubernetes"]);
+  await snapshot("public-source.json", [{...newer, state:"unavailable"}]);
+  assert.throws(() => merge(), "A single source cannot contradict itself at the same timestamp");
+  assert.deepEqual(await readFile(output), previous);
+  await snapshot("public-source.json", [newer]);
+  for (const invalid of [[{...observed("robot"), source: "public_http"}], [{...cluster, environment:"staging"}],
+    [{...cluster, observedAt:"2099-01-01T00:00:00Z"}], [cluster, cluster]]) {
+    await snapshot("private-source.json", invalid);
+    assert.throws(() => merge());
+    assert.deepEqual(await readFile(output), previous);
+  }
+  await snapshot("private-source.json", [cluster]);
+  await snapshot("public-source.json", [observed("portainer")]);
+  assert.throws(() => merge());
+  await snapshot("public-source.json", [newer]);
+  assert.throws(() => merge(publicFile, privateFile, privateFile));
+  const linked = join(directory, "private-source-link.json");
+  await symlink(privateFile, linked);
+  assert.throws(() => merge(publicFile, linked));
+  assert.throws(() => merge(publicFile, join(directory,"missing-private-source.json")));
+  assert.deepEqual(await readFile(output), previous);
 });
