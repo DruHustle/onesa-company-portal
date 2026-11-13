@@ -439,6 +439,10 @@ try {
     });
     await isolated({mfa: true, sharedEmailAdmin: true}, async (page, state) => {
       await page.goto(origin + "/admin?next=/admin#signin-link=" + proof);
+      const directoryRequests = [];
+      page.on("request", request => {
+        if (new URL(request.url()).pathname === "/api/v1/admin/identity/accounts") directoryRequests.push(request.method());
+      });
       const confirm = page.getByRole("button", {name: "Confirm sign-in", exact: true});
       await expect(confirm).toBeVisible();
       await page.getByLabel("Email address", {exact: true}).fill("synthetic-staff@example.test");
@@ -451,6 +455,7 @@ try {
       assert.equal(attempts.length, 2);
       assert.ok(attempts.every(item => item.input.emailToken === proof && !("password" in item.input)));
       assert.equal(attempts[1].input.code, "123456");
+      assert.deepEqual(directoryRequests, [], "The departing sign-in page must not load the staff account directory.");
       receipts.push({engine, flow: "shared-email-admin-requires-mfa-before-staff-destination"});
     });
     await isolated({}, async (page, state) => {

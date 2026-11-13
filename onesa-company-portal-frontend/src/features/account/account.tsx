@@ -176,13 +176,18 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
       }
       if (interactionId && interaction) follow(await accountRequest("/api/v1/account/interaction/" + encodeURIComponent(interactionId) + "/login", { ...body, csrf: interaction.csrf }));
       else {
-        const result = await accountRequest<AccountSession>("/api/v1/account/login", body); setSession(result); setSharedToken(null); setEmailLink(false);
+        const result = await accountRequest<AccountSession>("/api/v1/account/login", body);
         if (docsInteractionId) { window.location.replace(docsAccountPath(docsInteractionId)!); return; }
         if (accountDestination(window.location.search) === "/account?next=/engineering") { window.location.assign("/engineering"); return; }
         const destination = accountReturnPath(window.location.search);
         if (destination) window.location.assign(destination);
         else if (new URLSearchParams(window.location.search).get("next") === "/account/delete") window.location.assign("/account/delete");
         else if (new URLSearchParams(window.location.search).get("next") === "/admin" && result.account.portalAccess) window.location.assign(adminWorkspace);
+        else {
+          setSharedToken(null);
+          setEmailLink(false);
+          setSession(result);
+        }
       }
     });
   }
