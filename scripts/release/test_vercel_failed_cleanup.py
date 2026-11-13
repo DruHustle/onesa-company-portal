@@ -75,6 +75,42 @@ class CleanupTests(unittest.TestCase):
         self.assertEqual(result["errors"], [])
         self.assertEqual(result["overdueCount"], 0)
 
+    def test_provider_reports_already_absent_without_claiming_deletion(self):
+        provider = Provider()
+
+        def missing(path, method="GET", **query):
+            if method == "DELETE":
+                del provider.deployments["dpl_old"]
+                return {"alreadyAbsent": True}
+            return provider(path, method, **query)
+
+        result = cleanup.cleanup(missing, CONFIG, NOW, True)
+        self.assertEqual(result["deleted"], [])
+        self.assertEqual(result["alreadyAbsent"], ["dpl_old"])
+
+    def test_changed_state_is_never_evidence_of_deletion(self):
+        for uncertain_response in (False, True):
+            with self.subTest(uncertain_response=uncertain_response):
+                provider = Provider()
+
+                def state_changed(path, method="GET", **query):
+                    if method == "DELETE":
+                        provider.deployments["dpl_old"]["readyState"] = "READY"
+                        if uncertain_response:
+                            raise cleanup.Refused("provider response was lost")
+                        return {"state": "DELETED"}
+                    if path == "/v6/deployments" and query.get("state") == "ERROR":
+                        return {"deployments": [{"uid": key} for key, item in
+                                provider.deployments.items() if item["readyState"] == "ERROR"]}
+                    return provider(path, method, **query)
+
+                result = cleanup.cleanup(state_changed, CONFIG, NOW, True)
+                self.assertEqual(result["deleted"], [])
+                self.assertEqual(result["alreadyAbsent"], [])
+                self.assertFalse(result["successful"])
+                self.assertEqual(result["errors"], [
+                    {"id": "dpl_old", "reason": "delete_or_readback_failed"}])
+
     def test_failed_delete_still_present_is_not_a_success(self):
         provider = Provider()
         def failing(path, method="GET", **query):
