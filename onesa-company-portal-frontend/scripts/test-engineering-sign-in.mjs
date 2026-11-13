@@ -7,6 +7,7 @@ import { once } from "node:events";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium, firefox, webkit, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+const hostedEntry = process.argv.includes("--hosted-entry");
 const accessEnabled = process.env.ONESA_TEST_ACCESS_MODE !== "disabled";
 const engineName = process.env.ONESA_SIGNIN_BROWSER || "chromium";
 const engines = {chromium, firefox, webkit};
@@ -138,6 +139,7 @@ const env = {
   SITE_URL: origin,
   BACKEND_URL: "http://127.0.0.1:" + apiPort,
   ENGINEERING_SIGNIN_ENABLED: String(accessEnabled),
+  ENGINEERING_LEGACY_TEST_FIXTURE: hostedEntry ? "false" : "true",
   ACCESS_REGISTRATION_ENABLED: String(accessEnabled),
   PROXY_SHARED_KEY: proxyKey,
   NEXT_TELEMETRY_DISABLED: "1",
@@ -223,6 +225,29 @@ try {
     expect(new URL(bookmark.headers.get("location"), origin).href).toBe(origin + "/account?docs=synthetic_proxy_uid");
   }
   browser = await engines[engineName].launch(supplemental ? {executablePath: supplemental, args: ["--disable-dev-shm-usage"]} : {});
+  if (hostedEntry) {
+    const page = await browser.newPage({viewport: {width: 390, height: 844}});
+    const old = "synthetic_old_backend";
+    await page.goto(origin + "/engineering/sign-in/" + old);
+    await expect(page.locator("main").getByRole("alert")).toHaveText("Company Portal sign-in is temporarily unavailable for Engineering Docs.");
+    await expect(page.locator("input[type=password]")).toHaveCount(0);
+    await expect(page.getByRole("link", {name: "Open Company Portal account"})).toHaveAttribute("href", "/account");
+    const uid = "synthetic_shared_portal_only";
+    await page.goto(origin + "/engineering/sign-in/" + uid);
+    await expect(page.locator("#account-title")).toBeVisible();
+    await expect(page.locator("input[name=password]")).toBeVisible();
+    await expect(page.locator("#engineering-sign-in form")).toHaveCount(0);
+    const signup = page.locator('a[href^="/account/register"]');
+    await expect(signup).toHaveAttribute("href", "/account/register?docs=" + uid);
+    await signup.click();
+    await expect(page.locator("#account-title")).toBeVisible();
+    await expect(page.locator('a[href="/account?docs=' + uid + '"]')).toBeVisible();
+    await page.goto(origin + "/engineering/sign-in/synthetic_shared_link_proof");
+    await page.getByRole("button", {name: "Email and password", exact: true}).click();
+    await expect(page.getByLabel("Email address", {exact: true})).toHaveAttribute("readonly", "");
+    await expect(page.getByRole("button", {name: "Confirm existing Docs access"})).toBeDisabled();
+    console.log("PASS hosted Docs: old API outage, Portal login and registration with return, and explicit existing-membership proof.");
+  } else {
   if (accessEnabled) {
     const context = await browser.newContext({ viewport: { width: 320, height: 568 } });
     const page = await context.newPage();
@@ -367,7 +392,7 @@ try {
         await expect(page.locator("#engineering-sign-in").getByRole("alert")).toContainText(message);
         await expect(page.getByLabel("Password", {exact: true})).toHaveValue("synthetic-invalid-password");
         await expect(page.getByRole("button", {name: "Continue", exact: true})).toBeEnabled();
-        if (code === "ENGINEERING_REGISTRATION_REQUIRED") await expect(page.locator("#engineering-sign-in").getByRole("alert").getByRole("link", {name: "Register for Engineering Docs"})).toHaveAttribute("href", "/account/register?next=/engineering");
+        if (code === "ENGINEERING_REGISTRATION_REQUIRED") await expect(page.locator("#engineering-sign-in").getByRole("alert").getByRole("link", {name: "Create your Onesa account"})).toHaveAttribute("href", "/account/register?next=/engineering");
         await page.getByRole("button", {name: "Email a sign-in link", exact: true}).click();
         await expect(page.locator("#engineering-sign-in").getByRole("alert")).toHaveCount(0);
       }
@@ -413,17 +438,13 @@ try {
         const checkbox = page.getByRole("checkbox", {name: "Use my Onesa account for future Docs sign-ins", exact: true});
         await expect(checkbox).not.toBeChecked();
         expect(accountLinkChoices.has(uid + "/" + (method === "password" ? "password" : "handoff-verify"))).toBe(false);
-        if (consent && method === "password") {
-          await checkbox.check();
-          await page.getByLabel("Email address", {exact: true}).fill("different-engineer@example.test");
-          await expect(checkbox).toHaveCount(0);
-          await page.getByLabel("Email address", {exact: true}).fill("synthetic-engineer@onesa.eu");
-          await expect(checkbox).not.toBeChecked();
-        }
+        if (method === "password") await expect(page.getByLabel("Email address", {exact: true})).toHaveAttribute("readonly", "");
         if (consent) await checkbox.check();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         expect((await new AxeBuilder({page}).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
-        await verifyOpeningHandoff(page, uid, page.getByRole("button", {name: method === "password" ? "Confirm existing Docs access" : "Confirm sign-in and open Docs", exact: true}));
+        const confirm = page.getByRole("button", {name: method === "password" ? "Confirm existing Docs access" : "Confirm sign-in and open Docs", exact: true});
+        if (consent) await verifyOpeningHandoff(page, uid, confirm);
+        else await expect(confirm).toBeDisabled();
         expect(accountLinkChoices.get(uid + "/" + (method === "password" ? "password" : "handoff-verify"))).toBe(consent ? true : undefined);
         views.push({type: "explicit-existing-Docs-proof-link", method, consent, width: 320, axeViolations: 0});
       } finally { await context.close(); }
@@ -577,7 +598,7 @@ try {
       await expect(email).toBeDisabled();
       await expect(page.getByRole("button", {name: "Sent", exact: true})).toHaveCount(0);
       await expect(page.getByRole("status")).toBeVisible();
-      await expect(page.getByRole("link", { name: "Register for Engineering Docs" })).toHaveCount(0);
+      await expect(page.getByRole("link", { name: "Create your Onesa account" })).toHaveCount(0);
       await page.getByRole("button", {name:"Email and password",exact:true}).click();
       const password = page.getByLabel("Password", {exact:true});
       await expect(remember).toBeChecked();
@@ -825,6 +846,7 @@ try {
       providerRequests: 0,
     }),
   );
+  }
 } finally {
   await browser?.close();
   child.kill("SIGTERM");

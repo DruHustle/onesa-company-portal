@@ -35,7 +35,7 @@ the existing owner-reviewed staff request.
 
 ## Link an existing Docs approval
 
-With shared Onesa identity enabled, an approved Engineering identity may be linked
+An approved Engineering identity is linked
 explicitly to an already authenticated, email-verified central account. The user
 chooses the link in Onesa Account and proves the existing Docs password or
 approved one-use email link. Both proofs must identify the same approved mailbox.
@@ -49,8 +49,7 @@ identity. An unlinked member signs in to or creates their Onesa account, then
 confirms their existing Docs approval. Previously mailed links can still be
 opened and confirmed. New sign-in and registration messages link directly to
 Onesa Account, with their proof in the fragment. Deploy the compatible frontend
-before an API that emits the new links. While central identity is disabled, the account entry
-retains the existing working sign-in methods for the requested destination.
+before an API that emits the new links. When central identity is unavailable, Docs shows the Company Portal entry and a retry. An unlinked Docs credential can only confirm its existing approval after the user signs in to their verified Portal account and chooses to link it.
 An administrator still completes central MFA, and a forced fresh request uses new
 central authentication. The fixed account return path preserves the current browser's
 bounded Docs interaction; it never transfers OIDC state or cookies between browsers.
@@ -80,3 +79,5 @@ rolling out the matching API.
 Existing, disabled, previously rejected and conflicting identities stay in their
 existing review or recovery paths. The Cloudflare Access policy must allow the
 individual email address at the protected Docs hostname.
+
+For a connected product, opening registration keeps the original authorization interaction on Company Portal. After email verification, continue from that browser to resume the product request. When email opens in another browser, finish verification there and return to the originating tab. If the interaction has expired, start sign-in again from the intended product screen.

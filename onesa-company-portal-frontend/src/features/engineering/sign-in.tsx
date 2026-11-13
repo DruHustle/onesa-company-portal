@@ -4,7 +4,7 @@ import { accessLinkToken } from "@/lib/access-link";
 import { docsAccountPath, engineeringAccountSignInPath } from "@/lib/account-return";
 import { engineeringSignInError } from "@/lib/engineering-sign-in-errors";
 import { OnesaAccount } from "@/features/account/account";
-export function EngineeringSignIn({ uid, environment, shared, fresh }: { uid: string; environment: string; shared: boolean; fresh: boolean }) {
+export function EngineeringSignIn({ uid, environment, shared, fresh, legacyFixture = false }: { uid: string; environment: string; shared: boolean; fresh: boolean; legacyFixture?: boolean }) {
   const [rememberBrowser, setRememberBrowser] = useState(false);
   const [onesaAccount, setOnesaAccount] = useState<string | null>(null);
   const [onesaLink, setOnesaLink] = useState<string | null>(null), [onesaSignInPath, setOnesaSignInPath] = useState<string | null>(null);
@@ -79,6 +79,9 @@ export function EngineeringSignIn({ uid, environment, shared, fresh }: { uid: st
     }).catch(() => { if (active && !preparingLink && (!abort.signal.aborted || timedOut)) { setRestartRequired(true); setNotice(timedOut ? "The sign-in page took too long to load. Start a new sign-in." : "The sign-in page could not be loaded. Start a new sign-in."); } }).finally(() => window.clearTimeout(detailsDeadline));
     return () => { active = false; window.clearTimeout(deadline); abort.abort(); window.removeEventListener("hashchange", receiveLink); };
   }, [uid]);
+  const central = !legacyFixture || shared || Boolean(onesaSignInPath);
+  const confirming = method === "link" && Boolean(linkEmail) && (!central || onesaLink === linkEmail);
+  const continuingSession = Boolean(onesaAccount && useExistingSession && !confirming);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (submitting.current || openingDocs || !ready || (enrollment !== "available" && method === "link" && !linkEmail && !(onesaAccount && useExistingSession) && resendSeconds > 0)) return;
     const data = new FormData(event.currentTarget); submitting.current = true; setBusy(true); setNotice(""); setRegistrationRequired(false);
@@ -86,10 +89,10 @@ export function EngineeringSignIn({ uid, environment, shared, fresh }: { uid: st
     const timeout = window.setTimeout(() => abort.abort(), 25000);
     let navigating = false;
     try {
-      const action = enrollment === "available" && !linkEmail ? "enroll" : onesaAccount && useExistingSession && !linkEmail ? "session" : method === "password" ? "password" : linkEmail ? "handoff-verify" : "link";
+      const action = enrollment === "available" && !confirming ? "enroll" : continuingSession ? "session" : method === "password" ? "password" : confirming ? "handoff-verify" : "link";
       if (action === "link") setSent(false);
       const canLink = Boolean(onesaLink && (action === "password" ? email.trim().toLowerCase() === onesaLink : action === "handoff-verify" && linkEmail === onesaLink));
-      const response = await fetch("/engineering/sign-in/" + uid + "/" + action, { method: "POST", signal: abort.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify(action === "enroll" ? {csrf} : { csrf, rememberBrowser, ...(action === "session" ? {} : method === "password" ? { email, password: String(data.get("password")) } : linkEmail ? {} : { email }), ...(canLink && linkOnesaAccount ? { linkOnesaAccount: true } : {}) }) });
+      const response = await fetch("/engineering/sign-in/" + uid + "/" + action, { method: "POST", signal: abort.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify(action === "enroll" ? {csrf} : { csrf, rememberBrowser, ...(action === "session" ? {} : method === "password" ? { email, password: String(data.get("password")) } : confirming ? {} : { email }), ...(canLink && linkOnesaAccount ? { linkOnesaAccount: true } : {}) }) });
       const value = await response.json().catch(() => { throw Error("Sign-in is temporarily unavailable. Please try again."); });
       if (!response.ok) {
         const failure = engineeringSignInError(response.status, value?.error?.code, action);
@@ -110,14 +113,14 @@ export function EngineeringSignIn({ uid, environment, shared, fresh }: { uid: st
     } catch (error) { navigating = false; setOpeningDocs(false); setNotice(abort.signal.aborted ? "The request took too long. Please try again." : error instanceof TypeError ? "Could not connect. Please try again." : error instanceof Error ? error.message : "Sign-in could not be completed."); }
     finally { window.clearTimeout(timeout); if (!navigating) { submitting.current = false; setBusy(false); } }
   }
-  const continuingSession = Boolean(onesaAccount && useExistingSession && !linkEmail);
-  const confirming = method === "link" && Boolean(linkEmail);
   const linkable = Boolean(onesaLink && (confirming ? linkEmail === onesaLink : method === "password" && email.trim().toLowerCase() === onesaLink));
   const linkSent = sent && method === "link" && !confirming && !continuingSession;
   const coolingDown = method === "link" && !confirming && !continuingSession && resendSeconds > 0;
   const controlsDisabled = busy || linkSent || coolingDown;
-  const central = shared || Boolean(onesaSignInPath);
-  if (ready && central && !confirming && (fresh || reauthenticate || (!continuingSession && !onesaLink && !enrollment))) {
+  if (ready && central && !onesaSignInPath) {
+    return <main className="admin-main admin-auth-shell"><section className="admin-login"><h1>Engineering Docs access</h1><p role="alert">Company Portal sign-in is temporarily unavailable for Engineering Docs.</p><p><a href="/account">Open Company Portal account</a></p><a href="/engineering">Retry Engineering Docs</a></section></main>;
+  }
+  if (ready && central && (fresh || reauthenticate || (!confirming && !continuingSession && !onesaLink && !enrollment))) {
     return <OnesaAccount docsInteractionId={uid} forceLogin={fresh || reauthenticate || !useExistingSession} />;
   }
   const registrationPath = central ? "/account/register?docs=" + uid : "/account/register?next=/engineering";
@@ -127,8 +130,8 @@ export function EngineeringSignIn({ uid, environment, shared, fresh }: { uid: st
     {!openingDocs && <p className="engineering-signin-intro">{confirming ? <>Continue as <strong>{linkEmail}</strong>.</> : continuingSession ? <>Continue as <strong>{onesaAccount}</strong>.</> : "Use your approved email to continue."}</p>}
     <div id="engineering-sign-in">
       {openingDocs ? <p role="status">Please wait…</p> : <>
-      {notice && <p role="alert">{notice}{registrationRequired && <> <a href={registrationPath}>Register for Engineering Docs</a></>}</p>}
-      {restartRequired && <a className="button" href="/engineering">Start a new sign-in</a>}
+      {notice && <p role="alert">{notice}{registrationRequired && <> <a href={registrationPath}>Create your Onesa account</a></>}</p>}
+      {restartRequired && <><a className="button" href="/engineering">Start a new sign-in</a>{central && <a href="/account">Open Company Portal account</a>}</>}
       {!ready && !notice && <p role="status">Preparing secure sign-in…</p>}
       {ready && enrollment && !confirming && <div>
         {enrollment === "pending" ? <p role="status">The owner is reviewing your Engineering Docs access request. You will receive the decision by email.</p> :
@@ -137,18 +140,18 @@ export function EngineeringSignIn({ uid, environment, shared, fresh }: { uid: st
       {ready && (!enrollment || confirming) && <>
         {!confirming && !continuingSession && <div className="signin-methods" role="group" aria-label="Sign-in method"><button type="button" disabled={busy} aria-pressed={method === "link"} onClick={() => { setMethod("link"); setLinkOnesaAccount(false); setNotice(""); setRegistrationRequired(false); }}>Email a sign-in link</button><button type="button" disabled={busy} aria-pressed={method === "password"} onClick={() => { setMethod("password"); setLinkOnesaAccount(false); setNotice(""); setRegistrationRequired(false); }}>Email and password</button></div>}
         <form ref={formRef} onSubmit={submit} aria-busy={busy}><fieldset disabled={controlsDisabled}><legend className="sr-only">{method === "password" ? "Email and password" : confirming ? "Confirm your sign-in link" : "Your approved email"}</legend>
-          {!confirming && !continuingSession && <label>Email address<input name="email" type="email" value={email} onChange={event => { setEmail(event.target.value); setLinkOnesaAccount(false); setSent(false); }} disabled={controlsDisabled} autoComplete="username" maxLength={254} required /></label>}
+          {!confirming && !continuingSession && <label>Email address<input name="email" type="email" value={email} onChange={event => { setEmail(event.target.value); setLinkOnesaAccount(false); setSent(false); }} disabled={controlsDisabled} readOnly={central && Boolean(onesaLink)} autoComplete="username" maxLength={254} required /></label>}
           {method === "password" && !continuingSession && <label>{onesaSignInPath ? "Existing Engineering Docs password" : "Password"}<input name="password" type="password" autoComplete="current-password" maxLength={256} required /></label>}
-          {linkable && <><label className="signin-remember"><input name="linkOnesaAccount" type="checkbox" checked={linkOnesaAccount} onChange={event => setLinkOnesaAccount(event.target.checked)} aria-describedby="engineering-account-link-help" />Use my Onesa account for future Docs sign-ins</label><p id="engineering-account-link-help" className="signin-factor-help">Link <strong>{onesaLink}</strong> after confirming your existing Docs access. After linking, sign in to Docs with this Onesa account.</p></>}
+          {linkable && <><label className="signin-remember"><input name="linkOnesaAccount" type="checkbox" required={central} checked={linkOnesaAccount} onChange={event => setLinkOnesaAccount(event.target.checked)} aria-describedby="engineering-account-link-help" />Use my Onesa account for future Docs sign-ins</label><p id="engineering-account-link-help" className="signin-factor-help">Link <strong>{onesaLink}</strong> after confirming your existing Docs access. After linking, sign in to Docs with this Onesa account.</p></>}
           {!linkSent && <><label className="signin-remember"><input name="rememberBrowser" type="checkbox" checked={rememberBrowser} onChange={event => setRememberBrowser(event.target.checked)} aria-describedby="engineering-remember-help" />Remember this browser</label><p id="engineering-remember-help" className="signin-factor-help">Stay signed in to Onesa for up to 8 hours. Use only on a private device.</p></>}
-          {!linkSent && <button className="button" type="submit" disabled={controlsDisabled}>{busy ? (method === "link" && !confirming && !continuingSession ? "Sending…" : "Signing in…") : continuingSession ? "Continue with Onesa" : method === "password" ? (onesaLink ? "Confirm existing Docs access" : "Continue") : confirming ? "Confirm sign-in and open Docs" : coolingDown ? "Please wait…" : "Send sign-in link"}</button>}
+          {!linkSent && <button className="button" type="submit" disabled={controlsDisabled || (central && linkable && !linkOnesaAccount)}>{busy ? (method === "link" && !confirming && !continuingSession ? "Sending…" : "Signing in…") : continuingSession ? "Continue with Onesa" : method === "password" ? (onesaLink ? "Confirm existing Docs access" : "Continue") : confirming ? "Confirm sign-in and open Docs" : coolingDown ? "Please wait…" : "Send sign-in link"}</button>}
         </fieldset></form>
         {continuingSession && <button type="button" disabled={busy} onClick={() => {if (central) {window.location.assign(docsAccountPath(uid) + "&reauthenticate=1"); return;} setUseExistingSession(false); setNotice("");}}>Use another account</button>}
         {linkSent && <div className="engineering-link-sent"><p className="engineering-sent-notice" ref={sentRef} tabIndex={-1} role="status">Sent.</p><button className="button" type="button" disabled={busy || resendSeconds > 0} onClick={() => { if (!email) { setSent(false); return; } formRef.current?.requestSubmit(); }}>Send another link{resendSeconds > 0 ? ` (${resendSeconds}s)` : ""}</button></div>}
       </>}
       <div className="engineering-signin-support">
-        {!central && !enrollment && !confirming && !sent && !registrationRequired && <p className="signin-registration">First time here? <a href={registrationPath}>Register for Engineering Docs</a></p>}
-        <details className="signin-help"><summary>Help with access</summary><p>New access requires owner approval. Existing approvals are retained.</p>{onesaSignInPath && <><p>Linking keeps your existing Engineering Docs approval. After linking, use your Onesa account to sign in.</p><p>Signing out of Onesa does not sign out of an existing Engineering Docs access session.</p></>}{sent && <p><a href={registrationPath}>Register for Engineering Docs</a></p>}<p><a href="/engineering">Start a new sign-in</a> · <a href="https://onesa.eu/en/contact">Contact Onesa</a></p></details>
+        {!central && !enrollment && !confirming && !sent && !registrationRequired && <p className="signin-registration">First time here? <a href={registrationPath}>Create your Onesa account</a></p>}
+        <details className="signin-help"><summary>Help with access</summary><p>New access requires owner approval. Existing approvals are retained.</p>{onesaSignInPath && <><p>Linking keeps your existing Engineering Docs approval. After linking, use your Onesa account to sign in.</p><p>Signing out of Onesa does not sign out of an existing Engineering Docs access session.</p></>}{sent && <p><a href={registrationPath}>Create your Onesa account</a></p>}<p><a href="/engineering">Start a new sign-in</a> · <a href="https://onesa.eu/en/contact">Contact Onesa</a></p></details>
       </div>
       </>}
     </div>

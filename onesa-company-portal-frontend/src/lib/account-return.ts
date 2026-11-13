@@ -33,8 +33,16 @@ export function docsAccountPath(uid: string): string | null {
   return interactionId.test(uid) ? "/account?docs=" + uid : null;
 }
 
+/** Keep a product signup in its existing, browser-bound Portal interaction. */
+export function productAccountPath(uid: string): string | null {
+  return interactionId.test(uid) ? "/account?interaction=" + uid : null;
+}
+
 export function accountDestination(search: string): string {
   const query = new URLSearchParams(search);
+  if (query.has("interaction")) {
+    return query.size === 1 ? productAccountPath(query.get("interaction")!) ?? "/account" : "/account";
+  }
   const docs = query.getAll("docs"), next = query.getAll("next");
   if (docs.length === 1 && !next.length && !query.has("returnTo")) return docsAccountPath(docs[0]) ?? "/account";
   const previous = accountReturnPath(search);
