@@ -17,7 +17,7 @@ import oracle_portal_identity_restore as restore
 
 
 class RestoreMigrationOwnershipTests(unittest.TestCase):
-    def exercise(self, baseline, *, replay_failure=False):
+    def exercise(self, baseline, *, replay_failure=False, v3=False, tamper=False):
         operation = "11111111-1111-4111-8111-111111111111"
         name = "onesa-isolated-portal-restore-" + operation.replace("-", "")
         container = "a" * 64
@@ -43,6 +43,12 @@ class RestoreMigrationOwnershipTests(unittest.TestCase):
         )}
         root = Path(__file__).resolve().parents[2]
         migrations = schema_016_migrations(root)
+        if v3:
+            plan["qualification_profile"] = identity.PROFILE_V3
+            directory = root / identity.PREFIX / "migrations"
+            for key in identity.MIGRATIONS_V3:
+                if key not in migrations:
+                    migrations[key] = (directory / key).read_bytes()
         manifest = {key: hashlib.sha256(raw).hexdigest() for key, raw in migrations.items()}
         files = {identity.PREFIX + "migrations/" + key: digest for key, digest in manifest.items()}
         for required in ("Dockerfile", "package.json", "package-lock.json", "src/identity/config.ts",
@@ -70,7 +76,8 @@ class RestoreMigrationOwnershipTests(unittest.TestCase):
             if args[:2] == ("run", "--rm") and args[-3:] == ("id", image, "postgres"):
                 return b"uid=70(postgres) gid=70(postgres)"
             if args[:2] == ("run", "--rm") and args[-1].startswith("/app/migrations/"):
-                return migrations[Path(args[-1]).name]
+                raw = migrations[Path(args[-1]).name]
+                return raw + b'--changed' if tamper else raw
             if args[:2] == ("exec", "-i") and "pg_restore" in args:
                 self.assertEqual(kwargs["data"], b"PGDMP-synthetic")
                 return b""
@@ -95,7 +102,10 @@ class RestoreMigrationOwnershipTests(unittest.TestCase):
             if statement == "SELECT count(*) FROM schema_migrations;":
                 return str(len(rows)).encode()
             if statement == "synthetic replay":
-                if replay_failure:
+                if tamper:
+                    with self.assertRaisesRegex(r.Refused, "IDENTITY_RESTORE_MIGRATION_BYTES_CHANGED"):
+                        restore.observe(binding, plan, operation, target)
+                elif replay_failure:
                     raise r.Refused("SYNTHETIC_REPLAY_FAILURE")
                 return b"ERASURE_REPLAY_AND_CAPABILITY_LOCKDOWN_PASS"
             self.fail("Unexpected SQL fixture request")
@@ -129,16 +139,21 @@ class RestoreMigrationOwnershipTests(unittest.TestCase):
                 patch.object(restore.restore_replay, "replay_sql", return_value="synthetic replay"),
                 patch.object(restore, "fallback_observe", side_effect=fallback),
             ):
-                if replay_failure:
+                if tamper:
+                    with self.assertRaisesRegex(r.Refused, "IDENTITY_RESTORE_MIGRATION_BYTES_CHANGED"):
+                        restore.observe(binding, plan, operation, target)
+                elif replay_failure:
                     with self.assertRaisesRegex(r.Refused, "SYNTHETIC_REPLAY_FAILURE"):
                         restore.observe(binding, plan, operation, target)
                 else:
                     proof = restore.observe(binding, plan, operation, target)
-                    self.assertTrue(proof["schema_016_rehearsed"])
+                    expected_key = "schema_019_rehearsed" if v3 else "schema_016_rehearsed"
+                    self.assertTrue(proof[expected_key])
+                    self.assertNotIn("schema_016_rehearsed" if v3 else "schema_019_rehearsed", proof)
                     self.assertTrue(proof["isolated_container_removed"])
-            self.assertEqual((target / "receipt.json").exists(), not replay_failure)
-        self.assertEqual(applied, list(migrations)[baseline:])
-        self.assertEqual(fallback_names, [] if replay_failure else [name])
+            self.assertEqual((target / "receipt.json").exists(), not (replay_failure or tamper))
+        self.assertEqual(applied, [] if tamper else list(migrations)[baseline:])
+        self.assertEqual(fallback_names, [] if replay_failure or tamper else [name])
         self.assertEqual([args for args in commands if args[0] == "rm"], [("rm", "-f", container)])
         self.assertTrue(any(args[:3] == ("container", "ls", "--all") for args in commands))
 
@@ -146,6 +161,18 @@ class RestoreMigrationOwnershipTests(unittest.TestCase):
         for baseline in (12, 14, 15, 16):
             with self.subTest(baseline=baseline):
                 self.exercise(baseline)
+
+    def test_eight_client_restore_pins_sql_and_disposes_every_baseline(self):
+        for count in (12, 14, 15, 16, 17, 18, 19):
+            with self.subTest(count=count):
+                self.exercise(count, v3=True)
+        self.exercise(16, v3=True, tamper=True)
+        self.exercise(17, v3=True, replay_failure=True)
+
+    def test_v3_rejects_old_retained_restore_receipts(self):
+        with patch.object(restore, "validate", return_value=({}, None)):
+            with self.assertRaisesRegex(r.Refused, "IDENTITY_SCHEMA_019_REHEARSAL_REQUIRED"):
+                restore.verify_retained({"qualification_profile": identity.PROFILE_V3}, {"schema_016_rehearsed": True})
 
     def test_failure_after_migration_still_removes_the_owned_restore(self):
         self.exercise(14, replay_failure=True)
