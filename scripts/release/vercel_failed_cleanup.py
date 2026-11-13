@@ -188,19 +188,23 @@ def cleanup(api, config, now, apply=False, emit=lambda value: None):
                 if current["reason"] != "eligible" or current["failedAt"] != candidate["failedAt"]:
                     report["protected"].append(current)
                     continue
-                delete_failed = False
                 try:
-                    api("/v13/deployments/" + identifier, method="DELETE")
-                except Refused:
+                    response = api("/v13/deployments/" + identifier, method="DELETE")
+                    acknowledged = (isinstance(response, dict)
+                                    and response.get("uid") == identifier
+                                    and response.get("state") == "DELETED")
+                except (Refused, TimeoutError, subprocess.TimeoutExpired, json.JSONDecodeError):
                     # The deployment may disappear after our last observation.
                     # CLI errors are not parsed or trusted: scoped provider
                     # readback establishes absence even after an uncertain delete.
-                    delete_failed = True
-                # Provider readback must confirm removal from the scoped list.
-                remaining = list(pages(api, "/v6/deployments", "deployments", projectId=candidate["projectId"], state="ERROR", limit=100))
+                    acknowledged = False
+                # A deployment can leave ERROR and still exist. Check all project
+                # deployments before recording an observed removal.
+                remaining = pages(api, "/v6/deployments", "deployments",
+                                  projectId=candidate["projectId"], limit=100)
                 if any((item.get("uid") or item.get("id")) == identifier for item in remaining):
                     raise Refused("deletion readback failed")
-                report["alreadyAbsent" if delete_failed else "deleted"].append(identifier)
+                report["deleted" if acknowledged else "alreadyAbsent"].append(identifier)
             except (Refused, subprocess.TimeoutExpired):
                 report["errors"].append({"id": identifier, "reason": "delete_or_readback_failed"})
     removed = set(report["deleted"] + report["alreadyAbsent"])
