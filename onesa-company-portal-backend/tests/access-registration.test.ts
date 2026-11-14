@@ -439,6 +439,29 @@ test("An approved engineering member can use an email link before configuring a 
   assert.equal(await consumeEngineeringLink(await mailToken(email, "Your Onesa sign-in link"), uid, []), id);
   assert.equal((await db.query("SELECT count(*)::int AS count FROM engineering_credentials WHERE membership_id=$1", [id])).rows[0].count, 0);
 });
+test("an approved administrator can use email sign-in while new registrations stay closed", async () => {
+  const previous = process.env.ACCESS_REGISTRATION_ENABLED;
+  const previousEmail = process.env.PORTAL_EMAIL_LINK_ENABLED;
+  process.env.ACCESS_REGISTRATION_ENABLED = "false";
+  process.env.PORTAL_EMAIL_LINK_ENABLED = "true";
+  const closed = await buildApp({ logging: false });
+  try {
+    await closed.ready();
+    const register = await closed.inject({method:"POST",url:"/api/v1/access/register",headers:origin,
+      payload:{email:"request@example.invalid",name:"Pending user",audience:"admin"}});
+    assert.equal(register.statusCode, 503);
+    const requested = await closed.inject({method:"POST",url:"/api/v1/access/link",headers:origin,payload:{email:"owner@onesa.eu"}});
+    assert.equal(requested.statusCode, 202);
+    const token = await mailToken("owner@onesa.eu","Your Onesa sign-in link");
+    const verified = await closed.inject({method:"POST",url:"/api/v1/access/link/verify",headers:origin,payload:{token,code:(await proof()).code}});
+    assert.equal(verified.statusCode, 200);
+    assert.equal(verified.json().user.id, ownerId);
+  } finally {
+    await closed.close();
+    if (previous === undefined) delete process.env.ACCESS_REGISTRATION_ENABLED; else process.env.ACCESS_REGISTRATION_ENABLED = previous;
+    if (previousEmail === undefined) delete process.env.PORTAL_EMAIL_LINK_ENABLED; else process.env.PORTAL_EMAIL_LINK_ENABLED = previousEmail;
+  }
+});
 test("Administrator magic links require a fresh existing factor, commit failed attempts, expire and redeem once under concurrency", async () => {
   await requestAdminLink("owner@onesa.eu");
   const raw = await mailToken("owner@onesa.eu", "Your Onesa sign-in link");

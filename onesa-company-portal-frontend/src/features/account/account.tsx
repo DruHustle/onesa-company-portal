@@ -23,13 +23,14 @@ type EntryProps = {
   forceLogin?: boolean;
   adminEntry?: boolean;
   accessEnabled?: boolean;
+  adminEmailLinks?: boolean;
   legacyAdmin?: boolean;
   identityAdmin?: string | null;
   legacyDocsRegistration?: boolean;
   approvalConfirmation?: boolean;
 };
 
-export function OnesaAccount({ mode = "login", interactionId, docsInteractionId, docsInteractionCsrf, forceLogin, adminEntry, accessEnabled, identityAdmin, legacyAdmin, legacyDocsRegistration, approvalConfirmation }: EntryProps) {
+export function OnesaAccount({ mode = "login", interactionId, docsInteractionId, docsInteractionCsrf, forceLogin, adminEntry, accessEnabled, adminEmailLinks, identityAdmin, legacyAdmin, legacyDocsRegistration, approvalConfirmation }: EntryProps) {
   const [language, setLanguage] = useState<"en" | "de">("en"), [session, setSession] = useState<AccountSession | null>(null);
   const [interaction, setInteraction] = useState<Interaction | null>(null), [enabled, setEnabled] = useState<boolean | null>(null), [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState(""), [error, setError] = useState(false), [busy, setBusy] = useState(false), [done, setDone] = useState(false), [factor, setFactor] = useState(false), [help, setHelp] = useState("");
@@ -69,12 +70,12 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
         window.history.replaceState(null,"",window.location.pathname + window.location.search);
         return;
       }
-      if (!adminEntry || !accessEnabled) return;
+      if (!adminEntry) return;
       const raw = accessLinkToken(window.location.hash);
       if (raw) { setAdminToken(raw); setEmailLink(true); window.history.replaceState(null, "", window.location.pathname + window.location.search); }
     };
     receive(); window.addEventListener("hashchange", receive); return () => window.removeEventListener("hashchange", receive);
-  }, [adminEntry, accessEnabled, mode, interactionId, legacyAdmin]);
+  }, [adminEntry, mode, interactionId, legacyAdmin]);
   const [products, setProducts] = useState<Product[]>([]);
   useEffect(() => { setReturnTo(accountReturnPath(window.location.search)); try { if (localStorage.getItem("onesa.account.language") === "de") setLanguage("de"); } catch { /* storage is optional */ } }, []);
   useEffect(() => { if (factor) codeInput.current?.focus(); }, [factor]);
@@ -239,7 +240,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
         <button type="button" className={styles.action} aria-pressed={!emailLink} onClick={() => { setEmailLink(false); setAdminToken(null); setSharedToken(null); setLinkRequested(false); setFactor(false); setNotice(""); }}>{language === "de" ? "E-Mail und Passwort" : "Email and password"}</button>
         <button type="button" className={styles.action} aria-pressed={emailLink} onClick={() => { setEmailLink(true); setFactor(false); setNotice(""); }}>{language === "de" ? "Anmeldelink per E-Mail" : "Email a sign-in link"}</button>
       </div>}
-      {mode === "login" && adminEntry && (legacyAdmin || adminToken) ? <AdminSignIn accessEnabled={Boolean(accessEnabled)} linkOnly={!legacyAdmin || Boolean(adminToken)} initialToken={adminToken} onSignedIn={() => window.location.replace(adminWorkspace)}/> :
+      {mode === "login" && adminEntry && (legacyAdmin || adminToken) ? <AdminSignIn accessEnabled={Boolean(accessEnabled)} emailLinks={Boolean(adminEmailLinks || accessEnabled)} linkOnly={!legacyAdmin || Boolean(adminToken)} initialToken={adminToken} onSignedIn={() => window.location.replace(adminWorkspace)}/> :
       !done && <form onSubmit={submit} aria-busy={busy}><fieldset disabled={busy || enabled !== true || (Boolean(interactionId) && !interaction) || (mode === "confirm" && !link)}><legend className={styles.srOnly}>{t.login}</legend>
         {mode === "register" && <label>{t.name}<input name="name" autoComplete="name" required maxLength={approvalRequest ? 120 : 200}/></label>}
         {mode !== "confirm" && <label>{t.email}<input key={sharedToken ?? "credentials"} name="email" type="email" autoComplete="username" required maxLength={254} defaultValue={suggestedAccount?.email ?? ""}/></label>}

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiError } from "@/lib/api/client";
 import type { operations } from "@/lib/api/generated/schema";
 type SignedIn = operations["login"]["responses"][200]["content"]["application/json"];
-export function AdminSignIn({ onSignedIn, accessEnabled, linkOnly = false, initialToken }: { accessEnabled: boolean; linkOnly?: boolean; initialToken?: string | null; onSignedIn: (value: SignedIn) => void }) {
+export function AdminSignIn({ onSignedIn, accessEnabled, emailLinks = accessEnabled, linkOnly = false, initialToken }: { accessEnabled: boolean; emailLinks?: boolean; linkOnly?: boolean; initialToken?: string | null; onSignedIn: (value: SignedIn) => void }) {
   const [rememberBrowser, setRememberBrowser] = useState(false);
   const [method, setMethod] = useState<"password" | "link">(linkOnly ? "link" : "password"), [link, setLink] = useState<string | null>(initialToken ?? null), [busy, setBusy] = useState(false), [notice, setNotice] = useState(""), [error, setError] = useState(false);
   const [email, setEmail] = useState(""), [factor, setFactor] = useState<"unknown" | "required" | "setup">("unknown");
@@ -50,7 +50,7 @@ export function AdminSignIn({ onSignedIn, accessEnabled, linkOnly = false, initi
   const linkSent = method === "link" && !link && sent;
   return <section aria-label="Administrator sign-in">
 
-    {accessEnabled && !linkOnly && <div className="signin-methods" role="group" aria-label="Sign-in method">
+    {emailLinks && !linkOnly && <div className="signin-methods" role="group" aria-label="Sign-in method">
       <button type="button" aria-pressed={method === "link"} disabled={busy} onClick={() => chooseMethod("link")}>Email a sign-in link</button>
       <button type="button" aria-pressed={method === "password"} disabled={busy} onClick={() => chooseMethod("password")}>Email and password</button>
     </div>}

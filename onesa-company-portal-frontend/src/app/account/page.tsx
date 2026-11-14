@@ -31,5 +31,5 @@ export default async function Account({ searchParams }: { searchParams: Promise<
     const environment = process.env.VERCEL_ENV === "production" ? "Production" : process.env.VERCEL_ENV === "preview" ? "Staging" : "Development";
     return <EngineeringSignIn uid={docs} environment={environment} shared={process.env.ONESA_IDENTITY_ENABLED === "true"} legacyFixture={legacyEngineeringFixture()} fresh={reauthenticate === "1"} />;
   }
-  return <OnesaAccount identityAdmin={identityAdmin} adminEntry={next === "/admin"} accessEnabled={accessEnabled} legacyAdmin={next === "/admin" && process.env.ONESA_IDENTITY_ENABLED !== "true"} />;
+  return <OnesaAccount identityAdmin={identityAdmin} adminEntry={next === "/admin"} adminEmailLinks={process.env.PORTAL_EMAIL_LINK_ENABLED === "true"} accessEnabled={accessEnabled} legacyAdmin={next === "/admin" && process.env.ONESA_IDENTITY_ENABLED !== "true"} />;
 }
