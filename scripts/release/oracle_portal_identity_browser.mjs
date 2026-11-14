@@ -16,6 +16,11 @@ export const PRODUCT_CHECKS = Object.freeze([
   'global_administrator_products', 'product_revocation', 'one_product_entitlement',
   'two_product_entitlements', 'access_request_approval',
 ]);
+export function productSignInLabel(product) {
+  // Drone's retained and current consoles use different labels for the same PKCE start.
+  return product === 'drone' ? /^(?:Sign in with Onesa|Continue with Onesa)$/ : 'Continue with Onesa';
+}
+
 const PRODUCTS = ['ai', 'drone', 'robot'];
 const PRODUCTION = {portal: 'https://portal.onesa.eu', ai: 'https://platform.onesa.eu',
   drone: 'https://drone.onesa.eu', robot: 'https://robot.onesa.eu'};
@@ -414,7 +419,7 @@ async function productSignIn(context, request, product, fixture, expect) {
   const startPath = product === 'ai' ? '/api/v1/auth/onesa/start' : '/api/v1/auth/identity/start';
   const startResponse = page.waitForResponse(response => new URL(response.url()).origin === origin &&
     new URL(response.url()).pathname === startPath && response.request().method() === 'POST');
-  await page.getByRole('button', {name: 'Continue with Onesa', exact: true}).click();
+  await page.getByRole('button', {name: productSignInLabel(product), exact: true}).click();
   const start = await responseJSON(await startResponse, [200], 'PRODUCT_START_NOT_ACKNOWLEDGED');
   const authorization = authorizationBinding(product === 'ai' ? start.authorize_url : start.authorization_url, request, product);
   const deadline = Date.now() + 120000;
