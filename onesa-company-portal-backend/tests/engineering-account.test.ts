@@ -736,7 +736,7 @@ test("a signed-out Docs member follows the emailed account link back to their ap
   assert.equal(requestLink.statusCode, 202, requestLink.body);
   const mail = (await db.query("SELECT payload FROM jobs WHERE payload->>'to'=$1 AND payload->>'subject'='Your Onesa account sign-in link'", [identity.email])).rows[0];
   const link = new URL(decrypt(mail.payload.encryptedText).split("\n")[1]);
-  assert.equal(link.origin + link.pathname, origin + "/admin");
+  assert.equal(link.origin + link.pathname, origin + "/account");
   assert.equal(link.searchParams.get("docs"), flow.uid);
   const emailToken = link.hash.slice("#signin-link=".length);
   const input = {email: identity.email, emailToken};

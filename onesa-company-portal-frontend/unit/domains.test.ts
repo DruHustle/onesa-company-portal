@@ -69,7 +69,7 @@ test('Malformed or hosted loopback origins cannot publish canonical URLs',()=>{
 function configure(){process.env.SITE_URL='https://onesa.eu';process.env.PORTAL_URL='https://portal.onesa.eu';process.env.PUBLIC_ORIGIN=process.env.PORTAL_URL;}
 test('Configured hosts separate company and portal and reject other hosts',()=>{
  configure();assert.equal(surface('https://onesa.eu'),'company');assert.equal(surface('https://portal.onesa.eu'),'portal');assert.equal(surface('https://onesa.eu.attacker.invalid'),'unknown');assert.equal(surface('https://unknown.vercel.app'),'unknown');
- assert.equal(routeDestination('https://portal.onesa.eu','/'),'https://portal.onesa.eu/admin');
+ assert.equal(routeDestination('https://portal.onesa.eu','/'),'https://portal.onesa.eu/account');
  assert.equal(routeDestination('https://onesa.eu','/admin/users'),'https://portal.onesa.eu/admin/users');
  assert.equal(routeDestination('https://portal.onesa.eu','/en/contact'),'https://onesa.eu/en/contact');
  assert.equal(routeDestination('https://portal.onesa.eu','/admin'),null);

@@ -438,3 +438,12 @@ valid snapshot from its own source. Public rows cannot report private Kubernetes
 or Portainer observations. A missing or invalid input or an unsafe previous file
 leaves the existing dashboard intact. Use an empty private version-1 snapshot
 when commissioning the first public-only observations for an aggregated dashboard.
+
+### Shared account email sign-in
+
+`POST /api/v1/account/email-link` accepts an email address and an optional
+`returnTo` whose only supported value is `/admin`. An ordinary request opens
+`/account`. The explicit staff destination is honored after sign-in only for
+an account with Portal access. The distinct product and Docs interaction routes
+bind their proof to the initiating interaction. A 202 acknowledges the request.
+The worker and the receiving inbox provide separate delivery evidence.

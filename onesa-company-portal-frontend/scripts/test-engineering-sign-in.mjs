@@ -218,11 +218,11 @@ try {
   if (accessEnabled) {
     const start = await fetch(origin + "/api/v1/engineering-identity/auth?synthetic=1", {redirect:"manual"});
     expect(start.status).toBe(303);
-    expect(start.headers.get("location")).toBe(origin + "/admin?docs=synthetic_proxy_uid");
+    expect(start.headers.get("location")).toBe(origin + "/account?docs=synthetic_proxy_uid");
     expect(start.headers.getSetCookie()).toEqual(["interaction=fixture; Path=/engineering/sign-in/synthetic_proxy_uid; HttpOnly; SameSite=Lax", "resume=fixture; Path=/api/v1/engineering-identity/auth/synthetic_proxy_uid; HttpOnly; SameSite=Lax"]);
     const bookmark = await fetch(origin + "/engineering/sign-in/synthetic_proxy_uid", {redirect:"manual"});
     expect(bookmark.status).toBe(307);
-    expect(new URL(bookmark.headers.get("location"), origin).href).toBe(origin + "/admin?docs=synthetic_proxy_uid");
+    expect(new URL(bookmark.headers.get("location"), origin).href).toBe(origin + "/account?docs=synthetic_proxy_uid");
   }
   browser = await engines[engineName].launch(supplemental ? {executablePath: supplemental, args: ["--disable-dev-shm-usage"]} : {});
   if (hostedEntry) {
@@ -241,7 +241,7 @@ try {
     await expect(signup).toHaveAttribute("href", "/account/register?docs=" + uid);
     await signup.click();
     await expect(page.locator("#account-title")).toBeVisible();
-    await expect(page.locator('a[href="/admin?docs=' + uid + '"]')).toBeVisible();
+    await expect(page.locator('a[href="/account?docs=' + uid + '"]')).toBeVisible();
     await page.goto(origin + "/engineering/sign-in/synthetic_shared_link_proof");
     await page.getByRole("button", {name: "Email and password", exact: true}).click();
     await expect(page.getByLabel("Email address", {exact: true})).toHaveAttribute("readonly", "");
@@ -427,7 +427,7 @@ try {
       try {
         if (method === "handoff") await context.addCookies([{name: "onesa_ui_handoff", value: "fixture", url: origin, httpOnly: true, sameSite: "Lax"}]);
         await page.goto(origin + "/engineering/sign-in/" + uid, {waitUntil: "networkidle"});
-        await expect(page).toHaveURL(origin + "/admin?docs=" + uid);
+        await expect(page).toHaveURL(origin + "/account?docs=" + uid);
         await expect(page.getByRole("link", {name: "Sign in with your Onesa account", exact: true})).toHaveCount(0);
         if (method === "password") {
           await expect(page.getByRole("checkbox", {name: "Use my Onesa account for future Docs sign-ins", exact: true})).toHaveCount(0);
@@ -631,10 +631,10 @@ try {
       const freshUid = linkUid + "_fresh";
       await page.route(origin + "/engineering", route => route.fulfill({status: 303, headers: {location: origin + "/engineering/sign-in/" + freshUid}}));
       await page.evaluate(() => { window.__onesaLinkDocumentMarker = "old-request"; });
-      const emailedEntry = mode === "dark" ? "/admin?docs=" + linkUid : "/engineering/sign-in/" + linkUid;
+      const emailedEntry = mode === "dark" ? "/account?docs=" + linkUid : "/engineering/sign-in/" + linkUid;
       await page.goto(origin + emailedEntry + "#access-link=" + proof);
       await expect(page.getByRole("button", {name: "Confirm sign-in and open Docs", exact: true})).toBeEnabled();
-      await page.waitForURL(origin + "/admin?docs=" + freshUid);
+      await page.waitForURL(origin + "/account?docs=" + freshUid);
       expect(await page.evaluate(() => window.__onesaLinkDocumentMarker)).toBeUndefined();
       await expect(page.getByText("synthetic-engineer@onesa.eu", {exact: true})).toBeVisible();
       expect(await page.evaluate(() => [localStorage,sessionStorage].some(store=>Object.values(store).some(value=>value.includes("a".repeat(64)))))).toBe(false);
@@ -702,7 +702,7 @@ try {
     await page.unroute("**/api/v1/access/link");
     const adminProofsBefore = adminConfirmations;
     await page.evaluate(() => { window.__onesaLinkDocumentMarker = "same-document"; });
-    await page.goto(origin + "/admin?next=/admin#access-link=" + proof);
+    await page.goto(origin + "/account?next=/admin#access-link=" + proof);
     const adminSignIn = page.locator('section[aria-label="Administrator sign-in"]');
     await expect(adminSignIn.getByLabel("Authenticator or recovery code", {exact: true})).toHaveCount(0);
     await page.route("**/api/v1/access/link/verify", async route => { await route.fulfill({status:401,json:{error:{code:"MFA_REQUIRED",message:"Enter your authenticator code"}}}); });

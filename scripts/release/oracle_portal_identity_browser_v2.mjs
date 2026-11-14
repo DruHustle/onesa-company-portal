@@ -29,7 +29,7 @@ function ownerHosted(app, hostname) {
 }
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const UID = '[A-Za-z0-9_-]{8,128}';
-const isAccountEntry = url => url.pathname === '/admin' && url.search === '?entry=account' && !url.hash;
+const isAccountEntry = url => url.pathname === '/account' && !url.search && !url.hash;
 const interactionRead = new RegExp('^/api/v1/account/interaction/' + UID + '$');
 const interactionWrite = new RegExp('^/api/v1/account/interaction/' + UID + '/(continue|login)$');
 const resume = new RegExp('^/api/v1/identity/auth/' + UID + '$');
@@ -355,7 +355,7 @@ export async function observeHostedAdministrator(input, launch) {
       let principal;
       try {
         await installGuard(page,r,null);
-        await page.goto(r.origins.portal+'/admin?entry=account',{waitUntil:'domcontentloaded'});
+        await page.goto(r.origins.portal+'/account',{waitUntil:'domcontentloaded'});
         await submitMfa(page,r);
         await page.getByRole('heading',{name:'Your applications',exact:true}).waitFor({state:'visible',timeout:20000});
         principal = portalPrincipal(await getSession(context,r.origins.portal,'/api/v1/account/me'),r.fixtures.owner);

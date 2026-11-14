@@ -960,22 +960,22 @@ export async function registerIdentity(
       );
     return result;
   }
-  async function sendEmailSignIn(req: FastifyRequest, email: string, interactionId?: string) {
+  async function sendEmailSignIn(req: FastifyRequest, email: string, interactionId?: string, adminReturn = false) {
     if (req.headers.origin !== env.PUBLIC_ORIGIN)
       throw new HttpError(403, "ORIGIN", "Use the Onesa Portal.");
     const address = email.toLowerCase();
     await limits.limit("identity-email-link-ip:" + limits.address(req), 5, 900);
     await limits.limit("identity-email-link-address:" + hash(address), 3, 3600);
-    await requestAccountEmailLink(address, interactionId);
+    await requestAccountEmailLink(address, interactionId, adminReturn);
   }
   const emailLinkRequest = z.object({email: z.email().max(254)}).strict();
   const emailLinkResponse = {202: z.object({ok: z.literal(true)}), ...failures};
   api.post("/api/v1/account/email-link", {
     logLevel: "silent",
-    schema: {...meta("requestOnesaAccountEmailLink"), body: emailLinkRequest, response: emailLinkResponse},
+    schema: {...meta("requestOnesaAccountEmailLink"), body: emailLinkRequest.extend({returnTo: z.literal("/admin").optional()}), response: emailLinkResponse},
   }, async (req, reply) => {
     configured();
-    await sendEmailSignIn(req, req.body.email);
+    await sendEmailSignIn(req, req.body.email, undefined, req.body.returnTo === "/admin");
     return reply.code(202).send({ok: true});
   });
   api.post(

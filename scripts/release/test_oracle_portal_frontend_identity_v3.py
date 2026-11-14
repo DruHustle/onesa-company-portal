@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import oracle_install as installer
 import oracle_portal as portal
+import oracle_portal_frontend as frontend
 import oracle_portal_frontend_identity_v2 as seven
 import oracle_portal_frontend_identity_v3 as eight
 import oracle_portal_identity as issuer
@@ -24,8 +25,17 @@ class EightClientFrontendTests(unittest.TestCase):
         self.plan = self.provider.plan
         self.plan.update(qualification_profile=eight.PROFILE, binding=self.binding)
         for env, entry in self.issuer['environments'].items():
+            self.plan['server_public_configuration'][env]['ONESA_IDENTITY_ENABLED'] = 'true'
             callbacks = [entry['origins'][product] + path for product, path in eight.CALLBACK_PATHS.items()]
             self.plan['server_public_configuration'][env][eight.CALLBACK_KEY] = json.dumps(callbacks)
+            for key in (eight.CALLBACK_KEY, 'ONESA_IDENTITY_ENABLED'):
+                identifier = 'fixture_' + env + '_' + key.lower()
+                self.plan['server_public_variable_ids'][env][key] = identifier
+                self.provider.variables[identifier] = {
+                    'id': identifier, 'key': key, 'value': self.plan['server_public_configuration'][env][key],
+                    'type': 'plain', 'target': ['preview' if env == 'staging' else 'production'],
+                    'gitBranch': 'staging' if env == 'staging' else None, 'updatedAt': 1,
+                }
 
     def check_environment(self, environment):
         with patch.object(portal, 'read', return_value=self.issuer) as read:
@@ -48,6 +58,43 @@ class EightClientFrontendTests(unittest.TestCase):
         self.staging['factory'] = eight.PRODUCTION['factory']
         with self.assertRaisesRegex(portal.Refused, 'EXACT_ISOLATED_EIGHT_CLIENT_ORIGINS'):
             self.check_environment('staging')
+
+    def test_shared_entry_requires_the_enabled_server_flag_only_on_eight_client_profiles(self):
+        key = 'ONESA_IDENTITY_ENABLED'
+        self.assertNotIn(key, portal.public_server_keys({'qualification_profile': seven.PROFILE}))
+        for env in self.issuer['environments']:
+            values = self.plan['server_public_configuration'][env]
+            values[key] = 'false'
+            with self.assertRaisesRegex(portal.Refused, 'SHARED_FRONTEND_IDENTITY_REQUIRED'):
+                self.check_environment(env)
+            del values[key]
+            with self.assertRaisesRegex(portal.Refused, 'PUBLIC_SERVER_CONFIGURATION_SHAPE'):
+                self.check_environment(env)
+
+    def test_provider_reads_the_enabled_flag_from_each_exact_target(self):
+        def read(path):
+            return self.issuer if path == eight.ISSUER_PLAN else self.provider.cfg
+
+        def protect():
+            self.provider.seal()
+            with (patch.object(portal, 'read', side_effect=read),
+                  patch.object(portal, 'runtime_values', return_value={'PROXY_SHARED_KEY': 's' * 48}),
+                  patch.object(frontend, 'provider', side_effect=self.provider.provider)):
+                return frontend.protection(self.plan)
+
+        protect()
+        key = 'ONESA_IDENTITY_ENABLED'
+        for env in self.issuer['environments']:
+            identifier = self.plan['server_public_variable_ids'][env][key]
+            self.assertTrue(any(path.endswith('/' + identifier) for path in self.provider.calls))
+        row = self.provider.variables[self.plan['server_public_variable_ids']['production'][key]]
+        row['value'] = 'false'
+        with self.assertRaisesRegex(portal.Refused, 'EXISTING_SERVER_CONFIGURATION_CHANGED'):
+            protect()
+        row['value'] = 'true'
+        row['target'].append('preview')
+        with self.assertRaisesRegex(portal.Refused, 'ISOLATED_FRONTEND_'):
+            protect()
 
     def test_legacy_authority_and_incomplete_tool_closure_are_refused(self):
         self.issuer['qualification_profile'] = issuer.PROFILE_V2

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { legacySignInEntry } from "../src/lib/sign-in-entry.ts";
 import { adminAccountEntry, adminWorkspaceReturn, accountDestination, docsAccountPath, accountReturnPath, accountReauthenticationRequired, accountSetupReturnPath, engineeringAccountSignInPath } from "../src/lib/account-return.ts";
 
 test("Onesa login returns only to the exact local Engineering interaction", () => {
@@ -27,7 +28,7 @@ test("MFA enrollment preserves a fixed Docs return through fresh central login",
   const product = "/account/sign-in/synthetic_product_interaction";
   assert.equal(accountSetupReturnPath("?returnTo=" + encodeURIComponent(docs)), "/account?returnTo=" + encodeURIComponent(docs) + "&reauthenticate=1");
   assert.equal(accountSetupReturnPath("?returnTo=" + encodeURIComponent(product)), product);
-  assert.equal(accountSetupReturnPath("?returnTo=" + encodeURIComponent("/admin")), "/admin?next=/admin");
+  assert.equal(accountSetupReturnPath("?returnTo=" + encodeURIComponent("/admin")), "/account?next=/admin");
   for (const target of ["https://attacker.example.test/", "//attacker.example.test/", "/admin?next=/engineering", docs + "?redirect=//attacker.example.test/", product + "#token", "/account?returnTo=" + encodeURIComponent(docs)]) {
     assert.equal(accountSetupReturnPath("?returnTo=" + encodeURIComponent(target)), "/account");
   }
@@ -37,9 +38,9 @@ test("MFA enrollment preserves a fixed Docs return through fresh central login",
 
 test("shared registration retains one bounded, local destination", () => {
   const uid = "synthetic_docs_destination";
-  assert.equal(docsAccountPath(uid), "/admin?docs=" + uid);
-  assert.equal(accountDestination("?docs=" + uid), "/admin?docs=" + uid);
-  assert.equal(accountDestination("?returnTo=" + encodeURIComponent("/engineering/sign-in/" + uid)), "/admin?docs=" + uid);
+  assert.equal(docsAccountPath(uid), "/account?docs=" + uid);
+  assert.equal(accountDestination("?docs=" + uid), "/account?docs=" + uid);
+  assert.equal(accountDestination("?returnTo=" + encodeURIComponent("/engineering/sign-in/" + uid)), "/account?docs=" + uid);
   for (const next of ["/admin", "/engineering", "/account/delete"]) assert.equal(accountDestination("?next=" + next), "/account?next=" + next);
   for (const query of ["?docs=short", "?docs=" + uid + "&docs=" + uid, "?docs=" + uid + "&next=/admin", "?next=//example.test", "?returnTo=/admin", "?next=/admin&next=/engineering"]) assert.equal(accountDestination(query), "/account");
 });
@@ -47,10 +48,10 @@ test("shared registration retains one bounded, local destination", () => {
 test("staff sign-in restores only Portal workspace filters and privacy anchors", () => {
   const original = new URL("https://portal.example.invalid/admin?section=Users&page=2&unrelated=private#privacy/documents/abc-123");
   const entry = new URL(adminAccountEntry(original), original.origin);
-  assert.equal(entry.pathname, "/admin");
+  assert.equal(entry.pathname, "/account");
   assert.equal(entry.search, "?next=/admin");
   assert.equal(adminWorkspaceReturn(entry.hash), "/admin?section=Users&page=2#privacy/documents/abc-123");
-  assert.equal(adminAccountEntry(new URL("/admin#access-link=secret", original)), "/admin?next=/admin");
+  assert.equal(adminAccountEntry(new URL("/admin#access-link=secret", original)), "/account?next=/admin");
   for (const hash of ["#workspace=https%3A%2F%2Fother.example", "#workspace=//other.example", "#workspace=%23access-link%3Dsecret", "#workspace=%3FreturnTo%3D%2F%2Fother.example", "#workspace=%23privacy&workspace=%3Fpage%3D2"]) {
     assert.equal(adminWorkspaceReturn(hash), "/admin");
   }
@@ -58,8 +59,19 @@ test("staff sign-in restores only Portal workspace filters and privacy anchors",
 
 test("Product registration retains one validated interaction identifier", () => {
   const query = "?interaction=synthetic_product_123";
-  assert.equal(accountDestination(query), "/admin" + query);
+  assert.equal(accountDestination(query), "/account" + query);
   for (const value of [query + "&next=/admin", query + "&interaction=x", "?interaction=short", "?interaction=%2Fadmin", "?interaction=https://example.invalid"]) {
     assert.equal(accountDestination(value), "/account");
   }
+});
+
+test("existing account links move once and keep their interaction or staff destination", () => {
+  const old = new URLSearchParams("next=/admin");
+  assert.equal(legacySignInEntry("/admin", old), "/account?" + old.toString());
+  for (const path of ["/admin", "/account", "/account/register"]) {
+    assert.equal(legacySignInEntry(path, new URLSearchParams()), null);
+  }
+  assert.equal(legacySignInEntry("/account", old), null);
+  assert.equal(legacySignInEntry("/account/sign-in/synthetic_123", old), "/account?interaction=synthetic_123");
+  assert.equal(legacySignInEntry("/engineering/sign-in/synthetic_123/details", old), null);
 });

@@ -104,8 +104,8 @@ async function link(
     purpose === "registration"
       ? "/account/confirm?approval=1"
       : purpose === "admin"
-        ? "/admin?next=/admin"
-        : "/admin?docs=" + target.interaction;
+        ? "/account?next=/admin"
+        : "/account?docs=" + target.interaction;
   await enqueue(client, "access-link:" + hash(raw), {
     to: recipient,
     subject:

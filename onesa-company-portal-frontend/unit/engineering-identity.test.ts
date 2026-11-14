@@ -28,7 +28,7 @@ test("Identity protocol has a narrow explicit path allowlist", () => {
 });
 test("Interaction redirects stay on the trusted Portal without arbitrary queries", () => {
   for (const start of ["/engineering/sign-in/abcdefgh", origin + "/engineering/sign-in/abcdefgh"])
-    assert.equal(engineeringRedirectLocation(start, origin, callback), origin + "/admin?docs=abcdefgh");
+    assert.equal(engineeringRedirectLocation(start, origin, callback), origin + "/account?docs=abcdefgh");
   const resume = "/api/v1/engineering-identity/auth/abcdefgh";
   assert.equal(engineeringRedirectLocation(resume, origin, callback), origin + resume);
   for (const path of [

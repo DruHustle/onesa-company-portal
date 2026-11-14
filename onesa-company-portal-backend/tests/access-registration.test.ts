@@ -121,7 +121,7 @@ async function mailToken(
   ).rows[0];
   assert.ok(stored);
   const expected = stored.purpose === "registration" ? "/account/confirm?approval=1" :
-    stored.purpose === "admin" ? "/admin?next=/admin" : "/admin?docs=" + stored.interaction_uid;
+    stored.purpose === "admin" ? "/account?next=/admin" : "/account?docs=" + stored.interaction_uid;
   assert.equal(url.pathname + url.search, expected);
   assert.notEqual(stored.token_hash, raw);
   return raw;
