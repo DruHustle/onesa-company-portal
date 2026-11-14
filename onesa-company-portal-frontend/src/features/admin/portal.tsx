@@ -117,11 +117,13 @@ export function AdminPortal({
   accessEnabled = false,
   identityEnabled = false,
   engineeringEnabled = false,
+  identityAdmin = null,
 }: {
   environment?: "PRODUCTION" | "STAGING" | "DEVELOPMENT";
   accessEnabled?: boolean;
   identityEnabled?: boolean;
   engineeringEnabled?: boolean;
+  identityAdmin?: string | null;
 }) {
   const [user, setUser] = useState<User | null>(null),
     [loading, setLoading] = useState(true),
@@ -297,6 +299,7 @@ export function AdminPortal({
           break;
         }
         case "Users": {
+          if (identityAdmin) return;
           const r = await api.GET("/api/v1/admin/users", {
             params: { query },
             signal: controller.signal,
@@ -372,6 +375,10 @@ export function AdminPortal({
     const back = () => {
       const url = new URL(window.location.href),
         next = sectionFromUrl(url);
+      if (next === "Users" && identityAdmin) {
+        navigate(() => window.location.assign(identityAdmin));
+        return;
+      }
       if (user && !(tabRoles[next] as readonly string[]).includes(user.role))
         return;
       const previous = new URL(window.location.href);
@@ -529,7 +536,9 @@ export function AdminPortal({
               return tabs.length ? (
                 <div className="admin-task-group" key={group.label}>
                   <h2>{group.label}</h2>
-                  {tabs.map((name) => (
+                  {tabs.map((name) => name === "Users" && identityAdmin ? (
+                    <a key={name} href={identityAdmin} referrerPolicy="no-referrer">Manage users in Onesa Identity</a>
+                  ) : (
                     <button
                       key={name}
                       disabled={busy || unsaved.pending}
@@ -1203,7 +1212,7 @@ export function AdminPortal({
                 )}
               </div>
             )}
-            {tab === "Users" && (
+            {!identityAdmin && tab === "Users" && (
               <p>
                 {identityEnabled && <><a href="/account?tab=access#access">Manage shared accounts and product access</a>. Normal product users register once from their Onesa account. </>}
                 Normal access: register → verify email → owner approval. A
@@ -1212,7 +1221,7 @@ export function AdminPortal({
                 independently controls Docs access.
               </p>
             )}
-            {tab === "Users" && (
+            {!identityAdmin && tab === "Users" && (
               <div className="admin-grid">
                 <div className="admin-list">
                   <button onClick={() => navigate(() => setEditUser(null))}>
@@ -1350,7 +1359,7 @@ export function AdminPortal({
                 </form>
               </div>
             )}
-            {tab === "Users" && user.role === "owner" && (
+            {!identityAdmin && tab === "Users" && user.role === "owner" && (
               <>
                 {accessEnabled && <AccessRequests />}
                 {engineeringEnabled && <EngineeringMemberships />}

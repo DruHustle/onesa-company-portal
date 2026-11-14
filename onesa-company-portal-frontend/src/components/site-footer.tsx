@@ -25,15 +25,17 @@ export function SiteFooter({locale}: {locale: Locale}) {
         <ul>
           <li><Link href={`/${locale}/products#mobile-apps`}>{de ? 'Mobile Apps' : 'Mobile apps'}</Link></li>
           <li><Link href={`/${locale}/products`}>{de ? 'Produkte entdecken' : 'Explore products'}</Link></li>
-          {applications.applications.filter(app => app.id === 'ai' || app.id === 'robot').map(app =>
-            <li key={app.id}><a href={app.href}>{app.label} <span aria-hidden="true">↗</span></a></li>)}
-          <li><Link href={`/${locale}/products/onesa-drone`}>Onesa Drone</Link></li>
+          {applications.applications.filter(app => app.group === 'product').map(app =>
+            <li key={app.id}>{app.href
+              ? <a href={app.href}>{app.label} <span aria-hidden="true">↗</span></a>
+              : <span>{app.label} · {de ? 'Website nicht verfügbar' : 'Website unavailable'}</span>}</li>)}
         </ul>
       </nav>
       <nav className={`${styles.group} ${styles.resources}`} aria-labelledby="footer-resources">
         <h2 id="footer-resources">{de ? 'Wissen & Einblicke' : 'Resources'}</h2>
         <ul>
           <li><a href={applications.applications.find(app => app.id === 'docs')!.href}>{de ? 'Dokumentation' : 'Developer docs'} <span aria-hidden="true">↗</span></a></li>
+          <li><a href={applications.applications.find(app => app.id === 'engineering')!.href}>{de ? 'Engineering-Dokumente (geschützt)' : 'Engineering Documents (restricted)'} <span aria-hidden="true">↗</span></a></li>
           <li><Link href={`/${locale}/news`}>{t.nav.news}</Link></li>
           <li><Link href={`/${locale}/research`}>{t.nav.research}</Link></li>
         </ul>
@@ -46,7 +48,7 @@ export function SiteFooter({locale}: {locale: Locale}) {
         <Link href={`/${locale}/privacy`}>{de ? 'Datenschutz' : 'Privacy'}</Link>
         <Link href={`/${locale}/cookies`}>Cookies</Link>
         <Link href={`/${locale}/accessibility`}>{de ? 'Barrierefreiheit' : 'Accessibility'}</Link>
-        <Link href="/admin">Administration</Link>
+        <Link href="/admin">{de ? "Company Portal verwalten" : "Company Portal administration"}</Link>
       </nav>
     </div>
   </footer>;

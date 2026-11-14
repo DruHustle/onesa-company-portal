@@ -12,7 +12,9 @@ for (const locale of ['en', 'de'] as const) {
     await expect(directory.getByRole('listitem')).toHaveCount(mobileApps.length);
     for (const app of mobileApps) {
       const row = directory.getByRole('listitem').filter({has: page.getByRole('heading', {name: app.name, exact: true})});
-      await expect(row.getByRole('link', {name: app.name, exact: true})).toHaveAttribute('href', app.website);
+      const website = row.getByRole('link', {name: app.name, exact: true});
+      if (app.website) await expect(website).toHaveAttribute('href', app.website);
+      else await expect(website).toHaveCount(0);
       for (const [key, label] of [['ios', 'iOS'], ['android', 'Android']] as const) {
         const release = app[key];
         const badge = row.locator('strong').filter({hasText: new RegExp(`^${label}$`)}).locator('../..');

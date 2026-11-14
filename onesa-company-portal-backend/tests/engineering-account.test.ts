@@ -247,6 +247,9 @@ test("catalog recognition cannot commission future applications or grant their a
       "factory",
       "pasofi",
       "mobile",
+      "portal",
+      "engineering",
+      "diaspora",
     ],
   );
   const counts = () =>

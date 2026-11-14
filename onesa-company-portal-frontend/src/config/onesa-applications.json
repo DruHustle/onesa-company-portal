@@ -1,9 +1,18 @@
 {
-  "version": "1.0.1",
+  "version": "1.1.0",
   "applications": [
-    {"id": "company", "label": "Onesa UG", "href": "https://onesa.eu"},
-    {"id": "ai", "label": "Onesa AI Platform", "href": "https://platform.onesa.eu"},
-    {"id": "robot", "label": "Onesa Robot", "href": "https://robot.onesa.eu"},
-    {"id": "docs", "label": "Onesa Developer Docs", "href": "https://docs.onesa.eu"}
+    {"id": "company", "group": "company", "label": "Onesa UG", "href": "https://onesa.eu"},
+    {"id": "portal", "group": "company", "label": "Company Portal", "href": "https://portal.onesa.eu/admin"},
+    {"id": "ai", "group": "product", "label": "Onesa AI Platform", "href": "https://platform.onesa.eu"},
+    {"id": "robot", "group": "product", "label": "Onesa Robot", "href": "https://robot.onesa.eu"},
+    {"id": "drone", "group": "product", "label": "Onesa Drone", "href": "https://drone.onesa.eu"},
+    {"id": "farmer", "group": "product", "label": "Smart Farmer", "href": ""},
+    {"id": "logistics", "group": "product", "label": "Smart Logistics", "href": "https://logistics.onesa.eu"},
+    {"id": "factory", "group": "product", "label": "Smart Factory", "href": "https://factory.onesa.eu"},
+    {"id": "mobile", "group": "product", "label": "Onesa Mobile", "href": "https://mobile.onesa.eu"},
+    {"id": "pasofi", "group": "product", "label": "PasoFi", "href": "https://pasofi.mobile.onesa.eu"},
+    {"id": "diaspora", "group": "product", "label": "Diaspora Unlocked", "href": "https://www.diasporaunlocked.com/"},
+    {"id": "docs", "group": "resource", "label": "Onesa Developer Docs", "href": "https://docs.onesa.eu"},
+    {"id": "engineering", "group": "resource", "label": "Engineering Documents", "href": "https://docs.engineering.onesa.eu"}
   ]
 }

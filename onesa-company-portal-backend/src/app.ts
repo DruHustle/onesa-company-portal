@@ -1,5 +1,6 @@
 import { registerInfrastructure } from "./operations/infrastructure.js";
 import { revokeAccountIdentity } from "./identity/accounts.js";
+import { externalIdentityAdministration, delegatedAccountOperation } from "./identity/administration.js";
 import { registerIdentity } from "./identity/routes.js";
 import { registerBillingBridge } from "./billing/bridge.js";
 import { sessionAuthenticationTime } from "./auth/session-proof.js";
@@ -58,6 +59,14 @@ export async function buildApp(options:{logging?:boolean}={}){
  }});
  await app.register(cookie);await app.register(helmet,{global:true});
  app.addHook('onRequest',async(req,reply)=>{reply.header('X-Request-ID',req.id).header('Cache-Control','no-store');if(!['GET','HEAD','OPTIONS'].includes(req.method)){const origin=req.headers.origin;if(((req.cookies.onesa_session||req.cookies.onesa_account)&&!origin)||(origin&&origin!==env.PUBLIC_ORIGIN&&!(companyOrigin&&origin===companyOrigin&&req.url.split('?')[0].startsWith('/api/v1/public/'))))throw new HttpError(403,'ORIGIN','Untrusted origin');if(req.url.startsWith('/api/v1/account/')&&origin!==env.PUBLIC_ORIGIN)throw new HttpError(403,'ORIGIN','Use the Onesa account page');if(req.headers['sec-fetch-site']==='cross-site')throw new HttpError(403,'ORIGIN','Cross-site requests denied');}});
+ if (externalIdentityAdministration()) {
+   app.addHook('onRequest', async (req) => {
+     const schema = req.routeOptions.schema as { operationId?: string } | undefined;
+     if (delegatedAccountOperation(schema?.operationId)) {
+       throw new HttpError(403, 'IDENTITY_ADMINISTRATION_MOVED', 'Manage accounts and approvals in Onesa Identity.');
+     }
+   });
+ }
  app.setErrorHandler((err,req,reply)=>{const e=err as Error & {statusCode?:number;code?:string;constraint?:string;validation?:unknown};const status=err instanceof HttpError?err.status:e.validation?400:e.statusCode&&e.statusCode<500?e.statusCode:e.code==='23505'||(e.code==='23514'&&e.constraint==='privacy_active_hold')?409:500;if(status>=500)req.log.error({err:{name:e.name,code:e.code},requestId:req.id},'Request failed');reply.code(status).send({error:{code:err instanceof HttpError?err.code:status===400?'VALIDATION':status===409?(e.constraint==='privacy_active_hold'?'PRIVACY_HOLD':'CONFLICT'):'REQUEST_FAILED',message:status>=500?'Service unavailable':err instanceof HttpError?err.message:status===409?(e.constraint==='privacy_active_hold'?'An active privacy hold prevents deletion.':'Record conflict'):status===400?'Invalid request': 'Request denied',requestId:req.id}});});
  app.setNotFoundHandler((req,reply)=>reply.code(404).send({error:{code:'NOT_FOUND',message:'Route not found',requestId:req.id}}));
  app.get('/api/v1/health',{schema:{...publicSchema('health','Operations'),response:{200:z.object({status:z.literal('ok')}),...errors}}},async()=>({status:'ok' as const}));

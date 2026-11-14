@@ -447,3 +447,5 @@ when commissioning the first public-only observations for an aggregated dashboar
 an account with Portal access. The distinct product and Docs interaction routes
 bind their proof to the initiating interaction. A 202 acknowledges the request.
 The worker and the receiving inbox provide separate delivery evidence.
+
+When ONESA_IDENTITY_ADMINISTRATION is external, legacy Portal user directory, approvals, registrations, enrollment decisions and product-access changes return HTTP 403 with IDENTITY_ADMINISTRATION_MOVED. Editorial and other Portal administration retain the existing API and role checks. See [the Identity pilot](../engineering/ONESA_ACCOUNT.md#independent-identity-pilot).

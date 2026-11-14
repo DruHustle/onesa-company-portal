@@ -1,5 +1,13 @@
 # Onesa Account architecture
 
+## Independent Identity pilot
+
+The Portal issuer described below is the pre-migration baseline. During the pilot, the Identity service owns user administration. Portal owns its CMS, settings, business records and /admin. Public Developer Docs at docs.onesa.eu and private Engineering Documents at docs.engineering.onesa.eu have separate catalog entries and access policies.
+
+Set ONESA_IDENTITY_ADMINISTRATION=external on a paired candidate Portal API and frontend after the Identity administrator has verified the destination and imported approvals. Configure ONESA_IDENTITY_UI_ORIGIN on the frontend with the environment-specific HTTPS origin serving the Identity UI. The frontend sends legacy user-administration bookmarks to its /admin path and registration to /register. Browser fragments and search inputs stay local. The API refuses its legacy directory and access-decision routes in this mode. Portal roles retain local content permissions. Product access is limited to explicit grants. The cutover flag is independent of provider login. Enable it in production once migrated operators and customer self-service pass in staging.
+
+Before returning approvals to the legacy database, reconcile all Identity changes since cutover, including suspensions, revocations, new accounts and grants. Verify the result against the current Identity audit history. Switching the flag restores routing only. Operators must synchronize the current account data separately.
+
 Onesa Account is the human identity service for Company Portal, AI Platform,
 Robot, Smart Farmer, Drone, Smart Logistics, Onesa Mobile, Smart Factory and
 PasoFi. The shared sign-in page is `https://portal.onesa.eu/account`. The
