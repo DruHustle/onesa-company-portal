@@ -13,7 +13,6 @@ export const catalogProducts = [
   "mobile",
   "portal",
   "engineering",
-  "diaspora",
 ] as const;
 const names: Record<(typeof catalogProducts)[number], string> = {
   ai: "Onesa AI Platform",
@@ -26,7 +25,6 @@ const names: Record<(typeof catalogProducts)[number], string> = {
   mobile: "Onesa Mobile",
   portal: "Company Portal",
   engineering: "Internal Documents",
-  diaspora: "Diaspora Unlocked",
 };
 export function identityCatalog(config: IdentityConfig | null) {
   return catalogProducts.map((product) => ({

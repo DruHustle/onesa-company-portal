@@ -12819,7 +12819,7 @@ export interface operations {
                         }[];
                         catalog: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "farmer" | "logistics" | "factory" | "pasofi" | "mobile" | "portal" | "engineering" | "diaspora";
+                            product: "ai" | "drone" | "robot" | "farmer" | "logistics" | "factory" | "pasofi" | "mobile" | "portal" | "engineering";
                             name: string;
                             connected: boolean;
                         }[];
@@ -13000,7 +13000,7 @@ export interface operations {
                         }[];
                         catalog: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "farmer" | "logistics" | "factory" | "pasofi" | "mobile" | "portal" | "engineering" | "diaspora";
+                            product: "ai" | "drone" | "robot" | "farmer" | "logistics" | "factory" | "pasofi" | "mobile" | "portal" | "engineering";
                             name: string;
                             connected: boolean;
                         }[];
@@ -13805,7 +13805,7 @@ export interface operations {
                         }[];
                         catalog: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "farmer" | "logistics" | "factory" | "pasofi" | "mobile" | "portal" | "engineering" | "diaspora";
+                            product: "ai" | "drone" | "robot" | "farmer" | "logistics" | "factory" | "pasofi" | "mobile" | "portal" | "engineering";
                             name: string;
                             connected: boolean;
                         }[];
@@ -14441,7 +14441,7 @@ export interface operations {
                         }[];
                         catalog: {
                             /** @enum {string} */
-                            product: "ai" | "drone" | "robot" | "farmer" | "logistics" | "factory" | "pasofi" | "mobile" | "portal" | "engineering" | "diaspora";
+                            product: "ai" | "drone" | "robot" | "farmer" | "logistics" | "factory" | "pasofi" | "mobile" | "portal" | "engineering";
                             name: string;
                             connected: boolean;
                         }[];
