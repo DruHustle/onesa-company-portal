@@ -161,42 +161,53 @@ test('the schema-016 installer rejects the actual Farmer migration inventory', (
   assert.throws(() => validateRequest({...request(), migrations}), /IDENTITY_MIGRATION_REFUSED/);
 });
 
-const fullManifest = Object.fromEntries(Object.entries(currentFiles).map(([name, sql]) =>
+const schema019Files = Object.fromEntries(Object.entries(currentFiles).filter(([name]) =>
+  /^(?:00[1-9]|01[0-9])_[a-z_]+\.sql$/.test(name)));
+const schema019Manifest = Object.fromEntries(Object.entries(schema019Files).map(([name, sql]) =>
  [name,createHash('sha256').update(sql).digest('hex')]));
-const requestV3 = () => ({...request(),migrations:{...fullManifest}});
+const requestV3 = () => ({...request(),migrations:{...schema019Manifest}});
+
+test('schema-019 installer refuses the managed Portal schema before accessing the database', async () => {
+  const path = '020_managed_portal_login.sql';
+  assert.ok(currentFiles[path]);
+  const migrations = {...schema019Manifest, [path]: createHash('sha256').update(currentFiles[path]).digest('hex')};
+  const f = fixture(19, currentFiles, migrations);
+  await assert.rejects(() => migrateV3({...requestV3(), migrations}, f.io), /IDENTITY_MIGRATION_REFUSED/);
+  assert.deepEqual(f.calls, []);
+});
 
 test('eight-client migration applies the exact missing suffix transactionally for each accepted baseline',async()=>{
  for(const start of [12,14,15,16,17,18,19]){
-  const f=fixture(start,currentFiles,fullManifest);
+  const f=fixture(start,schema019Files,schema019Manifest);
   const result=await migrateV3(requestV3(),f.io);
   assert.equal(result.state,'IDENTITY_SCHEMA_019_APPLIED_NOT_AUTHORIZATION');
   assert.equal(result.schema_version,19);
   assert.equal(result.applied_migrations,19-start);
-  assert.deepEqual(f.calls,['begin','lock',...Object.keys(fullManifest).slice(start),'existing-role-grants','commit','runtime-readiness','close']);
+  assert.deepEqual(f.calls,['begin','lock',...Object.keys(schema019Manifest).slice(start),'existing-role-grants','commit','runtime-readiness','close']);
  }
 });
 
 test('historical and eight-client contracts cannot cross-select schema or inject migration bytes',async()=>{
- const f=fixture(16,currentFiles,fullManifest);
+ const f=fixture(16,schema019Files,schema019Manifest);
  await assert.rejects(()=>migrateV3(request(),f.io));
  await assert.rejects(()=>migrate(requestV3(),f.io));
  await assert.rejects(()=>migrateV3({...requestV3(),profile:'v3'},f.io));
- for(const n of Object.keys(fullManifest).slice(16)){
+ for(const n of Object.keys(schema019Manifest).slice(16)){
   const r=requestV3();r.migrations[n]='a'.repeat(64);
   await assert.rejects(()=>migrateV3(r,f.io),/SOURCE_CHANGED/);
  }
- const corrupt=fixture(17,{...currentFiles,'018_customer_product_identity.sql':'-- other'},fullManifest);
+ const corrupt=fixture(17,{...schema019Files,'018_customer_product_identity.sql':'-- other'},schema019Manifest);
  await assert.rejects(()=>migrateV3(requestV3(),corrupt.io),/IMAGE_CHANGED/);
- const bad=fixture(13,currentFiles,fullManifest);
+ const bad=fixture(13,schema019Files,schema019Manifest);
  await assert.rejects(()=>migrateV3(requestV3(),bad.io),/BASELINE_REQUIRED/);
  assert.ok(!f.calls.length);
 });
 
 test('eight-client inspect does not apply and an enrollment failure rolls back before grants',async()=>{
- const f=fixture(18,currentFiles,fullManifest);
+ const f=fixture(18,schema019Files,schema019Manifest);
  const state=await migrateV3({...requestV3(),action:'inspect'},f.io);
  assert.equal(state.schema_version,18);assert.deepEqual(f.calls,['read-only','lock','commit','close']);
- const broken=fixture(16,currentFiles,fullManifest),apply=broken.io.apply;
+ const broken=fixture(16,schema019Files,schema019Manifest),apply=broken.io.apply;
  broken.io.apply=async(...args)=>{if(args[0].startsWith('019'))throw Error('synthetic interrupted enrollment migration');await apply(...args);};
  await assert.rejects(()=>migrateV3(requestV3(),broken.io),/interrupted/);
  assert.ok(!broken.calls.includes('commit'));assert.ok(!broken.calls.includes('existing-role-grants'));
