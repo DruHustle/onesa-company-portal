@@ -4,7 +4,20 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {PRODUCTS, authorizationBinding, permittedResource, permittedRedirect, fillPortalInput, portalPrincipal, validateProduct,
   validateRequest, observeHostedAdministrator} from './oracle_portal_identity_browser_v2.mjs';
-import {verifyCallback} from './oracle_portal_identity_browser.mjs';
+import {productSignInLabel, verifyCallback} from './oracle_portal_identity_browser.mjs';
+
+test('both observers match only the two exact Drone sign-in button labels', () => {
+  for (const label of [productSignInLabel('drone'), PRODUCTS.drone.label]) {
+    for (const accepted of ['Sign in with Onesa', 'Continue with Onesa']) assert.match(accepted, label);
+    for (const other of ['Sign in', 'Sign in with Onesa administrator', 'Do not Continue with Onesa', 'sign in with onesa']) {
+      assert.doesNotMatch(other, label);
+    }
+  }
+  for (const product of ['ai', 'robot']) {
+    assert.equal(productSignInLabel(product), 'Continue with Onesa');
+    assert.equal(PRODUCTS[product].label, 'Continue with Onesa');
+  }
+});
 
 const origins = {portal:'https://portal.onesa.eu',ai:'https://platform.onesa.eu',drone:'https://drone.onesa.eu',
   robot:'https://robot.onesa.eu',farmer:'https://farmer.onesa.eu',logistics:'https://logistics.onesa.eu',
