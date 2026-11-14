@@ -191,6 +191,7 @@ function bindings(
     files[name + ".env.json"] = JSON.stringify(env, null, 2) + "\n";
   }
   environment("portal-frontend", {
+    ...(config.clients.some(client => client.product === "factory") ? { ONESA_IDENTITY_ENABLED: "true" } : {}),
     ONESA_IDENTITY_CALLBACKS_JSON: JSON.stringify(
       config.clients.map((client) => client.redirectUri),
     ),

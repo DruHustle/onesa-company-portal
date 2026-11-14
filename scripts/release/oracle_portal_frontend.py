@@ -215,12 +215,12 @@ def protection(plan, binding=None):
                 target,
                 [None, "staging"] if env == "staging" else [None],
             )
-            if key == "ONESA_IDENTITY_CALLBACKS_JSON":
+            if key in {"ONESA_IDENTITY_CALLBACKS_JSON", "ONESA_IDENTITY_ENABLED"}:
                 r.require(metadata_row.get("target") == [target]
                           and metadata_row.get("gitBranch") == ("staging" if env == "staging" else None),
                           "ISOLATED_FRONTEND_CALLBACK_VARIABLE_REQUIRED")
             row = provider("/v1/projects/" + cfg["project_id"] + "/env/" + identifier)
-            if key == "ONESA_IDENTITY_CALLBACKS_JSON":
+            if key in {"ONESA_IDENTITY_CALLBACKS_JSON", "ONESA_IDENTITY_ENABLED"}:
                 r.require(row.get("target") == [target] and row.get("gitBranch") == metadata_row.get("gitBranch"),
                           "ISOLATED_FRONTEND_CALLBACK_VARIABLE_REQUIRED")
             r.require(
