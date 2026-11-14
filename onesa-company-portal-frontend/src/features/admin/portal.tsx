@@ -129,7 +129,7 @@ export function AdminPortal({
     [notice, setNotice] = useState(""),
     [tab, setTab] = useState<Tab>("Dashboard"),
     [total, setTotal] = useState(0);
-  const [accountEntry, setAccountEntry] = useState("/account?next=/admin");
+  const [accountEntry, setAccountEntry] = useState("/admin?next=/admin");
   const [sessionAttempt,setSessionAttempt]=useState(0),[sessionError,setSessionError]=useState(''),[sessionChecking,setSessionChecking]=useState(false);
   const [queues, setQueues] = useState<Partial<Record<Tab, QueueState>>>({});
   const queue = queues[tab] || emptyQueue(),
@@ -207,7 +207,7 @@ export function AdminPortal({
     });
     const signIn = adminAccountEntry(url);
     setAccountEntry(signIn);
-    if (accessLinkToken(window.location.hash)) { window.location.replace("/account?next=/admin" + window.location.hash); return; }
+    if (accessLinkToken(window.location.hash)) { window.location.replace("/admin?next=/admin" + window.location.hash); return; }
     const sessionRequest=new AbortController();setSessionChecking(true);setSessionError('');
     api
       .GET("/api/v1/auth/me",{signal:sessionRequest.signal})
@@ -508,7 +508,7 @@ export function AdminPortal({
                 await api.POST("/api/v1/auth/logout", { body: {} });
                 setCsrf(undefined);
                 setUser(null);
-                window.location.replace("/account?next=/admin");
+                window.location.replace("/admin?next=/admin");
               });
             })
           }
@@ -1537,7 +1537,7 @@ export function AdminPortal({
                       },
                     });
                     setUser(null);
-                    window.location.replace("/account?next=/admin");
+                    window.location.replace("/admin?next=/admin");
                     setCsrf(undefined);
                     setRecovery([]);
                   })}
@@ -1595,7 +1595,7 @@ export function AdminPortal({
                         void perform(async () => {
                           await api.POST("/api/v1/auth/revoke", { body: {} });
                           setUser(null);
-                          window.location.replace("/account?next=/admin");
+                          window.location.replace("/admin?next=/admin");
                           setCsrf(undefined);
                         }, "All sessions revoked")
                       }

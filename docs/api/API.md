@@ -92,6 +92,12 @@ expected revision and access-policy evidence. An engineering identity has no Por
 role. The exact Cloudflare email policy remains an independent requirement. See
 [Engineering Docs access](../engineering/ENGINEERING_DOCS_IDENTITY.md).
 
+## Shared account email sign-in
+
+`POST /api/v1/account/email-link` accepts an email. For product sign-in, `POST /api/v1/account/interaction/:uid/email-link` also requires the initiating browser’s interaction cookie and CSRF proof. The response is 202 for an unknown or ineligible address as well as for a verified account. The recipient confirms the address and the one-use proof in the URL fragment. Proofs expire after 15 minutes. The same IP and address rate limits govern repeat requests, and repeat requests within 30 seconds send a single message.
+
+The shared login and the product interaction login accept `emailToken` in place of `password`. A product-bound link also requires its original interaction, browser cookies and CSRF proof. Account disablement, credential changes and global sign-out invalidate outstanding proofs. Email authentication preserves the account’s MFA requirements, memberships and product approvals. Only accounts that already have Portal access can receive an administration session. Engineering Docs uses its own cookie-bound `account-email-link` and `account-email-login` interaction actions. The emailed link returns to the original Docs interaction, where the existing membership and session policy still apply. Previously sent administrator and Engineering links keep their existing confirmation paths.
+
 ## Prepared common-account Docs link
 
 Prepared additive account-link fields preserve older clients: current Docs details

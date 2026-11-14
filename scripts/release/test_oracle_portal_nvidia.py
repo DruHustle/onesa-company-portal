@@ -63,7 +63,7 @@ class NvidiaScopeTests(unittest.TestCase):
             old["devDependencies"].pop(key)
         old["devDependencies"]["eslint"] = "^9.39.0"
         old.pop("overrides")
-        current_proxy = (ROOT / PREFIX / "src/proxy.ts").read_bytes()
+        current_proxy = reviewed_frontend_bytes(PREFIX + "src/proxy.ts")
         previous_proxy = current_proxy
         for original, replacement in r.NVIDIA_PROXY_CHANGES:
             self.assertEqual(previous_proxy.count(replacement), 1)

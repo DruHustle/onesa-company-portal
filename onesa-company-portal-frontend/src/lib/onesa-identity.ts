@@ -10,7 +10,11 @@ export function identityRedirectLocation(value: string | null, origin: string, e
   try {
     const url = new URL(value, origin);
     if (url.username || url.password || url.hash) return null;
-    if (url.origin === origin && !url.search && (new RegExp("^" + identityPath + "/auth/[A-Za-z0-9_-]{8,128}$").test(url.pathname) || /^\/account\/sign-in\/[A-Za-z0-9_-]{8,128}$/.test(url.pathname))) return url.href;
+    if (url.origin === origin && !url.search) {
+      const interaction = /^\/account\/sign-in\/([A-Za-z0-9_-]{8,128})$/.exec(url.pathname);
+      if (interaction) return origin + "/admin?interaction=" + interaction[1];
+      if (new RegExp("^" + identityPath + "/auth/[A-Za-z0-9_-]{8,128}$").test(url.pathname)) return url.href;
+    }
     const callbacks: unknown = JSON.parse(encodedCallbacks || "[]");
     if (!Array.isArray(callbacks) || callbacks.length > maximumProductCallbacks) return null;
     const exact = callbacks.some(value => {
