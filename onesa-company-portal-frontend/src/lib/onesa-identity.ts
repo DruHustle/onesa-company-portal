@@ -12,7 +12,7 @@ export function identityRedirectLocation(value: string | null, origin: string, e
     if (url.username || url.password || url.hash) return null;
     if (url.origin === origin && !url.search) {
       const interaction = /^\/account\/sign-in\/([A-Za-z0-9_-]{8,128})$/.exec(url.pathname);
-      if (interaction) return origin + "/admin?interaction=" + interaction[1];
+      if (interaction) return origin + "/account?interaction=" + interaction[1];
       if (new RegExp("^" + identityPath + "/auth/[A-Za-z0-9_-]{8,128}$").test(url.pathname)) return url.href;
     }
     const callbacks: unknown = JSON.parse(encodedCallbacks || "[]");

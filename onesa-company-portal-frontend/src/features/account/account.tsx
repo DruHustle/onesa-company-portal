@@ -40,13 +40,14 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
   const t = copy[language];
   const [destination, setDestination] = useState(interactionId ? productAccountPath(interactionId) ?? "/account" : "/account");
   const [emailLink, setEmailLink] = useState(false), [adminToken, setAdminToken] = useState<string | null>(null);
+  const explicitEmailProof = useRef(false);
   const [sharedToken,setSharedToken] = useState<string | null>(null);
   const [linkRequested,setLinkRequested] = useState(false);
   const [adminWorkspace, setAdminWorkspace] = useState("/admin");
   const [approvedAdmin, setApprovedAdmin] = useState(false);
   const approvalRequest = mode === "register" && Boolean(adminEntry || legacyDocsRegistration);
   const destinationSearch = destination.includes("?") ? destination.slice(destination.indexOf("?")) : "";
-  const signupUrl = adminEntry && !legacyAdmin ? "/admin?entry=register" : "/account/register" + destinationSearch;
+  const signupUrl = adminEntry && !legacyAdmin ? "/account/register" : "/account/register" + destinationSearch;
   useEffect(() => {
     if (adminEntry) setAdminWorkspace(adminWorkspaceReturn(window.location.hash));
     let target = interactionId ? productAccountPath(interactionId) ?? "/account" : accountDestination(window.location.search);
@@ -61,7 +62,8 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
     const receive = () => {
       const shared = sharedSignInToken(window.location.hash);
       if (!legacyAdmin && shared) {
-        setSharedToken(shared); setEmailLink(true); setFactor(false);
+        explicitEmailProof.current = true;
+        setSession(null); setSharedToken(shared); setEmailLink(true); setFactor(false);
         window.history.replaceState(null,"",window.location.pathname + window.location.search);
         return;
       }
@@ -98,8 +100,8 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
         if (!active) return; setEnabled(config.enabled); setCatalog(config.catalog); setProducts(enabledProducts(config.applications ?? []));
         if (!config.enabled) return;
         if (interactionId) { const result = await accountRequest<Interaction>("/api/v1/account/interaction/" + encodeURIComponent(interactionId)); if (active) setInteraction(result); }
-        else if (mode === "login" && !adminEntry && !forceLogin && !accountReauthenticationRequired(window.location.search)) {
-          try { const result = await accountRequest<AccountSession>("/api/v1/account/me"); if (active) {
+        else if (mode === "login" && !adminEntry && !forceLogin && !explicitEmailProof.current && !accountReauthenticationRequired(window.location.search)) {
+          try { const result = await accountRequest<AccountSession>("/api/v1/account/me"); if (active && !explicitEmailProof.current) {
             if (accountDestination(window.location.search) === "/account?next=/engineering") window.location.replace("/engineering");
             else setSession(result);
           } }
@@ -163,7 +165,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
           await accountRequest("/engineering/sign-in/" + encodeURIComponent(docsInteractionId) + "/account-email-link", {email, csrf: docsInteractionCsrf});
         else if (interactionId && interaction)
           await accountRequest("/api/v1/account/interaction/" + encodeURIComponent(interactionId) + "/email-link", {email, csrf: interaction.csrf});
-        else await accountRequest("/api/v1/account/email-link", {email});
+        else await accountRequest("/api/v1/account/email-link", adminEntry ? { email, returnTo: "/admin" } : { email });
         setLinkRequested(true);
         setNotice(language === "de" ? "Wenn dein Konto berechtigt ist, erhältst du einen Anmeldelink. Er ist 15 Minuten gültig." : "If your account is eligible, we will email a sign-in link valid for 15 minutes.");
         return;

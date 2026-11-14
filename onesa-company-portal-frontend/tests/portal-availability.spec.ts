@@ -12,10 +12,10 @@ test("an unavailable session service offers a retry and sends a signed-out visit
   await expect(page.getByRole("alert").filter({hasText:"We could not check your Portal session"})).toBeVisible();
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
   const entry = page.getByRole("link",{name:"Continue with Onesa"});
-  await expect(entry).toHaveAttribute("href","/admin?next=/admin#workspace=%23privacy%2Foverview");
+  await expect(entry).toHaveAttribute("href","/account?next=/admin#workspace=%23privacy%2Foverview");
   status = 401;
   await page.getByRole("button",{name:"Retry session check"}).click();
-  await expect(page).toHaveURL(/admin\?next=\/admin#workspace=%23privacy%2Foverview$/);
+  await expect(page).toHaveURL(/account\?next=\/admin#workspace=%23privacy%2Foverview$/);
   await expect(page.locator('input[type="password"]')).toHaveCount(1);
   expect(requests).toBe(2);
 });
