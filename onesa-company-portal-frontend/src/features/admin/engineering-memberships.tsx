@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
+import { internalDocumentsOrigin } from "@/config/internal-documents";
 import { api } from "@/lib/api/client";
 import type { operations } from "@/lib/api/generated/schema";
 type Member =
@@ -79,7 +80,7 @@ export function EngineeringMemberships() {
         approved external members can be retained.
       </p>
       <p>
-        <a href="https://docs.engineering.onesa.eu/">Open protected Engineering Docs ↗</a>. First update the exact-email Docs access policy using the protected
+        {internalDocumentsOrigin ? <a href={internalDocumentsOrigin}>Open Internal Documents ↗</a> : <span>Internal Documents is currently unavailable</span>}. First update the exact-email Docs access policy using the protected
         onboarding procedure. Record its verification reference here. A
         membership alone cannot bypass that policy. Disabling membership
         prevents new Portal sign-ins; revoke existing Docs access sessions

@@ -13,7 +13,7 @@ import { Infrastructure } from "./infrastructure";
 import { BackgroundProcessing } from "./background-processing";
 import { PrivacyGovernance } from "./privacy-governance";
 import { EngineeringMemberships } from "./engineering-memberships";
-import { adminAccountEntry } from "@/lib/account-return";
+import { adminAccountEntry, managedAdminEntry } from "@/lib/account-return";
 import { accessLinkToken } from "@/lib/access-link";
 import { AccessRequests } from "./access-requests";
 import {ApplicationCv} from "./application-cv";
@@ -117,11 +117,15 @@ export function AdminPortal({
   accessEnabled = false,
   identityEnabled = false,
   engineeringEnabled = false,
+  identityAdmin = null,
+  managedLogin = false,
 }: {
   environment?: "PRODUCTION" | "STAGING" | "DEVELOPMENT";
   accessEnabled?: boolean;
   identityEnabled?: boolean;
   engineeringEnabled?: boolean;
+  identityAdmin?: string | null;
+  managedLogin?: boolean;
 }) {
   const [user, setUser] = useState<User | null>(null),
     [loading, setLoading] = useState(true),
@@ -205,9 +209,9 @@ export function AdminPortal({
         category: url.searchParams.get("category") || undefined,
       },
     });
-    const signIn = adminAccountEntry(url);
+    const signIn = managedLogin ? managedAdminEntry(url) : adminAccountEntry(url);
     setAccountEntry(signIn);
-    if (accessLinkToken(window.location.hash)) { window.location.replace("/account?next=/admin" + window.location.hash); return; }
+    if (!managedLogin && accessLinkToken(window.location.hash)) { window.location.replace("/account?next=/admin" + window.location.hash); return; }
     const sessionRequest=new AbortController();setSessionChecking(true);setSessionError('');
     api
       .GET("/api/v1/auth/me",{signal:sessionRequest.signal})
@@ -297,6 +301,7 @@ export function AdminPortal({
           break;
         }
         case "Users": {
+          if (identityAdmin) return;
           const r = await api.GET("/api/v1/admin/users", {
             params: { query },
             signal: controller.signal,
@@ -372,6 +377,10 @@ export function AdminPortal({
     const back = () => {
       const url = new URL(window.location.href),
         next = sectionFromUrl(url);
+      if (next === "Users" && identityAdmin) {
+        navigate(() => window.location.assign(identityAdmin));
+        return;
+      }
       if (user && !(tabRoles[next] as readonly string[]).includes(user.role))
         return;
       const previous = new URL(window.location.href);
@@ -508,7 +517,7 @@ export function AdminPortal({
                 await api.POST("/api/v1/auth/logout", { body: {} });
                 setCsrf(undefined);
                 setUser(null);
-                window.location.replace("/account?next=/admin");
+                window.location.replace(managedLogin ? "/en" : "/account?next=/admin");
               });
             })
           }
@@ -529,7 +538,9 @@ export function AdminPortal({
               return tabs.length ? (
                 <div className="admin-task-group" key={group.label}>
                   <h2>{group.label}</h2>
-                  {tabs.map((name) => (
+                  {tabs.map((name) => name === "Users" && identityAdmin ? (
+                    <a key={name} href={identityAdmin} referrerPolicy="no-referrer">Manage users in Onesa Identity</a>
+                  ) : (
                     <button
                       key={name}
                       disabled={busy || unsaved.pending}
@@ -1203,7 +1214,7 @@ export function AdminPortal({
                 )}
               </div>
             )}
-            {tab === "Users" && (
+            {!identityAdmin && tab === "Users" && (
               <p>
                 {identityEnabled && <><a href="/account?tab=access#access">Manage shared accounts and product access</a>. Normal product users register once from their Onesa account. </>}
                 Normal access: register → verify email → owner approval. A
@@ -1212,7 +1223,7 @@ export function AdminPortal({
                 independently controls Docs access.
               </p>
             )}
-            {tab === "Users" && (
+            {!identityAdmin && tab === "Users" && (
               <div className="admin-grid">
                 <div className="admin-list">
                   <button onClick={() => navigate(() => setEditUser(null))}>
@@ -1350,7 +1361,7 @@ export function AdminPortal({
                 </form>
               </div>
             )}
-            {tab === "Users" && user.role === "owner" && (
+            {!identityAdmin && tab === "Users" && user.role === "owner" && (
               <>
                 {accessEnabled && <AccessRequests />}
                 {engineeringEnabled && <EngineeringMemberships />}
@@ -1519,7 +1530,10 @@ export function AdminPortal({
                 </div>
               </div>
             )}
-            {tab === "Security" && (
+            {managedLogin && identityAdmin && tab === "Security" && (
+              <a href={new URL("/account", identityAdmin).href}>Manage credentials and MFA in Onesa Identity</a>
+            )}
+            {!managedLogin && tab === "Security" && (
               <div className="admin-grid">
                 <form
                   data-workspace-draft
@@ -1537,7 +1551,7 @@ export function AdminPortal({
                       },
                     });
                     setUser(null);
-                    window.location.replace("/account?next=/admin");
+                    window.location.replace(managedLogin ? "/en" : "/account?next=/admin");
                     setCsrf(undefined);
                     setRecovery([]);
                   })}
@@ -1595,7 +1609,7 @@ export function AdminPortal({
                         void perform(async () => {
                           await api.POST("/api/v1/auth/revoke", { body: {} });
                           setUser(null);
-                          window.location.replace("/account?next=/admin");
+                          window.location.replace(managedLogin ? "/en" : "/account?next=/admin");
                           setCsrf(undefined);
                         }, "All sessions revoked")
                       }

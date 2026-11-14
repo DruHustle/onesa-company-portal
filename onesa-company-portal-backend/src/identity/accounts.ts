@@ -4,6 +4,7 @@ import { db } from "../services/db.js";
 import { hash } from "../auth/crypto.js";
 import { sessionAuthenticationTime } from "../auth/session-proof.js";
 import { HttpError } from "../services/workflows.js";
+import { externalIdentityAdministration } from "./administration.js";
 import { clientProducts } from "./config.js";
 
 export const accountCookie = "onesa_account";
@@ -64,6 +65,8 @@ export async function currentAccount(
       };
   }
   const authenticatedAt = sessionAuthenticationTime(req);
+  // Product-scoped Portal sessions cannot mint a second, longer-lived legacy issuer session.
+  if (process.env.ONESA_IDENTITY_PORTAL_LOGIN === "managed") return null;
   const portal = req.cookies.onesa_session;
   if (portal && authenticatedAt !== null) {
     const session = (
@@ -120,11 +123,12 @@ export async function accountAccess(
       [account.id],
     )
   ).rows;
-  const admin = isGlobalAdmin(account.role);
+  const external = externalIdentityAdministration();
+  const admin = !external && isGlobalAdmin(account.role);
   const active = access.filter((row) => row.status === "active");
   // Verified staff already approved for the Portal may enter Farmer's empty
   // workspace. A recorded Farmer decision always takes precedence for staff.
-  if (!admin && account.role !== "member" && account.email_verified_at &&
+  if (!external && !admin && account.role !== "member" && account.email_verified_at &&
       !access.some((row) => row.product === "farmer")) {
     active.push({ product: "farmer", role: "user" });
   }

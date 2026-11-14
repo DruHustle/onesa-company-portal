@@ -74,3 +74,7 @@ export function adminWorkspaceReturn(fragment: string): string {
   if (values.size !== 1 || !suffix || suffix.length > 6144 || !["?", "#"].includes(suffix[0])) return "/admin";
   return "/admin" + adminWorkspaceSuffix(new URL("/admin" + suffix, "https://portal.example.invalid"));
 }
+
+export function managedAdminEntry(url: URL) {
+  return "/api/v1/auth/managed/start?" + new URLSearchParams({ next: "/admin" + adminWorkspaceSuffix(url) });
+}

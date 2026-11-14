@@ -23,12 +23,14 @@ type EntryProps = {
   forceLogin?: boolean;
   adminEntry?: boolean;
   accessEnabled?: boolean;
+  adminEmailLinks?: boolean;
   legacyAdmin?: boolean;
+  identityAdmin?: string | null;
   legacyDocsRegistration?: boolean;
   approvalConfirmation?: boolean;
 };
 
-export function OnesaAccount({ mode = "login", interactionId, docsInteractionId, docsInteractionCsrf, forceLogin, adminEntry, accessEnabled, legacyAdmin, legacyDocsRegistration, approvalConfirmation }: EntryProps) {
+export function OnesaAccount({ mode = "login", interactionId, docsInteractionId, docsInteractionCsrf, forceLogin, adminEntry, accessEnabled, adminEmailLinks, identityAdmin, legacyAdmin, legacyDocsRegistration, approvalConfirmation }: EntryProps) {
   const [language, setLanguage] = useState<"en" | "de">("en"), [session, setSession] = useState<AccountSession | null>(null);
   const [interaction, setInteraction] = useState<Interaction | null>(null), [enabled, setEnabled] = useState<boolean | null>(null), [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState(""), [error, setError] = useState(false), [busy, setBusy] = useState(false), [done, setDone] = useState(false), [factor, setFactor] = useState(false), [help, setHelp] = useState("");
@@ -68,12 +70,12 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
         window.history.replaceState(null,"",window.location.pathname + window.location.search);
         return;
       }
-      if (!adminEntry || !accessEnabled) return;
+      if (!adminEntry) return;
       const raw = accessLinkToken(window.location.hash);
       if (raw) { setAdminToken(raw); setEmailLink(true); window.history.replaceState(null, "", window.location.pathname + window.location.search); }
     };
     receive(); window.addEventListener("hashchange", receive); return () => window.removeEventListener("hashchange", receive);
-  }, [adminEntry, accessEnabled, mode, interactionId, legacyAdmin]);
+  }, [adminEntry, mode, interactionId, legacyAdmin]);
   const [products, setProducts] = useState<Product[]>([]);
   useEffect(() => { setReturnTo(accountReturnPath(window.location.search)); try { if (localStorage.getItem("onesa.account.language") === "de") setLanguage("de"); } catch { /* storage is optional */ } }, []);
   useEffect(() => { if (factor) codeInput.current?.focus(); }, [factor]);
@@ -112,7 +114,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
       finally { if (active) setLoading(false); }
     }
     void load(); return () => { active = false; };
-  }, [interactionId, mode, forceLogin, adminEntry, accessEnabled, legacyAdmin, approvalRequest, approvalConfirmation, loadAttempt]);
+  }, [interactionId, mode, forceLogin, adminEntry, accessEnabled, identityAdmin, legacyAdmin, approvalRequest, approvalConfirmation, loadAttempt]);
   function chooseLanguage(value: "en" | "de") { setLanguage(value); try { localStorage.setItem("onesa.account.language", value); } catch { /* storage is optional */ } }
   function follow(result: { continuePath: string }) {
     if (!/^\/api\/v1\/identity\/auth\/[A-Za-z0-9_-]{8,128}$/.test(result.continuePath)) throw Error("Invalid sign-in continuation.");
@@ -217,10 +219,10 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
       {returnTo && <p><a className={"button " + styles.action} href={returnTo}>{t.returnDocs}</a></p>}
       {noticeElement}
       <section className={styles.grid} aria-label={t.applications}>{products.map(product => {
-        const grant = session.access.find(item => item.product === product), active = session.account.globalAdmin || grant?.status === "active" || (product === "farmer" && !grant && session.account.portalAccess && session.account.emailVerified), isConnected = connected(product);
+        const grant = session.access.find(item => item.product === product), active = session.account.globalAdmin || grant?.status === "active" || (!identityAdmin && product === "farmer" && !grant && session.account.portalAccess && session.account.emailVerified), isConnected = connected(product);
         const application = session.applications.find(item => item.product === product);
         return <article className={styles.product} key={product}><span className={styles.badge}>{!isConnected ? t.unconnected : active ? t.active : grant ? t[grant.status] : t.none}</span><h2>{productNames[product]}</h2><p>{t.products[product]}</p>
-          {!isConnected ? <p>{t.futureHint}</p> : active && application ? <a className={"button " + styles.action} href={accountApplicationUrl(product, application.url, session.account.globalAdmin)}>{t.open}</a> : <button className={styles.action} disabled={busy || grant?.status === "pending" || active} onClick={() => void action(async () => { setSession(await accountRequest<AccountSession>("/api/v1/account/products/" + product + "/request", {}, session.csrf)); setNotice(t.requested); })}>{grant?.status === "pending" ? t.pending : active ? t.unavailable : t.requestAccess}</button>}
+          {!isConnected ? <p>{t.futureHint}</p> : active && application ? <a className={"button " + styles.action} href={accountApplicationUrl(product, application.url, session.account.globalAdmin)}>{t.open}</a> : identityAdmin ? <a href={new URL("/account", identityAdmin).href}>{language === "de" ? "Produktzugang in Onesa Identity" : "Product access in Onesa Identity"}</a> : <button className={styles.action} disabled={busy || grant?.status === "pending" || active} onClick={() => void action(async () => { setSession(await accountRequest<AccountSession>("/api/v1/account/products/" + product + "/request", {}, session.csrf)); setNotice(t.requested); })}>{grant?.status === "pending" ? t.pending : active ? t.unavailable : t.requestAccess}</button>}
         </article>;
       })}{adminApplications.map(app => <article className={styles.product} key={app.product}>
         <span className={styles.badge}>{t.adminBadge}</span><h2>{adminProductNames[app.product]}</h2>
@@ -228,7 +230,8 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
       </article>)}</section>
       <h2>{t.futureProducts}</h2>{futureProducts}
       <nav className={styles.accountLinks} aria-label={language === "de" ? "Kontoeinstellungen" : "Account settings"}>{session.account.portalAccess && <a className={styles.action} href={adminWorkspace}>{t.admin}</a>}<a className={styles.action} href="/engineering">Engineering Docs</a>{!session.account.mfaEnrolled && <a className={styles.action} href={setupUrl}>{t.setup}</a>}<a className={styles.action} href="/account/billing">{language === "de" ? "Abrechnung" : "Billing"}</a><a className={styles.action} href="/account/security">{language === "de" ? "Passwort und Sicherheit" : "Password and security"}</a><a className={styles.action} href="/account/delete">{language === "de" ? "Kontolöschung beantragen" : "Request account deletion"}</a></nav>
-      {session.account.globalAdmin && <AccessManager session={session} language={language} />}
+      {identityAdmin && session.account.portalAccess && <a href={identityAdmin} referrerPolicy="no-referrer">{language === "de" ? "Benutzer in Onesa Identity verwalten" : "Manage users in Onesa Identity"}</a>}
+      {!identityAdmin && session.account.globalAdmin && <AccessManager session={session} language={language} />}
     </div> : <section className={styles.card} aria-labelledby="account-title">
       <h1 id="account-title">{mode === "register" ? t.register : mode === "confirm" ? t.confirm : interaction?.freshRequired ? t.fresh : t.login}</h1>
       <p className={styles.muted}>{mode === "register" ? (approvalRequest ? (language === "de" ? "Der Inhaber prüft Ihren Zugang nach der E-Mail-Bestätigung." : "The owner reviews your access request after you verify your email.") : t.chooseHint) : mode === "confirm" ? t.confirmHint : interaction?.freshRequired ? t.freshHint : interaction ? { ...productNames, ...adminProductNames }[interaction.product] : t.intro}</p>
@@ -237,7 +240,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
         <button type="button" className={styles.action} aria-pressed={!emailLink} onClick={() => { setEmailLink(false); setAdminToken(null); setSharedToken(null); setLinkRequested(false); setFactor(false); setNotice(""); }}>{language === "de" ? "E-Mail und Passwort" : "Email and password"}</button>
         <button type="button" className={styles.action} aria-pressed={emailLink} onClick={() => { setEmailLink(true); setFactor(false); setNotice(""); }}>{language === "de" ? "Anmeldelink per E-Mail" : "Email a sign-in link"}</button>
       </div>}
-      {mode === "login" && adminEntry && (legacyAdmin || adminToken) ? <AdminSignIn accessEnabled={Boolean(accessEnabled)} linkOnly={!legacyAdmin || Boolean(adminToken)} initialToken={adminToken} onSignedIn={() => window.location.replace(adminWorkspace)}/> :
+      {mode === "login" && adminEntry && (legacyAdmin || adminToken) ? <AdminSignIn accessEnabled={Boolean(accessEnabled)} emailLinks={Boolean(adminEmailLinks || accessEnabled)} linkOnly={!legacyAdmin || Boolean(adminToken)} initialToken={adminToken} onSignedIn={() => window.location.replace(adminWorkspace)}/> :
       !done && <form onSubmit={submit} aria-busy={busy}><fieldset disabled={busy || enabled !== true || (Boolean(interactionId) && !interaction) || (mode === "confirm" && !link)}><legend className={styles.srOnly}>{t.login}</legend>
         {mode === "register" && <label>{t.name}<input name="name" autoComplete="name" required maxLength={approvalRequest ? 120 : 200}/></label>}
         {mode !== "confirm" && <label>{t.email}<input key={sharedToken ?? "credentials"} name="email" type="email" autoComplete="username" required maxLength={254} defaultValue={suggestedAccount?.email ?? ""}/></label>}

@@ -28,7 +28,9 @@ PREFIX = "onesa-company-portal-frontend/"
 # Additional shared-entry predecessors are public blobs from Portal a746c55e.
 # The standalone Admin entry and original routing proxy come from Portal 9e8c939a.
 # Portal 550e007e retains the original domain routing helper.
+# Catalog predecessor is the public blob at Portal 473d5b1b2b80.
 REVIEWED_FILES = {
+    PREFIX + "src/config/onesa-applications.json": (371, "0eeccc055f8d6df8662f0763453932e5d55dd5be9530a45a4cd863962f01e635"),  # gitleaks:allow -- historical public catalog SHA-256.
     PREFIX + "src/lib/domains.ts": (2553, "9cc261a9580b01ffa7215c4db10b6b8ece118e913e06fa4f3f815f0c77916447"),
     PREFIX + "src/proxy.ts": (2917, "01acb9084f2d2af5610a723896602b1578b83baa59c0fa8e55b0e31add46955f"),
     PREFIX + "src/app/admin/page.tsx": (546, "163d7517e01aee14108a335aaf1594fc4d140ddff649966621d75130543fcb1f"),
@@ -61,6 +63,7 @@ REVIEWED_FILES = {
     PREFIX + "src/lib/api/generated/schema.d.ts": (787032, "e84ad11bf072ba1c2aee94b70af9ea73e98d8dea426979d55e09479d23cf37f8"),
 }
 REVIEWED_BLOBS = {
+    PREFIX + "src/config/onesa-applications.json": "50b6a2d05073665da4f3908aaca8c969576a842b",
     PREFIX + "src/lib/domains.ts": "1f8a8db0addb2f3cb52a3cf6735a1cb501cc77f4",
     PREFIX + "src/proxy.ts": "5b9eea107d3199433b5e98b7db76674ba400fd17",
     PREFIX + "src/app/admin/page.tsx": "b630ba8e08e5849d8eaf5d311d099dff6a8f12e7",

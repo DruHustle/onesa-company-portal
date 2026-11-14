@@ -1,5 +1,11 @@
 # Production release checklist
 
+## Documents publication ownership
+
+`DruHustle/onesa-documents` owns public publication at `docs.onesa.eu` and authenticated internal publication at `docs.internal.onesa.eu`. Company Portal releases update Portal content, its product catalog and its own application. Keep documents hosting projects, deployment credentials and hostname aliases with the Documents release. Keep approved source material in its authoritative repository and let Documents publish it with provenance.
+
+Keep the public Developer Docs bookmarks working. For Internal Documents, leave the Portal's catalog status unavailable until authenticated home, representative bookmarks and attachment permissions pass at the canonical host. Then enable `NEXT_PUBLIC_INTERNAL_DOCUMENTS_CANONICAL` in the frontend build. Old engineering bookmarks may redirect to their verified replacement with the original path after acceptance. Access assignments are made in Identity and document ACLs in Documents.
+
 ## Current release records
 
 Use [CHANGELOG.md](CHANGELOG.md) for the latest independently accepted component

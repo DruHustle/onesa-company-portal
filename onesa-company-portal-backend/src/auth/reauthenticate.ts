@@ -8,6 +8,8 @@ type Session = { userId: string; token: string; csrf: string };
 
 /** Consume a fresh factor in the same transaction as the sensitive operation. */
 export async function reauthenticate(client: PoolClient, session: Session, proof?: Proof): Promise<Role> {
+  if (process.env.ONESA_IDENTITY_PORTAL_LOGIN === "managed")
+    throw new HttpError(403, "PROVIDER_STEP_UP_REQUIRED", "This sensitive action requires a new Identity verification.");
   if (!proof) throw new HttpError(403, 'STEP_UP_REQUIRED', 'Confirm your password and a fresh authenticator or unused recovery code.');
   // Serialize credential/account changes without blocking audit foreign-key reads.
   // FOR UPDATE can deadlock with a deletion holding its target identity lock while

@@ -1,5 +1,17 @@
 # Onesa Account architecture
 
+## Independent Identity pilot
+
+The Portal issuer described below is the pre-migration baseline. During the pilot, the Identity service owns user administration. Portal owns its CMS, settings, business records and /admin. Public Developer Docs at docs.onesa.eu and private Engineering Documents at docs.engineering.onesa.eu have separate catalog entries and access policies.
+
+Set ONESA_IDENTITY_ADMINISTRATION=external on a paired candidate Portal API and frontend after the Identity administrator has verified the destination and imported approvals. Configure ONESA_IDENTITY_UI_ORIGIN on the frontend with the environment-specific HTTPS origin serving the Identity UI. The frontend sends legacy user-administration bookmarks to its /admin path and registration to /register. Browser fragments and search inputs stay local. The API refuses its legacy directory and access-decision routes in this mode. Portal roles retain local content permissions. Product access is limited to explicit grants. The cutover flag is independent of provider login. Enable it in production once migrated operators and customer self-service pass in staging.
+
+The optional managed Portal login uses Authorization Code with S256 PKCE and an independent confidential client. Apply migration 020 and reapply the normal restricted runtime-role grants before starting the compatible API. Set ONESA_IDENTITY_PORTAL_LOGIN=managed in both deployments. The frontend and backend require the same ONESA_IDENTITY_ISSUER. The API additionally needs ONESA_IDENTITY_PORTAL_CLIENT_ID, ONESA_IDENTITY_PORTAL_CLIENT_SECRET and ONESA_IDENTITY_PORTAL_AUDIENCE. Register the exact callback at the Portal origin /api/v1/auth/managed/callback. Give the client its own resource identifier and enable the reviewed provider policy and MFA Actions in that environment.
+
+The callback verifies both token signatures with RS256, nonce, state, issuer, its own audience and the same subject. It resolves the signed stable Onesa user ID to an existing enabled Portal record and checks the provider's Portal-specific role against the local role. Only Identity's verified mapping may supply that UUID. A Portal session is bounded by the remaining signed grant, the original factor lifetime and a five-minute maximum. The API can serve an existing grant during issuer downtime and after an API restart. A cookie rotation cannot extend its deadline. Failed exchanges preserve the local Portal bookmark for retry. New authorization and sensitive actions requiring fresh provider MFA remain unavailable during an outage. Provider step-up for protected governance actions must complete qualification before activation for operators needing those actions.
+
+Before returning approvals to the legacy database, reconcile all Identity changes since cutover, including suspensions, revocations, new accounts and grants. Verify the result against the current Identity audit history. Switching the flag restores routing only. Operators must synchronize the current account data separately.
+
 Onesa Account is the human identity service for Company Portal, AI Platform,
 Robot, Smart Farmer, Drone, Smart Logistics, Onesa Mobile, Smart Factory and
 PasoFi. The shared sign-in page is `https://portal.onesa.eu/account`. The

@@ -28,7 +28,7 @@ export function MobileApps({locale}: {locale: Locale}) {
     <h2 id="mobile-apps-title">{de ? 'Mobile Apps' : 'Mobile apps'}</h2>
     <ul>{mobileApps.map(app => <li key={app.name} className={styles.row}>
       <div>
-        <h3><a href={app.website}>{app.name} <span aria-hidden="true">↗</span></a></h3>
+        <h3>{app.website ? <a href={app.website}>{app.name} <span aria-hidden="true">↗</span></a> : app.name}</h3>
         {app.parent && <p>{de ? `Ein Produkt von ${app.parent}` : `An ${app.parent} product`}</p>}
       </div>
       <div className={styles.platforms}>
