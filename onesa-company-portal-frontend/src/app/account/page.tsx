@@ -10,6 +10,8 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   const { docs, next, returnTo, reauthenticate, interaction, entry } = params;
   const identityAdmin = identityAdministrationUrl();
   if (identityAdmin && params.tab === "access" && Object.keys(params).length === 1) redirect(identityAdmin);
+  if (process.env.ONESA_IDENTITY_PORTAL_LOGIN === "managed" && next === "/admin" && Object.keys(params).length === 1)
+    redirect("/admin#workspace");
   const accessEnabled = process.env.ACCESS_REGISTRATION_ENABLED === "true";
   if (entry !== undefined) {
     if (docs !== undefined || next !== undefined || returnTo !== undefined || interaction !== undefined) notFound();

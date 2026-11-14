@@ -449,3 +449,5 @@ bind their proof to the initiating interaction. A 202 acknowledges the request.
 The worker and the receiving inbox provide separate delivery evidence.
 
 When ONESA_IDENTITY_ADMINISTRATION is external, legacy Portal user directory, approvals, registrations, enrollment decisions and product-access changes return HTTP 403 with IDENTITY_ADMINISTRATION_MOVED. Editorial and other Portal administration retain the existing API and role checks. See [the Identity pilot](../engineering/ONESA_ACCOUNT.md#independent-identity-pilot).
+
+When managed Portal login is enabled, GET /api/v1/auth/managed/start creates a browser-bound ten-minute PKCE transaction. The optional next parameter accepts a Portal /admin bookmark. Its registered callback creates a host-only opaque Portal session after verification. The returned browser session uses the existing /api/v1/auth/me, CSRF, content and logout contracts. Old staff login, factor and credential-maintenance routes are retired for that deployment.

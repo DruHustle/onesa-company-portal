@@ -65,6 +65,8 @@ export async function currentAccount(
       };
   }
   const authenticatedAt = sessionAuthenticationTime(req);
+  // Product-scoped Portal sessions cannot mint a second, longer-lived legacy issuer session.
+  if (process.env.ONESA_IDENTITY_PORTAL_LOGIN === "managed") return null;
   const portal = req.cookies.onesa_session;
   if (portal && authenticatedAt !== null) {
     const session = (

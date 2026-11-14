@@ -32,8 +32,10 @@
     "@fastify/swagger": "^9.9.1",
     "fastify": "5.12.6",
     "fastify-type-provider-zod": "^7.0.0",
+    "jose": "6.2.17",
     "nodemailer": "^10.1.4",
     "oidc-provider": "9.12.2",
+    "openid-client": "6.8.9",
     "pdfkit": "^0.17.2",
     "pg": "^8.16.3",
     "zod": "4.6.6"
@@ -46,11 +48,11 @@
     "@types/pdfkit": "^0.17.3",
     "@types/pg": "^8.15.6",
     "eslint": "9.39.5",
+    "minimatch": "file:vendor/onesa-portal-backend-minimatch-callable-1.0.0.tgz",
     "prettier": "^3.9.9",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.48.0",
-    "minimatch": "file:vendor/onesa-portal-backend-minimatch-callable-1.0.0.tgz"
+    "typescript-eslint": "^8.48.0"
   },
   "overrides": {
     "eslint@9.39.5": {
