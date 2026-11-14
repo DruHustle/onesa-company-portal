@@ -45,6 +45,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
   const [linkRequested,setLinkRequested] = useState(false);
   const [adminWorkspace, setAdminWorkspace] = useState("/admin");
   const [approvedAdmin, setApprovedAdmin] = useState(false);
+  const suggestedAccount = sharedToken ? null : interaction?.account;
   const approvalRequest = mode === "register" && Boolean(adminEntry || legacyDocsRegistration);
   const destinationSearch = destination.includes("?") ? destination.slice(destination.indexOf("?")) : "";
   const signupUrl = adminEntry && !legacyAdmin ? "/account/register" : "/account/register" + destinationSearch;
@@ -231,7 +232,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
     </div> : <section className={styles.card} aria-labelledby="account-title">
       <h1 id="account-title">{mode === "register" ? t.register : mode === "confirm" ? t.confirm : interaction?.freshRequired ? t.fresh : t.login}</h1>
       <p className={styles.muted}>{mode === "register" ? (approvalRequest ? (language === "de" ? "Der Inhaber prüft Ihren Zugang nach der E-Mail-Bestätigung." : "The owner reviews your access request after you verify your email.") : t.chooseHint) : mode === "confirm" ? t.confirmHint : interaction?.freshRequired ? t.freshHint : interaction ? { ...productNames, ...adminProductNames }[interaction.product] : t.intro}</p>
-      {interaction?.account && !interaction.freshRequired && !done && <><button className={"button " + styles.action} disabled={busy} onClick={() => void action(async () => follow(await accountRequest("/api/v1/account/interaction/" + encodeURIComponent(interactionId!) + "/continue", { csrf: interaction.csrf })))}>{t.continueAs} {interaction.account.email}</button><p className={styles.muted}>{language === "de" ? "Oder mit einem anderen Konto anmelden:" : "Or sign in with another account:"}</p></>}
+      {suggestedAccount && interaction && !interaction.freshRequired && !done && <><button className={"button " + styles.action} disabled={busy} onClick={() => void action(async () => follow(await accountRequest("/api/v1/account/interaction/" + encodeURIComponent(interactionId!) + "/continue", { csrf: interaction.csrf })))}>{t.continueAs} {suggestedAccount.email}</button><p className={styles.muted}>{language === "de" ? "Oder mit einem anderen Konto anmelden:" : "Or sign in with another account:"}</p></>}
       {mode === "login" && !legacyAdmin && !adminToken && <div role="group" className={styles.support} aria-label={language === "de" ? "Anmeldemethode" : "Sign-in method"}>
         <button type="button" className={styles.action} aria-pressed={!emailLink} onClick={() => { setEmailLink(false); setAdminToken(null); setSharedToken(null); setLinkRequested(false); setFactor(false); setNotice(""); }}>{language === "de" ? "E-Mail und Passwort" : "Email and password"}</button>
         <button type="button" className={styles.action} aria-pressed={emailLink} onClick={() => { setEmailLink(true); setFactor(false); setNotice(""); }}>{language === "de" ? "Anmeldelink per E-Mail" : "Email a sign-in link"}</button>
@@ -239,7 +240,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
       {mode === "login" && adminEntry && (legacyAdmin || adminToken) ? <AdminSignIn accessEnabled={Boolean(accessEnabled)} linkOnly={!legacyAdmin || Boolean(adminToken)} initialToken={adminToken} onSignedIn={() => window.location.replace(adminWorkspace)}/> :
       !done && <form onSubmit={submit} aria-busy={busy}><fieldset disabled={busy || enabled !== true || (Boolean(interactionId) && !interaction) || (mode === "confirm" && !link)}><legend className={styles.srOnly}>{t.login}</legend>
         {mode === "register" && <label>{t.name}<input name="name" autoComplete="name" required maxLength={approvalRequest ? 120 : 200}/></label>}
-        {mode !== "confirm" && <label>{t.email}<input name="email" type="email" autoComplete="username" required maxLength={254} defaultValue={interaction?.account?.email || ""}/></label>}
+        {mode !== "confirm" && <label>{t.email}<input key={sharedToken ?? "credentials"} name="email" type="email" autoComplete="username" required maxLength={254} defaultValue={suggestedAccount?.email ?? ""}/></label>}
         {mode !== "register" && !emailLink && <label>{t.password}<input name="password" type="password" autoComplete={mode === "confirm" ? "new-password" : "current-password"} minLength={mode === "confirm" ? 14 : undefined} required maxLength={256}/></label>}
         {mode === "confirm" && <label>{t.passwordAgain}<input name="confirmPassword" type="password" autoComplete="new-password" required maxLength={256}/></label>}
         {mode === "login" && (!emailLink || sharedToken) && (factor || interaction?.mfaRequired || interaction?.freshRequired) && <label>{t.code}<input ref={codeInput} name="code" autoComplete="one-time-code" required minLength={6} maxLength={64}/></label>}

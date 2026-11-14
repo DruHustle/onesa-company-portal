@@ -425,6 +425,31 @@ try {
       await expect(page.getByLabel("Password", {exact: true})).toHaveValue("");
       receipts.push({engine, flow: "sso-proof-rejects-repeat-password-without-submission"});
     });
+    await isolated({ existingAccount: true }, async (page, state) => {
+      const uid = "synthetic_proof_account_switch", entry = origin + "/account?interaction=" + uid;
+      const recipient = "synthetic-recipient@example.test";
+      await page.goto(entry);
+      await expect(page.getByRole("button", {name: "Continue as synthetic-member@example.test"})).toBeVisible();
+      const email = page.getByLabel("Email address", {exact: true});
+      await email.fill("synthetic-member@example.test");
+      await page.goto(entry + "#signin-link=" + proof);
+      await expect(page.getByRole("button", {name: "Confirm sign-in", exact: true})).toBeVisible();
+      await expect(page.getByRole("button", {name: /^Continue as/})).toHaveCount(0);
+      await expect(email).toHaveValue("");
+      await expect(page).toHaveURL(entry);
+      assert.equal(state.writes.length, 0);
+      await email.fill(recipient);
+      await page.getByRole("button", {name: "Confirm sign-in", exact: true}).click();
+      await expect(page.getByRole("heading", {name: "Synthetic product continuation", exact: true})).toBeVisible();
+      assert.equal(state.writes.length, 1);
+      const [attempt] = state.writes;
+      assert.equal(attempt.path, "/api/v1/account/interaction/" + uid + "/login");
+      assert.equal(attempt.input.email, recipient);
+      assert.equal(attempt.input.emailToken, proof);
+      assert.equal(attempt.input.csrf, csrf);
+      assert.equal("password" in attempt.input, false);
+      receipts.push({engine, flow: "product-email-proof-confirmed-for-recipient-with-another-active-account"});
+    });
     await isolated({session: session(true)}, async (page,state) => {
       await page.goto(origin+"/account#signin-link="+proof);
       await expect(page).toHaveURL(origin+"/account");

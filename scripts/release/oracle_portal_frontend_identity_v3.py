@@ -10,7 +10,7 @@ CALLBACK_KEY = seven.CALLBACK_KEY
 PRODUCTION = {**seven.PRODUCTION, "factory": "https://factory.onesa.eu"}
 CALLBACK_PATHS = {**seven.CALLBACK_PATHS, "factory": "/api/auth/onesa/callback"}
 # Complete shared-account frontend, including client and browser regression suites.
-CANDIDATE_TREE = "2a6f2da3f17df823f65cab98c533fd07d13b67a2"
+CANDIDATE_TREE = "25ea36df8fdd255a2f8bc4ed2bfb4205aa7672a8"
 # Previously reviewed gateway and administrator-entry trees can serve as baselines.
 RETAINED_TREES = seven.RETAINED_TREES | {
     "e6486553e05ff32d7650b0db1bc1d5351017f65e",
