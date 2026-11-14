@@ -15,9 +15,9 @@ async function snapshot(name: string, observations: unknown[]) {
   return file;
 }
 const observed = (id: string, state = "available", age = 0) => ({ id, state, observedAt: new Date(now - age).toISOString(), source: "public_http", environment: "production", revision: null });
-test("All nine products and both management services remain unknown without observations", async () => {
+test("All products, shared Web services and management services remain unknown without observations", async () => {
   const view = await infrastructureOverview("", now);
-  assert.equal(view.services.length, 11);
+  assert.equal(view.services.length, 14);
   assert.equal(view.observationState, "not_configured");
   assert.ok(view.services.every(service => service.status === "not_observed" && service.observedAt === null));
 });
@@ -69,6 +69,13 @@ test("The collector maps deployed health contracts to the administrator's observ
   const transport = join(directory, "public-health-fixture.mjs");
   await writeFile(transport, `
     const health = new Map([
+      ["https://auth.onesa.eu/.well-known/openid-configuration", [{
+        issuer: process.env.SHARED_VALID === "1" ? "https://auth.onesa.eu/" : "https://identity.invalid/",
+        authorization_endpoint: "https://auth.onesa.eu/authorize", token_endpoint: "https://auth.onesa.eu/oauth/token",
+        jwks_uri: "https://auth.onesa.eu/.well-known/jwks.json",
+      }, 200]],
+      ["https://docs.onesa.eu/generated/provenance.json", [{ classification: process.env.SHARED_VALID === "1" ? "public" : "internal", documentation_version: "0.3.0", code_sha256: "d".repeat(64) }, 200]],
+      ["https://docs.internal.onesa.eu/healthz", [{ service: process.env.SHARED_VALID === "1" ? "internal-documents" : "other" }, 200]],
       ["https://factory.onesa.eu/health/live", [{ status: "live" }, 200]],
       ["https://factory.onesa.eu/health/ready", process.env.FACTORY_FIXTURE_READY === "1"
         ? [{ status: "ready" }, 200] : [{ status: "not-ready", dependency: "redis" }, 503]],
@@ -95,7 +102,7 @@ test("The collector maps deployed health contracts to the administrator's observ
   const collector = new URL("../../scripts/observe-infrastructure.mts", import.meta.url);
   const collect = (robotReady: boolean, aiReady: boolean, factoryReady: boolean) => execFileSync(process.execPath,
     ["--import", "tsx", "--import", transport, collector.pathname, file],
-    { timeout: 10000, env: { ...process.env, FACTORY_FIXTURE_READY: factoryReady ? "1" : "0", AI_FIXTURE_READY: aiReady ? "1" : "0", ROBOT_FIXTURE_READY: robotReady ? "1" : "0" } });
+    { timeout: 10000, env: { ...process.env, FACTORY_FIXTURE_READY: factoryReady ? "1" : "0", SHARED_VALID: robotReady ? "1" : "0", AI_FIXTURE_READY: aiReady ? "1" : "0", ROBOT_FIXTURE_READY: robotReady ? "1" : "0" } });
   collect(false, true, false);
   const result = await infrastructureOverview(file);
   assert.equal(result.observationState, "loaded");
@@ -103,6 +110,7 @@ test("The collector maps deployed health contracts to the administrator's observ
   assert.deepEqual(states, {
     portal: "unavailable", ai: "available", robot: "unavailable", farmer: "unavailable",
     drone: "unavailable", logistics: "available", mobile: "available", factory: "unavailable",
+    identity: "unavailable", "public-documents": "unavailable", "internal-documents": "unavailable",
     pasofi: "available", kubernetes: "not_observed", portainer: "not_observed",
   });
   assert.deepEqual(result.services.filter(service => service.revision !== null).map(service => [service.id, service.revision]), [
@@ -112,6 +120,9 @@ test("The collector maps deployed health contracts to the administrator's observ
   const recovered = await infrastructureOverview(file);
   assert.equal(recovered.services.find(service => service.id === "robot")?.status, "available");
   assert.equal(recovered.services.find(service => service.id === "factory")?.status, "available");
+  for (const id of ["identity", "public-documents", "internal-documents"]) {
+    assert.equal(recovered.services.find(row => row.id === id)?.status, "available");
+  }
   const ai = recovered.services.find(service => service.id === "ai");
   assert.equal(ai?.status, "unavailable");
   assert.equal(ai?.revision, null);

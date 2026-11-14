@@ -22152,7 +22152,7 @@ export interface operations {
                         observationState: "loaded" | "not_configured" | "unavailable";
                         services: {
                             /** @enum {string} */
-                            id: "portal" | "ai" | "robot" | "farmer" | "drone" | "logistics" | "mobile" | "factory" | "pasofi" | "kubernetes" | "portainer";
+                            id: "portal" | "ai" | "robot" | "farmer" | "drone" | "logistics" | "mobile" | "factory" | "pasofi" | "identity" | "public-documents" | "internal-documents" | "kubernetes" | "portainer";
                             name: string;
                             hosting: string;
                             /** Format: uri */
