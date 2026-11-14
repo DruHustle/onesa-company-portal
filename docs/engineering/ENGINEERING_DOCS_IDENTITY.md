@@ -1,12 +1,12 @@
-# Engineering Docs sign-in through Onesa Portal
+# Engineering access through Internal Documents
 
 <!-- onesa-protected-source: portal-engineering-identity -->
 
 Detailed operational instructions are maintained in protected Engineering Docs.
 This public source is a reference page, not a deployment or recovery runbook.
 
-[Open the protected guide](https://docs.engineering.onesa.eu/docs/ecosystem/PORTAL_ENGINEERING_DOCS_IDENTITY).
-Sign in at `https://portal.onesa.eu/account` with an individually approved engineering identity. Existing links open the same Portal entry with the original Docs or product interaction. Session cookies retain their original restricted paths.
+[Open the protected guide](https://docs.internal.onesa.eu/docs/ecosystem/PORTAL_ENGINEERING_DOCS_IDENTITY).
+Open the internal document bookmark directly. Access requires Onesa Identity and permission to read the document.
 
 Public repository history may contain earlier editions; moving this active copy
 does not erase historical exposure. Credentials, records and release evidence
