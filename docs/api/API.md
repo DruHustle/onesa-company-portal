@@ -363,8 +363,7 @@ new migration or eighth client. Qualify those exact changes before installation.
 ### Infrastructure observations
 
 `GET /api/v1/admin/infrastructure` requires an owner or administrator Portal
-session and returns `Cache-Control: no-store`. All nine products, Kubernetes and
-Portainer appear even without observations. Configure the backend-only absolute
+session and returns `Cache-Control: no-store`. The eight product applications, Company Portal, Onesa Identity, both Documents editions, Kubernetes and Portainer appear even without observations. The public Documents probe reads the external edition metadata. The internal probe checks the service identity, and the Identity probe checks the canonical issuer and its HTTPS endpoint metadata. Configure the backend-only absolute
 `INFRASTRUCTURE_OBSERVATIONS_FILE` path to a read-only sanitized JSON snapshot.
 The response includes dependency/hosting descriptions, last observation,
 environment, observed revision when available and a scope description. It never

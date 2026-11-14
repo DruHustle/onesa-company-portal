@@ -10,8 +10,8 @@ import AxeBuilder from "@axe-core/playwright";
 
 const origin = "http://127.0.0.1:3367", proxyKey = "synthetic-infrastructure-proxy";
 let role = "administrator", unavailable = false, snapshots = 0;
-const ids = ["portal", "ai", "robot", "farmer", "drone", "logistics", "mobile", "factory", "pasofi", "kubernetes", "portainer"];
-const names = ["Company Portal", "Onesa AI Platform", "Onesa Robot", "Smart Farmer", "Onesa Drone", "Smart Logistics", "Onesa Mobile", "Smart Factory", "PasoFi", "Kubernetes", "Portainer"];
+const ids = ["portal", "ai", "robot", "farmer", "drone", "logistics", "mobile", "factory", "pasofi", "identity", "public-documents", "internal-documents", "kubernetes", "portainer"];
+const names = ["Company Portal", "Onesa AI Platform", "Onesa Robot", "Smart Farmer", "Onesa Drone", "Smart Logistics", "Onesa Mobile", "Smart Factory", "PasoFi", "Onesa Identity", "Public Documents", "Internal Documents", "Kubernetes", "Portainer"];
 const api = http.createServer((request, response) => {
   response.setHeader("content-type", "application/json"); response.setHeader("cache-control", "no-store");
   const send = (status, body) => response.writeHead(status).end(JSON.stringify(body));

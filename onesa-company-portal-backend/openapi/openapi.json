@@ -50306,6 +50306,9 @@
                               "mobile",
                               "factory",
                               "pasofi",
+                              "identity",
+                              "public-documents",
+                              "internal-documents",
                               "kubernetes",
                               "portainer"
                             ]

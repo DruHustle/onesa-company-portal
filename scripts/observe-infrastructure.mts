@@ -31,6 +31,27 @@ async function readPublicProbe(url: string) {
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
+function probeAvailable(id: string, data: Record<string, unknown> | null) {
+  switch (id) {
+    case "identity":
+      return data?.issuer === "https://auth.onesa.eu/" &&
+        ["authorization_endpoint", "token_endpoint", "jwks_uri"].every(key => {
+          const value = data[key];
+          return typeof value === "string" && URL.canParse(value) && new URL(value).protocol === "https:";
+        });
+    case "public-documents":
+      return data?.classification === "public" && typeof data?.documentation_version === "string" &&
+        typeof data?.code_sha256 === "string" && /^[a-f0-9]{64}$/.test(data.code_sha256);
+    case "internal-documents":
+      return data?.service === "internal-documents";
+    case "robot":
+    case "factory":
+      return data?.status === "ready";
+    default:
+      return typeof data?.status === "string" && ["ok", "healthy", "ready"].includes(data.status);
+  }
+}
+
 async function publicObservations() {
   return Promise.all(serviceRegistry.filter(service => service.health !== null).map(async service => {
     let state: "available" | "unavailable" | "not_observed" = "not_observed";
@@ -41,10 +62,7 @@ async function publicObservations() {
           readPublicProbe(service.health),
           service.id === "ai" ? readPublicProbe("https://platform.onesa.eu/ready") : undefined,
         ]);
-        // Factory and Robot can both answer liveness checks while their dependencies are unavailable.
-        const available = service.id === "robot" || service.id === "factory"
-          ? data?.status === "ready"
-          : ["ok", "healthy", "ready"].includes(data?.status);
+        const available = probeAvailable(service.id, data);
         state = available && (service.id !== "ai" || ready?.status === "ready") ? "available" : "unavailable";
         // Only these two APIs publish the revision of their responding backend.
         const reported = service.id === "ai" ? data?.source_commit
