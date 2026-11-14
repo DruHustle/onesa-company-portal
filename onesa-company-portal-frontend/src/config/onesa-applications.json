@@ -1,5 +1,5 @@
 {
-  "version": "1.1.1",
+  "version": "1.1.2",
   "applications": [
     {"id": "company", "group": "company", "label": "Onesa UG", "href": "https://onesa.eu"},
     {"id": "portal", "group": "company", "label": "Company Portal", "href": "https://portal.onesa.eu/admin"},
@@ -11,7 +11,6 @@
     {"id": "factory", "group": "product", "label": "Smart Factory", "href": "https://factory.onesa.eu"},
     {"id": "mobile", "group": "product", "label": "Onesa Mobile", "href": "https://mobile.onesa.eu"},
     {"id": "pasofi", "group": "product", "label": "PasoFi", "href": "https://pasofi.mobile.onesa.eu"},
-    {"id": "diaspora", "group": "product", "label": "Diaspora Unlocked", "href": "https://www.diasporaunlocked.com/"},
     {"id": "docs", "group": "resource", "label": "Public Documents (Developer Docs)", "href": "https://docs.onesa.eu"},
     {"id": "engineering", "group": "resource", "label": "Internal Documents", "href": "", "canonicalHref": "https://docs.internal.onesa.eu"}
   ]

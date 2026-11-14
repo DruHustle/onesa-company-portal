@@ -1114,7 +1114,7 @@ test("Identity-disabled candidate keeps native administration usable with a memb
     const configResponse = await fallback.inject({url: "/api/v1/account/config", headers: proxy});
     const configuration=configResponse.json();
     assert.deepEqual({enabled:configuration.enabled,applications:configuration.applications}, {enabled: false, applications: []});
-    assert.deepEqual(configuration.catalog.map((entry:{product:string;connected:boolean})=>[entry.product,entry.connected]), ["ai","drone","robot","farmer","logistics","factory","pasofi","mobile","portal","engineering","diaspora"].map(product=>[product,false]));
+    assert.deepEqual(configuration.catalog.map((entry:{product:string;connected:boolean})=>[entry.product,entry.connected]), ["ai","drone","robot","farmer","logistics","factory","pasofi","mobile","portal","engineering"].map(product=>[product,false]));
     assert.deepEqual((await db.query("SELECT id,email,password_hash,role,disabled FROM users WHERE id=$1", [member])).rows[0], before);
   } finally {
     process.env.ONESA_IDENTITY_ENABLED = previous;

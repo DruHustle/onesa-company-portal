@@ -14,7 +14,6 @@ export type MobileApp = {
 export const mobileApps: readonly MobileApp[] = [
   {name: 'Onesa Mobile', website: 'https://mobile.onesa.eu/'},
   {name: 'PasoFi', parent: 'Onesa Mobile', website: 'https://pasofi.mobile.onesa.eu/'},
-  {name: 'Diaspora Unlocked', website: 'https://www.diasporaunlocked.com/#mobile-apps-title'},
   {name: 'Smart Farmer'},
   {name: 'Onesa Drone', website: 'https://drone.onesa.eu/'},
 ];

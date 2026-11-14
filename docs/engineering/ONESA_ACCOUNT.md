@@ -2,7 +2,7 @@
 
 ## Independent Identity pilot
 
-The Portal issuer described below is the pre-migration baseline. During the pilot, the Identity service owns user administration. Portal owns its CMS, settings, business records and /admin. Public Developer Docs at docs.onesa.eu and private Engineering Documents at docs.engineering.onesa.eu have separate catalog entries and access policies.
+The Portal issuer described below is the pre-migration baseline. During the pilot, the Identity service owns user administration. Portal owns its CMS, settings, business records and /admin. Public Developer Docs at docs.onesa.eu and all internal documents at docs.internal.onesa.eu have separate catalog entries and access policies.
 
 Set ONESA_IDENTITY_ADMINISTRATION=external on a paired candidate Portal API and frontend after the Identity administrator has verified the destination and imported approvals. Configure ONESA_IDENTITY_UI_ORIGIN on the frontend with the environment-specific HTTPS origin serving the Identity UI. The frontend sends legacy user-administration bookmarks to its /admin path and registration to /register. Browser fragments and search inputs stay local. The API refuses its legacy directory and access-decision routes in this mode. Portal roles retain local content permissions. Product access is limited to explicit grants. The cutover flag is independent of provider login. Enable it in production once migrated operators and customer self-service pass in staging.
 

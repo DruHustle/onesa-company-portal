@@ -21,7 +21,7 @@ export function enabledProducts(applications: { product: ApplicationProduct }[])
 }
 
 export const futureProductNames = { farmer: "Smart Farmer", logistics: "Smart Logistics", factory: "Smart Factory", pasofi: "PasoFi", mobile: "Onesa Mobile" };
-export type ProductCatalog = { product: Product | "portal" | "engineering" | "diaspora"; name: string; connected: boolean }[];
+export type ProductCatalog = { product: Product | "portal" | "engineering"; name: string; connected: boolean }[];
 export type AccountConfig = { enabled: boolean; applications?: { product: ApplicationProduct }[]; catalog?: ProductCatalog };
 export type Account = { id: string; email: string; name: string; globalAdmin: boolean; owner: boolean; portalAccess: boolean; emailVerified: boolean; mfaEnrolled: boolean };
 export type Access = { product: Product; role: string; status: "pending" | "active" | "revoked" | "rejected"; revision: number };
