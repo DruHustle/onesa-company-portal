@@ -20,10 +20,12 @@ test('shared product navigation uses the pinned applications artifact and curren
   const applications=JSON.parse(bytes);
   assert.equal(createHash('sha256').update(bytes).digest('hex'),manifest.applications.sha256);
   assert.equal(applications.version,manifest.applications.version);
-  assert.equal(applications.version,'1.1.0');
+  assert.equal(applications.version,'1.1.1');
   const byId = new Map(applications.applications.map(product => [product.id, product]));
   assert.deepEqual([...byId.keys()].sort(), ['ai','company','diaspora','docs','drone','engineering','factory','farmer','logistics','mobile','pasofi','portal','robot']);
-  assert.equal(byId.get('engineering').href,'https://docs.engineering.onesa.eu');
+  assert.equal(byId.get('engineering').href,'');
+  assert.equal(byId.get('engineering').canonicalHref,'https://docs.internal.onesa.eu');
+  assert.equal(byId.get('engineering').label,'Internal Documents');
   assert.equal(byId.get('docs').href,'https://docs.onesa.eu');
   assert.equal(byId.get('portal').href,'https://portal.onesa.eu/admin');
   assert.equal(applications.applications.find(product=>product.id==='robot').label,'Onesa Robot');

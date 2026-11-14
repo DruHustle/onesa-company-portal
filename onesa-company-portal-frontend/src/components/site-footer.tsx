@@ -1,5 +1,6 @@
 import {company} from '@/config/company';
 import {copy, type Locale} from '@/config/copy';
+import {internalDocumentsOrigin} from '@/config/internal-documents';
 import applications from '@/config/onesa-applications.json';
 import {ResponsiveLink as Link} from './responsive-link';
 import styles from './site-footer.module.css';
@@ -34,8 +35,10 @@ export function SiteFooter({locale}: {locale: Locale}) {
       <nav className={`${styles.group} ${styles.resources}`} aria-labelledby="footer-resources">
         <h2 id="footer-resources">{de ? 'Wissen & Einblicke' : 'Resources'}</h2>
         <ul>
-          <li><a href={applications.applications.find(app => app.id === 'docs')!.href}>{de ? 'Dokumentation' : 'Developer docs'} <span aria-hidden="true">↗</span></a></li>
-          <li><a href={applications.applications.find(app => app.id === 'engineering')!.href}>{de ? 'Engineering-Dokumente (geschützt)' : 'Engineering Documents (restricted)'} <span aria-hidden="true">↗</span></a></li>
+          <li><a href={applications.applications.find(app => app.id === 'docs')!.href}>{de ? 'Öffentliche Dokumente (Entwicklerdokumentation)' : 'Public Documents (Developer Docs)'} <span aria-hidden="true">↗</span></a></li>
+          <li>{internalDocumentsOrigin
+            ? <a href={internalDocumentsOrigin}>{de ? 'Interne Dokumente' : 'Internal Documents'} <span aria-hidden="true">↗</span></a>
+            : <span>{de ? 'Interne Dokumente · Derzeit nicht verfügbar' : 'Internal Documents · Currently unavailable'}</span>}</li>
           <li><Link href={`/${locale}/news`}>{t.nav.news}</Link></li>
           <li><Link href={`/${locale}/research`}>{t.nav.research}</Link></li>
         </ul>
