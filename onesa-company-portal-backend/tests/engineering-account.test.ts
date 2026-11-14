@@ -728,6 +728,38 @@ test("an MFA administrator enrolls in Docs without a second password; exact prea
   }
 });
 
+test("a signed-out Docs member follows the emailed account link back to their approved Docs session", async () => {
+  const identity = await fixture("docs-account-email");
+  await linkWithPassword(identity);
+  const flow = await authorization();
+  const requestLink = await submit(flow, "account-email-link", {email: identity.email});
+  assert.equal(requestLink.statusCode, 202, requestLink.body);
+  const mail = (await db.query("SELECT payload FROM jobs WHERE payload->>'to'=$1 AND payload->>'subject'='Your Onesa account sign-in link'", [identity.email])).rows[0];
+  const link = new URL(decrypt(mail.payload.encryptedText).split("\n")[1]);
+  assert.equal(link.origin + link.pathname, origin + "/account");
+  assert.equal(link.searchParams.get("docs"), flow.uid);
+  const emailToken = link.hash.slice("#signin-link=".length);
+  const input = {email: identity.email, emailToken};
+  assert.equal((await flow.request({method: "POST", url: "/api/v1/account/login", payload: input})).statusCode, 401);
+  const other = await authorization();
+  assert.equal((await submit(other, "account-email-login", input)).statusCode, 401);
+  assert.equal((await submit(flow, "account-email-login", {...input, csrf: "b".repeat(64)})).statusCode, 403);
+  const rejectedBrowser = await browser().request({method: "POST", url: "/api/v1/engineering-sign-in/" + flow.uid + "/account-email-login", payload: {...input, csrf: flow.details.csrf}});
+  assert.equal(rejectedBrowser.statusCode, 401);
+  const confirmed = await submit(flow, "account-email-login", input);
+  assert.equal(confirmed.statusCode, 200, confirmed.body);
+  assert.equal((await submit(flow, "account-email-login", input)).statusCode, 401);
+  assert.equal((await flow.request({url: "/api/v1/auth/me"})).statusCode, 401);
+  const result = await submit(flow, "session");
+  assert.equal(result.statusCode, 200, result.body);
+  const tokens = await exchange(flow, result.json().continuePath);
+  assert.equal(tokens.statusCode, 200, tokens.body);
+  const claims = JSON.parse(Buffer.from(tokens.json().id_token.split(".")[1], "base64url").toString());
+  assert.equal(claims.sub, identity.membership);
+  const grants = await db.query("SELECT amr FROM identity_grant_sessions WHERE user_id=$1", [identity.id]);
+  assert.ok(grants.rows.some(row => JSON.stringify(row.amr) === '["email"]'));
+});
+
 test("global logout invalidates linked issuer artifacts and late writes without claiming to clear Cloudflare cookies", async () => {
   const identity = await fixture("global-logout"),
     { signed, flow, linked } = await linkWithPassword(identity);

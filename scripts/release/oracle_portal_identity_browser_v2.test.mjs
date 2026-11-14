@@ -144,7 +144,10 @@ test('native Chromium redirects cannot replay authentication posts, bearers or l
   });
   const destination=issuer+'/api/v1/identity/auth';
   assert.equal(permittedRedirect(origins,'mobile',event(start,destination)),true);
-  assert.equal(permittedRedirect(origins,'mobile',event(destination,'/account/sign-in/test_flow')),true);
+  assert.equal(permittedRedirect(origins,'mobile',event(destination,'/account?interaction=test_flow')),true);
+  for (const invalid of ['/admin', '/account?interaction=short', '/account?interaction=test_flow&next=/', '/account?interaction=test_flow#private', '/engineering/sign-in/test_flow', '/account/sign-in/test_flow']) {
+    assert.equal(permittedRedirect(origins,'mobile',event(destination,invalid)),false);
+  }
   assert.equal(permittedRedirect(origins,'mobile',event(destination,origins.mobile+PRODUCTS.mobile.callback)),true);
   for(const status of [301,302,303,307,308]) {
     assert.equal(permittedRedirect(origins,'mobile',event(start,'https://foreign.example/','GET',status)),false);

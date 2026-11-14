@@ -2,7 +2,7 @@
 import {createRequire} from 'node:module';
 import {setTimeout as delay} from 'node:timers/promises';
 import {pathToFileURL} from 'node:url';
-import {totp, verifyCallback} from './oracle_portal_identity_browser.mjs';
+import {isProductSignIn, totp, verifyCallback} from './oracle_portal_identity_browser.mjs';
 import {establishPreviewSession} from './oracle_portal_browser_session.mjs';
 
 const common = {entry: '/', label: 'Continue with Onesa', session: '/api/v1/auth/me'};
@@ -29,7 +29,7 @@ function ownerHosted(app, hostname) {
 }
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const UID = '[A-Za-z0-9_-]{8,128}';
-const interaction = new RegExp('^/account/sign-in/' + UID + '$');
+const isAccountEntry = url => url.pathname === '/account' && !url.search && !url.hash;
 const interactionRead = new RegExp('^/api/v1/account/interaction/' + UID + '$');
 const interactionWrite = new RegExp('^/api/v1/account/interaction/' + UID + '/(continue|login)$');
 const resume = new RegExp('^/api/v1/identity/auth/' + UID + '$');
@@ -148,7 +148,7 @@ export function permittedResource(origins,product,raw,method,kind) {
     return [app.start,app.complete].includes(p) && !(product === 'mobile' && p === app.start);
   }
   if (method !== 'GET' && method !== 'HEAD') return false;
-  if (portal && (p === '/account' || interaction.test(p) || interactionRead.test(p) || p === '/api/v1/account/config' ||
+  if (portal && ((!product && isAccountEntry(u)) || (product && isProductSignIn(u)) || interactionRead.test(p) || p === '/api/v1/account/config' ||
     p === '/api/v1/account/me' || product && (p === authorize || resume.test(p)))) return true;
   if (!portal && (p === app.callback || p === app.session || p === app.config || (product === 'mobile' && p === app.start) ||
     p === new URL(app.entry,u.origin).pathname || p === '/' || (product === 'drone' && p === '/api/v1/auth/workspaces') ||
@@ -218,7 +218,7 @@ export async function fillPortalInput(locator, expectedUrl, value) {
 
 async function submitMfa(page,request) {
   const owner = request.fixtures.owner, current = new URL(page.url());
-  check(current.origin === request.origins.portal && (current.pathname === '/account' || interaction.test(current.pathname)), 'CREDENTIAL_ORIGIN');
+  check(current.origin === request.origins.portal && (isAccountEntry(current) || isProductSignIn(current)), 'CREDENTIAL_ORIGIN');
   const email = page.locator('input[name="email"]'), password = page.locator('input[name="password"]'),
     code = page.locator('input[name="code"]'), submit = page.getByRole('button',{name:'Continue',exact:true});
   await email.waitFor({state:'visible'});
@@ -297,7 +297,7 @@ async function observeProduct(context,r,product,principal,seen) {
     while (Date.now() < deadline && !session) {
       if (failure) throw failure;
       const u = new URL(page.url());
-      if (binding && u.origin === r.origins.portal && interaction.test(u.pathname)) {
+      if (binding && u.origin === r.origins.portal && isProductSignIn(u)) {
         const continuation = page.getByRole('button',{name:'Continue as '+principal.email,exact:true});
         if (await continuation.isVisible()) {
           await continuation.click();

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { legacySignInEntry } from "../src/lib/sign-in-entry.ts";
 import { adminAccountEntry, adminWorkspaceReturn, accountDestination, docsAccountPath, accountReturnPath, accountReauthenticationRequired, accountSetupReturnPath, engineeringAccountSignInPath } from "../src/lib/account-return.ts";
 
 test("Onesa login returns only to the exact local Engineering interaction", () => {
@@ -62,4 +63,15 @@ test("Product registration retains one validated interaction identifier", () => 
   for (const value of [query + "&next=/admin", query + "&interaction=x", "?interaction=short", "?interaction=%2Fadmin", "?interaction=https://example.invalid"]) {
     assert.equal(accountDestination(value), "/account");
   }
+});
+
+test("existing account links move once and keep their interaction or staff destination", () => {
+  const old = new URLSearchParams("next=/admin");
+  assert.equal(legacySignInEntry("/admin", old), "/account?" + old.toString());
+  for (const path of ["/admin", "/account", "/account/register"]) {
+    assert.equal(legacySignInEntry(path, new URLSearchParams()), null);
+  }
+  assert.equal(legacySignInEntry("/account", old), null);
+  assert.equal(legacySignInEntry("/account/sign-in/synthetic_123", old), "/account?interaction=synthetic_123");
+  assert.equal(legacySignInEntry("/engineering/sign-in/synthetic_123/details", old), null);
 });

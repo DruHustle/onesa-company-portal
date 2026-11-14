@@ -58,10 +58,10 @@ test('canonical account mail renders only the approved action, with proof in the
     const intro = subject === registration ? 'verify your email and complete registration' : 'sign in';
     return brandedMailV2(subject, 'Open this Onesa link to ' + intro + ':\n' + origin + path + fragment + '\nUse this link once.', origin).html;
   }
-  for (const [subject, path] of [[registration, '/account/confirm?approval=1'], [signIn, '/account?next=/admin'], [signIn, '/account?docs=synthetic_interaction']]) {
+  for (const [subject, path] of [[registration, '/account/confirm?approval=1'], [signIn, '/admin?next=/admin'], [signIn, '/admin?docs=synthetic_interaction']]) {
     assert.ok(render(subject, path).includes('href="' + origin + path + fragment + '"'));
   }
-  for (const path of ['/account?docs=short', '/account?next=//example.invalid', '/account?docs=synthetic_interaction&next=/admin', '/account?docs=synthetic_interaction&docs=another_uid', '/account/confirm?approval=1']) {
+  for (const path of ['/admin?docs=short', '/account?next=//example.invalid', '/admin?docs=synthetic_interaction&next=/admin', '/admin?docs=synthetic_interaction&docs=another_uid', '/account/confirm?approval=1']) {
     assert.ok(!render(signIn, path).includes('href="' + origin + '/account'));
   }
 });

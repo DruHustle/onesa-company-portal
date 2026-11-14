@@ -26,6 +26,12 @@ const EMAIL = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@[A-Za-z0-9.-]{3,189}$/;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const budgets = new WeakMap();
 
+export function isProductSignIn(url) {
+  const keys = [...url.searchParams.keys()];
+  return url.pathname === '/account' && !url.hash && keys.length === 1 && keys[0] === 'interaction' &&
+    /^[A-Za-z0-9_-]{8,128}$/.test(url.searchParams.get('interaction'));
+}
+
 export class ObservationError extends Error {
   constructor(code) { super(code); this.name = 'ObservationError'; }
 }
@@ -329,7 +335,7 @@ async function deniedProductSignIn(context, request, product, expect) {
     await page.getByRole('button', {name: 'Continue with Onesa', exact: true}).click();
     const start = await responseJSON(await started, [200], 'PRODUCT_START_NOT_ACKNOWLEDGED');
     authorizationBinding(product === 'ai' ? start.authorize_url : start.authorization_url, request, product);
-    await page.waitForURL(url => url.origin === request.origins.portal && url.pathname.startsWith('/account/sign-in/'), {timeout: 120000});
+    await page.waitForURL(url => url.origin === request.origins.portal && isProductSignIn(url), {timeout: 120000});
     const continuation = page.getByRole('button', {name: /^Continue as /});
     await expect(continuation).toBeVisible({timeout: 20000});
     const denied = page.waitForResponse(response => new URL(response.url()).origin === request.origins.portal &&
@@ -393,7 +399,7 @@ async function productSignIn(context, request, product, fixture, expect) {
     product === 'drone' ? '/api/v1/auth/config' : '/api/v1/auth/identity/config';
   const config = await api(context, origin, configPath);
   require(product === 'drone' ? config.shared_account === true : config.enabled === true, 'PRODUCT_IDENTITY_NOT_ENABLED');
-  if (product !== 'drone') require(config.account_url === request.origins.portal + '/account', 'PRODUCT_ISSUER_MISMATCH');
+  if (product !== 'drone') require(['/account', '/admin'].some(path => config.account_url === request.origins.portal + path), 'PRODUCT_ISSUER_MISMATCH');
   await page.goto(origin + (product === 'robot' ? '/console' : '/'), {waitUntil: 'domcontentloaded'});
   const callbacks = [];
   let credentialReentry = false;
@@ -417,7 +423,7 @@ async function productSignIn(context, request, product, fixture, expect) {
     const current = new URL(page.url());
     require([origin, request.origins.portal].includes(current.origin), 'PRODUCT_REDIRECT_ORIGIN');
     if (current.origin === request.origins.portal) {
-      require(current.pathname.startsWith('/account/sign-in/') || current.pathname.startsWith('/api/v1/identity/'), 'PRODUCT_INTERACTION_PATH');
+      require(isProductSignIn(current) || current.pathname.startsWith('/api/v1/identity/'), 'PRODUCT_INTERACTION_PATH');
       await continueExistingProductSession(page, fixture.email);
     } else {
       const result = await context.request.get(origin + '/api/v1/auth/me', {maxRedirects: 0, timeout: 15000});
