@@ -17,7 +17,10 @@ test('Infrastructure observations require Portal administration, retain no-store
  const allowed=await app.inject({url,headers:ownerH});
  assert.equal(allowed.statusCode,200,allowed.body);
  assert.equal(allowed.headers['cache-control'],'no-store');
- assert.equal(allowed.json().services.length,11);
+ assert.equal(allowed.json().services.length,14);
+ for (const id of ["identity", "public-documents", "internal-documents"]) {
+   assert.ok(allowed.json().services.some((service: { id: string }) => service.id === id));
+ }
  const hosting = Object.fromEntries(allowed.json().services.map((service: {id: string; hosting: string}) => [service.id, service.hosting]));
  assert.match(hosting.robot, /Vercel.*Oracle simulator API.*Turso/);
  assert.match(hosting.farmer, /Cloudflare Tunnel.*Oracle ARM64.*maintenance/);
