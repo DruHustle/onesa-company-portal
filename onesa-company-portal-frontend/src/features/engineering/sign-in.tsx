@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { accessLinkToken } from "@/lib/access-link";
+import { accessLinkToken, sharedSignInToken } from "@/lib/access-link";
 import { docsAccountPath, engineeringAccountSignInPath } from "@/lib/account-return";
 import { engineeringSignInError } from "@/lib/engineering-sign-in-errors";
 import { OnesaAccount } from "@/features/account/account";
@@ -19,6 +19,7 @@ export function EngineeringSignIn({ uid, environment, shared, fresh, legacyFixtu
   const [registrationRequired, setRegistrationRequired] = useState(false);
   const [email, setEmail] = useState("");
   const [openingDocs, setOpeningDocs] = useState(false);
+  const [confirmSharedLink, setConfirmSharedLink] = useState(false);
   const [resendSeconds, setResendSeconds] = useState(0);
   const [resendUntil, setResendUntil] = useState(0);
   useEffect(() => { if (sent) sentRef.current?.focus({ preventScroll: true }); }, [sent]);
@@ -33,6 +34,7 @@ export function EngineeringSignIn({ uid, environment, shared, fresh, legacyFixtu
     let active = true, timedOut = false, preparingLink = false; const abort = new AbortController(); setReady(false); setOpeningDocs(false); setCsrf(""); setLinkEmail(null); setOnesaAccount(null); setOnesaLink(null); setOnesaSignInPath(null); setLinkOnesaAccount(false); setReauthenticate(false); setUseExistingSession(true); setEnrollment(null); setRestartRequired(false); setNotice(""); setRegistrationRequired(false);
     let deadline = window.setTimeout(() => { timedOut = true; abort.abort(); }, 25000);
     const receiveLink = () => {
+      if (sharedSignInToken(window.location.hash)) setConfirmSharedLink(true);
       const raw = accessLinkToken(window.location.hash);
       if (!raw) return false;
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
@@ -120,8 +122,8 @@ export function EngineeringSignIn({ uid, environment, shared, fresh, legacyFixtu
   if (ready && central && !onesaSignInPath) {
     return <main className="admin-main admin-auth-shell"><section className="admin-login"><h1>Engineering Docs access</h1><p role="alert">Company Portal sign-in is temporarily unavailable for Engineering Docs.</p><p><a href="/account">Open Company Portal account</a></p><a href="/engineering">Retry Engineering Docs</a></section></main>;
   }
-  if (ready && central && (fresh || reauthenticate || (!confirming && !continuingSession && !onesaLink && !enrollment))) {
-    return <OnesaAccount docsInteractionId={uid} forceLogin={fresh || reauthenticate || !useExistingSession} />;
+  if (ready && central && (confirmSharedLink || fresh || reauthenticate || (!confirming && !continuingSession && !onesaLink && !enrollment))) {
+    return <OnesaAccount docsInteractionId={uid} docsInteractionCsrf={csrf} forceLogin={fresh || reauthenticate || !useExistingSession} />;
   }
   const registrationPath = central ? "/account/register?docs=" + uid : "/account/register?next=/engineering";
   return <main className="admin-main admin-auth-shell engineering-auth-shell"><div className="container"><a className="skip-link" href="#engineering-sign-in">Skip to sign-in</a><section className="admin-login" aria-labelledby="engineering-title">

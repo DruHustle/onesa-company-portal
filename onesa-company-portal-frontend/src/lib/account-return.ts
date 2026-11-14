@@ -17,7 +17,7 @@ export function accountReauthenticationRequired(search: string): boolean {
 export function accountSetupReturnPath(search: string): string {
   const values = new URLSearchParams(search).getAll("returnTo");
   if (values.length !== 1) return "/account";
-  if (values[0] === "/admin") return "/account?next=/admin";
+  if (values[0] === "/admin") return "/admin?next=/admin";
   if (productInteractionPath.test(values[0])) return values[0];
   if (engineeringPath.test(values[0])) return "/account?returnTo=" + encodeURIComponent(values[0]) + "&reauthenticate=1";
   return "/account";
@@ -30,12 +30,12 @@ export function engineeringAccountSignInPath(uid: string): string | null {
 
 /** Only an opaque interaction ID crosses into the shared account page. */
 export function docsAccountPath(uid: string): string | null {
-  return interactionId.test(uid) ? "/account?docs=" + uid : null;
+  return interactionId.test(uid) ? "/admin?docs=" + uid : null;
 }
 
 /** Keep a product signup in its existing, browser-bound Portal interaction. */
 export function productAccountPath(uid: string): string | null {
-  return interactionId.test(uid) ? "/account?interaction=" + uid : null;
+  return interactionId.test(uid) ? "/admin?interaction=" + uid : null;
 }
 
 export function accountDestination(search: string): string {
@@ -65,7 +65,7 @@ function adminWorkspaceSuffix(url: URL): string {
 
 export function adminAccountEntry(url: URL): string {
   const suffix = adminWorkspaceSuffix(url);
-  return "/account?next=/admin" + (suffix ? "#workspace=" + encodeURIComponent(suffix) : "");
+  return "/admin?next=/admin" + (suffix ? "#workspace=" + encodeURIComponent(suffix) : "");
 }
 
 export function adminWorkspaceReturn(fragment: string): string {

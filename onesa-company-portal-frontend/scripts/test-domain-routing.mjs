@@ -15,6 +15,11 @@ for (const path of ['/account', '/account/register', '/account/register?next=%2F
   assert.equal(company.headers.location, 'https://portal.onesa.eu' + path, path);
 
   const portal = await request('portal.onesa.eu', path);
+  if (path === '/account') {
+    assert.equal(portal.status, 307);
+    assert.equal(new URL(portal.headers.location, 'https://portal.onesa.eu').pathname, '/admin');
+    continue;
+  }
   assert.equal(portal.status, 200, path);
   assert.equal(portal.headers.location, undefined, path);
   assert.match(portal.body.toString(), /<title>Onesa Account(?: \| [^<]+)?<\/title>/, path);

@@ -8,7 +8,7 @@ test("Only exact shared identity protocol routes admit protocol punctuation and 
   for (const path of ["identity/../../admin", "identity/register", "identity/client/foreign", "identity/.well-known/other", "identity/session/extra"]) assert.equal(identityProtocolPath(path.split("/")), false);
 });
 test("Identity redirects admit only account interaction, protocol resume and exact product callback", () => {
-  assert.equal(identityRedirectLocation("/account/sign-in/abcdefgh12345", origin, configured), origin + "/account/sign-in/abcdefgh12345");
+  assert.equal(identityRedirectLocation("/account/sign-in/abcdefgh12345", origin, configured), origin + "/admin?interaction=abcdefgh12345");
   assert.equal(identityRedirectLocation("/api/v1/identity/auth/abcdefgh12345", origin, configured), origin + "/api/v1/identity/auth/abcdefgh12345");
   const approved = callback + "?code=one-use&state=bound&iss=" + encodeURIComponent(origin + "/api/v1/identity");
   assert.equal(identityRedirectLocation(approved, origin, configured), approved);
