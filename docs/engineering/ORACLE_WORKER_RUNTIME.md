@@ -71,7 +71,7 @@ The existing one-network identity/release adapters and other products' databases
 are unchanged. See [the focused tests](BUILD_AND_TEST.md#private-postgresql-target-preparation).
 
 [Open the protected guide](https://docs.internal.onesa.eu/docs/ecosystem/PORTAL_WORKER_RUNTIME).
-Sign in through Onesa Portal with an individually approved engineering identity.
+Access requires Onesa Identity and permission to read this document.
 
 Public repository history may contain earlier editions; moving this active copy
 does not erase historical exposure. Credentials, records and release evidence

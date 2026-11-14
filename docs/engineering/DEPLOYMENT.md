@@ -72,7 +72,7 @@ identity and must be reviewed again after replacement. It supplies no deployment
 automatic version rollback, migration or physical-actuation authority.
 
 [Open the protected guide](https://docs.internal.onesa.eu/docs/ecosystem/PORTAL_DEPLOYMENT).
-Sign in through Onesa Portal with an individually approved engineering identity.
+Access requires Onesa Identity and permission to read this document.
 
 Public repository history may contain earlier editions; moving this active copy
 does not erase historical exposure. Credentials, records and release evidence
