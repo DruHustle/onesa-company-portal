@@ -13593,6 +13593,8 @@ export interface operations {
                 "application/json": {
                     /** Format: email */
                     email: string;
+                    /** @enum {string} */
+                    returnTo?: "/admin";
                 };
             };
         };

@@ -11,7 +11,7 @@ const credentialBinding = (user: { email: string; password_hash: string; mfa_sec
   hash(JSON.stringify([user.email, user.password_hash, user.mfa_secret]));
 const invalid = () => new HttpError(401, "CREDENTIALS", "Unable to sign in with these credentials.");
 
-export async function requestAccountEmailLink(email: string, interactionId?: string) {
+export async function requestAccountEmailLink(email: string, interactionId?: string, adminReturn = false) {
   await transaction(async client => {
     const account = (await client.query(
       "SELECT u.id,u.email,u.password_hash,u.mfa_secret FROM users u JOIN identity_profiles p ON p.user_id=u.id WHERE u.email=$1 AND NOT u.disabled AND p.email_verified_at IS NOT NULL FOR NO KEY UPDATE OF u",
@@ -27,8 +27,8 @@ export async function requestAccountEmailLink(email: string, interactionId?: str
     const raw = token();
     await client.query("INSERT INTO identity_records(model,id,encrypted_payload,uid,account_id,expires_at) VALUES($1,$2,$3,$4,$5,now()+interval '15 minutes')",
       [model,hash(raw),encrypt(credentialBinding(account)),interactionId ?? null,account.id]);
-    const entry = interactionId?.startsWith("docs:") ? "/admin?docs=" + interactionId.slice(5)
-      : interactionId ? "/admin?interaction=" + interactionId : "/admin?next=/admin";
+    const entry = interactionId?.startsWith("docs:") ? "/account?docs=" + interactionId.slice(5)
+      : interactionId ? "/account?interaction=" + interactionId : adminReturn ? "/account?next=/admin" : "/account";
     await enqueue(client,"identity-sign-in:"+hash(raw),{
       to:account.email,subject:"Your Onesa account sign-in link",
       encryptedText:encrypt("Confirm your Onesa sign-in:\n"+env.PUBLIC_ORIGIN+entry+"#signin-link="+raw+"\nEnter the email address that received this link. It expires in 15 minutes and can be used once. If you did not request it, ignore this message."),

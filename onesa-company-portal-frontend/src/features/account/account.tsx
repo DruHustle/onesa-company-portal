@@ -40,13 +40,15 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
   const t = copy[language];
   const [destination, setDestination] = useState(interactionId ? productAccountPath(interactionId) ?? "/account" : "/account");
   const [emailLink, setEmailLink] = useState(false), [adminToken, setAdminToken] = useState<string | null>(null);
+  const explicitEmailProof = useRef(false);
   const [sharedToken,setSharedToken] = useState<string | null>(null);
   const [linkRequested,setLinkRequested] = useState(false);
   const [adminWorkspace, setAdminWorkspace] = useState("/admin");
   const [approvedAdmin, setApprovedAdmin] = useState(false);
+  const suggestedAccount = sharedToken ? null : interaction?.account;
   const approvalRequest = mode === "register" && Boolean(adminEntry || legacyDocsRegistration);
   const destinationSearch = destination.includes("?") ? destination.slice(destination.indexOf("?")) : "";
-  const signupUrl = adminEntry && !legacyAdmin ? "/admin?entry=register" : "/account/register" + destinationSearch;
+  const signupUrl = adminEntry && !legacyAdmin ? "/account/register" : "/account/register" + destinationSearch;
   useEffect(() => {
     if (adminEntry) setAdminWorkspace(adminWorkspaceReturn(window.location.hash));
     let target = interactionId ? productAccountPath(interactionId) ?? "/account" : accountDestination(window.location.search);
@@ -61,7 +63,8 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
     const receive = () => {
       const shared = sharedSignInToken(window.location.hash);
       if (!legacyAdmin && shared) {
-        setSharedToken(shared); setEmailLink(true); setFactor(false);
+        explicitEmailProof.current = true;
+        setSession(null); setSharedToken(shared); setEmailLink(true); setFactor(false);
         window.history.replaceState(null,"",window.location.pathname + window.location.search);
         return;
       }
@@ -98,8 +101,8 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
         if (!active) return; setEnabled(config.enabled); setCatalog(config.catalog); setProducts(enabledProducts(config.applications ?? []));
         if (!config.enabled) return;
         if (interactionId) { const result = await accountRequest<Interaction>("/api/v1/account/interaction/" + encodeURIComponent(interactionId)); if (active) setInteraction(result); }
-        else if (mode === "login" && !adminEntry && !forceLogin && !accountReauthenticationRequired(window.location.search)) {
-          try { const result = await accountRequest<AccountSession>("/api/v1/account/me"); if (active) {
+        else if (mode === "login" && !adminEntry && !forceLogin && !explicitEmailProof.current && !accountReauthenticationRequired(window.location.search)) {
+          try { const result = await accountRequest<AccountSession>("/api/v1/account/me"); if (active && !explicitEmailProof.current) {
             if (accountDestination(window.location.search) === "/account?next=/engineering") window.location.replace("/engineering");
             else setSession(result);
           } }
@@ -163,7 +166,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
           await accountRequest("/engineering/sign-in/" + encodeURIComponent(docsInteractionId) + "/account-email-link", {email, csrf: docsInteractionCsrf});
         else if (interactionId && interaction)
           await accountRequest("/api/v1/account/interaction/" + encodeURIComponent(interactionId) + "/email-link", {email, csrf: interaction.csrf});
-        else await accountRequest("/api/v1/account/email-link", {email});
+        else await accountRequest("/api/v1/account/email-link", adminEntry ? { email, returnTo: "/admin" } : { email });
         setLinkRequested(true);
         setNotice(language === "de" ? "Wenn dein Konto berechtigt ist, erhältst du einen Anmeldelink. Er ist 15 Minuten gültig." : "If your account is eligible, we will email a sign-in link valid for 15 minutes.");
         return;
@@ -229,7 +232,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
     </div> : <section className={styles.card} aria-labelledby="account-title">
       <h1 id="account-title">{mode === "register" ? t.register : mode === "confirm" ? t.confirm : interaction?.freshRequired ? t.fresh : t.login}</h1>
       <p className={styles.muted}>{mode === "register" ? (approvalRequest ? (language === "de" ? "Der Inhaber prüft Ihren Zugang nach der E-Mail-Bestätigung." : "The owner reviews your access request after you verify your email.") : t.chooseHint) : mode === "confirm" ? t.confirmHint : interaction?.freshRequired ? t.freshHint : interaction ? { ...productNames, ...adminProductNames }[interaction.product] : t.intro}</p>
-      {interaction?.account && !interaction.freshRequired && !done && <><button className={"button " + styles.action} disabled={busy} onClick={() => void action(async () => follow(await accountRequest("/api/v1/account/interaction/" + encodeURIComponent(interactionId!) + "/continue", { csrf: interaction.csrf })))}>{t.continueAs} {interaction.account.email}</button><p className={styles.muted}>{language === "de" ? "Oder mit einem anderen Konto anmelden:" : "Or sign in with another account:"}</p></>}
+      {suggestedAccount && interaction && !interaction.freshRequired && !done && <><button className={"button " + styles.action} disabled={busy} onClick={() => void action(async () => follow(await accountRequest("/api/v1/account/interaction/" + encodeURIComponent(interactionId!) + "/continue", { csrf: interaction.csrf })))}>{t.continueAs} {suggestedAccount.email}</button><p className={styles.muted}>{language === "de" ? "Oder mit einem anderen Konto anmelden:" : "Or sign in with another account:"}</p></>}
       {mode === "login" && !legacyAdmin && !adminToken && <div role="group" className={styles.support} aria-label={language === "de" ? "Anmeldemethode" : "Sign-in method"}>
         <button type="button" className={styles.action} aria-pressed={!emailLink} onClick={() => { setEmailLink(false); setAdminToken(null); setSharedToken(null); setLinkRequested(false); setFactor(false); setNotice(""); }}>{language === "de" ? "E-Mail und Passwort" : "Email and password"}</button>
         <button type="button" className={styles.action} aria-pressed={emailLink} onClick={() => { setEmailLink(true); setFactor(false); setNotice(""); }}>{language === "de" ? "Anmeldelink per E-Mail" : "Email a sign-in link"}</button>
@@ -237,7 +240,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
       {mode === "login" && adminEntry && (legacyAdmin || adminToken) ? <AdminSignIn accessEnabled={Boolean(accessEnabled)} linkOnly={!legacyAdmin || Boolean(adminToken)} initialToken={adminToken} onSignedIn={() => window.location.replace(adminWorkspace)}/> :
       !done && <form onSubmit={submit} aria-busy={busy}><fieldset disabled={busy || enabled !== true || (Boolean(interactionId) && !interaction) || (mode === "confirm" && !link)}><legend className={styles.srOnly}>{t.login}</legend>
         {mode === "register" && <label>{t.name}<input name="name" autoComplete="name" required maxLength={approvalRequest ? 120 : 200}/></label>}
-        {mode !== "confirm" && <label>{t.email}<input name="email" type="email" autoComplete="username" required maxLength={254} defaultValue={interaction?.account?.email || ""}/></label>}
+        {mode !== "confirm" && <label>{t.email}<input key={sharedToken ?? "credentials"} name="email" type="email" autoComplete="username" required maxLength={254} defaultValue={suggestedAccount?.email ?? ""}/></label>}
         {mode !== "register" && !emailLink && <label>{t.password}<input name="password" type="password" autoComplete={mode === "confirm" ? "new-password" : "current-password"} minLength={mode === "confirm" ? 14 : undefined} required maxLength={256}/></label>}
         {mode === "confirm" && <label>{t.passwordAgain}<input name="confirmPassword" type="password" autoComplete="new-password" required maxLength={256}/></label>}
         {mode === "login" && (!emailLink || sharedToken) && (factor || interaction?.mfaRequired || interaction?.freshRequired) && <label>{t.code}<input ref={codeInput} name="code" autoComplete="one-time-code" required minLength={6} maxLength={64}/></label>}

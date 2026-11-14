@@ -6,7 +6,7 @@ Detailed operational instructions are maintained in protected Engineering Docs.
 This public source is a reference page, not a deployment or recovery runbook.
 
 [Open the protected guide](https://docs.engineering.onesa.eu/docs/ecosystem/PORTAL_ENGINEERING_DOCS_IDENTITY).
-Sign in at `https://portal.onesa.eu/admin` with an individually approved engineering identity. Existing links open the same Portal entry with the original Docs or product interaction. Session cookies retain their original restricted paths.
+Sign in at `https://portal.onesa.eu/account` with an individually approved engineering identity. Existing links open the same Portal entry with the original Docs or product interaction. Session cookies retain their original restricted paths.
 
 Public repository history may contain earlier editions; moving this active copy
 does not erase historical exposure. Credentials, records and release evidence
@@ -22,16 +22,17 @@ Source changes require separate qualified component releases.
 ## Shared Portal entry
 
 Company administration, connected products and Engineering Docs use the Portal
-sign-in form at `/admin`. Existing Engineering bookmarks return to
-`/admin?docs=<uid>` with the initiating browser's validated Docs interaction.
-Connected products enter at `/admin?interaction=<uid>`. The Portal submits each
+sign-in form at `/account`. Existing Engineering bookmarks return to
+`/account?docs=<uid>` with the initiating browser's validated Docs interaction.
+Connected products enter at `/account?interaction=<uid>`. The Portal submits each
 decision to its original interaction so the issuer can finish the corresponding
 authorization-code and PKCE exchange. Emailed proofs stay in the URL fragment until the browser reads them. Staff email-link
 redemption still requires the enrolled authenticator or recovery code.
 
-A signup can verify an Onesa account before the user requests a connected
-product. Opening registration from company administration additionally starts
-the existing owner-reviewed staff request.
+Standard registration creates a verified Onesa account. Each requested product
+is reviewed separately. Company Portal administration remains at `/admin`
+and requires existing staff approval and MFA. Explicit staff access requests
+use the owner-reviewed workflow. See [Onesa Account architecture](ONESA_ACCOUNT.md).
 
 ## Link an existing Docs approval
 
@@ -47,7 +48,7 @@ After linking, Docs uses the central session and existing Continue with Onesa ac
 The retained Docs password cannot independently start a new session for that linked
 identity. An unlinked member signs in to or creates their Onesa account, then
 confirms their existing Docs approval. Previously mailed links can still be
-opened and confirmed. New sign-in emails open the Portal at `/admin`. Registration
+opened and confirmed. New sign-in emails open the Portal at `/account`. Registration
 emails open `/account/confirm` for email verification. Both carry their one-use
 proof in the URL fragment. Deploy the compatible frontend
 before an API that emits the new links. When central identity is unavailable, Docs shows the Company Portal entry and a retry. An unlinked Docs credential can only confirm its existing approval after the user signs in to their verified Portal account and chooses to link it.

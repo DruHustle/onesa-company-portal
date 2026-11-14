@@ -28,7 +28,7 @@ const budgets = new WeakMap();
 
 export function isProductSignIn(url) {
   const keys = [...url.searchParams.keys()];
-  return url.pathname === '/admin' && !url.hash && keys.length === 1 && keys[0] === 'interaction' &&
+  return url.pathname === '/account' && !url.hash && keys.length === 1 && keys[0] === 'interaction' &&
     /^[A-Za-z0-9_-]{8,128}$/.test(url.searchParams.get('interaction'));
 }
 
@@ -203,7 +203,7 @@ async function portalLogin(page, request, fixture, expect) {
 
 async function loginAccount(context, request, fixture, expect) {
   const page = await context.newPage();
-  await page.goto(request.origins.portal + '/admin?entry=account', {waitUntil: 'domcontentloaded'});
+  await page.goto(request.origins.portal + '/account', {waitUntil: 'domcontentloaded'});
   await portalLogin(page, request, fixture, expect);
   await expect(page.getByRole('heading', {name: 'Your applications', exact: true})).toBeVisible({timeout: 20000});
   const session = await api(context, request.origins.portal, '/api/v1/account/me');
@@ -245,7 +245,7 @@ async function lookup(owner, request, email) {
 async function register(context, request, fixture, expect, recordOwnership) {
   checkpoint(context);
   const page = await context.newPage();
-  await page.goto(request.origins.portal + '/admin?entry=register', {waitUntil: 'domcontentloaded'});
+  await page.goto(request.origins.portal + '/account/register', {waitUntil: 'domcontentloaded'});
   await expect(page.getByRole('heading', {name: 'Create your Onesa account', exact: true})).toBeVisible();
   await page.locator('input[name="name"]').fill('Onesa acceptance ' + request.operation_id.slice(0, 8));
   await page.locator('input[name="email"]').fill(fixture.email);
@@ -601,7 +601,7 @@ export async function observeHostedIdentity(input) {
       await observe('access_request_approval', async () => {
         const page = await member.newPage();
         try {
-          await page.goto(request.origins.portal + '/admin?entry=account', {waitUntil: 'domcontentloaded'});
+          await page.goto(request.origins.portal + '/account', {waitUntil: 'domcontentloaded'});
           const card = page.locator('article').filter({has: page.getByRole('heading', {name: 'Onesa Robot', exact: true})});
           const requested = page.waitForResponse(response => new URL(response.url()).origin === request.origins.portal &&
             new URL(response.url()).pathname === '/api/v1/account/products/robot/request' && response.request().method() === 'POST');

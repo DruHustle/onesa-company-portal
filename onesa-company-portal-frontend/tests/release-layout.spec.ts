@@ -17,7 +17,7 @@ for(const [hour,mode] of [[20,'light'],[12,'dark']] as const) test(`release audi
    const policy=response?.headers()['content-security-policy']||'';
    expect(policy).toContain("'nonce-");expect(policy).toContain("frame-ancestors 'none'");
    expect(policy).not.toContain("'unsafe-eval'");
-   if(route==='/admin') await expect(page).toHaveURL('/admin?next=/admin');
+   if(route==='/admin') await expect(page).toHaveURL('/account?next=/admin');
    await expect(page.locator('html')).toHaveCSS('color-scheme',mode);
    await expect(page.locator('.appearance-control')).toHaveCount(0);
    await expect(page.locator('main')).toBeVisible();

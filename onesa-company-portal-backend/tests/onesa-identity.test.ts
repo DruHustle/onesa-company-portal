@@ -339,11 +339,11 @@ test("Protocol artifact custody is encrypted, bound, atomic and single-use", asy
 });
 test("shared email sign-in is single-use, account-bound, and preserves member and administrator roles", async () => {
   const client = browser();
-  const requestLink = (email:string) => client.request({method:"POST",url:"/api/v1/account/email-link",payload:{email}});
-  const tokenFor = async (email:string) => {
+  const requestLink = (email:string, returnTo?:string) => client.request({method:"POST",url:"/api/v1/account/email-link",payload:{email,returnTo}});
+  const tokenFor = async (email:string, expectedSearch="") => {
     const job = (await db.query("SELECT payload FROM jobs WHERE payload->>'to'=$1 AND payload->>'subject'='Your Onesa account sign-in link' ORDER BY created_at DESC",[email])).rows[0];
     const link = new URL(decrypt(job.payload.encryptedText).split("\n")[1]);
-    assert.equal(link.pathname,"/admin"); assert.equal(link.search,"?next=/admin");
+    assert.equal(link.pathname,"/account"); assert.equal(link.search,expectedSearch);
     return link.hash.slice("#signin-link=".length);
   };
   const redeem = (email:string,emailToken:string,code="") => client.request({method:"POST",url:"/api/v1/account/login",payload:{email,emailToken,code}});
@@ -361,8 +361,9 @@ test("shared email sign-in is single-use, account-bound, and preserves member an
   assert.equal(accepted.json().account.portalAccess,false);
   assert.equal(accepted.cookies.some(x=>x.name==="onesa_session" && x.value),false);
   assert.equal((await client.request({url:"/api/v1/auth/me"})).statusCode,401);
-  assert.equal((await requestLink(emails.admin)).statusCode,202);
-  const adminLink=await tokenFor(emails.admin);
+  assert.equal((await requestLink(emails.admin,"https://elsewhere.invalid")).statusCode,400);
+  assert.equal((await requestLink(emails.admin,"/admin")).statusCode,202);
+  const adminLink=await tokenFor(emails.admin,"?next=/admin");
   assert.equal((await redeem(emails.admin,adminLink)).json().error.code,"MFA_REQUIRED");
   assert.equal((await redeem(emails.admin,adminLink,await factor(ids.admin))).json().account.globalAdmin,true);
 });

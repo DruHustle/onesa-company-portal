@@ -6,12 +6,17 @@ import { accountReturnPath, docsAccountPath, productAccountPath } from "@/lib/ac
 
 export default async function Account({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
-  const { docs, next, returnTo, reauthenticate, interaction } = params;
+  const { docs, next, returnTo, reauthenticate, interaction, entry } = params;
+  const accessEnabled = process.env.ACCESS_REGISTRATION_ENABLED === "true";
+  if (entry !== undefined) {
+    if (docs !== undefined || next !== undefined || returnTo !== undefined || interaction !== undefined) notFound();
+    if (entry === "register" && Object.keys(params).length === 1) redirect("/account/register");
+    if (entry !== "account") notFound();
+  }
   if (interaction !== undefined) {
     if (Object.keys(params).length !== 1 || typeof interaction !== "string" || !productAccountPath(interaction)) notFound();
-    redirect("/account/sign-in/" + interaction);
+    return <OnesaAccount key={interaction} interactionId={interaction} />;
   }
-  const accessEnabled = process.env.ACCESS_REGISTRATION_ENABLED === "true";
   if (typeof returnTo === "string" && docs === undefined && next === undefined) {
     const legacy = accountReturnPath(new URLSearchParams({returnTo}).toString());
     if (legacy) redirect(docsAccountPath(legacy.slice("/engineering/sign-in/".length))! + (reauthenticate === "1" ? "&reauthenticate=1" : ""));
