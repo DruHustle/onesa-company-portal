@@ -19,8 +19,8 @@ export const serviceRegistry = [
   { id: "mobile", name: "Onesa Mobile", hosting: "Vercel frontend and public gateway · Oracle ARM64 API and gateway in isolated qualification", url: "https://mobile.onesa.eu", health: "https://mobile.onesa.eu/api/healthz", dependencies: ["Portal identity", "Mobile database", "provider activation pending"] },
   { id: "factory", name: "Smart Factory", hosting: "Vercel frontend · Oracle API and worker · field gateway", url: "https://factory.onesa.eu", health: "https://factory.onesa.eu/health/ready", dependencies: ["Factory database", "Node-RED", "Python Edge Agent", "MQTT/TLS", "BaSyx"] },
   { id: "pasofi", name: "PasoFi", hosting: "Vercel frontend · Oracle API · field routers", url: "https://pasofi.mobile.onesa.eu", health: "https://api.pasofi.onesa.eu/health/live", dependencies: ["Portal identity", "PasoFi databases", "Stripe", "RADIUS", "site routers"] },
-  { id: "kubernetes", name: "Kubernetes", hosting: "Private k3s cluster on Oracle Onesa UG Backend", url: "https://docs.engineering.onesa.eu", health: null, dependencies: ["qualified VM", "private cluster API", "persistent volumes"] },
-  { id: "portainer", name: "Portainer", hosting: "Private Kubernetes service on Oracle Onesa UG Backend", url: "https://docs.engineering.onesa.eu", health: null, dependencies: ["Kubernetes", "private authenticated management access"] },
+  { id: "kubernetes", name: "Kubernetes", hosting: "Private k3s cluster on Oracle Onesa UG Backend", url: "https://docs.internal.onesa.eu", health: null, dependencies: ["qualified VM", "private cluster API", "persistent volumes"] },
+  { id: "portainer", name: "Portainer", hosting: "Private Kubernetes service on Oracle Onesa UG Backend", url: "https://docs.internal.onesa.eu", health: null, dependencies: ["Kubernetes", "private authenticated management access"] },
 ] as const;
 const serviceId = z.enum(serviceRegistry.map(service => service.id));
 const observation = z.object({
