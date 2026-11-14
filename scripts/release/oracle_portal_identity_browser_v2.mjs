@@ -2,14 +2,14 @@
 import {createRequire} from 'node:module';
 import {setTimeout as delay} from 'node:timers/promises';
 import {pathToFileURL} from 'node:url';
-import {isProductSignIn, totp, verifyCallback} from './oracle_portal_identity_browser.mjs';
+import {isProductSignIn, productSignInLabel, totp, verifyCallback} from './oracle_portal_identity_browser.mjs';
 import {establishPreviewSession} from './oracle_portal_browser_session.mjs';
 
-const common = {entry: '/', label: 'Continue with Onesa', session: '/api/v1/auth/me'};
+const common = {entry: '/', session: '/api/v1/auth/me'};
 export const PRODUCTS = Object.freeze({
-  ai: {...common, callback: '/api/v1/auth/onesa/callback', config: '/api/v1/auth/onesa/config', start: '/api/v1/auth/onesa/start'},
-  drone: {...common, callback: '/api/v1/auth/identity/callback', config: '/api/v1/auth/config', start: '/api/v1/auth/identity/start'},
-  robot: {...common, entry: '/console', callback: '/api/v1/auth/identity/callback', config: '/api/v1/auth/identity/config', start: '/api/v1/auth/identity/start'},
+  ai: {...common, label: productSignInLabel('ai'), callback: '/api/v1/auth/onesa/callback', config: '/api/v1/auth/onesa/config', start: '/api/v1/auth/onesa/start'},
+  drone: {...common, label: productSignInLabel('drone'), callback: '/api/v1/auth/identity/callback', config: '/api/v1/auth/config', start: '/api/v1/auth/identity/start'},
+  robot: {...common, label: productSignInLabel('robot'), entry: '/console', callback: '/api/v1/auth/identity/callback', config: '/api/v1/auth/identity/config', start: '/api/v1/auth/identity/start'},
   farmer: {entry: '/', label: /^(Pinda neOnesa|Ngena nge-Onesa)$/, session: '/v1/me', config: '/v1/onesa/config', callback: '/auth/onesa/callback', complete: '/v1/onesa/sessions'},
   logistics: {entry: '/#/login?mode=live', label: 'Sign in with Onesa', session: '/api/auth/me', config: '/api/auth/onesa/config', start: '/api/auth/onesa/start', callback: '/api/auth/onesa/callback'},
   pasofi: {entry: '/#staff', label: 'Sign in with Onesa', session: '/api/staff/session', config: '/api/staff/onesa/availability', start: '/api/staff/onesa/start', callback: '/onesa-callback.html', complete: '/api/staff/onesa/complete', mfa: true},
