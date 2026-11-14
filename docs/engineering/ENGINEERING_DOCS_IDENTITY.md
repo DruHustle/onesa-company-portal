@@ -21,12 +21,12 @@ Source changes require separate qualified component releases.
 
 ## Shared Portal entry
 
-Company administration and Engineering Docs start at the Onesa Account sign-in
-and registration pages. Existing Engineering interaction links redirect to
-`/account` with the initiating browser's validated interaction identifier. The
-account page submits Docs decisions to the original interaction so the issuer
-can finish its existing authorization-code and PKCE exchange. Existing emailed
-proofs stay in the URL fragment until the browser reads them. Staff email-link
+Company administration, connected products and Engineering Docs use the Portal
+sign-in form at `/admin`. Existing Engineering bookmarks return to
+`/admin?docs=<uid>` with the initiating browser's validated Docs interaction.
+Connected products enter at `/admin?interaction=<uid>`. The Portal submits each
+decision to its original interaction so the issuer can finish the corresponding
+authorization-code and PKCE exchange. Emailed proofs stay in the URL fragment until the browser reads them. Staff email-link
 redemption still requires the enrolled authenticator or recovery code.
 
 A signup can verify an Onesa account before the user requests a connected
@@ -47,8 +47,9 @@ After linking, Docs uses the central session and existing Continue with Onesa ac
 The retained Docs password cannot independently start a new session for that linked
 identity. An unlinked member signs in to or creates their Onesa account, then
 confirms their existing Docs approval. Previously mailed links can still be
-opened and confirmed. New sign-in and registration messages link directly to
-Onesa Account, with their proof in the fragment. Deploy the compatible frontend
+opened and confirmed. New sign-in emails open the Portal at `/admin`. Registration
+emails open `/account/confirm` for email verification. Both carry their one-use
+proof in the URL fragment. Deploy the compatible frontend
 before an API that emits the new links. When central identity is unavailable, Docs shows the Company Portal entry and a retry. An unlinked Docs credential can only confirm its existing approval after the user signs in to their verified Portal account and chooses to link it.
 An administrator still completes central MFA, and a forced fresh request uses new
 central authentication. The fixed account return path preserves the current browser's
