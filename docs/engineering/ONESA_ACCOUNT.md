@@ -4,6 +4,10 @@
 
 The Portal issuer described below is the pre-migration baseline. During the pilot, the Identity service owns user administration. Portal owns its CMS, settings, business records and /admin. Public Developer Docs at docs.onesa.eu and all internal documents at docs.internal.onesa.eu have separate catalog entries and access policies.
 
+## Current global-administration boundary
+
+Onesa Identity owns global account lifecycle, verified email, account status, product access and administrator assignment. Company Portal owns company content, its CMS and business-workspace tasks; it is not a global user-administration console. Every deployed Portal API must refuse legacy global-account administration endpoints with `IDENTITY_ADMINISTRATION_MOVED`. The Portal admin workspace routes users to the configured Identity administration UI. If that destination is absent or invalid, it must show an explicit unavailable state and never fall back to local user-management controls. Legacy local account-administration endpoints are permitted only in isolated test fixtures.
+
 Set ONESA_IDENTITY_ADMINISTRATION=external on a paired candidate Portal API and frontend after the Identity administrator has verified the destination and imported approvals. Configure ONESA_IDENTITY_UI_ORIGIN on the frontend with the environment-specific HTTPS origin serving the Identity UI. The frontend sends legacy user-administration bookmarks to its /admin path and registration to /register. Browser fragments and search inputs stay local. The API refuses its legacy directory and access-decision routes in this mode. Portal roles retain local content permissions. Product access is limited to explicit grants. The cutover flag is independent of provider login. Enable it in production once migrated operators and customer self-service pass in staging.
 
 The optional managed Portal login uses Authorization Code with S256 PKCE and an independent confidential client. Apply migration 020 and reapply the normal restricted runtime-role grants before starting the compatible API. Set ONESA_IDENTITY_PORTAL_LOGIN=managed in both deployments. The frontend and backend require the same ONESA_IDENTITY_ISSUER. The API additionally needs ONESA_IDENTITY_PORTAL_CLIENT_ID, ONESA_IDENTITY_PORTAL_CLIENT_SECRET and ONESA_IDENTITY_PORTAL_AUDIENCE. Register the exact callback at the Portal origin /api/v1/auth/managed/callback. Give the client its own resource identifier and enable the reviewed provider policy and MFA Actions in that environment.
@@ -20,22 +24,18 @@ the existing issuer and user identifiers stable. This describes the target
 architecture and release criteria. Product source and production can be at
 different revisions.
 
-## Ownership
+## Identity and Portal ownership
 
 | Component | Responsibility |
 | --- | --- |
-| Portal identity service | Register and verify accounts, check passwords and one-use emailed proofs, enforce MFA, recover accounts, maintain central sessions and record product approvals. |
-| Portal account page | Present the same two sign-in methods for customers and staff. Resume the initiating product, show the user's approved applications on direct entry, and offer registration and recovery. |
-| Product backend | Start its own authorization request, bind the callback to the initiating browser, validate the central grant, and create a product-scoped session. Enforce tenant, record, action and freshness policies at the API. |
+| Onesa Identity | Owns global account lifecycle, verified email, credentials, MFA, recovery, central sessions, account status, administrator assignment and product approvals. |
+| Portal account interface | Presents configured sign-in and recovery journeys, resumes the initiating product and shows approved applications; it does not administer global accounts or product grants. |
+| Company Portal admin workspace | Manages company content, settings and business-workspace records under Portal-specific roles and audit controls. |
+| Product backend | Starts its own authorization request, binds the callback to the initiating browser, validates the central grant and creates a product-scoped session. Enforces tenant, record, action and freshness policies at the API. |
 | Product frontend and native app | Open the product's sign-in flow and restore the intended screen. Report expired access or service unavailability and allow retry from that screen. |
 | Engineering Docs and Cloudflare Access | Retain the existing Docs membership subject and Access policy. The Docs adapter accepts central proof for a linked member and completes the existing Access callback. |
 
-Keep identity as one logical service inside the existing Portal backend.
-Registration, access and recovery already share its account store and audit
-trail. A later independent deployment can route the same issuer and account
-URLs to that service without changing any product's identity keys. Products
-hold their own sessions and data. Each environment has a distinct client
-configuration, callback allowlist and signing material.
+Global administration remains owned by Onesa Identity. Portal may retain its compatibility issuer and local sessions/roles for Portal content and business tasks, but it must not administer global accounts or product grants. Products hold their own sessions and data; each environment has distinct client configuration, callback allowlist and signing material.
 
 ## Web and mobile journeys
 
