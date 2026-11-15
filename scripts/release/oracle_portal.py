@@ -2443,6 +2443,8 @@ def operational_observations(binding, plan, folder, context_id):
 
 
 def public_server_keys(plan):
+    if qualification_profile(plan) == IDENTITY_PROFILE_V3:
+        return PUBLIC_SERVER_KEYS | {"ONESA_IDENTITY_CALLBACKS_JSON", "ONESA_IDENTITY_ENABLED"}
     if qualification_profile(plan) in REGISTERED_CALLBACK_PROFILES:
         return PUBLIC_SERVER_KEYS | {"ONESA_IDENTITY_CALLBACKS_JSON"}
     return PUBLIC_SERVER_KEYS
@@ -2462,6 +2464,8 @@ def public_server_configuration(plan, env):
         and values["ACCESS_REGISTRATION_ENABLED"] in {"true", "false"},
         "EXISTING_FEATURE_FLAG_VALUE_REQUIRED",
     )
+    if qualification_profile(plan) == IDENTITY_PROFILE_V3:
+        require(values["ONESA_IDENTITY_ENABLED"] == "true", "SHARED_FRONTEND_IDENTITY_REQUIRED")
     if qualification_profile(plan) in REGISTERED_CALLBACK_PROFILES:
         profile = callback_profile(qualification_profile(plan))
         profile.verify_callbacks(plan["binding"], env, values[profile.CALLBACK_KEY])
