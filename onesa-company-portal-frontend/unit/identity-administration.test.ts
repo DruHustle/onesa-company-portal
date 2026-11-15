@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { identityAdministrationRequired, identityAdministrationUrl, identityAdministrationMode, legacyPortalFarmerAccess } from "../src/lib/identity-administration.ts";
 
-const keys = ["NODE_ENV", "ONESA_IDENTITY_ADMINISTRATION", "ONESA_IDENTITY_UI_ORIGIN", "PORTAL_URL", "PUBLIC_ORIGIN", "SITE_URL"] as const;
+const keys = ["NODE_ENV", "ONESA_IDENTITY_ADMINISTRATION", "ONESA_IDENTITY_UI_ORIGIN", "PORTAL_URL", "PUBLIC_ORIGIN", "SITE_URL", "ENGINEERING_LEGACY_TEST_FIXTURE", "BACKEND_URL", "VERCEL"] as const;
 function withEnvironment(values: Record<string, string>, run: () => void) {
   const previous = new Map(keys.map(key => [key, process.env[key]]));
   for (const key of keys) delete process.env[key];
@@ -33,6 +33,31 @@ test("isolated tests retain the local account-management fixture only when Ident
   withEnvironment({ NODE_ENV: "test" }, () => {
     assert.equal(identityAdministrationMode(identityAdministrationRequired(), identityAdministrationUrl()), "local");
   });
+});
+
+test("the local Identity mode is limited to the explicit loopback regression fixture", () => {
+  withEnvironment({
+    NODE_ENV: "production",
+    ENGINEERING_LEGACY_TEST_FIXTURE: "true",
+    PUBLIC_ORIGIN: "http://127.0.0.1:3300",
+    BACKEND_URL: "http://127.0.0.1:4400",
+  }, () => {
+    assert.equal(identityAdministrationRequired(), false);
+    assert.equal(identityAdministrationMode(identityAdministrationRequired(), identityAdministrationUrl()), "local");
+  });
+  withEnvironment({
+    NODE_ENV: "production",
+    ENGINEERING_LEGACY_TEST_FIXTURE: "true",
+    PUBLIC_ORIGIN: "https://portal.onesa.eu",
+    BACKEND_URL: "http://127.0.0.1:4400",
+  }, () => assert.equal(identityAdministrationRequired(), true));
+  withEnvironment({
+    NODE_ENV: "production",
+    ENGINEERING_LEGACY_TEST_FIXTURE: "true",
+    VERCEL: "1",
+    PUBLIC_ORIGIN: "http://127.0.0.1:3300",
+    BACKEND_URL: "http://127.0.0.1:4400",
+  }, () => assert.equal(identityAdministrationRequired(), true));
 });
 
 test("Portal and company-site origins are never accepted as the Identity administration destination", () => {

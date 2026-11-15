@@ -1,6 +1,11 @@
-/** Global account administration is delegated in every deployed Portal runtime. */
+import { legacyEngineeringFixture } from "@/lib/engineering-test-fixture";
+
+/** Global account administration is delegated in every deployed Portal runtime.
+ * The only local exception is the explicitly isolated loopback regression fixture.
+ */
 export function identityAdministrationRequired() {
-  return process.env.NODE_ENV !== "test" || process.env.ONESA_IDENTITY_ADMINISTRATION === "external";
+  return !legacyEngineeringFixture() &&
+    (process.env.NODE_ENV !== "test" || process.env.ONESA_IDENTITY_ADMINISTRATION === "external");
 }
 
 /** Only a distinct, server-configured HTTPS Identity origin can receive the admin link. */
