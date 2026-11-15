@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
 import { infrastructureOverview } from "../src/operations/infrastructure.js";
+import { probeAvailable } from "../../scripts/observe-infrastructure.mts";
 const directory = await mkdtemp(join(tmpdir(), "onesa-infrastructure-"));
 after(() => rm(directory, { recursive: true, force: true }));
 const now = Date.parse("2026-11-11T12:00:00Z");
@@ -15,6 +16,23 @@ async function snapshot(name: string, observations: unknown[]) {
   return file;
 }
 const observed = (id: string, state = "available", age = 0) => ({ id, state, observedAt: new Date(now - age).toISOString(), source: "public_http", environment: "production", revision: null });
+test("OIDC health metadata cannot trust endpoints outside the configured Identity origin", () => {
+  const valid = {
+    issuer: "https://auth.onesa.eu/",
+    authorization_endpoint: "https://auth.onesa.eu/authorize",
+    token_endpoint: "https://auth.onesa.eu/oauth/token",
+    jwks_uri: "https://auth.onesa.eu/.well-known/jwks.json",
+  };
+  assert.equal(probeAvailable("identity", valid), true);
+  assert.equal(probeAvailable("identity", { ...valid, issuer: "https://attacker.example/" }), false);
+  for (const key of ["authorization_endpoint", "token_endpoint", "jwks_uri"] as const) {
+    assert.equal(probeAvailable("identity", { ...valid, [key]: "https://attacker.example/endpoint" }), false);
+    assert.equal(probeAvailable("identity", { ...valid, [key]: "https://user:synthetic@auth.onesa.eu/endpoint" }), false);
+    assert.equal(probeAvailable("identity", { ...valid, [key]: "http://auth.onesa.eu/endpoint" }), false);
+    assert.equal(probeAvailable("identity", { ...valid, [key]: "https://auth.onesa.eu/endpoint#fragment" }), false);
+  }
+});
+
 test("All products, shared Web services and management services remain unknown without observations", async () => {
   const view = await infrastructureOverview("", now);
   assert.equal(view.services.length, 14);
