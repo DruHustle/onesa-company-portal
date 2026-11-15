@@ -74,7 +74,7 @@ test('Owner confirms a fresh proof for user changes and changes own password',as
   await page.getByLabel('New password',{exact:true}).fill(changedPassword);
   await page.getByLabel('Confirm new password',{exact:true}).fill(changedPassword);
   await page.getByRole('button',{name:'Change password and sign out',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Sign in',exact:true})).toBeVisible();
+  await expect(page).toHaveURL(/\/account\?next=\/admin/);
   expect(Number((await db.query('SELECT count(*) FROM sessions WHERE user_id=$1',[ownerId])).rows[0].count)).toBe(0);
   expect((await db.query('SELECT mfa_secret FROM users WHERE id=$1',[ownerId])).rows[0].mfa_secret).toBeTruthy();
   await page.getByLabel('Email',{exact:true}).first().fill(email);
