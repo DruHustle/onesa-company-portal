@@ -21,6 +21,13 @@ class RepositoryDocumentationTests(unittest.TestCase):
             self.fixture(root)
             self.assertEqual(check(root), [])
 
+    def test_agents_policy_size_guard_is_enforced(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture(root)
+            (root / "AGENTS.md").write_text("x" * (12 * 1024 + 1))
+            self.assertTrue(any("12 KiB guard" in issue for issue in check(root)))
+
     def test_obsolete_policy_generator_output_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
