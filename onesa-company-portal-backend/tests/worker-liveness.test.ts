@@ -11,6 +11,7 @@ import {setTimeout as sleep} from 'node:timers/promises';
 import {WorkerProcessLiveness,workerLivenessCurrent,workerProcessAlive,workerProgressMaxMs,workerPulseMaxAgeMs,workerIdleGraceMs} from '../src/jobs/process-liveness.js';
 import {runWorkerLoop} from '../src/jobs/worker-loop.js';
 import {workerHeartbeatCurrent} from '../src/jobs/polling.js';
+import {workerHealthReady} from '../src/jobs/health-status.js';
 
 async function until(check:()=>Promise<boolean>,timeout=3000){
  const deadline=Date.now()+timeout;
@@ -30,6 +31,24 @@ test('Process pulses cannot hide expired progress, future evidence or an overdue
  assert.equal(workerLivenessCurrent(JSON.stringify(idle),now+599999),true);
  assert.equal(workerLivenessCurrent(JSON.stringify({...idle,pulseAt:idle.deadlineAt}),idle.deadlineAt),false);
  for(const bad of [null,{},[],{...work,extra:true},{...work,pid:0},{...work,pulseAt:now+1},{...work,phaseAt:now+1},{...work,deadlineAt:now+workerProgressMaxMs+1},{...idle,deadlineAt:now+600001+workerIdleGraceMs}])assert.equal(workerLivenessCurrent(JSON.stringify(bad),now),false);
+});
+
+test('Worker readiness requires a fresh success heartbeat, a live process and a ready scanner',async()=>{
+ const now=2000000;
+ const heartbeat=JSON.stringify({successAt:now,nextPollAt:now+5000});
+ let processChecks=0,scannerChecks=0;
+ const dead=await workerHealthReady({heartbeat,now,maximumIdleMs:600000,processAlive:async()=>{processChecks++;return false;},scannerReady:async()=>{scannerChecks++;return true;}});
+ assert.equal(dead,false);
+ assert.equal(processChecks,1);
+ assert.equal(scannerChecks,0);
+ const scannerDown=await workerHealthReady({heartbeat,now,maximumIdleMs:600000,processAlive:async()=>true,scannerReady:async()=>false});
+ assert.equal(scannerDown,false);
+ const ready=await workerHealthReady({heartbeat,now,maximumIdleMs:600000,processAlive:async()=>true,scannerReady:async()=>true});
+ assert.equal(ready,true);
+ let staleProcessChecks=0;
+ const stale=await workerHealthReady({heartbeat:JSON.stringify({successAt:now-600000,nextPollAt:now-595000}),now,maximumIdleMs:600000,processAlive:async()=>{staleProcessChecks++;return true;},scannerReady:async()=>true});
+ assert.equal(stale,false);
+ assert.equal(staleProcessChecks,0);
 });
 
 test('Private atomic process evidence rejects links, wrong modes, corrupt and oversized files',async()=>{

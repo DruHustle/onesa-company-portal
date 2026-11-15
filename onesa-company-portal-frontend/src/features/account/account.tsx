@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { accountApplicationUrl } from "@/lib/onesa-identity";
+import { identityAdministrationMode, legacyPortalFarmerAccess } from "@/lib/identity-administration";
 import { accountUnavailableHint } from "@/lib/account-messages";
 import { accessLinkToken, sharedSignInToken } from "@/lib/access-link";
 import { adminWorkspaceReturn, accountDestination, memberReturnPath, accountReturnPath, accountReauthenticationRequired, docsAccountPath, productAccountPath } from "@/lib/account-return";
@@ -27,11 +28,14 @@ type EntryProps = {
   adminEmailLinks?: boolean;
   legacyAdmin?: boolean;
   identityAdmin?: string | null;
+  identityAdminRequired?: boolean;
+  docsReturnPath?: string | null;
   legacyDocsRegistration?: boolean;
   approvalConfirmation?: boolean;
 };
 
-export function OnesaAccount({ mode = "login", interactionId, docsInteractionId, docsInteractionCsrf, forceLogin, adminEntry, accessEnabled, adminEmailLinks, identityAdmin, legacyAdmin, legacyDocsRegistration, approvalConfirmation }: EntryProps) {
+export function OnesaAccount({ mode = "login", interactionId, docsInteractionId, docsInteractionCsrf, forceLogin, adminEntry, accessEnabled, adminEmailLinks, identityAdmin, identityAdminRequired = false, docsReturnPath, legacyAdmin, legacyDocsRegistration, approvalConfirmation }: EntryProps) {
+  const identityMode = identityAdministrationMode(identityAdminRequired, identityAdmin ?? null);
   const [language, setLanguage] = useState<"en" | "de">("en"), [session, setSession] = useState<AccountSession | null>(null);
   const [interaction, setInteraction] = useState<Interaction | null>(null), [enabled, setEnabled] = useState<boolean | null>(null), [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState(""), [error, setError] = useState(false), [busy, setBusy] = useState(false), [done, setDone] = useState(false), [factor, setFactor] = useState(false), [help, setHelp] = useState("");
@@ -49,6 +53,10 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
   const [adminWorkspace, setAdminWorkspace] = useState("/admin");
   const [approvedAdmin, setApprovedAdmin] = useState(false);
   const suggestedAccount = sharedToken ? null : interaction?.account;
+  if (mode !== "login" && identityMode !== "local") {
+    const destination = identityAdmin ? new URL("/register#registration", identityAdmin).href : null;
+    return <main><h1 id="account-title">Onesa Account</h1><p role="status">Account registration and email verification are managed in Onesa Identity. This Portal does not accept local registration or confirmation.</p>{destination ? <p><a href={destination} referrerPolicy="no-referrer">Continue to Onesa Identity</a></p> : <p>The Identity destination is not configured for this deployment. Contact the Onesa administrator.</p>}{docsReturnPath ? <p><a href={docsReturnPath} referrerPolicy="no-referrer">Continue to Engineering Docs</a></p> : null}<a href="/en">Return to Onesa</a></main>;
+  }
   const approvalRequest = mode === "register" && Boolean(adminEntry || legacyDocsRegistration);
   const destinationSearch = destination.includes("?") ? destination.slice(destination.indexOf("?")) : "";
   const signupUrl = adminEntry && !legacyAdmin ? "/account/register" : "/account/register" + destinationSearch;
@@ -221,7 +229,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
       {returnTo && <p><a className={"button " + styles.action} href={returnTo}>{t.returnDocs}</a></p>}
       {noticeElement}
       <section className={styles.grid} aria-label={t.applications}>{products.map(product => {
-        const grant = session.access.find(item => item.product === product), active = session.account.globalAdmin || grant?.status === "active" || (!identityAdmin && product === "farmer" && !grant && session.account.portalAccess && session.account.emailVerified), isConnected = connected(product);
+        const grant = session.access.find(item => item.product === product), active = session.account.globalAdmin || grant?.status === "active" || legacyPortalFarmerAccess({ mode: identityMode, product, hasGrant: Boolean(grant), portalAccess: session.account.portalAccess, emailVerified: session.account.emailVerified }), isConnected = connected(product);
         const application = session.applications.find(item => item.product === product);
         return <article className={styles.product} key={product}><span className={styles.badge}>{!isConnected ? t.unconnected : active ? t.active : grant ? t[grant.status] : t.none}</span><h2>{productNames[product]}</h2><p>{t.products[product]}</p>
           {!isConnected ? <p>{t.futureHint}</p> : active && application ? <a className={"button " + styles.action} href={accountApplicationUrl(product, application.url, session.account.globalAdmin)}>{t.open}</a> : identityAdmin ? <a href={new URL("/account", identityAdmin).href}>{language === "de" ? "Produktzugang in Onesa Identity" : "Product access in Onesa Identity"}</a> : <button className={styles.action} disabled={busy || grant?.status === "pending" || active} onClick={() => void action(async () => { setSession(await accountRequest<AccountSession>("/api/v1/account/products/" + product + "/request", {}, session.csrf)); setNotice(t.requested); })}>{grant?.status === "pending" ? t.pending : active ? t.unavailable : t.requestAccess}</button>}
@@ -232,8 +240,9 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
       </article>)}</section>
       <h2>{t.futureProducts}</h2>{futureProducts}
       <nav className={styles.accountLinks} aria-label={language === "de" ? "Kontoeinstellungen" : "Account settings"}>{session.account.portalAccess && <a className={styles.action} href={adminWorkspace}>{t.admin}</a>}<a className={styles.action} href="/engineering">Engineering Docs</a>{!session.account.mfaEnrolled && <a className={styles.action} href={setupUrl}>{t.setup}</a>}<a className={styles.action} href="/account/billing">{language === "de" ? "Abrechnung" : "Billing"}</a><a className={styles.action} href="/account/security">{language === "de" ? "Passwort und Sicherheit" : "Password and security"}</a><a className={styles.action} href="/account/delete">{language === "de" ? "Kontolöschung beantragen" : "Request account deletion"}</a></nav>
-      {identityAdmin && session.account.portalAccess && <a href={identityAdmin} referrerPolicy="no-referrer">{language === "de" ? "Benutzer in Onesa Identity verwalten" : "Manage users in Onesa Identity"}</a>}
-      {!identityAdmin && session.account.globalAdmin && <AccessManager session={session} language={language} />}
+      {identityMode === "external" && session.account.globalAdmin && <a href={identityAdmin!} referrerPolicy="no-referrer">{language === "de" ? "Benutzer in Onesa Identity verwalten" : "Manage users in Onesa Identity"}</a>}
+      {identityMode === "unavailable" && session.account.globalAdmin && <p role="status">{language === "de" ? "Die globale Benutzerverwaltung bleibt in Onesa Identity. Der Administrationslink ist für diese Bereitstellung nicht konfiguriert." : "Global user administration remains in Onesa Identity. Its administration link is not configured for this deployment."}</p>}
+      {identityMode === "local" && session.account.globalAdmin && <AccessManager session={session} language={language} />}
     </div> : <section className={styles.card} aria-labelledby="account-title">
       <h1 id="account-title">{mode === "register" ? t.register : mode === "confirm" ? t.confirm : interaction?.freshRequired ? t.fresh : t.login}</h1>
       <p className={styles.muted}>{mode === "register" ? (approvalRequest ? (language === "de" ? "Der Inhaber prüft Ihren Zugang nach der E-Mail-Bestätigung." : "The owner reviews your access request after you verify your email.") : t.chooseHint) : mode === "confirm" ? t.confirmHint : interaction?.freshRequired ? t.freshHint : interaction ? { ...productNames, ...adminProductNames }[interaction.product] : t.intro}</p>

@@ -191,6 +191,15 @@ test('Editorial approval binds exact revisions, rejects forgery and stale review
  const changed=await app.inject({method:'PATCH',url:'/api/v1/admin/content/'+id,headers:ownerH,payload:{...draft,revision:5,body:'Changed unreviewed synthetic text.',publishAt:null,state:'published'}});assert.equal(changed.statusCode,409);
  const unpublish=await app.inject({method:'POST',url:'/api/v1/admin/content/'+id+'/unpublish',headers:ownerH,payload:{expectedRevision:5}});assert.equal(unpublish.statusCode,200,unpublish.body);assert.equal((await app.inject({url})).statusCode,404);
 });
+test('Only publishers may request archive state, and new content always starts as a draft',async()=>{
+ const editorSlug='editor-archive-'+randomUUID(),ownerSlug='owner-archive-'+randomUUID();
+ const editorAttempt=await app.inject({method:'POST',url:'/api/v1/admin/content',headers:editorH,payload:{...article,slug:editorSlug,state:'archived'}});
+ assert.equal(editorAttempt.statusCode,403,editorAttempt.body);assert.equal(editorAttempt.json().error.code,'PUBLISH');
+ const ownerAttempt=await app.inject({method:'POST',url:'/api/v1/admin/content',headers:ownerH,payload:{...article,slug:ownerSlug,state:'archived'}});
+ assert.equal(ownerAttempt.statusCode,409,ownerAttempt.body);assert.equal(ownerAttempt.json().error.code,'EDITORIAL_REVIEW');
+ assert.equal(Number((await db.query('SELECT count(*)::int AS n FROM content WHERE slug=ANY($1::text[])',[[editorSlug,ownerSlug]])).rows[0].n),0);
+});
+
 test('Future published legacy rows stay private on lists, detail, categories and vacancy intake',async()=>{
  const ids=[randomUUID(),randomUUID()];
  await db.query("INSERT INTO content(id,kind,slug,locale,title,body,metadata,state,publish_at) VALUES($1,'article','future-legacy-fixture','en','Future synthetic fixture','Synthetic only','{\"category\":\"FutureOnlyCategory\"}','published',now()+interval '1 day'),($2,'job','future-vacancy-fixture','en','Future synthetic vacancy','Synthetic only','{}','published',now()+interval '1 day')",ids);

@@ -59,5 +59,22 @@ test('Production role has CRUD access without database administration or migrati
   assert.equal(await applicationRoleSafe(app),false);
   await db.query('REVOKE UPDATE ON schema_migrations FROM onesa_portal_app_test');
   assert.equal(await applicationRoleSafe(app),true);
+  for(const privilege of ['TRUNCATE','TRIGGER','REFERENCES'] as const){
+   await db.query(`GRANT ${privilege} ON TABLE users TO onesa_portal_app_test`);
+   assert.equal(await applicationRoleSafe(app),false,`${privilege} on application tables must be rejected`);
+   await assert.rejects(databaseReady(app,true),{code:'DATABASE_ROLE'});
+   await db.query(`REVOKE ${privilege} ON TABLE users FROM onesa_portal_app_test`);
+   assert.equal(await applicationRoleSafe(app),true);
+  }
+  await db.query('GRANT UPDATE ON SEQUENCE audit_id_seq TO onesa_portal_app_test');
+  assert.equal(await applicationRoleSafe(app),false,'sequence UPDATE must be rejected');
+  await db.query('REVOKE UPDATE ON SEQUENCE audit_id_seq FROM onesa_portal_app_test');
+  assert.equal(await applicationRoleSafe(app),true);
+  const databaseName=String((await db.query('SELECT current_database() AS name')).rows[0].name);
+  const quotedDatabase='"'+databaseName.replaceAll('"','""')+'"';
+  await db.query(`GRANT CREATE ON DATABASE ${quotedDatabase} TO onesa_portal_app_test`);
+  assert.equal(await applicationRoleSafe(app),false,'database CREATE must be rejected');
+  await db.query(`REVOKE CREATE ON DATABASE ${quotedDatabase} FROM onesa_portal_app_test`);
+  assert.equal(await applicationRoleSafe(app),true);
  } finally {await app.end();await db.end();}
 });

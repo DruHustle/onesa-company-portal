@@ -1,7 +1,8 @@
 import {createConnection} from 'node:net';
 import {readFile} from 'node:fs/promises';
 import {env,workerIdleMaxMs} from '../config/env.js';
-import {workerHeartbeatCurrent} from './polling.js';
+import {workerHealthReady} from './health-status.js';
+import {workerProcessAlive} from './process-liveness.js';
 import {scannerStatusCurrent} from '../services/storage.js';
 
 async function scannerReady():Promise<boolean>{
@@ -17,7 +18,7 @@ async function scannerReady():Promise<boolean>{
  });
 }
 try{
- const ready=workerHeartbeatCurrent(await readFile('/tmp/onesa-worker-success','utf8'),Date.now(),workerIdleMaxMs)&&await scannerReady();
+ const ready=await workerHealthReady({heartbeat:await readFile('/tmp/onesa-worker-success','utf8'),now:Date.now(),maximumIdleMs:workerIdleMaxMs,processAlive:workerProcessAlive,scannerReady});
  process.exitCode=ready?0:1;
  console.log(JSON.stringify({event:'worker_health',ready}));
 }catch{process.exitCode=1;console.log(JSON.stringify({event:'worker_health',ready:false}));}
