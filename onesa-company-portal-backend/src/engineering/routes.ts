@@ -6,6 +6,7 @@ import {
   engineeringPasswordAccount,
   engineeringLinkResendSeconds,
 } from "../auth/access.js";
+import { accountEmailCredentials, type registerIdentity } from "../identity/routes.js";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import type { IncomingMessage } from "node:http";
@@ -66,6 +67,7 @@ export async function registerEngineeringIdentity(
   app: FastifyInstance,
   allow: Guard,
   limits: Limits,
+  accountEmail: Awaited<ReturnType<typeof registerIdentity>>,
 ) {
   const api = app.withTypeProvider<ZodTypeProvider>(),
     config = engineeringIdentityConfiguration(process.env, env.PUBLIC_ORIGIN),
@@ -265,6 +267,24 @@ export async function registerEngineeringIdentity(
       );
     return {...configured(), details};
   };
+  api.post("/api/v1/engineering-sign-in/:uid/account-email-link", {
+    logLevel: "silent",
+    schema: {...meta("requestEngineeringAccountEmailLink"), params,
+      body: z.object({csrf: proof, email: z.email().max(254)}), response: {202: z.object({ok: z.literal(true)}), ...errors}},
+  }, async (req, reply) => {
+    const {details} = await verifiedInteraction(req, reply, req.body.csrf);
+    await accountEmail.requestForDocs(req, req.body.email, details.uid);
+    return reply.code(202).send({ok: true});
+  });
+  api.post("/api/v1/engineering-sign-in/:uid/account-email-login", {
+    logLevel: "silent",
+    schema: {...meta("confirmEngineeringAccountEmailLink"), params,
+      body: accountEmailCredentials.extend({csrf: proof}).strict(), response: {200: z.object({ok: z.literal(true)}), ...errors}},
+  }, async (req, reply) => {
+    const {details} = await verifiedInteraction(req, reply, req.body.csrf);
+    await accountEmail.confirmForDocs(req, reply, req.body, details.uid);
+    return {ok: true as const};
+  });
   api.post("/api/v1/engineering-sign-in/:uid/enroll", {
     logLevel: "silent",
     schema: { ...meta("enrollOnesaAdministratorForDocs"), params, body: z.object({ csrf: proof }).strict(),
@@ -405,7 +425,7 @@ export async function registerEngineeringIdentity(
     const membership=(await db.query("SELECT enabled FROM engineering_memberships WHERE id=$1 FOR SHARE",[accountId])).rows[0];
     if(!membership?.enabled)throw new HttpError(403,"ENGINEERING_ACCOUNT_PROOF","Engineering membership is required.");
     if(central){
-      method=central.amr.includes("otp")?"mfa":"pwd";
+      method=central.amr.includes("otp")?"mfa":central.amr.includes("email")?"email":"pwd";
       authenticatedAt=central.authenticatedAt;
     }
     const grant = new provider.Grant({ accountId, clientId: config.clientId });

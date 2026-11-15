@@ -22,7 +22,7 @@ export function routeDestination(origin:string,path:string):string|null{
  if(current==='portal'&&(engineering||access||account))return null;
  if(current==='portal'&&(path.startsWith('/brand/')||path.startsWith('/social/')))return null;
  if(current==='company'&&admin)return `${process.env.PORTAL_URL}${path}`;
- if(current==='portal'&&(path==='/'||admin))return path==='/'?`${process.env.PORTAL_URL}/admin`:null;
+ if(current==='portal'&&(path==='/'||admin))return path==='/'?`${process.env.PORTAL_URL}/account`:null;
  if(current==='portal')return `${process.env.SITE_URL}${path}`;
  return null;
 }

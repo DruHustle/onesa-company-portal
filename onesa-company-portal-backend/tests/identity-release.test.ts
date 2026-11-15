@@ -292,6 +292,11 @@ test("Factory registration is explicit and writes only its own confidential bind
   await prepareIdentityRelease(["--environment", "production", "--initialize", "--include-factory", "--output", output]);
   const config = identityConfiguration(await json(join(output, "portal-issuer.env.json")), productionOrigins.portal)!;
   assert.equal(config.clients.length, 8);
+  const frontend = await json(join(output, "portal-frontend.env.json"));
+  assert.deepEqual(frontend, {
+    ONESA_IDENTITY_ENABLED: "true",
+    ONESA_IDENTITY_CALLBACKS_JSON: JSON.stringify(config.clients.map(item => item.redirectUri)),
+  });
   const client = config.clients.find(item => item.product === "factory")!;
   const env = await json(join(output, "factory.env.json"));
   assert.equal(env.ONESA_IDENTITY_REDIRECT_URI, callbacks.factory);

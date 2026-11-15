@@ -337,6 +337,63 @@ test("Protocol artifact custody is encrypted, bound, atomic and single-use", asy
   await adapter.revokeByGrantId("fixture-grant");
   assert.equal(await adapter.find(id), undefined);
 });
+test("shared email sign-in is single-use, account-bound, and preserves member and administrator roles", async () => {
+  const client = browser();
+  const requestLink = (email:string, returnTo?:string) => client.request({method:"POST",url:"/api/v1/account/email-link",payload:{email,returnTo}});
+  const tokenFor = async (email:string, expectedSearch="") => {
+    const job = (await db.query("SELECT payload FROM jobs WHERE payload->>'to'=$1 AND payload->>'subject'='Your Onesa account sign-in link' ORDER BY created_at DESC",[email])).rows[0];
+    const link = new URL(decrypt(job.payload.encryptedText).split("\n")[1]);
+    assert.equal(link.pathname,"/account"); assert.equal(link.search,expectedSearch);
+    return link.hash.slice("#signin-link=".length);
+  };
+  const redeem = (email:string,emailToken:string,code="") => client.request({method:"POST",url:"/api/v1/account/login",payload:{email,emailToken,code}});
+  assert.equal((await requestLink("absent@example.invalid")).statusCode,202);
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM jobs")).rows[0].n,0);
+  assert.equal((await requestLink(emails.member)).statusCode,202);
+  const raw=await tokenFor(emails.member);
+  const invalid = await redeem(emails.admin,raw);
+  const unknown = await redeem("absent@example.invalid",raw);
+  assert.equal(invalid.statusCode,401);
+  assert.equal(unknown.json().error.code,invalid.json().error.code);
+  const pair=await Promise.all([redeem(emails.member,raw),redeem(emails.member,raw)]);
+  assert.deepEqual(pair.map(x=>x.statusCode).sort(),[200,401]);
+  const accepted=pair.find(x=>x.statusCode===200)!;
+  assert.equal(accepted.json().account.portalAccess,false);
+  assert.equal(accepted.cookies.some(x=>x.name==="onesa_session" && x.value),false);
+  assert.equal((await client.request({url:"/api/v1/auth/me"})).statusCode,401);
+  assert.equal((await requestLink(emails.admin,"https://elsewhere.invalid")).statusCode,400);
+  assert.equal((await requestLink(emails.admin,"/admin")).statusCode,202);
+  const adminLink=await tokenFor(emails.admin,"?next=/admin");
+  assert.equal((await redeem(emails.admin,adminLink)).json().error.code,"MFA_REQUIRED");
+  assert.equal((await redeem(emails.admin,adminLink,await factor(ids.admin))).json().account.globalAdmin,true);
+});
+
+test("shared email proofs honour expiry, revocation and the original product interaction", async () => {
+  const client=browser(), flow=await authorization("member",0,client);
+  const ask=async(interactionId?:string)=>{
+    const res = interactionId ? await flow.request({method:"POST",url:"/api/v1/account/interaction/"+interactionId+"/email-link",payload:{email:emails.member,csrf:flow.details.csrf}})
+      : await client.request({method:"POST",url:"/api/v1/account/email-link",payload:{email:emails.member}});
+    assert.equal(res.statusCode,202);
+    const j=(await db.query("SELECT payload FROM jobs WHERE payload->>'to'=$1 ORDER BY created_at DESC LIMIT 1",[emails.member])).rows[0];
+    return new URL(decrypt(j.payload.encryptedText).split("\n")[1]);
+  };
+  const url = "/api/v1/account/interaction/" + flow.uid + "/email-link";
+  assert.equal((await flow.request({method:"POST",url,payload:{email:emails.member,csrf:"0".repeat(64)}})).statusCode,403);
+  assert.equal((await browser().request({method:"POST",url,payload:{email:emails.member,csrf:flow.details.csrf}})).statusCode,401);
+  const delivered=await ask(flow.uid), emailToken=delivered.hash.slice("#signin-link=".length);
+  assert.equal(delivered.searchParams.get("interaction"),flow.uid);
+  const accountLogin=(t:string)=>client.request({method:"POST",url:"/api/v1/account/login",payload:{email:emails.member,emailToken:t}});
+  assert.equal((await accountLogin(emailToken)).statusCode,401);
+  const bound=await flow.request({method:"POST",url:"/api/v1/account/interaction/"+flow.uid+"/login",payload:{csrf:flow.details.csrf,email:emails.member,emailToken}});
+  assert.equal(bound.statusCode,200);assert.match(bound.json().continuePath,/^\/api\/v1\/identity\/auth\//);
+  const expiring=(await ask()).hash.slice("#signin-link=".length);
+  await db.query("UPDATE identity_records SET expires_at=now()-interval '1 second' WHERE model='AccountEmailSignIn' AND id=$1",[hash(expiring)]);
+  assert.equal((await accountLogin(expiring)).statusCode,401);
+  const revoked=(await ask()).hash.slice("#signin-link=".length);
+  await db.query("UPDATE users SET disabled=true WHERE id=$1",[ids.member]);
+  await db.query("UPDATE users SET disabled=false WHERE id=$1",[ids.member]);
+  assert.equal((await accountLogin(revoked)).statusCode,401);
+});
 test("Registration verifies email once and grants no product or administrator authority", async () => {
   const client = browser(),
     email = "new-account@example.invalid";
