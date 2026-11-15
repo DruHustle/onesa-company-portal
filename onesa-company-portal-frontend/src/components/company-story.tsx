@@ -40,8 +40,8 @@ export function CompanyStory({ locale }: { locale: Locale }) {
         </p>
         <p>
           {de
-            ? "Onesa AI Robot ist eine separate Entwicklungslinie. Der heutige Schwerpunkt liegt auf geschützter Simulator-Software. Die Integration physischer Hardware ist ein weiterer Entwicklungsschritt."
-            : "Onesa AI Robot is a separate development line. Its current scope is protected simulator software. Physical hardware integration is a further development step."}
+            ? "Onesa Robot ist eine separate Entwicklungslinie. Der heutige Schwerpunkt liegt auf geschützter Simulator-Software. Die Integration physischer Hardware ist ein weiterer Entwicklungsschritt."
+            : "Onesa Robot is a separate development line. Its current scope is protected simulator software. Physical hardware integration is a further development step."}
         </p>
         <Link href={`/${locale}/products`}>
           {de

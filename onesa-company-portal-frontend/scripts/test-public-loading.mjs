@@ -68,7 +68,7 @@ function probe(origin, path, {rsc = false} = {}) {
       response.on('data', chunk => {
         html += chunk;
         if (headingAt === undefined && /<h1[ >]/.test(html)) headingAt = performance.now() - start;
-        if (productsAt === undefined && html.includes('<h2 id="product-ai">Onesa AI Platform</h2>') && html.includes('<h2 id="product-robot">Onesa AI Robot</h2>') && html.includes('href="https://docs.onesa.eu/docs/public/ai-platform"') && html.includes('href="https://docs.onesa.eu/docs/public/robot"')) productsAt = performance.now()-start;
+        if (productsAt === undefined && html.includes('<h2 id="product-ai">Onesa AI Platform</h2>') && html.includes('<h2 id="product-robot">Onesa Robot</h2>') && html.includes('href="https://docs.onesa.eu/docs/public/ai-platform"') && html.includes('href="https://docs.onesa.eu/docs/public/robot"')) productsAt = performance.now()-start;
         if (principalAt === undefined && /Synthetic (en|de) (product|article|research|job)/.test(html)) principalAt = performance.now() - start;
       });
       response.on('end', () => resolve({html, headingAt, principalAt, productsAt, total: performance.now()-start,
@@ -115,7 +115,7 @@ function report(label, page) {
 }
 function productOverview(page) {
   assert.match(page.html,/<h2 id="product-ai">Onesa AI Platform<\/h2>/);
-  assert.match(page.html,/<h2 id="product-robot">Onesa AI Robot<\/h2>/);
+  assert.match(page.html,/<h2 id="product-robot">Onesa Robot<\/h2>/);
   for(const path of ['ai-platform','robot']) assert.ok(page.html.includes(`href="https://docs.onesa.eu/docs/public/${path}"`),'Each product links to its exact public documentation');
   assert.ok(page.productsAt<800,`Product information must arrive before optional CMS reads: ${page.productsAt}ms`);
   assert.doesNotMatch(page.html,/Content service is temporarily unavailable|Der Inhaltsdienst ist vorübergehend nicht verfügbar|Product entries are awaiting editorial approval|Produkteinträge warten auf redaktionelle Freigabe/,'Product information remains available during CMS failure');
@@ -242,7 +242,7 @@ try {
       const control=await browser.newPage();
       try {
         const pathname=await control.evaluate(()=>location.pathname);
-        const h1='<main><h1>Products</h1>',ai='<h2 id="product-ai">Onesa AI Platform</h2>',robot='<h2 id="product-robot">Onesa AI Robot</h2>';
+        const h1='<main><h1>Products</h1>',ai='<h2 id="product-ai">Onesa AI Platform</h2>',robot='<h2 id="product-robot">Onesa Robot</h2>';
         const docs='<a href="https://docs.onesa.eu/docs/public/ai-platform">AI docs</a><a href="https://docs.onesa.eu/docs/public/robot">Robot docs</a>';
         for(const [html,ready] of [[h1,false],[h1+ai,false],[h1+ai+robot,false],[h1+ai+robot+docs,true],[h1+ai+robot.replace('<h2 ','<h2 hidden ')+docs,false],[h1+ai+robot+docs+docs,false],[h1+'<h1>Duplicate</h1>'+ai+robot+docs,false],[h1+ai+robot.replace('<h2 ','<h2 aria-hidden="true" ')+docs,false]]){
           await control.setContent(html+'</main>');
