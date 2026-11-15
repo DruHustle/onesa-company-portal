@@ -7,6 +7,7 @@ name: Portal verification
     - main
     - staging
     - dev
+    - fix/portal-identity-fallback-smoke-20261115
   pull_request:
     branches:
     - main
