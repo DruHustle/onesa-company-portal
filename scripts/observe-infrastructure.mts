@@ -33,12 +33,17 @@ async function readPublicProbe(url: string) {
 
 function probeAvailable(id: string, data: Record<string, unknown> | null) {
   switch (id) {
-    case "identity":
-      return data?.issuer === "https://auth.onesa.eu/" &&
+    case "identity": {
+      const issuerOrigin = "https://auth.onesa.eu";
+      return data?.issuer === issuerOrigin + "/" &&
         ["authorization_endpoint", "token_endpoint", "jwks_uri"].every(key => {
           const value = data[key];
-          return typeof value === "string" && URL.canParse(value) && new URL(value).protocol === "https:";
+          if (typeof value !== "string" || !URL.canParse(value)) return false;
+          const endpoint = new URL(value);
+          return endpoint.protocol === "https:" && endpoint.origin === issuerOrigin &&
+            !endpoint.username && !endpoint.password && !endpoint.hash;
         });
+    }
     case "public-documents":
       return data?.classification === "public" && typeof data?.documentation_version === "string" &&
         typeof data?.code_sha256 === "string" && /^[a-f0-9]{64}$/.test(data.code_sha256);
