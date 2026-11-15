@@ -26,7 +26,7 @@ function accessAction(subject:string, text:string, origin?:string){
     (registration ? url.pathname==='/access/confirm' : url.pathname==='/admin'||/^\/engineering\/sign-in\/[A-Za-z0-9_-]{1,256}$/.test(url.pathname));
   const canonical=/^#access-link=[a-f0-9]{64}$/.test(url.hash) &&
     (registration ? url.pathname==='/account/confirm' && url.search==='?approval=1'
-      : url.pathname==='/account' && (url.search==='?next=/admin'||/^\?docs=[A-Za-z0-9_-]{8,128}$/.test(url.search)));
+      : (url.pathname==='/account'||url.pathname==='/admin') && (url.search==='?next=/admin'||/^\?docs=[A-Za-z0-9_-]{8,128}$/.test(url.search)));
   if(!legacy&&!canonical)return null;
   return {url:lines[1],label:profiles[subject].action!,instructions:lines.slice(2).join('\n')};
  }catch{return null;}

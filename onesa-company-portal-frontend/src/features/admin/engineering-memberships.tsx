@@ -79,7 +79,7 @@ export function EngineeringMemberships() {
         approved external members can be retained.
       </p>
       <p>
-        <a href="https://docs.engineering.onesa.eu/">Open protected Engineering Docs ↗</a>. First update the exact-email Docs access policy using the protected
+        {process.env.NEXT_PUBLIC_INTERNAL_DOCUMENTS_CANONICAL === "true" && <a href="https://docs.internal.onesa.eu/">Open Internal Documents ↗</a>} First update the exact-email Docs access policy using the protected
         onboarding procedure. Record its verification reference here. A
         membership alone cannot bypass that policy. Disabling membership
         prevents new Portal sign-ins; revoke existing Docs access sessions
