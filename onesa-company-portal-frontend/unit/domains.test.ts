@@ -100,3 +100,10 @@ test('Engineering sign-in belongs to Portal while company links preserve its saf
 test('Registration stays on Portal and does not create a public Company account route',()=>{
  configure();assert.equal(routeDestination('https://onesa.eu','/access/register'),'https://portal.onesa.eu/access/register');assert.equal(routeDestination('https://portal.onesa.eu','/access/confirm'),null);assert.equal(routeDestination('https://portal.onesa.eu','/access/register'),null);
 });
+
+test('Portal sign-in, password recovery and registration remain on the Portal host',()=>{
+ configure();
+ for(const path of ['/account','/account/register','/account/security','/admin'])assert.equal(routeDestination('https://portal.onesa.eu',path),null,`${path} must be served by the Portal host`);
+ for(const path of ['/account','/account/register','/account/security','/access/register'])assert.equal(routeDestination('https://onesa.eu',path),`https://portal.onesa.eu${path}`,`${path} must not land on the public Company site`);
+ assert.equal(routeDestination('https://portal.onesa.eu','/'), 'https://portal.onesa.eu/account');
+});
