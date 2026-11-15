@@ -23,6 +23,25 @@ function expectedAppearance(mode: 'dark' | 'light') {
     : {scheme: mode, background: 'rgb(255, 255, 255)', text: 'rgb(16, 38, 62)'};
 }
 
+test('products page lists all eight mobile release statuses without invented store links', async ({page}) => {
+  for (const locale of ['en', 'de'] as const) {
+    await page.setViewportSize({width: 390, height: 844});
+    await page.goto(`/${locale}/products`);
+    const directory = page.locator('#mobile-apps');
+    await expect(directory.locator('li')).toHaveCount(8);
+    for (const product of ['Onesa AI Platform', 'Onesa Robot', 'Onesa Drone', 'Smart Farmer',
+      'Smart Logistics', 'Smart Factory', 'Onesa Mobile', 'PasoFi']) {
+      const row = directory.locator('li').filter({has: page.getByRole('heading', {name: product, exact: true})});
+      await expect(row).toHaveCount(1);
+      await expect(row).toContainText('iOS');
+      await expect(row).toContainText('Android');
+      await expect(row).toContainText(locale === 'de' ? 'Noch nicht verfügbar' : 'Not yet available');
+      await expect(row.locator('a[aria-label*="App Store"], a[aria-label*="Google Play"]')).toHaveCount(0);
+    }
+    await expect(directory.getByRole('heading', {name: 'Smart Farmer'}).locator('a')).toHaveCount(0);
+  }
+});
+
 test('canonical homepage switches between EN and DE', async ({page}) => {
   await page.goto('/');
   await switchLanguage(page, 'de');
