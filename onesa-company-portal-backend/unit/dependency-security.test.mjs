@@ -100,7 +100,7 @@ test("actual ESLint includes nested and dot files, preserves ignores and reports
 
 test("TypeScript ESTree receives native fixed named exports, separate from the callable adapter", async () => {
   const consumer = fromConsumer("@typescript-eslint/typescript-estree");
-  assert.equal(consumer("./package.json").version, "8.71.1");
+  assert.equal(consumer("./package.json").version, "8.72.1");
   const packageFile = consumer.resolve("minimatch/package.json");
   assert.equal(consumer("minimatch/package.json").name, "minimatch");
   assert.equal(consumer("minimatch/package.json").version, "11.0.1");
