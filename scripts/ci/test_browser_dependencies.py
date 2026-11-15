@@ -177,6 +177,38 @@ class BrowserDependenciesTests(unittest.TestCase):
             )
             self.assertEqual(browser.prepare(root)["mirror_URIs_updated"], 0)
 
+    def test_dns_outage_adds_one_exact_https_transport_and_preserves_ubuntu_trust(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            apt, source = self.fixture(root)
+            text = "URIs: mirror+file:/etc/apt/apt-mirrors.txt\nSuites: noble noble-security\nSigned-By: /keys/ubuntu.gpg\n"
+            source.write_text(text)
+            mirrors = apt / "apt-mirrors.txt"
+            original = "https://archive.ubuntu.com/ubuntu/ priority:2\nhttps://security.ubuntu.com/ubuntu/ priority:3\n"
+            mirrors.write_text(original)
+            self.assertEqual(browser.prepare(root)["mirror_URIs_updated"], 0)
+            self.assertEqual(browser.prepare(root, archive_dns_unavailable=True)["mirror_URIs_updated"], 1)
+            self.assertEqual(mirrors.read_text(), browser.UBUNTU_FALLBACK + original)
+            self.assertEqual(browser.prepare(root, archive_dns_unavailable=True)["mirror_URIs_updated"], 0)
+            self.assertEqual(source.read_text(), text)
+        for replacement in ["http:", "https://unrelated.test", "https://user@mirrors.edge.kernel.org"]:
+            bad = browser.UBUNTU_FALLBACK.replace("https://mirrors.edge.kernel.org", replacement)
+            with self.subTest(replacement=replacement), self.assertRaises(ValueError):
+                browser.rewrite_mirror_list(bad + original, archive_dns_unavailable=True)
+
+    def test_dns_fallback_only_if_both_archives_fail_resolution(self):
+        with patch.object(browser.subprocess, "run") as lookup:
+            lookup.return_value.returncode = 2
+            self.assertTrue(browser.ubuntu_archive_dns_unavailable())
+            self.assertEqual(lookup.call_count, 2)
+            lookup.reset_mock()
+            lookup.return_value.returncode = 0
+            self.assertFalse(browser.ubuntu_archive_dns_unavailable())
+            self.assertEqual(lookup.call_count, 1)
+            lookup.return_value.returncode = 1
+            with self.assertRaises(ValueError):
+                browser.ubuntu_archive_dns_unavailable()
+
     def test_mirror_list_rejects_custom_entries_or_missing_canonical_archive(self):
         for text in [
             "http://azure.archive.ubuntu.com/ubuntu/ priority:1\n",

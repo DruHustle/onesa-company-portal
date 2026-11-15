@@ -36,7 +36,7 @@ function account(admin = false) {
   return { id: accountId, email: "synthetic-member@example.test", name: "Synthetic Onesa Member", globalAdmin: admin, owner: admin, portalAccess: admin, emailVerified: true, mfaEnrolled: true };
 }
 function catalog(connected = ["ai", "drone", "robot"]) {
-  return Object.entries({ai: "Onesa AI", drone: "Onesa Drone", robot: "Onesa Robot", farmer: "Smart Farmer", logistics: "Smart Logistics", factory: "Smart Factory", pasofi: "PasoFi", mobile: "Onesa Mobile"})
+  return Object.entries({ai: "Onesa AI Platform", drone: "Onesa Drone", robot: "Onesa Robot", farmer: "Smart Farmer", logistics: "Smart Logistics", factory: "Smart Factory", pasofi: "Pasofi", mobile: "Onesa Mobile"})
     .map(([product, name]) => ({product, name, connected: connected.includes(product)}));
 }
 function session(admin = false) {
@@ -51,7 +51,7 @@ function session(admin = false) {
   };
 }
 function directory() {
-  return { items: [{ account: { ...account(), id: memberId, name: "Synthetic Applicant", email: "synthetic-applicant@example.test" }, access: [{ product: "drone", role: "viewer", status: "pending", revision: 4 }], memberships: [] }], page: 1, hasMore: false };
+  return { items: [{ account: { ...account(), id: memberId, name: "Synthetic Applicant", email: "synthetic-applicant@example.test" }, disabled: false, access: [{ product: "drone", role: "viewer", status: "pending", revision: 4 }], memberships: [] }], page: 1, hasMore: false };
 }
 const api = http.createServer(async (req, res) => {
   res.setHeader("content-type", "application/json");
@@ -73,7 +73,15 @@ const api = http.createServer(async (req, res) => {
     const input = raw ? JSON.parse(raw) : null;
     if (req.method !== "GET") state.writes.push({ path, method: req.method, input, csrf: req.headers["x-csrf-token"] });
     if (state.gate && path === state.gate.path) await state.gate.promise;
+    if (path === "/api/v1/account/config" && state.configMissing) return fail(404, "NOT_FOUND", "Route not found");
     if (path === "/api/v1/account/config") return send(200, { enabled: state.enabled !== false, applications: (state.catalog || catalog()).filter(item => item.connected).map(({product}) => ({product})), ...(state.legacyCatalog ? {} : {catalog: state.catalog || catalog()}) });
+    if (path === "/api/v1/auth/me") return fail(401, "UNAUTHENTICATED", "Protected staff session required");
+    if (path === "/api/v1/access/link" || path === "/api/v1/account/email-link") return send(202, {ok:true});
+    if (path === "/api/v1/access/link/verify") {
+      assert.equal(input.token, proof);
+      if (input.code !== "123456") return fail(401, "MFA_REQUIRED", "Enter your authenticator or recovery code.");
+      state.staffProofVerified = true; return send(200, {user: {id:accountId, role:"owner"}, csrf});
+    }
     if (path === "/api/v1/account/me") return state.session ? send(200, state.session) : fail(401, "UNAUTHENTICATED", "Sign in required");
     if (path === "/api/v1/account/register") return send(202, { ok: true });
     if (path === "/api/v1/account/confirm") {
@@ -85,7 +93,7 @@ const api = http.createServer(async (req, res) => {
       if (state.loginError) return fail(state.loginError.status || 403, state.loginError.code, state.loginError.message);
       if (state.enrollmentRequired) return fail(403, "MFA_ENROLLMENT_REQUIRED", "Set up your authenticator to continue.");
       if (state.mfa && input.code !== "123456") return fail(401, "MFA_REQUIRED", "Enter your authenticator or recovery code.");
-      state.session = session(); return send(200, state.session);
+      state.session = session(state.sharedEmailAdmin === true); return send(200, state.session);
     }
     if (path === "/api/v1/auth/mfa/enroll") {
       assert.equal(input.password, password);
@@ -118,12 +126,13 @@ const api = http.createServer(async (req, res) => {
       assert.equal(input.token, proof); return send(200, { ok: true });
     }
     if (path === "/api/v1/admin/identity/accounts") return send(200, state.directory || directory());
-    if (/^\/api\/v1\/admin\/identity\/accounts\/[a-f0-9-]+\/(products\/(ai|drone|robot)|administrator)$/.test(path)) {
+    if (/^\/api\/v1\/admin\/identity\/accounts\/[a-f0-9-]+\/(products\/(ai|drone|robot)|administrator|member-status)$/.test(path)) {
       assert.equal(req.headers["x-csrf-token"], csrf);
       assert.deepEqual(input.stepUp, { password, code: "123456" });
       if (state.grantError) return fail(409, "REVISION", "Access changed. Reload this account and review it again.");
       const record = (state.directory ||= directory()).items[0];
-      if (path.endsWith("/administrator")) record.account.globalAdmin = input.administrator;
+      if (path.endsWith("/member-status")) record.disabled = input.disabled;
+      else if (path.endsWith("/administrator")) record.account.globalAdmin = input.administrator;
       else { record.access = [{ product: path.split("/").at(-1), role: input.role, status: input.status, revision: input.expectedRevision + 1 }]; record.memberships = input.memberships; }
       return send(200, { ok: true });
     }
@@ -224,7 +233,7 @@ async function signInFields(page) {
 
 try {
   child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "-p", String(port)], {
-    env: { PATH: process.env.PATH, NODE_ENV: "production", PUBLIC_ORIGIN: origin, SITE_URL: origin, BACKEND_URL: "http://127.0.0.1:" + apiPort, PROXY_SHARED_KEY: proxyKey, ONESA_IDENTITY_ENABLED: "true", ACCESS_REGISTRATION_ENABLED: "true", NEXT_TELEMETRY_DISABLED: "1", AWS_EC2_METADATA_DISABLED: "true" },
+    env: { PATH: process.env.PATH, NODE_ENV: "production", PUBLIC_ORIGIN: origin, SITE_URL: origin, BACKEND_URL: "http://127.0.0.1:" + apiPort, PROXY_SHARED_KEY: proxyKey, ONESA_IDENTITY_ENABLED: "true", ACCESS_REGISTRATION_ENABLED: "true", ENGINEERING_SIGNIN_ENABLED: "true", NEXT_TELEMETRY_DISABLED: "1", AWS_EC2_METADATA_DISABLED: "true" },
     stdio: ["ignore", "pipe", "pipe"],
   });
   let startup = "";
@@ -252,16 +261,14 @@ try {
     });
     let matrix = 0;
     for (const language of ["en", "de"]) for (const width of [320, 1280]) {
-      const products = ["Onesa AI", "Onesa Drone", "Onesa Robot"].slice(0, ++matrix % 3 + 1);
+      const products = ["Onesa AI Platform", "Onesa Drone", "Onesa Robot"].slice(0, ++matrix % 3 + 1);
       await isolated({ language, width }, async (page, state, t) => {
         await page.goto(origin + "/account/register");
         await expect(page.getByRole("heading", { name: t.register })).toBeVisible();
         await page.getByLabel(t.name, { exact: true }).fill("Synthetic Onesa Member");
         await page.getByLabel(t.email, { exact: true }).fill("synthetic-member@example.test");
-        await page.getByRole("button", { name: t.submit, exact: true }).click();
-        await expect(page.getByRole("main").getByRole("alert")).toHaveText(t.choose); assert.equal(state.writes.length, 0);
         for (const product of products) await page.getByRole("checkbox", { name: product, exact: true }).check();
-        for (const name of ["Onesa AI", "Onesa Drone", "Onesa Robot"]) {
+        for (const name of ["Onesa AI Platform", "Onesa Drone", "Onesa Robot"]) {
           const geometry = await page.getByRole("checkbox", { name, exact: true }).evaluate(input => {
             const box = input.getBoundingClientRect(), label = input.parentElement.getBoundingClientRect(), text = input.parentElement.querySelector("span").getBoundingClientRect();
             return { targetHeight: label.height, alongside: text.left >= box.right, aligned: Math.abs(text.top + text.height / 2 - box.top - box.height / 2) <= 2 };
@@ -285,10 +292,10 @@ try {
         await page.goto(origin + "/account");
         await expect(page.getByRole("heading", { name: t.title, exact: true })).toBeVisible();
         const product = name => page.getByRole("article").filter({ has: page.getByRole("heading", { name, exact: true }) });
-        await expect(product("Onesa AI").getByRole("link", { name: t.open })).toHaveAttribute("href", "https://ai.example.test/");
+        await expect(product("Onesa AI Platform").getByRole("link", { name: t.open })).toHaveAttribute("href", "https://ai.example.test/");
         await expect(product("Onesa Drone").getByRole("button", { name: t.pending, exact: true })).toBeDisabled();
         await expect(product("Onesa Robot")).toContainText(t.denied);
-        for (const future of ["Smart Farmer", "Smart Logistics", "Smart Factory", "PasoFi", "Onesa Mobile"]) {
+        for (const future of ["Smart Farmer", "Smart Logistics", "Smart Factory", "Pasofi", "Onesa Mobile"]) {
           await expect(product(future)).toContainText(language === "de" ? "Noch nicht verbunden" : "Not connected");
           await expect(product(future).getByRole("link")).toHaveCount(0);
           await expect(product(future).getByRole("button")).toHaveCount(0);
@@ -327,9 +334,9 @@ try {
     });
     await isolated({catalog: catalog(["robot"])}, async (page, state) => {
       await page.goto(origin + "/account/register");
-      await expect(page.getByRole("checkbox", {name: /Onesa AI/})).toBeDisabled();
+      await expect(page.getByRole("checkbox", {name: /Onesa AI Platform/})).toBeDisabled();
       await expect(page.getByRole("checkbox", {name: /Onesa Drone/})).toBeDisabled();
-      await expect(page.getByRole("checkbox", {name: /Farmer|Logistics|Factory|PasoFi|Mobile/})).toHaveCount(0);
+      await expect(page.getByRole("checkbox", {name: /Farmer|Logistics|Factory|Pasofi|Mobile/})).toHaveCount(0);
       await page.getByLabel("Your name", {exact: true}).fill("Synthetic Robot Member");
       await page.getByLabel("Email address", {exact: true}).fill("synthetic-robot@example.test");
       await page.getByRole("checkbox", {name: "Onesa Robot", exact: true}).check();
@@ -418,9 +425,185 @@ try {
       await expect(page.getByLabel("Password", {exact: true})).toHaveValue("");
       receipts.push({engine, flow: "sso-proof-rejects-repeat-password-without-submission"});
     });
+    await isolated({ existingAccount: true }, async (page, state) => {
+      const uid = "synthetic_proof_account_switch", entry = origin + "/account?interaction=" + uid;
+      const recipient = "synthetic-recipient@example.test";
+      await page.goto(entry);
+      await expect(page.getByRole("button", {name: "Continue as synthetic-member@example.test"})).toBeVisible();
+      const email = page.getByLabel("Email address", {exact: true});
+      await email.fill("synthetic-member@example.test");
+      await page.goto(entry + "#signin-link=" + proof);
+      await expect(page.getByRole("button", {name: "Confirm sign-in", exact: true})).toBeVisible();
+      await expect(page.getByRole("button", {name: /^Continue as/})).toHaveCount(0);
+      await expect(email).toHaveValue("");
+      await expect(page).toHaveURL(entry);
+      assert.equal(state.writes.length, 0);
+      await email.fill(recipient);
+      await page.getByRole("button", {name: "Confirm sign-in", exact: true}).click();
+      await expect(page.getByRole("heading", {name: "Synthetic product continuation", exact: true})).toBeVisible();
+      assert.equal(state.writes.length, 1);
+      const [attempt] = state.writes;
+      assert.equal(attempt.path, "/api/v1/account/interaction/" + uid + "/login");
+      assert.equal(attempt.input.email, recipient);
+      assert.equal(attempt.input.emailToken, proof);
+      assert.equal(attempt.input.csrf, csrf);
+      assert.equal("password" in attempt.input, false);
+      receipts.push({engine, flow: "product-email-proof-confirmed-for-recipient-with-another-active-account"});
+    });
+    await isolated({session: session(true)}, async (page,state) => {
+      await page.goto(origin+"/account#signin-link="+proof);
+      await expect(page).toHaveURL(origin+"/account");
+      await expect(page.getByLabel("Password",{exact:true})).toHaveCount(0);
+      await expect(page.getByRole("button",{name:"Confirm sign-in",exact:true})).toBeVisible();
+      await page.getByLabel("Email address",{exact:true}).fill("synthetic-member@example.test");
+      await page.getByRole("button",{name:"Confirm sign-in",exact:true}).click();
+      await expect(page.getByRole("heading",{name:"Your applications"})).toBeVisible();
+      const submitted=state.writes.find(item=>item.path==="/api/v1/account/login");
+      assert.equal(submitted.input.emailToken,proof);assert.equal("password" in submitted.input,false);
+      receipts.push({engine,flow:"ordinary-email-proof-enters-shared-account-without-admin-mfa"});
+    });
+    await isolated({mfa: true, sharedEmailAdmin: true}, async (page, state) => {
+      await page.goto(origin + "/admin?next=/admin#signin-link=" + proof);
+      const directoryRequests = [];
+      page.on("request", request => {
+        if (new URL(request.url()).pathname === "/api/v1/admin/identity/accounts") directoryRequests.push(request.method());
+      });
+      const confirm = page.getByRole("button", {name: "Confirm sign-in", exact: true});
+      await expect(confirm).toBeVisible();
+      await page.getByLabel("Email address", {exact: true}).fill("synthetic-staff@example.test");
+      await confirm.click();
+      await page.getByLabel("Authenticator or recovery code", {exact: true}).fill("123456");
+      await page.route(origin + "/admin", route => route.fulfill({contentType: "text/html", body: "<html lang=en><h1>Synthetic staff destination</h1></html>"}));
+      await confirm.click();
+      await expect(page.getByRole("heading", {name: "Synthetic staff destination"})).toBeVisible();
+      const attempts = state.writes.filter(item => item.path === "/api/v1/account/login");
+      assert.equal(attempts.length, 2);
+      assert.ok(attempts.every(item => item.input.emailToken === proof && !("password" in item.input)));
+      assert.equal(attempts[1].input.code, "123456");
+      assert.deepEqual(directoryRequests, [], "The departing sign-in page must not load the staff account directory.");
+      receipts.push({engine, flow: "shared-email-admin-requires-mfa-before-staff-destination"});
+    });
+    await isolated({}, async (page, state) => {
+      await page.goto(origin + "/admin");
+      await expect(page).toHaveURL(origin + "/account?next=/admin");
+      await expect(page.getByRole("heading", {name:"Sign in to Onesa", exact:true})).toBeVisible();
+      await expect(page.getByLabel("Password", {exact:true})).toBeEnabled();
+      await expect(page.getByRole("link", {name:"New to Onesa? Create one account"})).toHaveAttribute("href", "/account/register");
+      await page.getByRole("button", {name:"Email a sign-in link", exact:true}).click();
+      await page.getByLabel("Email address", {exact:true}).fill("synthetic-staff@example.test");
+      await page.getByRole("button", {name:"Send sign-in link", exact:true}).click();
+      await expect(page.getByRole("status")).toContainText("If your account is eligible");
+      assert.deepEqual(state.writes.find(item=>item.path==="/api/v1/account/email-link")?.input, {email:"synthetic-staff@example.test",returnTo:"/admin"});
+      await page.goto(origin + "/admin#access-link=" + proof);
+      await expect(page).toHaveURL(origin + "/account?next=/admin");
+      expect(state.writes.filter(item => item.path.endsWith("/verify")).length).toBe(0);
+      await page.getByRole("button", {name:"Confirm sign-in link", exact:true}).click();
+      await page.getByLabel("Authenticator or recovery code", {exact:true}).fill("123456");
+      await page.route(origin + "/admin", route => route.fulfill({contentType:"text/html", body:"<html lang=en><h1>Synthetic staff destination</h1></html>"}));
+      await page.getByRole("button", {name:"Sign in", exact:true}).click();
+      await expect(page.getByRole("heading", {name:"Synthetic staff destination"})).toBeVisible();
+      assert.equal(state.staffProofVerified, true);
+      receipts.push({engine, flow:"canonical-staff-password-signup-and-existing-mail-link-with-MFA"});
+    });
     const docsReturn = "/engineering/sign-in/synthetic_central_return";
+    const canonicalDocs = "/account?docs=synthetic_central_return";
+    const onesaSignInPath = "/account?returnTo=" + encodeURIComponent(docsReturn);
+    async function docsFixture(page, state) {
+      await page.route(origin + docsReturn + "/details", route => route.fulfill({json: {
+        csrf: proof,
+        onesaSignInPath,
+        ...(state.session ? {onesaAccount: {email: state.session.account.email}} : {}),
+      }}));
+      await page.route(origin + docsReturn + "/session", route => {
+        assert.equal(route.request().postDataJSON().csrf, proof);
+        return route.fulfill({json: {continuePath: "/api/v1/engineering-identity/auth/synthetic_central_return"}});
+      });
+      await page.route("**/api/v1/engineering-identity/auth/synthetic_central_return", route => route.fulfill({contentType: "text/html", body: "<html lang=en><h1>Synthetic Docs continuation</h1></html>"}));
+    }
+    await isolated({}, async (page, state) => {
+      await docsFixture(page, state);
+      const sent = [], confirmations = [];
+      await page.route(origin + docsReturn + "/account-email-link", route => {
+        sent.push(route.request().postDataJSON()); return route.fulfill({status: 202, json: {ok: true}});
+      });
+      await page.route(origin + docsReturn + "/account-email-login", route => {
+        confirmations.push(route.request().postDataJSON()); state.session = session();
+        return route.fulfill({json: {ok: true}});
+      });
+      await page.goto(origin + canonicalDocs);
+      await page.getByRole("button", {name: "Email a sign-in link", exact: true}).click();
+      await page.getByLabel("Email address", {exact: true}).fill("synthetic-member@example.test");
+      await page.getByRole("button", {name: "Send sign-in link", exact: true}).click();
+      await expect(page.getByRole("status")).toContainText("If your account is eligible");
+      assert.deepEqual(sent, [{email: "synthetic-member@example.test", csrf: proof}]);
+      await page.goto(origin + canonicalDocs + "#signin-link=" + proof);
+      await page.getByLabel("Email address", {exact: true}).fill("synthetic-member@example.test");
+      await page.getByRole("button", {name: "Confirm sign-in", exact: true}).click();
+      await expect(page.getByRole("button", {name: "Continue with Onesa", exact: true})).toBeVisible();
+      assert.equal(confirmations.length, 1); assert.equal(confirmations[0].csrf, proof);
+      assert.equal(confirmations[0].emailToken, proof);
+      await page.getByRole("button", {name: "Continue with Onesa", exact: true}).click();
+      await expect(page.getByRole("heading", {name: "Synthetic Docs continuation"})).toBeVisible();
+      receipts.push({engine, flow: "shared-email-docs-returns-to-original-protected-document-interaction"});
+    });
+    await isolated({}, async (page, state) => {
+      await docsFixture(page, state);
+      await page.goto(origin + docsReturn);
+      await expect(page).toHaveURL(origin + canonicalDocs);
+      await expect(page.getByRole("heading", {name: "Sign in to Onesa", exact: true})).toBeVisible();
+      await expect(page.getByText("Sign in to Engineering Docs", {exact: true})).toHaveCount(0);
+      await page.getByRole("link", {name: "New to Onesa? Create one account"}).click();
+      await expect(page).toHaveURL(origin + "/account/register?docs=synthetic_central_return");
+      await page.getByLabel("Your name", {exact:true}).fill("Synthetic Docs Member");
+      await page.getByLabel("Email address", {exact:true}).fill("synthetic-docs@example.test");
+      await page.getByRole("button", {name:"Email my verification link"}).click();
+      await expect(page.getByRole("status")).toContainText("Check your email");
+      assert.deepEqual(state.writes[0].input.products, []);
+      await page.goto(origin + "/account/confirm#access-link=" + proof);
+      await page.getByLabel("Password", {exact:true}).fill(password);
+      await page.getByLabel("Confirm password", {exact:true}).fill(password);
+      await page.getByRole("button", {name:"Verify your email"}).click();
+      await expect(page.getByRole("link", {name: "Already registered? Sign in"})).toHaveAttribute("href", canonicalDocs);
+      receipts.push({engine, flow: "old-docs-entry-shares-account-signup-and-verification-return"});
+    });
+    await isolated({session:session()}, async (page, state) => {
+      let membership = "available", enrollmentRequests = 0, continuations = 0;
+      await page.route(origin + docsReturn + "/details", route => route.fulfill({json: {csrf:proof, onesaSignInPath, ...(membership === "approved" ? {onesaAccount:{email:state.session.account.email}} : {onesaEnrollment:membership})}}));
+      await page.route(origin + docsReturn + "/enroll", route => {
+        assert.deepEqual(route.request().postDataJSON(), {csrf:proof});
+        membership = "pending"; enrollmentRequests++;
+        return route.fulfill({json:{status:"pending"}});
+      });
+      await page.route(origin + docsReturn + "/session", route => {
+        assert.equal(membership, "approved"); continuations++;
+        return route.fulfill({json:{continuePath:"/api/v1/engineering-identity/auth/synthetic_central_return"}});
+      });
+      await page.route("**/api/v1/engineering-identity/auth/synthetic_central_return", route => route.fulfill({contentType:"text/html", body:"<html lang=en><h1>Synthetic Docs continuation</h1></html>"}));
+      await page.goto(origin + docsReturn);
+      await expect(page).toHaveURL(origin + canonicalDocs);
+      await page.getByRole("button", {name:"Use my Onesa account for Docs"}).click();
+      await expect(page.getByRole("status")).toContainText("owner is reviewing");
+      assert.equal(enrollmentRequests, 1); assert.equal(continuations, 0);
+      membership = "approved"; // Independent owner decision in this isolated API fixture.
+      await page.reload();
+      await expect(page.getByLabel("Password", {exact:true})).toHaveCount(0);
+      await page.getByRole("button", {name:"Continue with Onesa",exact:true}).click();
+      await expect(page.getByRole("heading", {name:"Synthetic Docs continuation"})).toBeVisible();
+      assert.equal(continuations, 1); assert.equal(state.writes.length, 0);
+      receipts.push({engine, flow:"ordinary-member-requests-Docs-and-continues-after-owner-approval"});
+    });
+    await isolated({session:session()}, async (page, state) => {
+      await page.route(origin + docsReturn + "/details", route => route.fulfill({json: {csrf:proof, onesaSignInPath}}));
+      await page.goto(origin + docsReturn);
+      await expect(page.getByRole("status")).toContainText("Engineering Docs access is unavailable");
+      await expect(page.getByLabel("Password", {exact:true})).toHaveCount(0);
+      await page.getByRole("link", {name:"Use another account"}).click();
+      await expect(page.getByLabel("Password", {exact:true})).toBeEnabled();
+      assert.equal(state.writes.length, 0);
+      receipts.push({engine, flow:"denied-Docs-session-explained-without-credential-loop"});
+    });
     for (const fresh of [false, true]) await isolated({session: session(), mfa: true}, async (page, state) => {
-      await page.route(origin + docsReturn, route => route.fulfill({status: 200, contentType: "text/html", body: "<!doctype html><html lang=en><title>Synthetic Docs interaction</title><h1>Synthetic Docs interaction</h1></html>"}));
+      await docsFixture(page, state);
       await page.goto(origin + "/account?returnTo=" + encodeURIComponent(docsReturn) + (fresh ? "&reauthenticate=1" : ""));
       if (fresh) {
         await expect(page.getByRole("heading", {name: "Sign in to Onesa", exact: true})).toBeVisible();
@@ -429,18 +612,17 @@ try {
         await expect(page.getByLabel("Authenticator or recovery code", {exact: true})).toBeVisible();
         await page.getByLabel("Authenticator or recovery code", {exact: true}).fill("123456");
         await page.getByRole("button", {name: "Continue", exact: true}).click();
-      } else {
-        await expect(page.getByRole("link", {name: "Continue to Engineering Docs", exact: true})).toHaveAttribute("href", docsReturn);
-        await page.getByRole("link", {name: "Continue to Engineering Docs", exact: true}).click();
       }
-      await expect(page).toHaveURL(origin + docsReturn);
+      await expect(page).toHaveURL(origin + canonicalDocs);
+      await page.getByRole("button", {name: "Continue with Onesa", exact: true}).click();
+      await expect(page.getByRole("heading", {name:"Synthetic Docs continuation"})).toBeVisible();
       assert.equal(state.writes.length, fresh ? 2 : 0);
       if (fresh) assert.equal(state.writes.at(-1).input.code, "123456");
       receipts.push({engine, flow: fresh ? "docs-fresh-central-mfa-return" : "docs-central-return-without-new-password"});
     });
     await isolated({enrollmentRequired: true}, async (page, state) => {
       const gateway = "/account?returnTo=" + encodeURIComponent(docsReturn) + "&reauthenticate=1";
-      await page.route(origin + docsReturn, route => route.fulfill({status: 200, contentType: "text/html", body: "<!doctype html><html lang=en><title>Synthetic Docs interaction</title><h1>Synthetic Docs interaction</h1></html>"}));
+      await docsFixture(page, state);
       await page.goto(origin + gateway);
       await signInFields(page);
       await page.getByRole("button", {name: "Continue", exact: true}).click();
@@ -458,12 +640,12 @@ try {
       assert.equal(Boolean(state.session), false, "Enrollment must not create an authenticated session");
       await page.getByLabel("I have saved my recovery codes securely.", {exact: true}).check();
       await page.getByRole("button", {name: "Continue to Onesa sign-in", exact: true}).click();
-      await expect(page).toHaveURL(origin + gateway);
+      await expect(page).toHaveURL(origin + canonicalDocs + "&reauthenticate=1");
       await signInFields(page);
       await page.getByRole("button", {name: "Continue", exact: true}).click();
       await page.getByLabel("Authenticator or recovery code", {exact: true}).fill("123456");
       await page.getByRole("button", {name: "Continue", exact: true}).click();
-      await expect(page).toHaveURL(origin + docsReturn);
+      await expect(page).toHaveURL(origin + canonicalDocs);
       assert.equal(state.writes.length, 5);
       receipts.push({engine, flow: "docs-return-survives-MFA-enrollment-and-fresh-login"});
     });
@@ -482,10 +664,10 @@ try {
       receipts.push({ engine, flow: "expired-interaction" });
     });
     await isolated({ existingAccount: true, badContinuation: true }, async (page) => {
-      await page.goto(origin + "/account/sign-in/synthetic_bad_continuation");
+      await page.goto(origin + "/account?interaction=synthetic_bad_continuation");
       await page.getByRole("button", { name: "Continue as synthetic-member@example.test", exact: true }).click();
       await expect(page.getByRole("main").getByRole("alert")).toHaveText("Invalid sign-in continuation.");
-      await expect(page).toHaveURL(origin + "/account/sign-in/synthetic_bad_continuation");
+      await expect(page).toHaveURL(origin + "/account?interaction=synthetic_bad_continuation");
       receipts.push({ engine, flow: "reject-external-continuation" });
     });
     for (const language of ["en", "de"]) await isolated({ language, session: session(true), directory: directory() }, async (page, state, t) => {
@@ -512,7 +694,17 @@ try {
       await expect(card.getByRole("status")).toContainText(t.saved);
       assert.deepEqual(state.writes.at(-1).input.memberships, [{ tenant_id: workspaceId, role: "viewer", label: "Synthetic review workspace" }]);
       assert.equal(state.writes.at(-1).input.expectedRevision, 4); assert.equal(state.writes.at(-1).input.role, "operator");
-      const adminForm = card.locator("form").last();
+      const disable = language === "en" ? "Disable member account" : "Mitgliedskonto deaktivieren";
+      const restore = language === "en" ? "Restore member account" : "Mitgliedskonto wiederherstellen";
+      for (const [action, expected] of [[disable, true], [restore, false]]) {
+        const statusForm = card.locator("form").filter({ has: page.getByRole("button", { name: action, exact: true }) });
+        await statusForm.getByLabel(t.ownPassword, { exact: true }).fill(password);
+        await statusForm.getByLabel(t.ownCode, { exact: true }).fill("123456");
+        await statusForm.getByRole("button", { name: action, exact: true }).click();
+        await expect(card.getByRole("button", { name: expected ? restore : disable, exact: true })).toBeVisible();
+        assert.equal(state.writes.at(-1).input.disabled, expected);
+      }
+      const adminForm = card.locator("form").filter({ has: page.getByRole("button", { name: t.administrator, exact: true }) });
       await adminForm.getByLabel(t.ownPassword, { exact: true }).fill(password);
       await adminForm.getByLabel(t.ownCode, { exact: true }).fill("123456");
       await adminForm.getByRole("button", { name: t.administrator, exact: true }).click();
@@ -556,12 +748,41 @@ try {
         assert.equal(state.writes[0].input.token, proof); receipts.push({ engine, flow: "fragment-safe-explicit-password-reset", language });
       });
     }
-    await isolated({ enabled: false }, async (page, state) => {
-      await page.goto(origin + "/account");
-      await expect(page.getByRole("heading", { name: "Shared sign-in is being prepared", exact: true })).toBeVisible();
-      await expect(page.locator("form")).toHaveCount(0); assert.equal(state.writes.length, 0);
-      receipts.push({ engine, flow: "disabled-service" });
+    await isolated({}, async (page, state) => {
+      const path = "/account/sign-in/synthetic_product_return";
+      await page.goto(origin + path);
+      await page.getByRole("link", {name: "New to Onesa? Create one account"}).click();
+      await expect(page).toHaveURL(origin + "/account/register?interaction=synthetic_product_return");
+      await page.getByLabel("Your name", {exact: true}).fill("Synthetic Product Member");
+      await page.getByLabel("Email address", {exact: true}).fill("member@example.test");
+      await page.getByRole("button", {name: "Email my verification link"}).click();
+      await expect(page.getByRole("status")).toContainText("Check your email");
+      await page.goto(origin + "/account/confirm#access-link=" + proof);
+      await page.getByLabel("Password", {exact:true}).fill(password);
+      await page.getByLabel("Confirm password", {exact:true}).fill(password);
+      await page.getByRole("button", {name:"Verify your email"}).click();
+      await page.getByRole("link", {name:"Already registered? Sign in"}).click();
+      await expect(page).toHaveURL(origin + "/account?interaction=synthetic_product_return");
+      await expect(page.getByLabel("Email address", {exact:true})).toBeEnabled();
+      assert.equal(state.writes.length, 2);
+      receipts.push({engine, flow:"signup-confirm-return-to-product-interaction"});
     });
+    for (const [entry, failure] of [["/account", { enabled: false }], ["/account/register", { configMissing: true }], ["/account/confirm#access-link=" + proof, { configMissing: true }]]) {
+      await isolated(failure, async (page, state) => {
+        await page.goto(origin + entry);
+        await expect(page.getByRole("heading", { name: "Onesa Account is temporarily unavailable" })).toBeVisible();
+        await expect(page.getByText(/use your Company Portal account/i)).toBeVisible();
+        await expect(page.locator("form")).toHaveCount(0);
+        assert.equal(state.writes.length, 0);
+        state.enabled = true;
+        state.configMissing = false;
+        await page.getByRole("button", { name: "Try again" }).click();
+        const field = entry.includes("/confirm") ? "Confirm password" : "Email address";
+        await expect(page.getByLabel(field, { exact: true })).toBeEnabled();
+        assert.equal(state.writes.length, 0);
+        receipts.push({ engine, flow: "central-account-outage-and-retry", path: entry.split("#")[0] });
+      });
+    }
     console.log(JSON.stringify({ browser: engine, version, supplemental: engine === "chromium" && Boolean(supplemental), completedFlows: receipts.filter(item => item.engine === engine).length }));
     await browser.close(); browser = undefined;
   }

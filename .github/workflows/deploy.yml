@@ -44,6 +44,7 @@ jobs:
         persist-credentials: false
     - name: Verify immutable qualification and owner approval
       env:
+        RELEASE_GOVERNANCE_READ_TOKEN: ${{ secrets.RELEASE_GOVERNANCE_READ_TOKEN }}
         GH_TOKEN: ${{ github.token }}
         APPROVAL_RUN: ${{ inputs.approval_run }}
         MIGRATION_VERIFIED: ${{ vars.AUTOMATED_QUALIFICATION_ENABLED }}
@@ -102,6 +103,7 @@ jobs:
     - name: Revalidate approval before provider changes
       if: inputs.approval_run != ''
       env:
+        RELEASE_GOVERNANCE_READ_TOKEN: ${{ secrets.RELEASE_GOVERNANCE_READ_TOKEN }}
         VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
         GH_TOKEN: ${{ github.token }}
@@ -172,6 +174,7 @@ jobs:
     - name: Revalidate approval before provider changes
       if: inputs.approval_run != ''
       env:
+        RELEASE_GOVERNANCE_READ_TOKEN: ${{ secrets.RELEASE_GOVERNANCE_READ_TOKEN }}
         VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
         GH_TOKEN: ${{ github.token }}
@@ -222,6 +225,8 @@ jobs:
         persist-credentials: false
         ref: ${{ github.sha }}
     - name: Revalidate authorized release before hosted checks
+      env:
+        RELEASE_GOVERNANCE_READ_TOKEN: ${{ secrets.RELEASE_GOVERNANCE_READ_TOKEN }}
       run: python3 scripts/release/evidence.py promote --output "$RUNNER_TEMP/promotion/record.json"
     - name: Record actual provider revisions, readiness and remaining hosted acceptance
       run: python3 scripts/release/hosted.py production --output "$RUNNER_TEMP/post/record.json"

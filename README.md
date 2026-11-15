@@ -66,7 +66,7 @@ First-time users register and verify their email before owner review. Existing
 explicit approvals are retained; new administrator access keeps MFA.
 Approved new administrators can enroll an authenticator and save recovery codes
 through the registration UI. An existing MFA enrollment cannot be overwritten.
-Administrator and Engineering Docs sign-in offer **Remember this browser**,
+Company administration and Engineering Docs open the Onesa Account sign-in or registration form. Staff approval and MFA, Docs membership and the original browser-bound authorization request still govern access. Both destinations offer **Remember this browser**,
 unchecked by default, for protected cookie persistence within the existing
 8-hour session lifetime. It does not save passwords or skip MFA. Use it only on
 a private device and sign out when finished. Browsers may restore session cookies
@@ -168,8 +168,8 @@ Review [agent policies](AGENTS.md), [deployment](docs/engineering/DEPLOYMENT.md)
 [qualification](docs/engineering/AUTOMATED_QUALIFICATION.md). Current CI is available in
 [GitHub Actions](https://github.com/DruHustle/onesa-company-portal/actions).
 [Onesa Developer Docs](https://docs.onesa.eu) contains approved public guides;
-[Onesa Engineering Docs](https://docs.engineering.onesa.eu) requires authorized access
-and includes Architecture & Workflows, Engineering Onboarding and the design system.
+[Onesa Internal Documents](https://docs.internal.onesa.eu) requires authorized access
+for engineering, HR and other internal collections. The engineering collection includes architecture, onboarding and the design system.
 
 ## Private vulnerability reporting
 

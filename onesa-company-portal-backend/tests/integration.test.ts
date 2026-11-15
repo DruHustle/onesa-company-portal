@@ -10,6 +10,25 @@ const password='integration-password-1234';const secret='JBSWY3DPEHPK3PXP';
 async function account(role:string){const id=randomUUID(),email=role+'-'+id+'@example.test';await db.query('INSERT INTO users(id,email,password_hash,role,mfa_secret) VALUES($1,$2,$3,$4,$5)',[id,email,passwordHash(password),role,encrypt(secret)]);return {id,email};}
 async function login(u:{id:string;email:string}){const code=randomUUID();await db.query('INSERT INTO mfa_recovery VALUES($1,$2)',[u.id,hash(code)]);const r=await app.inject({method:'POST',url:'/api/v1/auth/login',remoteAddress:`2001:db8:${u.id.slice(0,4)}:${u.id.slice(4,8)}::1`,payload:{email:u.email,password,code}});assert.equal(r.statusCode,200,r.body);return {cookie:r.cookies[0].name+'='+r.cookies[0].value,'x-csrf-token':r.json().csrf,origin:process.env.PUBLIC_ORIGIN||'http://localhost:3300'};}
 const owner=await account('owner'),editor=await account('editor'),hr=await account('hr'),business=await account('business'),viewer=await account('viewer');const ownerH=await login(owner),editorH=await login(editor),hrH=await login(hr),businessH=await login(business),viewerH=await login(viewer);
+test('Infrastructure observations require Portal administration, retain no-store and expose no raw credentials', async()=>{
+ const url='/api/v1/admin/infrastructure';
+ assert.equal((await app.inject({url})).statusCode,401);
+ for(const headers of [viewerH,editorH,businessH,hrH])assert.equal((await app.inject({url,headers})).statusCode,403);
+ const allowed=await app.inject({url,headers:ownerH});
+ assert.equal(allowed.statusCode,200,allowed.body);
+ assert.equal(allowed.headers['cache-control'],'no-store');
+ assert.equal(allowed.json().services.length,11);
+ const hosting = Object.fromEntries(allowed.json().services.map((service: {id: string; hosting: string}) => [service.id, service.hosting]));
+ assert.match(hosting.robot, /Vercel.*Oracle simulator API.*Turso/);
+ assert.match(hosting.farmer, /Cloudflare Tunnel.*Oracle ARM64.*maintenance/);
+ assert.match(hosting.drone, /Vercel.*simulation API.*origin host unverified/);
+ assert.match(hosting.logistics, /Vercel.*Oracle.*gateway.*two APIs/);
+ assert.match(hosting.mobile, /Vercel.*public gateway.*Oracle ARM64.*isolated qualification/);
+ assert.match(hosting.factory, /Vercel.*Oracle API and worker.*field gateway/);
+ assert.match(hosting.pasofi, /Vercel.*Oracle API.*field routers/);
+ assert.ok(allowed.json().services.every((service:{status:string})=>service.status==='not_observed'));
+});
+
 const article={kind:'article',slug:'verified-test-story',locale:'en',title:'Workflow test story',summary:'Integration fixture',body:'This is a test fixture, not a company announcement.',state:'draft',metadata:{category:'Testing',author:'Test editor'}};
 
 test('Launch content delivery excludes unrelated recruitment readiness while applicant intake stays gated',async()=>{

@@ -1,3 +1,4 @@
+import { legacyEngineeringFixture } from "../engineering/onesa-account.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
@@ -80,6 +81,8 @@ export async function registerAccess(
       },
     },
     async (req, reply) => {
+      if (req.body.audience === "engineering" && !legacyEngineeringFixture())
+        throw new HttpError(403, "ONESA_SESSION_REQUIRED", "Create your Company Portal account, then request Engineering membership.");
       const email = req.body.email.toLowerCase();
       await limits.limit(
         "access-registration-ip:" + limits.address(req),
