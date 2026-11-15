@@ -4,6 +4,10 @@ export function identityAdministrationRequired() {
 }
 
 /** Only a distinct, server-configured HTTPS Identity origin can receive the admin link. */
+export function identityAdministrationMode(required: boolean, url: string | null): "external" | "unavailable" | "local" {
+  return url ? "external" : required ? "unavailable" : "local";
+}
+
 export function identityAdministrationUrl() {
   if (!identityAdministrationRequired()) return null;
   const origin = process.env.ONESA_IDENTITY_UI_ORIGIN;

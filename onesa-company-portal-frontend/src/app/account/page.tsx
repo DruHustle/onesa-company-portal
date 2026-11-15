@@ -1,4 +1,4 @@
-import { identityAdministrationUrl } from "@/lib/identity-administration";
+import { identityAdministrationRequired, identityAdministrationUrl } from "@/lib/identity-administration";
 import { legacyEngineeringFixture } from "@/lib/engineering-test-fixture";
 import { notFound, redirect } from "next/navigation";
 import { OnesaAccount } from "@/features/account/account";
@@ -9,6 +9,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   const params = await searchParams;
   const { docs, next, returnTo, reauthenticate, interaction, entry } = params;
   const identityAdmin = identityAdministrationUrl();
+  const identityAdminRequired = identityAdministrationRequired();
   if (identityAdmin && params.tab === "access" && Object.keys(params).length === 1) redirect(identityAdmin);
   if (process.env.ONESA_IDENTITY_PORTAL_LOGIN === "managed" && next === "/admin" && Object.keys(params).length === 1)
     redirect("/admin#workspace");
@@ -20,7 +21,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   }
   if (interaction !== undefined) {
     if (Object.keys(params).length !== 1 || typeof interaction !== "string" || !productAccountPath(interaction)) notFound();
-    return <OnesaAccount identityAdmin={identityAdmin} key={interaction} interactionId={interaction} />;
+    return <OnesaAccount identityAdmin={identityAdmin} identityAdminRequired={identityAdminRequired} key={interaction} interactionId={interaction} />;
   }
   if (typeof returnTo === "string" && docs === undefined && next === undefined) {
     const legacy = accountReturnPath(new URLSearchParams({returnTo}).toString());
@@ -31,5 +32,5 @@ export default async function Account({ searchParams }: { searchParams: Promise<
     const environment = process.env.VERCEL_ENV === "production" ? "Production" : process.env.VERCEL_ENV === "preview" ? "Staging" : "Development";
     return <EngineeringSignIn uid={docs} environment={environment} shared={process.env.ONESA_IDENTITY_ENABLED === "true"} legacyFixture={legacyEngineeringFixture()} fresh={reauthenticate === "1"} />;
   }
-  return <OnesaAccount identityAdmin={identityAdmin} adminEntry={next === "/admin"} adminEmailLinks={process.env.PORTAL_EMAIL_LINK_ENABLED === "true"} accessEnabled={accessEnabled} legacyAdmin={next === "/admin" && process.env.ONESA_IDENTITY_ENABLED !== "true"} />;
+  return <OnesaAccount identityAdmin={identityAdmin} identityAdminRequired={identityAdminRequired} adminEntry={next === "/admin"} adminEmailLinks={process.env.PORTAL_EMAIL_LINK_ENABLED === "true"} accessEnabled={accessEnabled} legacyAdmin={next === "/admin" && process.env.ONESA_IDENTITY_ENABLED !== "true"} />;
 }

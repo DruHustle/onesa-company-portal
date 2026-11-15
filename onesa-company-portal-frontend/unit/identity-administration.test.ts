@@ -21,10 +21,17 @@ test("deployed Portal always delegates global account administration and fails c
   withEnvironment({ NODE_ENV: "production" }, () => {
     assert.equal(identityAdministrationRequired(), true);
     assert.equal(identityAdministrationUrl(), null);
+    assert.equal(identityAdministrationMode(identityAdministrationRequired(), identityAdministrationUrl()), "unavailable");
   });
   withEnvironment({ NODE_ENV: "development" }, () => {
     assert.equal(identityAdministrationRequired(), true);
     assert.equal(identityAdministrationUrl(), null);
+  });
+});
+
+test("isolated tests retain the local account-management fixture only when Identity delegation is not required", () => {
+  withEnvironment({ NODE_ENV: "test" }, () => {
+    assert.equal(identityAdministrationMode(identityAdministrationRequired(), identityAdministrationUrl()), "local");
   });
 });
 
@@ -41,6 +48,7 @@ test("only an exact HTTPS Identity origin receives the fixed account-admin desti
   withEnvironment({ NODE_ENV: "test", ONESA_IDENTITY_ADMINISTRATION: "external", ONESA_IDENTITY_UI_ORIGIN: "https://identity.example.test" }, () => {
     assert.equal(identityAdministrationRequired(), true);
     assert.equal(identityAdministrationUrl(), "https://identity.example.test/admin#accounts");
+    assert.equal(identityAdministrationMode(identityAdministrationRequired(), identityAdministrationUrl()), "external");
   });
   for (const origin of ["http://identity.example.test", "https://identity.example.test/", "https://user:pass@identity.example.test", "not a URL"]) {
     withEnvironment({ NODE_ENV: "production", ONESA_IDENTITY_UI_ORIGIN: origin }, () => {
