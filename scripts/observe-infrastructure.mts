@@ -1,10 +1,10 @@
 import { constants } from "node:fs";
 import { mkdir, open, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { basename, dirname, isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { type InfrastructureObservation, readInfrastructureSnapshot, serviceRegistry, snapshotSchema } from "../onesa-company-portal-backend/src/operations/infrastructure.js";
+import { identityHealthAvailable } from "../onesa-company-portal-backend/src/operations/identity-health.js";
 
 async function readPublicProbe(url: string) {
   const response = await fetch(url, { redirect: "error", cache: "no-store", signal: AbortSignal.timeout(8000), headers: { Accept: "application/json" } });
@@ -32,19 +32,10 @@ async function readPublicProbe(url: string) {
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
-export function probeAvailable(id: string, data: Record<string, unknown> | null) {
+function probeAvailable(id: string, data: Record<string, unknown> | null) {
   switch (id) {
-    case "identity": {
-      const issuerOrigin = "https://auth.onesa.eu";
-      return data?.issuer === issuerOrigin + "/" &&
-        ["authorization_endpoint", "token_endpoint", "jwks_uri"].every(key => {
-          const value = data[key];
-          if (typeof value !== "string" || !URL.canParse(value)) return false;
-          const endpoint = new URL(value);
-          return endpoint.protocol === "https:" && endpoint.origin === issuerOrigin &&
-            !endpoint.username && !endpoint.password && !endpoint.hash;
-        });
-    }
+    case "identity":
+      return identityHealthAvailable(data);
     case "public-documents":
       return data?.classification === "public" && typeof data?.documentation_version === "string" &&
         typeof data?.code_sha256 === "string" && /^[a-f0-9]{64}$/.test(data.code_sha256);
@@ -145,17 +136,15 @@ async function merge(publicFile: string, privateFile: string, output: string) {
   } finally { await directory.close(); }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const args = process.argv.slice(2);
-  try {
-    if (args.length === 1 && isAbsolute(args[0])) {
-      await mkdir(dirname(args[0]), { recursive: true });
-      await publish(args[0], await publicObservations());
-    } else if (args.length === 4 && args[0] === "--merge") {
-      await merge(args[1], args[2], args[3]);
-    } else { throw Error("Usage: observe-infrastructure.mts OUTPUT or --merge PUBLIC PRIVATE OUTPUT"); }
-  } catch {
-    console.error("Infrastructure observation publication failed. Check the mode, protected paths, snapshot sources and UTC timestamps.");
-    process.exitCode = 1;
-  }
+const args = process.argv.slice(2);
+try {
+  if (args.length === 1 && isAbsolute(args[0])) {
+    await mkdir(dirname(args[0]), { recursive: true });
+    await publish(args[0], await publicObservations());
+  } else if (args.length === 4 && args[0] === "--merge") {
+    await merge(args[1], args[2], args[3]);
+  } else { throw Error("Usage: observe-infrastructure.mts OUTPUT or --merge PUBLIC PRIVATE OUTPUT"); }
+} catch {
+  console.error("Infrastructure observation publication failed. Check the mode, protected paths, snapshot sources and UTC timestamps.");
+  process.exitCode = 1;
 }
