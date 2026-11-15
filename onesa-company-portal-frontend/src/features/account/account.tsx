@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { accountApplicationUrl } from "@/lib/onesa-identity";
-import { identityAdministrationMode } from "@/lib/identity-administration";
+import { identityAdministrationMode, legacyPortalFarmerAccess } from "@/lib/identity-administration";
 import { accountUnavailableHint } from "@/lib/account-messages";
 import { accessLinkToken, sharedSignInToken } from "@/lib/access-link";
 import { adminWorkspaceReturn, accountDestination, memberReturnPath, accountReturnPath, accountReauthenticationRequired, docsAccountPath, productAccountPath } from "@/lib/account-return";
@@ -228,7 +228,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
       {returnTo && <p><a className={"button " + styles.action} href={returnTo}>{t.returnDocs}</a></p>}
       {noticeElement}
       <section className={styles.grid} aria-label={t.applications}>{products.map(product => {
-        const grant = session.access.find(item => item.product === product), active = session.account.globalAdmin || grant?.status === "active" || (!identityAdmin && product === "farmer" && !grant && session.account.portalAccess && session.account.emailVerified), isConnected = connected(product);
+        const grant = session.access.find(item => item.product === product), active = session.account.globalAdmin || grant?.status === "active" || legacyPortalFarmerAccess({ mode: identityMode, product, hasGrant: Boolean(grant), portalAccess: session.account.portalAccess, emailVerified: session.account.emailVerified }), isConnected = connected(product);
         const application = session.applications.find(item => item.product === product);
         return <article className={styles.product} key={product}><span className={styles.badge}>{!isConnected ? t.unconnected : active ? t.active : grant ? t[grant.status] : t.none}</span><h2>{productNames[product]}</h2><p>{t.products[product]}</p>
           {!isConnected ? <p>{t.futureHint}</p> : active && application ? <a className={"button " + styles.action} href={accountApplicationUrl(product, application.url, session.account.globalAdmin)}>{t.open}</a> : identityAdmin ? <a href={new URL("/account", identityAdmin).href}>{language === "de" ? "Produktzugang in Onesa Identity" : "Product access in Onesa Identity"}</a> : <button className={styles.action} disabled={busy || grant?.status === "pending" || active} onClick={() => void action(async () => { setSession(await accountRequest<AccountSession>("/api/v1/account/products/" + product + "/request", {}, session.csrf)); setNotice(t.requested); })}>{grant?.status === "pending" ? t.pending : active ? t.unavailable : t.requestAccess}</button>}

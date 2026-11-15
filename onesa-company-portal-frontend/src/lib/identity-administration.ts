@@ -8,6 +8,11 @@ export function identityAdministrationMode(required: boolean, url: string | null
   return url ? "external" : required ? "unavailable" : "local";
 }
 
+/** The pre-Identity Farmer compatibility grant is allowed only in isolated local mode. */
+export function legacyPortalFarmerAccess(input: { mode: "external" | "unavailable" | "local"; product: string; hasGrant: boolean; portalAccess: boolean; emailVerified: boolean }): boolean {
+  return input.mode === "local" && input.product === "farmer" && !input.hasGrant && input.portalAccess && input.emailVerified;
+}
+
 export function identityAdministrationUrl() {
   if (!identityAdministrationRequired()) return null;
   const origin = process.env.ONESA_IDENTITY_UI_ORIGIN;
