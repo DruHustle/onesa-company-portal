@@ -50,3 +50,16 @@ test("platform administrators open the registered PasoFi and Mobile staff worksp
   assert.equal(accountApplicationUrl("mobile", surface, false), surface);
   assert.equal(accountApplicationUrl("robot", surface + "console", true), surface + "console");
 });
+
+
+test("Account-service outages never direct users to a Portal-local credential", async () => {
+  const { accountUnavailableHint } = await import("../src/lib/account-messages.ts");
+  const english = accountUnavailableHint("en");
+  const german = accountUnavailableHint("de");
+  assert.match(english, /Onesa sign-in is temporarily unavailable/);
+  assert.match(english, /Do not create another account/);
+  assert.doesNotMatch(english, /Company Portal account|Portal password/i);
+  assert.match(german, /Onesa-Anmeldung ist vorübergehend nicht verfügbar/);
+  assert.match(german, /Erstellen Sie kein weiteres Konto/);
+  assert.doesNotMatch(german, /Unternehmensportal-Konto|Portal-Passwort/i);
+});
