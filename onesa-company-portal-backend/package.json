@@ -64,7 +64,7 @@
     "@eslint/eslintrc@3.3.7": {
       "minimatch": "$minimatch"
     },
-    "@typescript-eslint/typescript-estree@8.71.1": {
+    "@typescript-eslint/typescript-estree@8.72.1": {
       "minimatch": "11.0.1"
     }
   }
