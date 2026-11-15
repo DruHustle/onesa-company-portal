@@ -35,12 +35,22 @@ test("Malformed, duplicate, future and secret-bearing observations fail closed",
   for (const [name, observations] of Object.entries({
     future: [observed("portal", "available", -1)], duplicate: [observed("portal"), observed("portal")],
     unknown: [observed("foreign-service")], secret: [{ ...observed("portal"), token: "must-not-escape" }],
+    staging: [{ ...observed("portal"), environment: "staging" }],
+    local: [{ ...observed("portal"), environment: "local" }],
+    publicPrivate: [observed("kubernetes")],
   })) {
     const view = await infrastructureOverview(await snapshot(name + ".json", observations), now);
     assert.equal(view.observationState, "unavailable");
     assert.ok(view.services.every(service => service.status === "not_observed"));
     assert.ok(!JSON.stringify(view).includes("must-not-escape"));
   }
+});
+test("A private management service is observed only from the owner runtime", async () => {
+  const file = await snapshot("private-owner.json", [{ ...observed("kubernetes"), source: "owner_runtime" }]);
+  const view = await infrastructureOverview(file, now);
+  assert.equal(view.observationState, "loaded");
+  assert.equal(view.services.find(service => service.id === "kubernetes")?.status, "available");
+  assert.equal(view.services.find(service => service.id === "kubernetes")?.source, "owner_runtime");
 });
 test("Missing, oversized, writable or symlinked files cannot report healthy infrastructure", async () => {
   const writable = await snapshot("writable.json", [observed("portal")]);
