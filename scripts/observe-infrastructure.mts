@@ -1,7 +1,8 @@
 import { constants } from "node:fs";
 import { mkdir, open, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
-import { basename, dirname, isAbsolute, join } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 import { type InfrastructureObservation, readInfrastructureSnapshot, serviceRegistry, snapshotSchema } from "../onesa-company-portal-backend/src/operations/infrastructure.js";
 
@@ -31,7 +32,7 @@ async function readPublicProbe(url: string) {
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
-function probeAvailable(id: string, data: Record<string, unknown> | null) {
+export function probeAvailable(id: string, data: Record<string, unknown> | null) {
   switch (id) {
     case "identity": {
       const issuerOrigin = "https://auth.onesa.eu";
@@ -144,15 +145,17 @@ async function merge(publicFile: string, privateFile: string, output: string) {
   } finally { await directory.close(); }
 }
 
-const args = process.argv.slice(2);
-try {
-  if (args.length === 1 && isAbsolute(args[0])) {
-    await mkdir(dirname(args[0]), { recursive: true });
-    await publish(args[0], await publicObservations());
-  } else if (args.length === 4 && args[0] === "--merge") {
-    await merge(args[1], args[2], args[3]);
-  } else { throw Error("Usage: observe-infrastructure.mts OUTPUT or --merge PUBLIC PRIVATE OUTPUT"); }
-} catch {
-  console.error("Infrastructure observation publication failed. Check the mode, protected paths, snapshot sources and UTC timestamps.");
-  process.exitCode = 1;
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  const args = process.argv.slice(2);
+  try {
+    if (args.length === 1 && isAbsolute(args[0])) {
+      await mkdir(dirname(args[0]), { recursive: true });
+      await publish(args[0], await publicObservations());
+    } else if (args.length === 4 && args[0] === "--merge") {
+      await merge(args[1], args[2], args[3]);
+    } else { throw Error("Usage: observe-infrastructure.mts OUTPUT or --merge PUBLIC PRIVATE OUTPUT"); }
+  } catch {
+    console.error("Infrastructure observation publication failed. Check the mode, protected paths, snapshot sources and UTC timestamps.");
+    process.exitCode = 1;
+  }
 }
