@@ -30,7 +30,8 @@ different revisions.
 | --- | --- |
 | Onesa Identity | Owns global account lifecycle, verified email, credentials, MFA, recovery, central sessions, account status, administrator assignment and product approvals. |
 | Portal account interface | Presents configured sign-in and recovery journeys, resumes the initiating product and shows approved applications; it does not administer global accounts or product grants. |
-| Company Portal admin workspace | Manages company content, settings and business-workspace records under Portal-specific roles and audit controls. |\n| Product backend | Starts its own authorization request, binds the callback to the initiating browser, validates the central grant and creates a product-scoped session. Enforces tenant, record, action and freshness policies at the API. |
+| Company Portal admin workspace | Manages company content, settings and business-workspace records under Portal-specific roles and audit controls. |
+| Product backend | Starts its own authorization request, binds the callback to the initiating browser, validates the central grant and creates a product-scoped session. Enforces tenant, record, action and freshness policies at the API. |
 | Product frontend and native app | Open the product's sign-in flow and restore the intended screen. Report expired access or service unavailability and allow retry from that screen. |
 | Engineering Docs and Cloudflare Access | Retain the existing Docs membership subject and Access policy. The Docs adapter accepts central proof for a linked member and completes the existing Access callback. |
 
