@@ -29,11 +29,12 @@ type EntryProps = {
   legacyAdmin?: boolean;
   identityAdmin?: string | null;
   identityAdminRequired?: boolean;
+  docsReturnPath?: string | null;
   legacyDocsRegistration?: boolean;
   approvalConfirmation?: boolean;
 };
 
-export function OnesaAccount({ mode = "login", interactionId, docsInteractionId, docsInteractionCsrf, forceLogin, adminEntry, accessEnabled, adminEmailLinks, identityAdmin, identityAdminRequired = false, legacyAdmin, legacyDocsRegistration, approvalConfirmation }: EntryProps) {
+export function OnesaAccount({ mode = "login", interactionId, docsInteractionId, docsInteractionCsrf, forceLogin, adminEntry, accessEnabled, adminEmailLinks, identityAdmin, identityAdminRequired = false, docsReturnPath, legacyAdmin, legacyDocsRegistration, approvalConfirmation }: EntryProps) {
   const identityMode = identityAdministrationMode(identityAdminRequired, identityAdmin ?? null);
   const [language, setLanguage] = useState<"en" | "de">("en"), [session, setSession] = useState<AccountSession | null>(null);
   const [interaction, setInteraction] = useState<Interaction | null>(null), [enabled, setEnabled] = useState<boolean | null>(null), [loading, setLoading] = useState(true);
@@ -54,7 +55,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
   const suggestedAccount = sharedToken ? null : interaction?.account;
   if (mode !== "login" && identityMode !== "local") {
     const destination = identityAdmin ? new URL("/register#registration", identityAdmin).href : null;
-    return <main><h1>Onesa Account</h1><p role="status">Account registration and email verification are managed in Onesa Identity. This Portal does not accept local registration or confirmation.</p>{destination ? <p><a href={destination} referrerPolicy="no-referrer">Continue to Onesa Identity</a></p> : <p>The Identity destination is not configured for this deployment. Contact the Onesa administrator.</p>}<a href="/en">Return to Onesa</a></main>;
+    return <main><h1 id="account-title">Onesa Account</h1><p role="status">Account registration and email verification are managed in Onesa Identity. This Portal does not accept local registration or confirmation.</p>{destination ? <p><a href={destination} referrerPolicy="no-referrer">Continue to Onesa Identity</a></p> : <p>The Identity destination is not configured for this deployment. Contact the Onesa administrator.</p>}{docsReturnPath ? <p><a href={docsReturnPath} referrerPolicy="no-referrer">Continue to Engineering Docs</a></p> : null}<a href="/en">Return to Onesa</a></main>;
   }
   const approvalRequest = mode === "register" && Boolean(adminEntry || legacyDocsRegistration);
   const destinationSearch = destination.includes("?") ? destination.slice(destination.indexOf("?")) : "";
