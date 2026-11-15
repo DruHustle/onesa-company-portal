@@ -55,10 +55,13 @@ try {
   const login=await app.inject({method:'POST',url:'/api/v1/auth/login',payload:{email:ownerEmail,password,code:totp(secret)}});
   assert.equal(login.statusCode,200); assert.equal(login.json().user.id,owner);
   const cookie=login.cookies.filter(c=>c.value).map(c=>c.name+'='+c.value).join('; ');
-  const list=await app.inject({url:'/api/v1/admin/users?search='+encodeURIComponent(ownerEmail),headers:{cookie}});
-  assert.equal(list.statusCode,200); assert.ok(list.json().items.some(u=>u.id===owner && u.role==='owner'));
-  const members=await app.inject({url:'/api/v1/admin/users?search='+encodeURIComponent(memberEmail),headers:{cookie}});
-  assert.equal(members.statusCode,200); assert.equal(members.json().items.length,0);
+  for (const email of [ownerEmail,memberEmail]) {
+    const globalAdmin=await app.inject({url:'/api/v1/admin/users?search='+encodeURIComponent(email),headers:{cookie}});
+    assert.equal(globalAdmin.statusCode,403);
+    assert.equal(globalAdmin.json().error.code,'IDENTITY_ADMINISTRATION_MOVED');
+  }
+  const cms=await app.inject({url:'/api/v1/admin/content?search=Restored',headers:{cookie}});
+  assert.equal(cms.statusCode,200); assert.ok(Array.isArray(cms.json().items));
   const deny=await app.inject({method:'POST',url:'/api/v1/auth/login',payload:{email:memberEmail,password,code:''}});
   assert.equal(deny.statusCode,401);
   const start=(await db.query('SELECT clock_timestamp()::text AS started')).rows[0].started;
