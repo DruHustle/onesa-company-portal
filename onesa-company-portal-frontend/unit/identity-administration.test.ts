@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { identityAdministrationRequired, identityAdministrationUrl } from "../src/lib/identity-administration.ts";
+import { identityAdministrationRequired, identityAdministrationUrl, identityAdministrationMode } from "../src/lib/identity-administration.ts";
 
 const keys = ["NODE_ENV", "ONESA_IDENTITY_ADMINISTRATION", "ONESA_IDENTITY_UI_ORIGIN", "PORTAL_URL", "PUBLIC_ORIGIN", "SITE_URL"] as const;
 function withEnvironment(values: Record<string, string>, run: () => void) {
