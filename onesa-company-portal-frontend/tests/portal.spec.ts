@@ -39,51 +39,35 @@ test('Applicant uploads a private CV using the public application form',async({p
 await db.query("UPDATE files SET scan_status='clean' WHERE id=$1",[record.id]);const downloadCode=randomUUID();await db.query('INSERT INTO mfa_recovery VALUES($1,$2)',[ownerId,hash(downloadCode)]);await page.goto('/admin');await page.getByLabel('Email',{exact:true}).first().fill(email);await page.getByLabel('Password',{exact:true}).first().fill(password);await expect(page.getByLabel('Authenticator or recovery code')).toHaveCount(0);await page.getByRole('button',{name:'Continue',exact:true}).click();await page.getByLabel('Authenticator or recovery code').fill(downloadCode);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:'Company workspace'})).toBeVisible();await page.getByRole('button',{name:'Applications and CVs',exact:true}).click();await page.getByRole('button',{name:/E2E applicant/}).click();const downloaded=page.waitForEvent('download');await page.getByRole('button',{name:'Download private CV'}).click();const download=await downloaded;const received=await readFile((await download.path())!);expect(received.length).toBe(bytes.length);expect(createHash('sha256').update(received).digest('hex')).toBe(createHash('sha256').update(bytes).digest('hex'));});
 test('Frontend remains usable when backend responses fail',async({page})=>{await page.route('**/api/v1/public/enquiries',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:{code:'UNAVAILABLE',message:'Temporarily unavailable',requestId:'failure-test'}})}));await page.goto('/en/contact');await page.getByLabel('Your name').fill('Outage test');await page.getByLabel('Email address').fill(email);await page.getByLabel('How can we help?').fill('Service outage test message');await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Send enquiry'}).click();await expect(page.locator('#main').getByRole('alert')).toContainText('We could not save your enquiry');await expect(page.getByRole('button',{name:'Send enquiry'})).toBeEnabled();await page.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'About',exact:true}).click();await expect(page.getByRole('heading',{level:1})).toHaveText('About');});
 
-test('Owner confirms a fresh proof for user changes and changes own password',async({page})=>{
- const loginCode=randomUUID(),proofCode=randomUUID(),passwordCode=randomUUID(),newLoginCode=randomUUID(),targetId=randomUUID(),targetEmail=`stepup-${fixture}@example.test`,changedPassword='browser-changed-private-password-45678';
- for(const code of [loginCode,proofCode,passwordCode,newLoginCode])await db.query('INSERT INTO mfa_recovery VALUES($1,$2)',[ownerId,hash(code)]);
- await db.query('INSERT INTO users(id,email,password_hash,role,mfa_secret) VALUES($1,$2,$3,$4,$5)',[targetId,targetEmail,passwordHash(password),'viewer',encrypt('JBSWY3DPEHPK3PXP')]);
- try {
-  await page.goto('/admin');
-  await page.getByLabel('Email',{exact:true}).first().fill(email);
-  await page.getByLabel('Password',{exact:true}).first().fill(password);
-  await expect(page.getByLabel('Authenticator or recovery code')).toHaveCount(0);await page.getByRole('button',{name:'Continue',exact:true}).click();await page.getByLabel('Authenticator or recovery code').fill(loginCode);
-  await page.getByRole('button',{name:'Sign in',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Company workspace'})).toBeVisible();
-  await page.getByRole('button',{name:'Staff and access',exact:true}).click();
-  await page.getByRole('button',{name:new RegExp(targetEmail)}).click();
-  await page.getByLabel('Role',{exact:true}).selectOption('business');
-  await page.getByLabel('Reset MFA after independently verifying the user’s identity').check();
-  await page.getByLabel('Your current password').fill(password);
-  await page.getByLabel('Fresh authenticator or unused recovery code').fill(proofCode);
-  await page.getByRole('button',{name:'Save user',exact:true}).click();
-  await expect(page.locator('[data-workspace-notice]')).toHaveText('Saved');
-  expect((await db.query('SELECT role FROM users WHERE id=$1',[targetId])).rows[0].role).toBe('business');
-  expect((await db.query('SELECT mfa_secret FROM users WHERE id=$1',[targetId])).rows[0].mfa_secret).toBeNull();
-  await expect(page.getByLabel('Your current password')).toHaveValue('');
-  await expect(page.getByLabel('Fresh authenticator or unused recovery code')).toHaveValue('');
-  await page.getByRole('button',{name:'My security',exact:true}).click();
-  for(const width of [320,390,768,1024,1440]){
-   await page.setViewportSize({width,height:900});
-   await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
-   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),JSON.stringify(await page.evaluate(()=>({width:innerWidth,documentWidth:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll("body *")].filter(el=>el.getBoundingClientRect().right>innerWidth).map(el=>({tag:el.tagName,className:el.className,width:el.getBoundingClientRect().width,right:el.getBoundingClientRect().right})).slice(0,20)})))).toBe(true);
-   expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze()).violations).toEqual([]);
-  }
-  await page.getByLabel('Your current password').fill(password);
-  await page.getByLabel('Fresh authenticator or unused recovery code').fill(passwordCode);
-  await page.getByLabel('New password',{exact:true}).fill(changedPassword);
-  await page.getByLabel('Confirm new password',{exact:true}).fill(changedPassword);
-  await page.getByRole('button',{name:'Change password and sign out',exact:true}).click();
-  await expect(page).toHaveURL(/\/account\?next=\/admin/);
-  expect(Number((await db.query('SELECT count(*) FROM sessions WHERE user_id=$1',[ownerId])).rows[0].count)).toBe(0);
-  expect((await db.query('SELECT mfa_secret FROM users WHERE id=$1',[ownerId])).rows[0].mfa_secret).toBeTruthy();
-  await page.getByLabel('Email',{exact:true}).first().fill(email);
-  await page.getByLabel('Password',{exact:true}).first().fill(changedPassword);
-  await expect(page.getByLabel('Authenticator or recovery code')).toHaveCount(0);await page.getByRole('button',{name:'Continue',exact:true}).click();await page.getByLabel('Authenticator or recovery code').fill(newLoginCode);
-  await page.getByRole('button',{name:'Sign in',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Company workspace'})).toBeVisible();
- } finally {
-  await db.query('DELETE FROM audit WHERE record_id=$1::text OR actor_id=$1::uuid',[targetId]);
-  await db.query('DELETE FROM users WHERE id=$1',[targetId]);
+test('Global user administration stays in Onesa Identity while Portal admins can change their own password',async({page})=>{
+ const loginCode=randomUUID(),passwordCode=randomUUID(),newLoginCode=randomUUID(),changedPassword='browser-changed-private-password-45678';
+ for(const code of [loginCode,passwordCode,newLoginCode])await db.query('INSERT INTO mfa_recovery VALUES($1,$2)',[ownerId,hash(code)]);
+ await page.goto('/admin');
+ await page.getByLabel('Email',{exact:true}).first().fill(email);
+ await page.getByLabel('Password',{exact:true}).first().fill(password);
+ await expect(page.getByLabel('Authenticator or recovery code')).toHaveCount(0);await page.getByRole('button',{name:'Continue',exact:true}).click();await page.getByLabel('Authenticator or recovery code').fill(loginCode);
+ await page.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Company workspace'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Staff and access',exact:true})).toHaveCount(0);
+ await expect(page.getByText('Global user administration is managed in Onesa Identity. The administration URL is not configured for this deployment.',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'My security',exact:true}).click();
+ for(const width of [320,390,768,1024,1440]){
+  await page.setViewportSize({width,height:900});
+  await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),JSON.stringify(await page.evaluate(()=>({width:innerWidth,documentWidth:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll("body *")].filter(el=>el.getBoundingClientRect().right>innerWidth).map(el=>({tag:el.tagName,className:el.className,width:el.getBoundingClientRect().width,right:el.getBoundingClientRect().right})).slice(0,20)})))).toBe(true);
+  expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze()).violations).toEqual([]);
  }
+ await page.getByLabel('Your current password').fill(password);
+ await page.getByLabel('Fresh authenticator or unused recovery code').fill(passwordCode);
+ await page.getByLabel('New password',{exact:true}).fill(changedPassword);
+ await page.getByLabel('Confirm new password',{exact:true}).fill(changedPassword);
+ await page.getByRole('button',{name:'Change password and sign out',exact:true}).click();
+ await expect(page).toHaveURL(/\\/account\\?next=\\/admin/);
+ expect(Number((await db.query('SELECT count(*) FROM sessions WHERE user_id=$1',[ownerId])).rows[0].count)).toBe(0);
+ expect((await db.query('SELECT mfa_secret FROM users WHERE id=$1',[ownerId])).rows[0].mfa_secret).toBeTruthy();
+ await page.getByLabel('Email',{exact:true}).first().fill(email);
+ await page.getByLabel('Password',{exact:true}).first().fill(changedPassword);
+ await expect(page.getByLabel('Authenticator or recovery code')).toHaveCount(0);await page.getByRole('button',{name:'Continue',exact:true}).click();await page.getByLabel('Authenticator or recovery code').fill(newLoginCode);
+ await page.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Company workspace'})).toBeVisible();
 });

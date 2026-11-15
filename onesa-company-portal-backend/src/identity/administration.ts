@@ -1,6 +1,6 @@
-/** During the pilot each deployment explicitly switches the authority for account changes. */
+/** Every deployed Portal delegates global account administration to Onesa Identity. Only isolated test runs may exercise the legacy local administration routes. */
 export function externalIdentityAdministration() {
-  return process.env.ONESA_IDENTITY_ADMINISTRATION === "external";
+  return process.env.NODE_ENV !== "test" || process.env.ONESA_IDENTITY_ADMINISTRATION === "external";
 }
 
 const retiredOperations = new Set([

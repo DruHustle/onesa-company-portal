@@ -118,6 +118,7 @@ export function AdminPortal({
   identityEnabled = false,
   engineeringEnabled = false,
   identityAdmin = null,
+  identityAdminRequired = false,
   managedLogin = false,
 }: {
   environment?: "PRODUCTION" | "STAGING" | "DEVELOPMENT";
@@ -125,6 +126,7 @@ export function AdminPortal({
   identityEnabled?: boolean;
   engineeringEnabled?: boolean;
   identityAdmin?: string | null;
+  identityAdminRequired?: boolean;
   managedLogin?: boolean;
 }) {
   const [user, setUser] = useState<User | null>(null),
@@ -301,7 +303,7 @@ export function AdminPortal({
           break;
         }
         case "Users": {
-          if (identityAdmin) return;
+          if (identityAdminRequired) return;
           const r = await api.GET("/api/v1/admin/users", {
             params: { query },
             signal: controller.signal,
@@ -356,7 +358,7 @@ export function AdminPortal({
     if (user && (tabRoles[tab] as readonly string[]).includes(user.role))
       void load();
     return () => listRequest.current?.abort();
-  }, [user, tab, page, queue.search, queue.status, queue.category]);
+  }, [user, tab, page, queue.search, queue.status, queue.category, identityAdminRequired]);
   useEffect(() => {
     if (!user) return;
     const url = new URL(window.location.href);
@@ -377,8 +379,9 @@ export function AdminPortal({
     const back = () => {
       const url = new URL(window.location.href),
         next = sectionFromUrl(url);
-      if (next === "Users" && identityAdmin) {
-        navigate(() => window.location.assign(identityAdmin));
+      if (next === "Users" && identityAdminRequired) {
+        if (identityAdmin) navigate(() => window.location.assign(identityAdmin));
+        else setTab("Users");
         return;
       }
       if (user && !(tabRoles[next] as readonly string[]).includes(user.role))
@@ -410,7 +413,7 @@ export function AdminPortal({
     };
     window.addEventListener("popstate", back);
     return () => window.removeEventListener("popstate", back);
-  }, [tab, user]);
+  }, [tab, user, identityAdmin, identityAdminRequired]);
   function openSection(next: Tab, filters?: Partial<QueueState>) {
     navigate(() => {
       listRequest.current?.abort();
@@ -538,8 +541,12 @@ export function AdminPortal({
               return tabs.length ? (
                 <div className="admin-task-group" key={group.label}>
                   <h2>{group.label}</h2>
-                  {tabs.map((name) => name === "Users" && identityAdmin ? (
-                    <a key={name} href={identityAdmin} referrerPolicy="no-referrer">Manage users in Onesa Identity</a>
+                  {tabs.map((name) => name === "Users" && identityAdminRequired ? (
+                    identityAdmin ? (
+                      <a key={name} href={identityAdmin} referrerPolicy="no-referrer">Manage users in Onesa Identity</a>
+                    ) : (
+                      <span key={name} role="status">Global user administration is managed in Onesa Identity. The administration URL is not configured for this deployment.</span>
+                    )
                   ) : (
                     <button
                       key={name}
@@ -1214,7 +1221,13 @@ export function AdminPortal({
                 )}
               </div>
             )}
-            {!identityAdmin && tab === "Users" && (
+            {identityAdminRequired && tab === "Users" && (
+              <div className="admin-notice" role="status">
+                <p>Global user administration is managed in Onesa Identity, not Company Portal.</p>
+                {identityAdmin ? <a href={identityAdmin} referrerPolicy="no-referrer">Open Onesa Identity</a> : <p>The Onesa Identity administration URL is not configured for this deployment.</p>}
+              </div>
+            )}
+            {!identityAdminRequired && tab === "Users" && (
               <p>
                 {identityEnabled && <><a href="/account?tab=access#access">Manage shared accounts and product access</a>. Normal product users register once from their Onesa account. </>}
                 Normal access: register → verify email → owner approval. A
@@ -1223,7 +1236,7 @@ export function AdminPortal({
                 independently controls Docs access.
               </p>
             )}
-            {!identityAdmin && tab === "Users" && (
+            {!identityAdminRequired && tab === "Users" && (
               <div className="admin-grid">
                 <div className="admin-list">
                   <button onClick={() => navigate(() => setEditUser(null))}>
@@ -1361,7 +1374,7 @@ export function AdminPortal({
                 </form>
               </div>
             )}
-            {!identityAdmin && tab === "Users" && user.role === "owner" && (
+            {!identityAdminRequired && tab === "Users" && user.role === "owner" && (
               <>
                 {accessEnabled && <AccessRequests />}
                 {engineeringEnabled && <EngineeringMemberships />}

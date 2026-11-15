@@ -76,6 +76,8 @@ manager and access-controlled storage. Separate frontend public configuration fr
 backend secrets. Local `.env` files must remain ignored; examples contain placeholders.
 Use least-privilege database/service identities and protected production environments.
 
+Global account lifecycle, product access, account status and administrator assignment are owned by Onesa Identity, never Company Portal. Company Portal may manage its own content and business-workspace tasks, but every non-test Portal runtime must fail closed for global account administration. A missing or invalid Identity administration URL must display an unavailable-link state; it must never restore local Portal user-management controls. Only isolated test fixtures may exercise legacy account-administration endpoints.
+
 If a credential was committed, revoke/rotate it first, assess access and logs, and
 notify the security owner privately. Ignoring or untracking a file does not remove
 it from history. Remove it from future commits only after reviewing staged work;

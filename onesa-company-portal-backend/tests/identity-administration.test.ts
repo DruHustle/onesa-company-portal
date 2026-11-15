@@ -8,7 +8,9 @@ test("a Portal administrator can edit company content but cannot manage Identity
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
   process.env.SESSION_KEY = randomUUID() + randomUUID();
   process.env.PUBLIC_ORIGIN = "https://portal.example.test";
-  process.env.ONESA_IDENTITY_ADMINISTRATION = "external";
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = "development";
+  delete process.env.ONESA_IDENTITY_ADMINISTRATION;
   const { buildApp } = await import("../src/app.js");
   const { migrate } = await import("../src/services/migrate.js");
   const { db } = await import("../src/services/db.js");
@@ -52,5 +54,7 @@ test("a Portal administrator can edit company content but cannot manage Identity
   } finally {
     await app.close();
     await db.end();
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
   }
 });

@@ -1,11 +1,15 @@
-/** The server supplies the pilot destination. No request data influences the host. */
+/** Global account administration is delegated in every deployed Portal runtime. */
+export function identityAdministrationRequired() {
+  return process.env.NODE_ENV !== "test" || process.env.ONESA_IDENTITY_ADMINISTRATION === "external";
+}
+
+/** Only a server-configured, exact HTTPS origin can receive the admin link. */
 export function identityAdministrationUrl() {
-  if (process.env.ONESA_IDENTITY_ADMINISTRATION !== "external") return null;
+  if (!identityAdministrationRequired()) return null;
   const origin = process.env.ONESA_IDENTITY_UI_ORIGIN;
-  if (!origin) throw Error("External Identity administration requires ONESA_IDENTITY_UI_ORIGIN");
-  const url = new URL(origin);
-  if (url.protocol !== "https:" || url.origin !== origin)
-    throw Error("ONESA_IDENTITY_UI_ORIGIN must be an exact HTTPS origin");
-  // A fixed fragment prevents a browser inheriting an old emailed proof on redirect.
+  if (!origin) return null;
+  let url: URL;
+  try { url = new URL(origin); } catch { return null; }
+  if (url.protocol !== "https:" || url.origin !== origin) return null;
   return new URL("/admin#accounts", url).href;
 }
