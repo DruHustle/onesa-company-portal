@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
 import { infrastructureOverview } from "../src/operations/infrastructure.js";
+import { identityHealthAvailable } from "../src/operations/identity-health.js";
 import { probeAvailable } from "../../scripts/observe-infrastructure.mts";
 const directory = await mkdtemp(join(tmpdir(), "onesa-infrastructure-"));
 after(() => rm(directory, { recursive: true, force: true }));
@@ -30,6 +31,23 @@ test("OIDC health metadata cannot trust endpoints outside the configured Identit
     assert.equal(probeAvailable("identity", { ...valid, [key]: "https://user:synthetic@auth.onesa.eu/endpoint" }), false);
     assert.equal(probeAvailable("identity", { ...valid, [key]: "http://auth.onesa.eu/endpoint" }), false);
     assert.equal(probeAvailable("identity", { ...valid, [key]: "https://auth.onesa.eu/endpoint#fragment" }), false);
+  }
+});
+
+test("OIDC health metadata cannot trust endpoints outside the configured Identity origin", () => {
+  const valid = {
+    issuer: "https://auth.onesa.eu/",
+    authorization_endpoint: "https://auth.onesa.eu/authorize",
+    token_endpoint: "https://auth.onesa.eu/oauth/token",
+    jwks_uri: "https://auth.onesa.eu/.well-known/jwks.json",
+  };
+  assert.equal(identityHealthAvailable(valid), true);
+  assert.equal(identityHealthAvailable({ ...valid, issuer: "https://attacker.example/" }), false);
+  for (const key of ["authorization_endpoint", "token_endpoint", "jwks_uri"] as const) {
+    assert.equal(identityHealthAvailable({ ...valid, [key]: "https://attacker.example/endpoint" }), false);
+    assert.equal(identityHealthAvailable({ ...valid, [key]: "https://user:synthetic@auth.onesa.eu/endpoint" }), false);
+    assert.equal(identityHealthAvailable({ ...valid, [key]: "http://auth.onesa.eu/endpoint" }), false);
+    assert.equal(identityHealthAvailable({ ...valid, [key]: "https://auth.onesa.eu/endpoint#fragment" }), false);
   }
 });
 
