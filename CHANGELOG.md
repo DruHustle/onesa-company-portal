@@ -1,5 +1,40 @@
 # Changelog
 
+- Use Onesa Account for Portal staff and Engineering Docs sign-in and signup.
+  A new member can verify their email and request Docs access without selecting
+  another product. The owner reviews new access requests. Existing staff MFA,
+  individual Docs approvals and browser-bound authorization exchanges continue
+  through the shared entry. Migration 019 binds new pending Docs requests to the
+  requesting verified account, so that session can continue after owner approval.
+  Apply the migration before the matching API. Previously issued email links
+  remain usable.
+
+- Use operator readiness for Robot and inference readiness for AI in Admin Infrastructure. A live process can now report unavailable when journal recovery or an inference dependency blocks work.
+
+- Recognize the live status reported by the Factory and Robot APIs in Admin Infrastructure,
+  observe the public Mobile API and PasoFi gateway, and show the responding AI Platform
+  and Logistics backend revisions when supplied.
+
+- Prompt users to sign back in to any Onesa product when the Portal session that authorized its grant expires. Signing back in preserves the user’s identity and leaves the previous grant inactive.
+
+- Add a fresh-MFA administrator action to disable and restore ordinary Onesa members
+  while preserving the member role and existing product approvals.
+
+- Scope the signed Onesa sign-in interaction cookies to the exact session API path
+  used by browsers while directing the user to the existing Portal sign-in form.
+
+- Let verified Portal users initiate account and associated product-data deletion at
+  `/account/delete` and receive a reference for follow-up with the privacy team.
+
+- Add the independently commissioned `frontend-identity-v2` release profile for
+  the seven-product account launcher. It verifies the retained and candidate
+  frontend Git trees and reads both Vercel callback variables against the
+  issuer's registered environment origins before publication.
+
+- Prepare the English and German mobile app directory on the Company Products page.
+  Each product links to its own website. Platform-specific install links appear
+  when that product has a verified release destination.
+
 - Restore current Portal source and its product history to the standalone
   repository, with billing source retained as an independent service. Keep the
   existing standalone release bindings and historical consolidated records.
@@ -76,6 +111,9 @@
   and Robot API incidents; shared/mixed incidents and simulations retain the
   configured Portal sender. Offline regressions do not activate a monitor,
   change deployed mail configuration or establish inbox delivery.
+- Add a rollback-only local database rehearsal for customer identity migrations
+  017 and 018. It exercises the application migrator and checks retained grants
+  and all eight ordinary product roles from an exact schema 016, 017 or 018 copy.
 - Preserve the reviewed private PostgreSQL CA integration from the pending
   standalone change. The API, worker and isolated migration helper accept one
   bounded certificate through existing private configuration, require

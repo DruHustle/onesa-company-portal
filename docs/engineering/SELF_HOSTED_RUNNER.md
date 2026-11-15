@@ -1,27 +1,7 @@
-# GitHub-hosted validation and retired local runner
+# GitHub-hosted product checks and private local verification
 
-Owner direction, 2026-10-18: the local/self-hosted runner implementation is removed.
-The reusable workflow, provisioning scripts, hooks, leases, configuration, startup
-helpers and custom runner labels are no longer shipped. Do not recreate, register
-or reactivate a local runner when visibility changes. Historical receipts remain
-restricted and Git history preserves the retired implementation for audit purposes.
+Public product pull requests, required checks and release workflows use GitHub-hosted runners. Product repositories have no local runner registrations. A change in repository visibility follows the [GitHub Free procedure](../development/FREE_GITHUB_PLAN.md).
 
-All three repositories are currently public and use standard GitHub-hosted runners.
-Current GitHub API inventories report zero repository runner registrations. The dedicated
-Onesa CI VM and its disabled startup plist have been removed after verifying stopped
-state, zero registrations, no host mounts and no additional disks. Application/Oracle
-resources were excluded. There is no local executor to restart.
+The dedicated local runner from October 2026 was removed. On 12 November the owner requested local GitHub runner configuration again. Provisioning and manual dispatch now belong to the separate, owner-only private [Onesa CI controller](https://github.com/DruHustle/onesa-local-ci). Its [setup and verification instructions](https://github.com/DruHustle/onesa-local-ci/blob/main/README.md) cover registration, health and shutdown on the owner's dedicated Ubuntu ARM64 guest.
 
-GitHub Free is the permanent budget. If the owner later makes repositories private,
-use included GitHub-hosted capacity only. Check actual account allowances and the
-zero-paid-usage spending controls before enabling jobs. Exhausted allowance is a
-validation blocker; never skip required checks, enable paid overages or substitute
-an unreported laptop run for a GitHub check. A local developer test remains useful
-local evidence, not a provider status or production authorization.
-
-Follow [the visibility-transition procedure](../development/FREE_GITHUB_PLAN.md).
-Keep `dev → staging → main`, exact-source PR/CI evidence, synthetic test resources,
-zero unavailable independent approvals and external owner-controlled production
-qualification. Keep deployment credentials outside PR jobs and never use privileged
-PR execution. Public protection and future private-Free procedural safeguards are
-separate; private eligibility must be read back rather than assumed.
+The controller accepts the exact reviewed commit at the tip of public Portal main. When local verification is requested, its guest runs documentation and system appearance checks, then checks the independent public Portal main push workflow and its GitHub-hosted `verify` job at that SHA. The local path uses the dedicated guest and the existing public receipt. A separate optional hosted-only dispatch runs documentation and appearance checks within the private controller’s available included capacity. The controller grants no staging, production or hardware authorization.

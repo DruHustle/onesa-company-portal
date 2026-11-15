@@ -131,6 +131,9 @@ def backup_current():
 
 def verify_retained(plan, proof):
     value, _ = validate(plan)
+    if identity.eight_client_profile(plan):
+        r.require(proof.get("schema_019_rehearsed") is True and "schema_016_rehearsed" not in proof,
+                  "IDENTITY_SCHEMA_019_REHEARSAL_REQUIRED")
     backup = backup_current()
     identity.private_bytes(value["ledger_file"])
     replay, checksum = restore_replay.ledger(value["ledger_file"]["path"])
@@ -726,19 +729,23 @@ def observe(binding, plan, operation, target):
         )
         source = ROOT_SOURCE(binding)
         _, files = r.source_inventory(source, binding)
-        identity.identity_source_files(files)
+        v3 = identity.eight_client_profile(plan)
+        profile = identity.PROFILE_V3 if v3 else identity.PROFILE
+        identity.identity_source_files(files, profile=profile)
+        schema = 19 if v3 else 16
+        accepted = identity.SCHEMA_BASELINES_V3 if v3 else (12, 14, 15, 16)
         migration_names = sorted(
             name for name in files if name.startswith(identity.PREFIX + "migrations/")
         )
         r.require(
-            len(rows) in {12, 14, 15, 16}
+            len(rows) in accepted
             and {row["name"]: row["checksum"] for row in rows}
             == {Path(name).name: files[name] for name in migration_names[: len(rows)]},
             "IDENTITY_RESTORE_MIGRATION_BASELINE",
         )
-        if len(rows) < 16:
+        if len(rows) < schema:
             transaction = "BEGIN;\nSELECT pg_advisory_xact_lock(757830);\n"
-            for migration_name, checksum in identity.MIGRATIONS.items():
+            for migration_name, checksum in (identity.MIGRATIONS_V3 if v3 else identity.MIGRATIONS).items():
                 if int(migration_name[:3]) <= len(rows):
                     continue
                 raw = r.docker(
@@ -768,9 +775,16 @@ def observe(binding, plan, operation, target):
             sql(container, database, transaction + "COMMIT;\n")
         r.require(
             sql(container, database, "SELECT count(*) FROM schema_migrations;").strip()
-            == b"16",
-            "IDENTITY_RESTORED_SCHEMA_NOT_016",
+            == str(schema).encode(),
+            f"IDENTITY_RESTORED_SCHEMA_NOT_{schema:03}",
         )
+        if v3:
+            restored_rows = json.loads(sql(
+                container, database,
+                "SELECT json_agg(x ORDER BY name) FROM (SELECT name,checksum FROM schema_migrations) x;"
+            ))
+            r.require(restored_rows == [{"name": Path(name).name, "checksum": files[name]} for name in migration_names],
+                      "IDENTITY_RESTORED_019_CHECKSUM_READBACK")
         lockdown = sql(
             container, database, restore_replay.replay_sql(ledger, restore_lockdown.SQL)
         )
@@ -791,7 +805,7 @@ def observe(binding, plan, operation, target):
             "database_contents_match": True,
             "database_tables_restored": len(manifest),
             "objects_verified": len(payload["objects"]),
-            "schema_016_rehearsed": True,
+            f"schema_{schema:03}_rehearsed": True,
             "capability_lockdown": True,
             "compatible_fallback": fallback,
             "off_instance_readback": readback,

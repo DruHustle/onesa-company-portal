@@ -1,0 +1,12 @@
+[Unit]
+Description=Hourly failed Vercel deployment cleanup with retry margin
+
+[Timer]
+OnCalendar=hourly
+OnBootSec=5min
+RandomizedDelaySec=120
+Persistent=true
+Unit=onesa-vercel-cleanup.service
+
+[Install]
+WantedBy=timers.target

@@ -19,6 +19,7 @@ import oracle_portal_identity_acceptance as acceptance
 import oracle_portal_identity_restore as restore
 import oracle_owner as owner
 import test_oracle_owner as owner_fixtures
+from portal_profile_test_fixtures import schema_016_migrations
 
 
 def binding():
@@ -174,6 +175,13 @@ class ProfileTests(unittest.TestCase):
             for p in (root / "onesa-company-portal-backend").rglob("*")
             if p.is_file() and "node_modules" not in p.parts and "dist" not in p.parts
         }
+        # The real candidate has migration 017; the historical profile must reject it.
+        with self.assertRaisesRegex(r.Refused, "TO_016_ONLY"):
+            identity.identity_source_files(files)
+        directory = identity.PREFIX + "migrations/"
+        files = {name: digest for name, digest in files.items() if not name.startswith(directory)}
+        files.update({directory + name: hashlib.sha256(data).hexdigest()
+                      for name, data in schema_016_migrations(root).items()})
         selected = identity.identity_source_files(files)
         self.assertIn(identity.PREFIX + "src/identity/provider.ts", selected)
         self.assertIn(identity.PREFIX + "package-lock.json", selected)

@@ -14,6 +14,12 @@ import { engineeringEmailAllowed } from "./config.js";
 export const sharedEngineeringEnabled = () =>
   process.env.ONESA_IDENTITY_ENABLED === "true";
 
+/** Isolated regression fixtures can exercise historical flows without a hosted issuer. */
+export function legacyEngineeringFixture() {
+  return process.env.NODE_ENV === "test" && process.env.ENGINEERING_LEGACY_TEST_FIXTURE === "true" &&
+    new URL(process.env.PUBLIC_ORIGIN || "http://localhost").hostname === "portal.example.invalid";
+}
+
 /** The account must prove its own verified identity; email alone never links it. */
 export async function engineeringCentralAccount(request: FastifyRequest) {
   if (!sharedEngineeringEnabled()) return null;
@@ -152,7 +158,10 @@ export async function engineeringProofSession(
       [membershipId],
     )
   ).rows[0];
-  if (!link) return null;
+  if (!link) {
+    if (legacyEngineeringFixture()) return null;
+    throw new HttpError(403, "ENGINEERING_ACCOUNT_PROOF", "Confirm the link to your existing Engineering membership with your verified Onesa account.");
+  }
   if (!sharedEngineeringEnabled())
     throw new HttpError(
       503,

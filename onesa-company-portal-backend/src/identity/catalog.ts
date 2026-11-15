@@ -13,7 +13,7 @@ export const catalogProducts = [
   "mobile",
 ] as const;
 const names: Record<(typeof catalogProducts)[number], string> = {
-  ai: "Onesa AI",
+  ai: "Onesa AI Platform",
   drone: "Onesa Drone",
   robot: "Onesa Robot",
   farmer: "Smart Farmer",

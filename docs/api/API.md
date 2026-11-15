@@ -92,6 +92,12 @@ expected revision and access-policy evidence. An engineering identity has no Por
 role. The exact Cloudflare email policy remains an independent requirement. See
 [Engineering Docs access](../engineering/ENGINEERING_DOCS_IDENTITY.md).
 
+## Shared account email sign-in
+
+`POST /api/v1/account/email-link` accepts an email. For product sign-in, `POST /api/v1/account/interaction/:uid/email-link` also requires the initiating browser’s interaction cookie and CSRF proof. The response is 202 for an unknown or ineligible address as well as for a verified account. The recipient confirms the address and the one-use proof in the URL fragment. Proofs expire after 15 minutes. The same IP and address rate limits govern repeat requests, and repeat requests within 30 seconds send a single message.
+
+The shared login and the product interaction login accept `emailToken` in place of `password`. A product-bound link also requires its original interaction, browser cookies and CSRF proof. Account disablement, credential changes and global sign-out invalidate outstanding proofs. Email authentication preserves the account’s MFA requirements, memberships and product approvals. Only accounts that already have Portal access can receive an administration session. Engineering Docs uses its own cookie-bound `account-email-link` and `account-email-login` interaction actions. The emailed link returns to the original Docs interaction, where the existing membership and session policy still apply. Previously sent administrator and Engineering links keep their existing confirmation paths.
+
 ## Prepared common-account Docs link
 
 Prepared additive account-link fields preserve older clients: current Docs details
@@ -174,8 +180,12 @@ The change uses schema 012 and retains the worker's existing publication postcon
 The public account configuration and authenticated account snapshots now include
 an additive `catalog` of `{product,name,connected}` entries. AI, Drone and Robot
 and optional Mobile are connected only when their fixed confidential client is configured.
-Farmer, Logistics, Factory and PasoFi remain unconnected recognition entries:
-they accept no registration request, callback or token and receive no entitlement.
+Farmer, Logistics and PasoFi can each register a confidential client for verified
+platform administrators. Those clients receive only their own entry in
+`onesa_applications` and `onesa_product_roles`, an MFA-backed `global_admin`
+claim and no workspace memberships. Each application enforces its own resource
+permissions. The registration and product-grant APIs retain their four-product
+vocabulary. Smart Factory remains a catalog entry.
 The existing `applications` response and legacy audience-bound three-product claims remain
 compatible; Mobile keeps its separately configured vocabulary and client boundaries.
 Future commissioning requires an independently reviewed client and its
@@ -217,6 +227,11 @@ require MFA as well. Normal accounts receive only active explicit product grants
 Drone additionally requires explicit membership in an existing workspace; its
 product role caps each workspace role. Robot actuation and safety confirmations
 remain independently enforced by Robot.
+
+For positive OIDC `max_age`, the issuer checks the actual central authentication time.
+A fresh verified session can continue. An expired freshness window, `prompt=login`
+or `max_age=0` requires new proof. Same-account step-up retains the OIDC browser
+session during the pending interaction and rotates the central credential.
 
 Every issued grant is bound to the exact account or MFA Portal session that
 approved it. Sign-out, credential changes, disablement and global-role changes
@@ -290,3 +305,145 @@ It exposes no arbitrary upstream path, usage-ingestion endpoint or webhook proxy
 The page starts catalog Checkout and reads invoice status; direct invoice creation
 and finalization remain explicit authorized API operations. Metronome usage and
 Stripe webhook processing stay in the independent billing service.
+
+### Account deletion requests
+
+The public account page at `/account/delete` explains how to request deletion of a shared
+Onesa account and associated product data. A verified, signed-in user submits
+`POST /api/v1/account/deletion-requests` with the session CSRF header, the Portal
+origin and `{"confirmed":true}`. The server derives the subject from the live
+session and returns HTTP 202 with a reference. Concurrent submissions and
+retries within 24 hours return the same reference. The transaction records an
+audit event and queues an encrypted request for the published privacy contact.
+The reference confirms intake. The privacy team reviews the request, identifies
+applicable retention obligations and coordinates fulfillment across products.
+
+Verified platform administrators can disable or restore an ordinary member from
+**Accounts and product access → Member account**. The `PUT /api/v1/admin/identity/accounts/:id/member-status`
+endpoint takes `disabled` and a fresh administrator `stepUp`, and writes the reviewer's
+identity to the audit log. Disabling revokes sessions. Restoring permits a fresh
+login with the member's existing product approvals and workspace assignments.
+
+When a Farmer client is configured, a verified Onesa customer with active Farmer
+access receives `onesa_product_roles.farmer = "user"`. Verified Portal staff can
+enter Farmer under their existing Portal approval. An explicit pending, rejected
+or revoked Farmer decision takes precedence for ordinary staff. Platform
+administrators retain the existing MFA requirement. Farmer receives only its own
+product assertion and resolves all farm memberships within Smart Farmer. With no
+membership, the user may create a farm or accept an invitation.
+A self-service account with the ordinary `member` role requests Farmer from
+`/account` using `POST /api/v1/account/products/farmer/request`. A Portal
+administrator can approve the existing account in the product-access manager.
+An approval for another product grants access only to that product.
+When the Portal session that authorized a product grant expires, returning to that product requests fresh authentication even if the browser still holds its issuer cookie. Signing back in preserves the existing Portal subject. The expired grant stays inactive.
+An in-progress authorization can be cancelled with its browser cookie and
+interaction CSRF proof at `POST /api/v1/account/interaction/:uid/cancel`.
+Following the signed-in browser's continuation returns the original state and
+`access_denied` to the registered callback. No grant is issued.
+
+### Customer access for Logistics, PasoFi and Factory
+
+Migration 018 adds explicit ordinary product grants: `logistics: user`,
+`pasofi: customer` and `factory: user`. Existing rows and approvals are unchanged.
+These clients receive only their own product assertion and no Drone memberships.
+A registered client, verified account and active product approval are required.
+Global administrators retain MFA and the existing `admin` assertion. Each product
+owns its local account links, records and organizational access; matching email or
+Portal product approval alone does not confer access to existing product data.
+Factory admits new ordinary identities to its pending local-access screen until
+an administrator approves their local role. An existing independently proven
+Factory account retains its local access.
+
+The identity preparation command retains its seven-client default. Explicit
+`--include-factory` adds the eighth confidential client and the exact
+`https://factory.onesa.eu/api/auth/onesa/callback` registration. The historical
+seven-client Oracle release profiles remain unchanged and do not qualify the
+new migration or eighth client. Qualify those exact changes before installation.
+
+### Infrastructure observations
+
+`GET /api/v1/admin/infrastructure` requires an owner or administrator Portal
+session and returns `Cache-Control: no-store`. All nine products, Kubernetes and
+Portainer appear even without observations. Configure the backend-only absolute
+`INFRASTRUCTURE_OBSERVATIONS_FILE` path to a read-only sanitized JSON snapshot.
+The response includes dependency/hosting descriptions, last observation,
+environment, observed revision when available and a scope description. It never
+returns provider credentials, raw responses or secret-file paths.
+
+Snapshots use version 1 and an `observations` array. Each entry has `id`, UTC
+`observedAt`, `state` (`available`, `unavailable`, `not_observed`), `source`
+(`public_http`, `owner_runtime`), `environment` and nullable source `revision`.
+Unknown fields, duplicate IDs, future dates, oversized files, symlinks and
+files writable by other users are rejected. The collector's containing directory
+must be owned by the service operator and not writable by other users. The API
+needs read access only; private observer credentials stay with the separate
+least-privilege collector, never the frontend. Missing/invalid snapshots display
+unobserved status. Observations at least five minutes old display stale status,
+retaining the previous result separately.
+
+`scripts/observe-infrastructure.mts` performs only credential-free public API
+probes with bounded timeouts and fixed destinations. Factory must return `ready`
+from `/health/ready`, which checks startup, database and real-time service readiness.
+Robot uses its operator readiness endpoint at `/api/v1/ready`.
+A Robot journal recovery failure produces an unavailable observation even while
+the process responds to liveness checks. Simulation readiness does not certify
+physical operation. AI Platform must pass both process health and inference readiness
+at `/ready` before the dashboard reports availability. The Mobile prelaunch API and the PasoFi public
+gateway each have their own liveness endpoint. Availability at these endpoints
+applies only to the responding API or gateway. Successful AI Platform and Logistics
+responses can provide their own backend Git SHA in the revision field. Other
+services and unavailable observations retain a null revision. The collector writes a mode0600
+snapshot atomically; HTML success responses do not establish API health. Private
+cluster/node/workload/volume and Portainer observations require the commissioned
+runtime observer and must not be inferred from an installed binary or manifest.
+No scheduler or private runtime observation is activated by this source change.
+
+#### Publishing public and private observations together
+
+On the Oracle Linux observer, schedule the public producer to write its own file.
+Have the commissioned private observer write a separate mode-0600 version-1
+snapshot with production `owner_runtime` rows. Its observation time must be the
+time of the actual private check. Examples of private checks are Kubernetes API
+node/workload readiness and an authenticated Portainer environment connection.
+Keep private check credentials outside the snapshot. Run the collector and the
+merger from the same installed source and with the same Node/tsx loader as the
+existing public producer. In these commands `$OBSERVER` is the absolute path to
+`scripts/observe-infrastructure.mts` and `$STATE` is a protected directory:
+
+```sh
+node --import tsx "$OBSERVER" "$STATE/public.json"
+node --import tsx "$OBSERVER" --merge "$STATE/public.json" "$STATE/owner.json" "$STATE/dashboard.json"
+```
+
+Set the backend's `INFRASTRUCTURE_OBSERVATIONS_FILE` to the read-only view of
+`dashboard.json`. Mount its containing directory read-only so atomic replacements
+remain visible. Give the API read access under the established UID mapping.
+Keep both producer files in operator-controlled directories. Protect the directory
+entries and their parent path from untrusted writers so another user cannot
+replace a valid input by name. With a shared protected directory as above, run
+the producers and merger under the same trusted owner. With independent producer
+identities, give each producer its own protected input directory and give the
+merger read access. Only the merger writes the dashboard file. Its three paths
+must be distinct. The output directory must already exist and must not be group-
+or world-writable. Concurrent mergers on the
+same Linux filesystem serialize under a kernel directory lock using util-linux
+`flock`. No private file is required for an existing public-only deployment.
+
+The latest observation for each product wins, including an explicit unavailable
+or unobserved result. At equal times the private check takes precedence over
+public HTTP. Conflicting states or revisions from the same source at the same time
+reject the publish. Replaying an older batch or omitting a row preserves the last
+recorded time, so that row becomes stale normally. Each input must be a complete,
+valid snapshot from its own source. Public rows cannot report private Kubernetes
+or Portainer observations. A missing or invalid input or an unsafe previous file
+leaves the existing dashboard intact. Use an empty private version-1 snapshot
+when commissioning the first public-only observations for an aggregated dashboard.
+
+### Shared account email sign-in
+
+`POST /api/v1/account/email-link` accepts an email address and an optional
+`returnTo` whose only supported value is `/admin`. An ordinary request opens
+`/account`. The explicit staff destination is honored after sign-in only for
+an account with Portal access. The distinct product and Docs interaction routes
+bind their proof to the initiating interaction. A 202 acknowledges the request.
+The worker and the receiving inbox provide separate delivery evidence.
