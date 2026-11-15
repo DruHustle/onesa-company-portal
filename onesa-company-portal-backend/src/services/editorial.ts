@@ -47,7 +47,7 @@ async function history(c:PoolClient,row:{id:string},actorId:string|null,action:s
  await c.query('INSERT INTO audit(actor_id,action,record_id,request_id) VALUES($1,$2,$3,$4)',[actorId,action,row.id,requestId??null]);
 }
 export async function createEditorialContent(b:z.infer<typeof contentInput>,actor:Actor,requestId:string){
- if(b.state==='published'||b.publishAt)throw new HttpError(409,'EDITORIAL_REVIEW','Save a draft and approve its exact revision before publishing or scheduling.');
+ if(b.state!=='draft'||b.publishAt)throw new HttpError(409,'EDITORIAL_REVIEW','New content must start as a draft. Archive or publish only an existing reviewed revision.');
  return transaction(async c=>{
   const metadata={...b.metadata,editorialReview:draftReview()};
   const row=required((await c.query('INSERT INTO content(id,kind,slug,locale,title,summary,body,metadata,state,publish_at,author_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *',[randomUUID(),b.kind,b.slug,b.locale,b.title,b.summary,b.body,metadata,b.state,b.publishAt||null,actor.id])).rows[0]);
