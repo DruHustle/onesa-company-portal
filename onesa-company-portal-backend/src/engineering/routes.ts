@@ -1,9 +1,12 @@
 import {
   requestEngineeringLink,
+  requestOnesaDocsAccess,
+  accessConfiguration,
   consumeEngineeringLink,
   engineeringPasswordAccount,
   engineeringLinkResendSeconds,
 } from "../auth/access.js";
+import { accountEmailCredentials, type registerIdentity } from "../identity/routes.js";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import type { IncomingMessage } from "node:http";
@@ -14,8 +17,8 @@ import { db, transaction, inTransaction } from "../services/db.js";
 import { HttpError } from "../services/workflows.js";
 import { reauthenticate } from "../auth/reauthenticate.js";
 import { onesaSession } from "../auth/onesa-session.js";
-import { lockAccountSession, type AccountSession } from "../identity/accounts.js";
-import { engineeringCentralAccount, engineeringLinkChoice, engineeringProofSession, linkedEngineeringSession, sharedEngineeringEnabled } from "./onesa-account.js";
+import { lockAccountSession, identityAccount, isGlobalAdmin, type AccountSession } from "../identity/accounts.js";
+import { linkEngineeringAccount, legacyEngineeringFixture, engineeringCentralAccount, engineeringLinkChoice, engineeringProofSession, linkedEngineeringSession, sharedEngineeringEnabled } from "./onesa-account.js";
 import type { Role } from "../access/roles.js";
 import { error } from "../api/contracts.js";
 import { createEngineeringProvider } from "./provider.js";
@@ -64,6 +67,7 @@ export async function registerEngineeringIdentity(
   app: FastifyInstance,
   allow: Guard,
   limits: Limits,
+  accountEmail: Awaited<ReturnType<typeof registerIdentity>>,
 ) {
   const api = app.withTypeProvider<ZodTypeProvider>(),
     config = engineeringIdentityConfiguration(process.env, env.PUBLIC_ORIGIN),
@@ -182,7 +186,7 @@ export async function registerEngineeringIdentity(
         ...meta("engineeringSignInDetails"),
         params,
         response: {
-          200: z.object({ csrf: proof, emailSent: z.boolean(), linkResendSeconds: z.number().int().min(0).max(30), linkEmail: z.email().optional(), onesaAccount: z.object({email:z.email()}).optional(), onesaLink:z.object({email:z.email()}).optional(), onesaSignInPath:z.string().optional(), onesaReauthRequired:z.literal(true).optional() }),
+          200: z.object({ csrf: proof, emailSent: z.boolean(), linkResendSeconds: z.number().int().min(0).max(30), linkEmail: z.email().optional(), onesaAccount: z.object({email:z.email()}).optional(), onesaLink:z.object({email:z.email()}).optional(), onesaEnrollment:z.enum(["available", "pending"]).optional(), onesaSignInPath:z.string().optional(), onesaReauthRequired:z.literal(true).optional() }),
           ...errors,
         },
       },
@@ -191,10 +195,26 @@ export async function registerEngineeringIdentity(
       await limits.limit("engineering-details:" + limits.address(req), 60, 900);
       const details = await interaction(req, reply);
       const { config } = configured();
+      if (!sharedEngineeringEnabled() && !legacyEngineeringFixture())
+        throw new HttpError(503, "IDENTITY_UNAVAILABLE", "Company Portal sign-in is temporarily unavailable.");
       const session = await approvedOnesaSession(req, details);
       const linkChoice = await engineeringLinkChoice(req, config.externalEmails);
       const linked = sharedEngineeringEnabled() ? await linkedEngineeringSession(req, config.externalEmails) : null;
-      const reauthRequired = Boolean(linked && !(await centralSessionFresh(details,linked.session)));
+      let enrollmentRequiresReauth = false;
+      let enrollment: "available" | "pending" | undefined;
+      if (!session && !linkChoice && !linked && accessConfiguration()) {
+        const central = await engineeringCentralAccount(req);
+        if (central) {
+          const { email, id } = central.account;
+          const state = (await db.query(
+            "SELECT (SELECT state FROM access_registrations WHERE email=$1 AND audience='engineering') AS state WHERE NOT EXISTS (SELECT 1 FROM engineering_memberships WHERE email=$1) AND NOT EXISTS (SELECT 1 FROM identity_engineering_links WHERE user_id=$2)", [email, id],
+          )).rows[0];
+          if (state?.state === "pending") enrollment = "pending";
+          if (state && state.state == null) enrollment = "available";
+          if (enrollment === "available") enrollmentRequiresReauth = !(await centralSessionFresh(details, central));
+        }
+      }
+      const reauthRequired = enrollmentRequiresReauth || Boolean(linked && !(await centralSessionFresh(details,linked.session)));
       const cookie = req.cookies[engineeringHandoffCookie];
       let linkEmail: string | undefined;
       if (cookie) {
@@ -208,6 +228,7 @@ export async function registerEngineeringIdentity(
         ...(linkEmail ? { linkEmail } : {}),
         ...(session ? { onesaAccount: {email:session.email} } : {}),
         ...(linkChoice ? { onesaLink:linkChoice } : {}),
+        ...(enrollment ? { onesaEnrollment: enrollment } : {}),
         ...(reauthRequired ? {onesaReauthRequired:true as const} : {}),
         ...(sharedEngineeringEnabled() ? { onesaSignInPath:"/account?returnTo="+encodeURIComponent("/engineering/sign-in/"+req.params.uid) } : {}),
       };
@@ -246,12 +267,59 @@ export async function registerEngineeringIdentity(
       );
     return {...configured(), details};
   };
+  api.post("/api/v1/engineering-sign-in/:uid/account-email-link", {
+    logLevel: "silent",
+    schema: {...meta("requestEngineeringAccountEmailLink"), params,
+      body: z.object({csrf: proof, email: z.email().max(254)}), response: {202: z.object({ok: z.literal(true)}), ...errors}},
+  }, async (req, reply) => {
+    const {details} = await verifiedInteraction(req, reply, req.body.csrf);
+    await accountEmail.requestForDocs(req, req.body.email, details.uid);
+    return reply.code(202).send({ok: true});
+  });
+  api.post("/api/v1/engineering-sign-in/:uid/account-email-login", {
+    logLevel: "silent",
+    schema: {...meta("confirmEngineeringAccountEmailLink"), params,
+      body: accountEmailCredentials.extend({csrf: proof}).strict(), response: {200: z.object({ok: z.literal(true)}), ...errors}},
+  }, async (req, reply) => {
+    const {details} = await verifiedInteraction(req, reply, req.body.csrf);
+    await accountEmail.confirmForDocs(req, reply, req.body, details.uid);
+    return {ok: true as const};
+  });
+  api.post("/api/v1/engineering-sign-in/:uid/enroll", {
+    logLevel: "silent",
+    schema: { ...meta("enrollOnesaAdministratorForDocs"), params, body: z.object({ csrf: proof }).strict(),
+      response: { 200: z.object({status: z.enum(["pending","approved"])}), ...errors } },
+  }, async (req, reply) => {
+    const {config, details} = await verifiedInteraction(req, reply, req.body.csrf);
+    const registration = accessConfiguration();
+    const session = await engineeringCentralAccount(req);
+    if (!registration || !session)
+      throw new HttpError(403, "ENGINEERING_ACCOUNT_PROOF", "Sign in with your verified Onesa account to request Engineering Docs access.");
+    if (!(await centralSessionFresh(details, session)))
+      throw new HttpError(403, "ONESA_REAUTH_REQUIRED", "Sign in again to your Onesa account.");
+    await limits.limit("engineering-enrollment:" + session.account.id, 10, 900);
+    return transaction(async c => {
+      await lockAccountSession(c, session);
+      const account = await identityAccount(session.account.id, c);
+      if (!account?.email_verified_at || (isGlobalAdmin(account.role) && !session.amr.includes("otp")))
+        throw new HttpError(403, "ENGINEERING_ACCOUNT_PROOF", "Verify your Onesa account and its required sign-in factors.");
+      if ((await c.query("SELECT 1 FROM identity_engineering_links WHERE user_id=$1", [account.id])).rowCount)
+        throw new HttpError(409, "ENGINEERING_MEMBERSHIP", "Use your existing Engineering Docs membership.");
+      const status = await requestOnesaDocsAccess(c, registration, account, config.externalEmails);
+      if (status === "approved") {
+        const membership = (await c.query("SELECT id FROM engineering_memberships WHERE email=$1 AND enabled", [account.email])).rows[0];
+        await linkEngineeringAccount(c, session, membership.id, config.externalEmails, req.id);
+      }
+      return {status};
+    });
+  });
   async function approvedOnesaSession(req: FastifyRequest, details: Awaited<ReturnType<NonNullable<typeof provider>["interactionDetails"]>>) {
     if (sharedEngineeringEnabled()) {
       const linked = config ? await linkedEngineeringSession(req, config.externalEmails) : null;
       if (!linked || !(await centralSessionFresh(details, linked.session))) return null;
       return {id:linked.session.account.id,email:linked.session.account.email,authenticated_at:new Date(linked.session.authenticatedAt*1000),membershipId:linked.membershipId,central:linked.session};
     }
+    if (!legacyEngineeringFixture()) return null;
     const session = await onesaSession(req);
     if (!session || !config || !engineeringEmailAllowed(session.email, config.externalEmails)) return null;
     // A forced reauthentication cannot be satisfied by a previously established session.
@@ -309,6 +377,7 @@ export async function registerEngineeringIdentity(
     async (req, reply) => {
       const { config } = await verifiedInteraction(req, reply, req.body.csrf),
         email = req.body.email.toLowerCase();
+      if (!legacyEngineeringFixture()) throw new HttpError(403, "ONESA_SESSION_REQUIRED", "Sign in through Company Portal, then link your existing Engineering access.");
       await limits.limit(
         "engineering-start-ip:" + limits.address(req),
         10,
@@ -356,7 +425,7 @@ export async function registerEngineeringIdentity(
     const membership=(await db.query("SELECT enabled FROM engineering_memberships WHERE id=$1 FOR SHARE",[accountId])).rows[0];
     if(!membership?.enabled)throw new HttpError(403,"ENGINEERING_ACCOUNT_PROOF","Engineering membership is required.");
     if(central){
-      method=central.amr.includes("otp")?"mfa":"pwd";
+      method=central.amr.includes("otp")?"mfa":central.amr.includes("email")?"email":"pwd";
       authenticatedAt=central.authenticatedAt;
     }
     const grant = new provider.Grant({ accountId, clientId: config.clientId });
@@ -392,7 +461,9 @@ export async function registerEngineeringIdentity(
   async function finishProof(req:FastifyRequest,reply:FastifyReply,proofAccount:()=>Promise<string>,method:string,rememberBrowser:boolean,linkRequested=false){
     return transaction(c=>inTransaction(c,async()=>{
       // Keep account-before-membership ordering, including concurrent link redemption.
+      if(!sharedEngineeringEnabled()&&!legacyEngineeringFixture())throw new HttpError(503,"IDENTITY_UNAVAILABLE","Company Portal sign-in is temporarily unavailable.");
       const source=await engineeringCentralAccount(req);
+      if(!source&&!legacyEngineeringFixture())throw new HttpError(401,"ONESA_SESSION_REQUIRED","Sign in to your verified Onesa account before confirming Engineering access.");
       if(source)await lockAccountSession(c,source);
       const accountId=await proofAccount();
       const {config}=configured();
@@ -460,6 +531,10 @@ export async function registerEngineeringIdentity(
         );
         if (action === "link") {
           const email = input.email!.toLowerCase();
+          if (!legacyEngineeringFixture()) {
+            const choice = await engineeringLinkChoice(req, config.externalEmails);
+            if (!choice || choice.email !== email) throw new HttpError(403, "ENGINEERING_ACCOUNT_PROOF", "Sign in to the matching Onesa account before requesting a membership proof.");
+          }
           await limits.limit(
             "engineering-link-email:" + emailRateKey(config, email),
             3,

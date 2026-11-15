@@ -1,5 +1,7 @@
 # Automated release qualification
 
+The protected-main verifier reads classic branch protection before building, reviewing or promoting. For a standard Actions token, configure the optional repository secret `RELEASE_GOVERNANCE_READ_TOKEN` for a dedicated fine-grained credential with read-only **Administration** access on `DruHustle/onesa-company-portal` only. The verifier uses it for the single main protection GET. The existing job token still handles CI, artifacts and ordinary repository reads. A missing or unreadable policy blocks the release. The expected branch controls, required checks and owner approval still apply.
+
 ## Current execution: Oracle / Vercel
 
 Use the [primary deployment procedure](DEPLOYMENT.md#primary-release-path) and

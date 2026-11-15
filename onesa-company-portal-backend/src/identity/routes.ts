@@ -5,6 +5,7 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db, transaction, inTransaction } from "../services/db.js";
 import { env } from "../config/env.js";
+import { company } from "../config/company.js";
 import { error } from "../api/contracts.js";
 import { HttpError, enqueue } from "../services/workflows.js";
 import {
@@ -27,6 +28,8 @@ import {
   accountAccess,
   currentAccount,
   identityAccount,
+  identityAccountQuery,
+  type IdentityAccount,
   isGlobalAdmin,
   requireAccount,
   revokeAccountIdentity,
@@ -38,6 +41,7 @@ import {
   identityConfiguration,
   identityPath,
   products,
+  clientProducts,
   mobileRoles,
   defaultProductRole,
   validProductRole,
@@ -45,6 +49,7 @@ import {
   type IdentityClient,
   type Product,
 } from "./config.js";
+import { requestAccountEmailLink, consumeAccountEmailLink } from "./email-sign-in.js";
 import { createIdentityProvider } from "./provider.js";
 import { catalogProducts, identityCatalog } from "./catalog.js";
 
@@ -68,6 +73,7 @@ const failures = {
 const proof = z.string().regex(/^[a-f0-9]{64}$/);
 const uid = z.string().regex(/^[A-Za-z0-9_-]{8,128}$/);
 const product = z.enum(products);
+const clientProduct = z.enum(clientProducts);
 const stepUp = z.object({
   password: z.string().min(1).max(256),
   code: z.string().min(6).max(64),
@@ -78,6 +84,8 @@ const credentials = z.object({
   code: z.string().max(64).default(""),
   rememberBrowser: z.boolean().default(false),
 });
+export const accountEmailCredentials = credentials.omit({password:true}).extend({emailToken:proof});
+const loginCredentials = z.union([accountEmailCredentials.strict(), credentials]);
 const accountSchema = z.object({
   id: z.uuid(),
   email: z.email(),
@@ -99,7 +107,7 @@ const membershipSchema = z.object({
   role: z.enum(["viewer", "operator", "admin"]),
   label: z.string().min(1).max(120),
 });
-const applicationSchema = z.object({ product, url: z.url() });
+const applicationSchema = z.object({ product: clientProduct, url: z.url() });
 const catalogSchema = z.object({ product: z.enum(catalogProducts), name: z.string(), connected: z.boolean() });
 const sessionSchema = z.object({
   account: accountSchema,
@@ -150,11 +158,11 @@ export async function registerIdentity(
     return { config, provider };
   };
   // Existing three products retain their behavior; Mobile is opt-in per client.
-  const requireMobileConfigured = (selected: string) => {
+  const requireProductConfigured = (selected: string) => {
     const { config } = configured();
     if (
-      selected === "mobile" &&
-      !config.clients.some((client) => client.product === "mobile")
+      !["ai", "drone", "robot"].includes(selected) &&
+      !config.clients.some((client) => client.product === selected)
     )
       throw new HttpError(
         503,
@@ -252,12 +260,16 @@ export async function registerIdentity(
               auth_time: z.number().int(),
               amr: z.array(z.string()),
               onesa_roles: z.array(z.literal("global_admin")),
-              onesa_applications: z.array(product),
+              onesa_applications: z.array(clientProduct),
               onesa_product_roles: z.object({
                 ai: z.enum(["user", "admin"]).optional(),
                 drone: z.enum(["viewer", "operator", "admin"]).optional(),
                 robot: z.enum(["viewer", "operator", "admin"]).optional(),
                 mobile: z.enum(mobileRoles).optional(),
+                farmer: z.enum(["user", "admin"]).optional(),
+                logistics: z.enum(["user", "admin"]).optional(),
+                factory: z.enum(["user", "admin"]).optional(),
+                pasofi: z.enum(["customer", "admin"]).optional(),
               }),
               onesa_memberships: z.array(
                 membershipSchema
@@ -326,23 +338,19 @@ export async function registerIdentity(
         onesa_product_roles,
         onesa_memberships,
       } = await accountAccess(account);
-      // Legacy consumers reject unknown product names. Mobile receives the expanded
-      // vocabulary; existing product assertions retain their three-product contract.
+      // Legacy clients validate the whole vocabulary. New clients receive only
+      // their own entitlement and no information about other product workspaces.
+      const ownProductOnly = ["farmer", "logistics", "pasofi", "factory"].includes(client.product);
+      const visibleProducts: readonly string[] = ownProductOnly
+        ? [client.product]
+        : client.product === "mobile" ? ["ai", "drone", "robot", "mobile"] : ["ai", "drone", "robot"];
       const claims = {
         onesa_roles,
-        onesa_applications:
-          client.product === "mobile"
-            ? onesa_applications
-            : onesa_applications.filter((name) => name !== "mobile"),
-        onesa_product_roles:
-          client.product === "mobile"
-            ? onesa_product_roles
-            : Object.fromEntries(
-                Object.entries(onesa_product_roles).filter(
-                  ([name]) => name !== "mobile",
-                ),
-              ),
-        onesa_memberships,
+        onesa_applications: onesa_applications.filter((name) => visibleProducts.includes(name)),
+        onesa_product_roles: Object.fromEntries(
+          Object.entries(onesa_product_roles).filter(([name]) => visibleProducts.includes(name)),
+        ),
+        onesa_memberships: ownProductOnly ? [] : onesa_memberships,
       };
       if (!claims.onesa_applications.includes(client.product))
         return { active: false as const };
@@ -570,6 +578,50 @@ export async function registerIdentity(
   );
 
   api.post(
+    "/api/v1/account/deletion-requests",
+    {
+      logLevel: "silent",
+      schema: {
+        ...meta("requestOnesaAccountDeletion", true),
+        body: z.object({ confirmed: z.literal(true) }).strict(),
+        response: { 202: z.object({ reference: z.uuid() }), ...failures },
+      },
+    },
+    async (req, reply) => {
+      configured();
+      const session = await requireAccount(req, true);
+      if (!session.account.email_verified_at)
+        throw new HttpError(403, "VERIFICATION_REQUIRED", "Verify your Onesa email first.");
+      await limits.limit("identity-deletion-request:" + session.account.id, 10, 3600);
+      const reference = await transaction(async (c) => {
+        await lockAccountSession(c, session);
+        const previous = await c.query(
+          "SELECT record_id FROM audit WHERE actor_id=$1 AND action='identity.deletion_requested' AND created_at>now()-interval '24 hours' ORDER BY created_at DESC LIMIT 1",
+          [session.account.id],
+        );
+        if (previous.rows.length) return String(previous.rows[0].record_id);
+        const id = randomUUID();
+        await enqueue(c, "identity-deletion-request:" + id, {
+          to: company.privacyEmail,
+          subject: "Onesa account deletion request",
+          encryptedText: encrypt([
+            "Review the request to delete the shared Onesa account and associated product data.",
+            "Reference: " + id, "Portal user ID: " + session.account.id,
+            "Verified contact: " + session.account.email,
+          ].join("\n")),
+        });
+        await c.query(
+          "INSERT INTO audit(actor_id,action,record_id,request_id) VALUES($1,'identity.deletion_requested',$2,$3)",
+          [session.account.id, id, req.id],
+        );
+        return id;
+      });
+      reply.code(202);
+      return { reference };
+    },
+  );
+
+  api.post(
     "/api/v1/account/register",
     {
       logLevel: "silent",
@@ -579,7 +631,7 @@ export async function registerIdentity(
           .object({
             email: z.email().max(254),
             name: z.string().trim().min(1).max(200),
-            products: z.array(product).min(1).max(4),
+            products: z.array(product).max(products.length),
           })
           .strict(),
         response: { 202: z.object({ ok: z.literal(true) }), ...failures },
@@ -588,7 +640,7 @@ export async function registerIdentity(
     async (req, reply) => {
       configured();
       for (const requested of req.body.products)
-        requireMobileConfigured(requested);
+        requireProductConfigured(requested);
       const email = req.body.email.toLowerCase();
       await limits.limit(
         "identity-registration-ip:" + limits.address(req),
@@ -735,8 +787,10 @@ export async function registerIdentity(
   async function authenticate(
     req: FastifyRequest,
     reply: FastifyReply,
-    input: z.infer<typeof credentials>,
+    input: z.infer<typeof loginCredentials>,
     mfaRequired: boolean,
+    interactionAccountId?: string,
+    emailInteractionId?: string,
   ): Promise<AccountSession> {
     const email = input.email.toLowerCase();
     await limits.limit("identity-login-ip:" + limits.address(req), 15, 900);
@@ -747,10 +801,7 @@ export async function registerIdentity(
       ])
     ).rows[0];
     if (
-      !passwordValid(
-        input.password,
-        candidate?.password_hash ?? dummyPassword,
-      ) ||
+      ("password" in input && !passwordValid(input.password, candidate?.password_hash ?? dummyPassword)) ||
       !candidate
     )
       throw new HttpError(
@@ -786,6 +837,8 @@ export async function registerIdentity(
           "CREDENTIALS",
           "Unable to sign in with these credentials.",
         );
+      if ("emailToken" in input)
+        await consumeAccountEmailLink(c, input.emailToken, user, emailInteractionId);
       const account = await identityAccount(user.id, c);
       if (!account?.email_verified_at)
         throw new HttpError(
@@ -801,7 +854,7 @@ export async function registerIdentity(
         Object.entries(accessRoles).some(([product, role]) =>
           productRequiresMfa(product, role),
         );
-      const amr = ["pwd"];
+      const amr = ["emailToken" in input ? "email" : "pwd"];
       if (needsMfa) {
         if (!user.mfa_secret)
           throw new HttpError(
@@ -891,8 +944,12 @@ export async function registerIdentity(
       ...cookieOptions(),
       ...(input.rememberBrowser ? { maxAge: 28800 } : {}),
     });
-    reply.clearCookie("onesa_identity_session", { path: "/" });
-    reply.clearCookie("onesa_identity_session.sig", { path: "/" });
+    // OIDC binds a pending interaction to the original provider session UID.
+    // During same-account step-up the central credential rotates independently.
+    if (interactionAccountId !== result.account.id) {
+      reply.clearCookie("onesa_identity_session", { path: "/" });
+      reply.clearCookie("onesa_identity_session.sig", { path: "/" });
+    }
     if (result.account.role === "member") clearSessionCookies(reply);
     if (result.account.role !== "member")
       setSessionCookie(
@@ -903,13 +960,31 @@ export async function registerIdentity(
       );
     return result;
   }
+  async function sendEmailSignIn(req: FastifyRequest, email: string, interactionId?: string, adminReturn = false) {
+    if (req.headers.origin !== env.PUBLIC_ORIGIN)
+      throw new HttpError(403, "ORIGIN", "Use the Onesa Portal.");
+    const address = email.toLowerCase();
+    await limits.limit("identity-email-link-ip:" + limits.address(req), 5, 900);
+    await limits.limit("identity-email-link-address:" + hash(address), 3, 3600);
+    await requestAccountEmailLink(address, interactionId, adminReturn);
+  }
+  const emailLinkRequest = z.object({email: z.email().max(254)}).strict();
+  const emailLinkResponse = {202: z.object({ok: z.literal(true)}), ...failures};
+  api.post("/api/v1/account/email-link", {
+    logLevel: "silent",
+    schema: {...meta("requestOnesaAccountEmailLink"), body: emailLinkRequest.extend({returnTo: z.literal("/admin").optional()}), response: emailLinkResponse},
+  }, async (req, reply) => {
+    configured();
+    await sendEmailSignIn(req, req.body.email, undefined, req.body.returnTo === "/admin");
+    return reply.code(202).send({ok: true});
+  });
   api.post(
     "/api/v1/account/login",
     {
       logLevel: "silent",
       schema: {
         ...meta("signInOnesaAccount"),
-        body: credentials,
+        body: loginCredentials,
         response: { 200: sessionSchema, ...failures },
       },
     },
@@ -1101,7 +1176,7 @@ export async function registerIdentity(
       },
     },
     async (req) => {
-      requireMobileConfigured(req.params.product);
+      requireProductConfigured(req.params.product);
       const session = await requireAccount(req, true);
       if (!session.account.email_verified_at)
         throw new HttpError(
@@ -1166,10 +1241,13 @@ export async function registerIdentity(
       );
     return { details, client };
   }
-  const freshRequired = (params: Record<string, unknown>) =>
-    String(params.prompt ?? "")
-      .split(" ")
-      .includes("login") || params.max_age !== undefined;
+  function freshRequired(params: Record<string, unknown>, session: AccountSession | null) {
+    if (String(params.prompt ?? "").split(" ").includes("login")) return true;
+    if (params.max_age === undefined) return false;
+    const maxAge = Number(params.max_age);
+    const age = session && Math.floor(Date.now() / 1000) - session.authenticatedAt;
+    return !Number.isSafeInteger(maxAge) || maxAge <= 0 || age === null || age < 0 || age >= maxAge;
+  }
   const mfaRequired = (params: Record<string, unknown>) =>
     String(params.acr_values ?? "")
       .split(" ")
@@ -1184,7 +1262,7 @@ export async function registerIdentity(
         response: {
           200: z.object({
             csrf: proof,
-            product,
+            product: clientProduct,
             freshRequired: z.boolean(),
             mfaRequired: z.boolean(),
             account: accountSchema.nullable(),
@@ -1199,7 +1277,7 @@ export async function registerIdentity(
       return {
         csrf: interactionProof(details.uid),
         product: client.product,
-        freshRequired: freshRequired(details.params),
+        freshRequired: freshRequired(details.params, session),
         mfaRequired: mfaRequired(details.params),
         account: session ? safeAccount(session.account) : null,
       };
@@ -1302,7 +1380,7 @@ export async function registerIdentity(
             amr: session.amr,
             acr: session.amr.includes("otp")
               ? "urn:onesa:mfa"
-              : "urn:onesa:password",
+              : session.amr.includes("email") ? "urn:onesa:email" : "urn:onesa:password",
             remember: true,
           },
           consent: { grantId },
@@ -1310,6 +1388,9 @@ export async function registerIdentity(
         { mergeWithLastSubmission: false },
       ),
     );
+    return continuation(next, config.issuer);
+  }
+  function continuation(next: URL, issuer: string) {
     if (
       next.origin !== env.PUBLIC_ORIGIN ||
       !new RegExp("^" + identityPath + "/auth/[A-Za-z0-9_-]{8,128}$").test(
@@ -1323,8 +1404,33 @@ export async function registerIdentity(
         "IDENTITY_CONTINUE",
         "Sign-in could not be completed.",
       );
-    return { continuePath: next.pathname, issuer: config.issuer };
+    return { continuePath: next.pathname, issuer };
   }
+  api.post(
+    "/api/v1/account/interaction/:uid/cancel",
+    {
+      logLevel: "silent",
+      schema: {
+        ...meta("cancelOnesaSignIn"),
+        params: interactionParams,
+        body: z.object({ csrf: proof }),
+        response: {
+          200: z.object({ continuePath: z.string(), issuer: z.string() }),
+          ...failures,
+        },
+      },
+    },
+    async (req, reply) => {
+      const { provider, config } = configured();
+      const { details } = await interaction(req, reply);
+      if (!same(req.body.csrf, interactionProof(details.uid)))
+        throw new HttpError(403, "CSRF", "Refresh this sign-in request.");
+      const next = await provider.interactionResult(req.raw, reply.raw,
+        { error: "access_denied", error_description: "Sign-in cancelled." },
+        { mergeWithLastSubmission: false });
+      return continuation(new URL(next), config.issuer);
+    },
+  );
   api.post(
     "/api/v1/account/interaction/:uid/continue",
     {
@@ -1343,15 +1449,27 @@ export async function registerIdentity(
       const { details, client } = await interaction(req, reply);
       if (!same(req.body.csrf, interactionProof(details.uid)))
         throw new HttpError(403, "CSRF", "Refresh this sign-in request.");
-      if (freshRequired(details.params))
+      const session = await requireAccount(req);
+      if (freshRequired(details.params, session))
         throw new HttpError(
           403,
           "REAUTH_REQUIRED",
           "Confirm your password and authenticator to continue.",
         );
-      return finish(req, reply, await requireAccount(req), client);
+      return finish(req, reply, session, client);
     },
   );
+  api.post("/api/v1/account/interaction/:uid/email-link", {
+    logLevel: "silent",
+    schema: {...meta("requestOnesaInteractionEmailLink"), params: interactionParams,
+      body: emailLinkRequest.extend({csrf: proof}), response: emailLinkResponse},
+  }, async (req, reply) => {
+    const {details} = await interaction(req, reply);
+    if (!same(req.body.csrf, interactionProof(details.uid)))
+      throw new HttpError(403, "CSRF", "Refresh this sign-in request.");
+    await sendEmailSignIn(req, req.body.email, details.uid);
+    return reply.code(202).send({ok: true});
+  });
   api.post(
     "/api/v1/account/interaction/:uid/login",
     {
@@ -1359,7 +1477,7 @@ export async function registerIdentity(
       schema: {
         ...meta("authenticateOnesaSignIn"),
         params: interactionParams,
-        body: credentials.extend({ csrf: proof }),
+        body: z.union([accountEmailCredentials.extend({csrf:proof}).strict(), credentials.extend({csrf:proof})]),
         response: {
           200: z.object({ continuePath: z.string(), issuer: z.string() }),
           ...failures,
@@ -1373,7 +1491,7 @@ export async function registerIdentity(
       return finish(
         req,
         reply,
-        await authenticate(req, reply, req.body, mfaRequired(details.params)),
+        await authenticate(req, reply, req.body, mfaRequired(details.params), details.session?.accountId, details.uid),
         client,
       );
     },
@@ -1395,6 +1513,7 @@ export async function registerIdentity(
             items: z.array(
               z.object({
                 account: accountSchema,
+                disabled: z.boolean(),
                 access: z.array(accessSchema),
                 memberships: z.array(membershipSchema),
               }),
@@ -1409,18 +1528,56 @@ export async function registerIdentity(
     async (req) => {
       configured();
       const rows = (
-        await db.query(
-          "SELECT u.id FROM users u WHERE NOT u.disabled AND u.email ILIKE $1 ORDER BY u.email,u.id OFFSET $2 LIMIT 51",
+        await db.query<IdentityAccount & { disabled: boolean }>(
+          identityAccountQuery + " WHERE (NOT u.disabled OR u.role='member') AND u.email ILIKE $1 ORDER BY u.email,u.id OFFSET $2 LIMIT 51",
           ["%" + req.query.search + "%", (req.query.page - 1) * 50],
         )
       ).rows;
       const items = [];
-      for (const row of rows.slice(0, 50)) {
-        const account = (await identityAccount(row.id))!;
+      for (const account of rows.slice(0, 50)) {
         const { access, memberships } = await accountAccess(account);
-        items.push({ account: safeAccount(account), access, memberships });
+        items.push({ account: safeAccount(account), disabled: account.disabled, access, memberships });
       }
       return { items, page: req.query.page, hasMore: rows.length > 50 };
+    },
+  );
+  api.put(
+    "/api/v1/admin/identity/accounts/:id/member-status",
+    {
+      preHandler: admin,
+      schema: {
+        ...meta("setOnesaMemberStatus", true),
+        params: z.object({ id: z.uuid() }),
+        body: z.object({ disabled: z.boolean(), stepUp }).strict(),
+        response: { 200: z.object({ ok: z.literal(true) }), ...failures },
+      },
+    },
+    async (req) => {
+      configured();
+      await limits.limit("identity-admin-change:" + req.actor!.id, 20, 900);
+      const id = req.params.id;
+      await transaction(async c => {
+        const role = await reauthenticate(c, {
+          userId: req.actor!.id, token: req.cookies.onesa_session!, csrf: req.actor!.csrf,
+        }, req.body.stepUp);
+        if (!isGlobalAdmin(role))
+          throw new HttpError(403, "FORBIDDEN", "Administrator access is required.");
+        const target = (await c.query(
+          "SELECT disabled FROM users WHERE id=$1 AND role='member' FOR NO KEY UPDATE", [id],
+        )).rows[0];
+        if (!target || id === req.actor!.id)
+          throw new HttpError(409, "MEMBER_REQUIRED", "This action is available for ordinary Onesa members only.");
+        if (target.disabled === req.body.disabled) return;
+        // The existing user-state trigger revokes shared identity sessions and provider grants.
+        await c.query("UPDATE users SET disabled=$1 WHERE id=$2", [req.body.disabled, id]);
+        await c.query("DELETE FROM sessions WHERE user_id=$1", [id]);
+        await c.query("DELETE FROM recovery_tokens WHERE user_id=$1", [id]);
+        await c.query(
+          "INSERT INTO audit(actor_id,action,record_id,request_id) VALUES($1,$2,$3,$4)",
+          [req.actor!.id, req.body.disabled ? "identity.member_disabled" : "identity.member_restored", id, req.id],
+        );
+      });
+      return { ok: true as const };
     },
   );
   api.put(
@@ -1447,7 +1604,7 @@ export async function registerIdentity(
       await limits.limit("identity-admin-change:" + req.actor!.id, 20, 900);
       const input = req.body,
         selected = req.params.product;
-      requireMobileConfigured(selected);
+      requireProductConfigured(selected);
       if (
         !validProductRole(selected, input.role) ||
         (selected !== "drone" && input.memberships.length) ||
@@ -1604,4 +1761,17 @@ export async function registerIdentity(
       return { ok: true as const };
     },
   );
+  // Engineering owns its provider cookies and independent Docs policy. Reuse
+  // the same account credentials, MFA, rate limits and session issuance.
+  return {
+    requestForDocs: async (req: FastifyRequest, email: string, docsUid: string) => {
+      configured();
+      await sendEmailSignIn(req, email, "docs:" + docsUid);
+    },
+    confirmForDocs: async (req: FastifyRequest, reply: FastifyReply, input: z.infer<typeof accountEmailCredentials>, docsUid: string) => {
+      configured();
+      await authenticate(req, reply, input, false, undefined, "docs:" + docsUid);
+    },
+  };
+
 }

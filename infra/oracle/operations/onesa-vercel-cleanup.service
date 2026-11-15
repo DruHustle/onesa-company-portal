@@ -1,0 +1,21 @@
+[Unit]
+Description=Scoped cleanup of unaliased failed Onesa Vercel deployments
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=onesa-vercel-monitor
+Group=onesa-vercel-monitor
+UMask=0077
+LoadCredential=vercel-token:/etc/onesa/vercel-cleanup.token
+ExecStart=/usr/bin/python3 /opt/onesa/vercel-cleanup/scripts/release/vercel_failed_cleanup.py --config /etc/onesa/vercel-cleanup.json --output /var/lib/onesa/vercel-cleanup/last-run.json --apply
+StateDirectory=onesa/vercel-cleanup
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_INET AF_INET6
+ReadWritePaths=/var/lib/onesa/vercel-cleanup
+TimeoutStartSec=40min
+MemoryMax=256M

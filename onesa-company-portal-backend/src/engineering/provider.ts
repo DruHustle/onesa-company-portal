@@ -1,3 +1,4 @@
+import { legacyEngineeringFixture } from "./onesa-account.js";
 import Provider, { type Configuration } from "oidc-provider";
 import { db } from "../services/db.js";
 import { EngineeringIdentityAdapter } from "./adapter.js";
@@ -74,7 +75,7 @@ export function createEngineeringProvider(config: EngineeringIdentityConfig) {
           [id],
         )
       ).rows[0];
-      if (!row || (row.user_id && process.env.ONESA_IDENTITY_ENABLED !== "true") || !engineeringEmailAllowed(row.email, config.externalEmails))
+      if (!row || (!row.user_id && !legacyEngineeringFixture()) || (row.user_id && process.env.ONESA_IDENTITY_ENABLED !== "true") || !engineeringEmailAllowed(row.email, config.externalEmails))
         return undefined;
       return {
         accountId: row.id,

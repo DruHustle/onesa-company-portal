@@ -2,6 +2,9 @@ import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 const sections=['about','products','technology','industries','research','partnerships','careers','news','contact','impressum','privacy','cookies','accessibility'];
 const widths=[320,390,768,1024,1440];
+const representativeViews=new Map<number,string>([
+ [320,'/en'],[390,'/de'],[768,'/en/contact'],[1024,'/de/technology'],[1440,'/en/products']
+]);
 for(const [hour,mode] of [[20,'light'],[12,'dark']] as const) test(`release audit: responsive EN/DE ${mode} pages, reduced motion and axe`,async({page},info)=>{
  test.setTimeout(600000);
  await page.addInitScript(hour=>{Date.prototype.getHours=()=>hour;},hour); await page.emulateMedia({colorScheme:mode});
@@ -14,13 +17,16 @@ for(const [hour,mode] of [[20,'light'],[12,'dark']] as const) test(`release audi
    const policy=response?.headers()['content-security-policy']||'';
    expect(policy).toContain("'nonce-");expect(policy).toContain("frame-ancestors 'none'");
    expect(policy).not.toContain("'unsafe-eval'");
-expect(await page.evaluate(()=>getComputedStyle(document.documentElement).colorScheme)).toBe(mode);
+   if(route==='/admin') await expect(page).toHaveURL('/account?next=/admin');
+   await expect(page.locator('html')).toHaveCSS('color-scheme',mode);
    await expect(page.locator('.appearance-control')).toHaveCount(0);
-await expect(page.locator('main')).toBeVisible();
+   await expect(page.locator('main')).toBeVisible();
    const fits=await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth);expect(fits,`${mode} ${route} at ${width}px`).toBe(true);
    const violations=(await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze()).violations;
    expect(violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)}))).toEqual([]);
-   await page.screenshot({path:info.outputPath(`view-${mode}-${width}-${route.replaceAll('/','')}.png`),fullPage:true});
+   if(process.env.PORTAL_LAYOUT_SCREENSHOTS !== 'representative' || representativeViews.get(width) === route){
+    await page.screenshot({path:info.outputPath(`view-${mode}-${width}-${route.replaceAll('/','')}.png`),fullPage:true});
+   }
   }
  }
  await page.goto('/en');await page.keyboard.press(info.project.name==='webkit'?'Alt+Tab':'Tab');

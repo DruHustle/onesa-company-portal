@@ -58,6 +58,7 @@ jobs:
     - name: Validate evidence and record explicit owner decision
       env:
         GH_TOKEN: ${{ github.token }}
+        RELEASE_GOVERNANCE_READ_TOKEN: ${{ secrets.RELEASE_GOVERNANCE_READ_TOKEN }}
         QUALIFICATION_RUN: ${{ inputs.qualification_run }}
         EVIDENCE_DIGEST: ${{ inputs.evidence_digest }}
         REVIEW_DECISION: ${{ inputs.decision }}

@@ -1,4 +1,5 @@
 export const tabRoles = {
+  Infrastructure: ["owner", "administrator"],
   Dashboard: ["owner", "administrator", "editor", "business", "hr", "viewer"],
   "Governance & Compliance": ["owner", "administrator"],
   "Background Processing": ["owner", "administrator"],
@@ -27,6 +28,7 @@ export const taskGroups = [
       "Users",
       "Audit",
       "Background Processing",
+      "Infrastructure",
       "Facts",
       "Settings",
       "Security",
@@ -34,6 +36,7 @@ export const taskGroups = [
   },
 ] satisfies { label: string; tabs: Tab[] }[];
 export const tabLabel: Record<Tab, string> = {
+  Infrastructure: "Infrastructure",
   Dashboard: "Queues and exceptions",
   Content: "Content and publication",
   Enquiries: "Enquiries and follow-ups",

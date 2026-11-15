@@ -2,7 +2,9 @@ import { createPrivateKey, createPublicKey } from "node:crypto";
 import { z } from "zod";
 
 export const identityPath = "/api/v1/identity";
-export const products = ["ai", "drone", "robot", "mobile"] as const;
+export const products = ["ai", "drone", "robot", "mobile", "farmer", "logistics", "pasofi", "factory"] as const;
+export const clientProducts = products;
+export type ClientProduct = (typeof clientProducts)[number];
 export const mobileRoles = [
   "admin",
   "operations",
@@ -13,15 +15,19 @@ export const mobileRoles = [
   "customer",
 ] as const;
 export function defaultProductRole(product: Product): string {
-  return product === "ai"
+  return product === "ai" || product === "farmer" || product === "logistics" || product === "factory"
     ? "user"
-    : product === "mobile"
+    : product === "mobile" || product === "pasofi"
       ? "customer"
       : "viewer";
 }
 export function validProductRole(product: Product, role: string): boolean {
   const allowed: readonly string[] =
-    product === "ai"
+    product === "farmer" || product === "logistics" || product === "factory"
+      ? ["user"]
+      : product === "pasofi"
+      ? ["customer"]
+      : product === "ai"
       ? ["user", "admin"]
       : product === "mobile"
         ? mobileRoles
@@ -51,7 +57,7 @@ const absoluteHttps = z
   });
 const client = z
   .object({
-    product: z.enum(products),
+    product: z.enum(clientProducts),
     clientId: z.string().regex(/^[A-Za-z0-9_-]{16,128}$/),
     clientSecret: z.string().min(48).max(256),
     redirectUri: absoluteHttps,
@@ -61,7 +67,7 @@ const client = z
 const schema = z
   .object({
     issuer: absoluteHttps,
-    clients: z.array(client).min(1).max(4),
+    clients: z.array(client).min(1).max(clientProducts.length),
     cookieKeys: z.array(z.string().min(48).max(256)).min(1).max(2),
     jwks: z
       .object({ keys: z.array(z.record(z.string(), z.string())).length(1) })

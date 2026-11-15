@@ -135,7 +135,7 @@ def build_source_fields(binding):
     return fields
 
 
-def canonical_install_files(component):
+def canonical_install_files(component, *, identity_v2=False, identity_v3=False):
     """Fixed backend closures mirror the independently source-checked installer."""
     require(component in PORTAL_COMPONENTS - {"frontend"}, "CANONICAL_BACKEND_COMPONENT_SCOPE")
     names = {"oracle_portal.py", "oracle_backup_store.mjs", "oracle_portal_frontend.py",
@@ -154,6 +154,13 @@ def canonical_install_files(component):
                   "oracle_portal_identity_restore.py", "oracle_portal_identity_acceptance.py",
                   "oracle_portal_identity_browser.mjs", "oracle_portal_identity_mail.mjs",
                   "restore_lockdown.py", "restore_replay.py", "oracle_backup_open.mjs"}
+    if identity_v3:
+        require(component == "identity", "IDENTITY_V3_ISSUER_SCOPE")
+        names.add("oracle_portal_identity_v3.py")
+    if identity_v2 or identity_v3:
+        require(component in {"identity", "identity-acceptance"}, "IDENTITY_COMPONENT_SCOPE")
+        names |= {"oracle_portal_identity_v2.py", "oracle_portal_identity_acceptance_v2.py",
+                  "oracle_portal_identity_browser_v2.mjs"}
     result = {name: "scripts/release/" + name for name in
               ("oracle_owner.py", "runtime_lifecycle.py", "oracle_install.py")}
     result.update({"runners/" + name:
@@ -164,15 +171,22 @@ def canonical_install_files(component):
 
 def verify_canonical_component_custody(binding, plan, checks):
     """A new source identity cannot inherit a legacy installation or its runners."""
-    if binding.get("repository") != CANONICAL_REPOSITORY:
-        return
-    source = portal_source_binding(binding)
-    scope = portal_component_scope(binding)
+    consolidated = binding.get("repository") == CANONICAL_REPOSITORY
     component = binding["component"]
-    files = canonical_install_files(component)
+    identity_v2 = (component in {"identity", "identity-acceptance"}
+                   and plan.get("qualification_profile") == (
+                       "portal-shared-identity-v2" if component == "identity" else
+                       "portal-shared-identity-acceptance-v2"))
+    identity_v3 = component == "identity" and plan.get("qualification_profile") == "portal-shared-identity-v3"
+    suffix = "-v3" if identity_v3 else "-v2" if identity_v2 else ""
+    if not consolidated and not (identity_v2 or identity_v3):
+        return
+    source = portal_source_binding(binding) if consolidated else binding
+    scope = portal_component_scope(binding)
+    files = canonical_install_files(component, identity_v2=identity_v2, identity_v3=identity_v3)
     directory = VERIFIER.parent
     require(directory == INSTALL_PARENT /
-            ("portal-" + component + "-canonical-" + source["source_tree"]),
+            ("portal-" + component + suffix + ("-canonical-" if consolidated else "-") + source["source_tree"]),
             "CANONICAL_COMPONENT_INSTALLATION_PATH")
     store = private(Path(plan["verifier_store"]), directory=True)
     trust = read(store / "trust.json")
@@ -180,13 +194,13 @@ def verify_canonical_component_custody(binding, plan, checks):
     policy = read(store / "policy.json")
     tool = policy["toolchain"]
     receipt = read(private(directory / "installation.json"))
-    require(type(policy.get("schema_version")) is int and policy["schema_version"] == 2
+    require(type(policy.get("schema_version")) is int and policy["schema_version"] == (2 if consolidated else 1)
             and set(policy["components"]) == {scope}
-            and tool.get("source_binding") == source
+            and (not consolidated or tool.get("source_binding") == source)
             and tool.get("source_commit") == source["candidate_commit"]
             and tool.get("source_tree") == source["source_tree"]
             and tool.get("source_sha256") == binding["source_sha256"]
-            and receipt.get("source_binding") == source
+            and (not consolidated or receipt.get("source_binding") == source)
             and receipt.get("state") == "INSTALLED_NOT_COMMISSIONED"
             and receipt.get("source") == source["candidate_commit"]
             and receipt.get("source_tree") == source["source_tree"]
@@ -199,7 +213,10 @@ def verify_canonical_component_custody(binding, plan, checks):
             and set(profile["runners"]) == set(checks)
             and all(set(required) <= set(profile["required_checks"][phase])
                     for phase, required in checks.items()), "CANONICAL_COMPONENT_CHECKS_REQUIRED")
-    script = "oracle_portal_" + component.replace("-", "_") + ".py"
+    if identity_v2 or identity_v3:
+        require(profile.get("qualification_profile") == plan["qualification_profile"],
+                "CANONICAL_IDENTITY_COMMISSIONED_PROFILE")
+    script = "oracle_portal_" + component.replace("-", "_") + suffix.replace("-", "_") + ".py"
     path = directory / "runners" / script
     require(all(item["path"] == str(path) and item["sha256"] == receipt["files"]["runners/" + script]
                 for item in profile["runners"].values()), "CANONICAL_COMPONENT_RUNNER_PIN")
@@ -210,6 +227,8 @@ def verify_canonical_component_custody(binding, plan, checks):
         require(receipt["files"][local] == upstream[original]
                 and sha(private(directory / local)) == upstream[original],
                 "CANONICAL_COMPONENT_HELPER_CHANGED")
+    if not consolidated:
+        return
     pins = tool.get("source_archives")
     require(isinstance(pins, dict) and set(pins) == SOURCE_ARCHIVES,
             "CANONICAL_COMPONENT_CI_ARCHIVES_REQUIRED")
@@ -808,7 +827,7 @@ def _verify_invocation(binding, context, phase, plan, *, dependency=False,
     return records
 
 
-def source_inventory(archive_path, binding):
+def source_inventory(archive_path, binding, *, frontend_trees=None):
     expected = {}
     files = {}
     tree = {}
@@ -868,6 +887,10 @@ def source_inventory(archive_path, binding):
             b"tree " + str(len(value)).encode() + b"\0" + value
         ).digest()
 
+    if frontend_trees is not None:
+        frontend = tree.get("onesa-company-portal-frontend")
+        require(isinstance(frontend, dict) and git_tree(frontend).hex() in frontend_trees,
+                "FRONTEND_IDENTITY_V2_EXACT_SOURCE_TREE_REQUIRED")
     expected_tree = binding["source_tree"]
     if binding.get("repository") == CANONICAL_REPOSITORY:
         expected_tree = portal_source_binding(binding)["product_source_tree"]
@@ -1171,6 +1194,11 @@ def component_folder(binding):
 PRESENTATION_PROFILE = "presentation-v1"
 NVIDIA_PROFILE = "frontend-nvidia-v1"
 IDENTITY_PROFILE = "frontend-identity-v1"
+IDENTITY_PROFILE_V2 = "frontend-identity-v2"
+IDENTITY_PROFILE_V3 = "frontend-identity-v3"
+REGISTERED_CALLBACK_PROFILES = {IDENTITY_PROFILE_V2, IDENTITY_PROFILE_V3}
+IDENTITY_PROFILES = {IDENTITY_PROFILE, *REGISTERED_CALLBACK_PROFILES}
+REVIEWED_FRONTEND_PROFILES = {NVIDIA_PROFILE, *IDENTITY_PROFILES}
 NVIDIA_PREFIX = "onesa-company-portal-frontend/"
 NVIDIA_CATALOG = NVIDIA_PREFIX + "public/models/nvidia/manifest.json"
 NVIDIA_LICENSE = NVIDIA_PREFIX + "public/licenses/three.txt"
@@ -1236,10 +1264,19 @@ NVIDIA_CONTRACT = {
 }
 
 
+def callback_profile(selected):
+    if selected == IDENTITY_PROFILE_V3:
+        import oracle_portal_frontend_identity_v3 as profile
+    else:
+        require(selected == IDENTITY_PROFILE_V2, "REGISTERED_CALLBACK_PROFILE_REQUIRED")
+        import oracle_portal_frontend_identity_v2 as profile
+    return profile
+
+
 def qualification_profile(value):
     selected = value.get("qualification_profile", PRESENTATION_PROFILE)
     require(
-        selected in {PRESENTATION_PROFILE, NVIDIA_PROFILE, IDENTITY_PROFILE},
+        selected in {PRESENTATION_PROFILE, *REVIEWED_FRONTEND_PROFILES},
         "UNKNOWN_FRONTEND_QUALIFICATION_PROFILE",
     )
     return selected
@@ -1248,7 +1285,7 @@ def qualification_profile(value):
 def profile_checks(plan, phase):
     extra = (
         NVIDIA_CHECKS
-        if qualification_profile(plan) in {NVIDIA_PROFILE, IDENTITY_PROFILE}
+        if qualification_profile(plan) in REVIEWED_FRONTEND_PROFILES
         and phase in {"staging", "production"}
         else set()
     )
@@ -1270,7 +1307,7 @@ def probe_source_files(files, selected=PRESENTATION_PROFILE):
         "onesa-company-portal-frontend/package-lock.json",
         "onesa-company-portal-frontend/vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
     }
-    if selected in {NVIDIA_PROFILE, IDENTITY_PROFILE}:
+    if selected in REVIEWED_FRONTEND_PROFILES:
         names |= {
             "scripts/release/oracle_portal_nvidia.mjs",
             "scripts/release/oracle_portal_nvidia_contract.mjs",
@@ -1278,6 +1315,10 @@ def probe_source_files(files, selected=PRESENTATION_PROFILE):
             NVIDIA_LICENSE,
             NVIDIA_PREFIX + "src/config/nvidia-reference-assets.json",
         }
+    if selected == IDENTITY_PROFILE_V3:
+        names.add("scripts/release/oracle_portal_frontend_identity_v3.py")
+    if selected in REGISTERED_CALLBACK_PROFILES:
+        names.add("scripts/release/oracle_portal_frontend_identity_v2.py")
     if selected == IDENTITY_PROFILE:
         names.add("scripts/release/oracle_portal_identity_scope.py")
     require(names <= set(files), "COMPLETE_COMMISSIONED_PROBE_SOURCE_REQUIRED")
@@ -1294,7 +1335,7 @@ def configuration_value(binding, plan, env):
                 "qualification_profile": qualification_profile(plan),
                 "nvidia_observation_contract": NVIDIA_CONTRACT,
             }
-            if qualification_profile(plan) in {NVIDIA_PROFILE, IDENTITY_PROFILE}
+            if qualification_profile(plan) in REVIEWED_FRONTEND_PROFILES
             else {}
         ),
         "schema_version": 1,
@@ -1572,19 +1613,31 @@ def source_scope(folder, binding, plan):
     archive = private(folder / "baseline-source.tar")
     require(sha(archive) == baseline["source_sha256"], "BASELINE_SOURCE_ARCHIVE_CHANGED")
     require(sha(private(folder / "source.tar")) == binding["source_sha256"], "SOURCE_ARCHIVE_DIGEST")
-    _, old = source_inventory(archive, {"source_tree": baseline["source_tree"]})
-    _, new = source_inventory(folder / "source.tar", binding)
-    if qualification_profile(plan) == IDENTITY_PROFILE:
-        from oracle_portal_identity_scope import reviewed_delta
+    selected = qualification_profile(plan)
+    if selected in REGISTERED_CALLBACK_PROFILES:
+        profile = callback_profile(selected)
 
-        changed = reviewed_delta(old, new)
+        _, old = source_inventory(archive, {"source_tree": baseline["source_tree"]},
+                                  frontend_trees=profile.RETAINED_TREES)
+        _, new = source_inventory(folder / "source.tar", binding,
+                                  frontend_trees={profile.CANDIDATE_TREE})
+    else:
+        _, old = source_inventory(archive, {"source_tree": baseline["source_tree"]})
+        _, new = source_inventory(folder / "source.tar", binding)
+    if selected in IDENTITY_PROFILES:
+        if selected == IDENTITY_PROFILE:
+            from oracle_portal_identity_scope import reviewed_delta
+            changed = reviewed_delta(old, new)
+        else:
+            changed = sorted(path for path in old.keys() | new.keys()
+                             if path.startswith(NVIDIA_PREFIX) and old.get(path) != new.get(path))
         require(
             all(new.get(name) == digest for name, digest in tool["probe_files"].items()),
             "IDENTITY_FRONTEND_DIFFERS_FROM_INSTALLED_PROBE_SOURCE",
         )
         metadata = nvidia_source_metadata(folder / "source.tar", new)
         return {
-            "qualification_profile": IDENTITY_PROFILE,
+            "qualification_profile": selected,
             "baseline_source": baseline["source"],
             "changed_frontend_paths": changed,
             "authentication_source_explicitly_reviewed": True,
@@ -2036,7 +2089,7 @@ def preflight(binding):
         == plan["retained_frontend"]["deployment_id"],
         "CONCURRENT_FRONTEND_PUBLICATION_PRESERVED",
     )
-    if qualification_profile(plan) in {NVIDIA_PROFILE, IDENTITY_PROFILE}:
+    if qualification_profile(plan) in REVIEWED_FRONTEND_PROFILES:
         retained = plan["retained_frontend"]
         actual = frontend.provider("/v13/deployments/" + retained["deployment_id"])
         require(
@@ -2072,7 +2125,7 @@ def probe(binding, env, operation, folder, plan):
     api = readiness_and_denials(plan, env, observation)
     scope = (
         source_scope(folder, binding, plan)
-        if qualification_profile(plan) in {NVIDIA_PROFILE, IDENTITY_PROFILE} else None
+        if qualification_profile(plan) in REVIEWED_FRONTEND_PROFILES else None
     )
     nvidia = scope["nvidia"] if scope is not None else None
     request = output / "browser-request.json"
@@ -2389,10 +2442,18 @@ def operational_observations(binding, plan, folder, context_id):
     }
 
 
+def public_server_keys(plan):
+    if qualification_profile(plan) == IDENTITY_PROFILE_V3:
+        return PUBLIC_SERVER_KEYS | {"ONESA_IDENTITY_CALLBACKS_JSON", "ONESA_IDENTITY_ENABLED"}
+    if qualification_profile(plan) in REGISTERED_CALLBACK_PROFILES:
+        return PUBLIC_SERVER_KEYS | {"ONESA_IDENTITY_CALLBACKS_JSON"}
+    return PUBLIC_SERVER_KEYS
+
+
 def public_server_configuration(plan, env):
     values = plan["server_public_configuration"][env]
     require(
-        set(values) == PUBLIC_SERVER_KEYS
+        set(values) == public_server_keys(plan)
         and all(
             isinstance(value, str) and len(value) <= 2048 for value in values.values()
         ),
@@ -2403,6 +2464,11 @@ def public_server_configuration(plan, env):
         and values["ACCESS_REGISTRATION_ENABLED"] in {"true", "false"},
         "EXISTING_FEATURE_FLAG_VALUE_REQUIRED",
     )
+    if qualification_profile(plan) == IDENTITY_PROFILE_V3:
+        require(values["ONESA_IDENTITY_ENABLED"] == "true", "SHARED_FRONTEND_IDENTITY_REQUIRED")
+    if qualification_profile(plan) in REGISTERED_CALLBACK_PROFILES:
+        profile = callback_profile(qualification_profile(plan))
+        profile.verify_callbacks(plan["binding"], env, values[profile.CALLBACK_KEY])
     callback = values["ENGINEERING_ACCESS_CALLBACK_URL"]
     if callback:
         url = urllib.parse.urlsplit(callback)

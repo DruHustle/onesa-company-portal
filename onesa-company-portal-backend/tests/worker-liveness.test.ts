@@ -154,8 +154,8 @@ test('Rejected dependency work remains live, retries, and never mints successful
   success:async()=>{successes++;},failure:()=>{failures++;if(failures===2)shutdown.abort();},
  });
  try{
-  await until(async()=>failures===1&&(await snapshot(path)).phase==='idle');
-  assert.equal(await workerProcessAlive(path),true);
+  // An atomic pulse can retire the opened inode. Observe a live current record during the retry interval.
+  await until(async()=>failures===1&&(await snapshot(path)).phase==='idle'&&await workerProcessAlive(path));
   assert.equal((await snapshot(path)).deadlineAt-(await snapshot(path)).phaseAt,5000+workerIdleGraceMs);
   assert.equal(workerHeartbeatCurrent('{}',Date.now(),600000),false);
   await loop;
