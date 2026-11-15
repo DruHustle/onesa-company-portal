@@ -41,10 +41,10 @@ async function publicObservations() {
           readPublicProbe(service.health),
           service.id === "ai" ? readPublicProbe("https://platform.onesa.eu/ready") : undefined,
         ]);
-        // A live Robot process can still reject operator work during journal recovery.
-        const available = service.id === "robot"
+        // Factory and Robot can both answer liveness checks while their dependencies are unavailable.
+        const available = service.id === "robot" || service.id === "factory"
           ? data?.status === "ready"
-          : ["ok", "healthy", "ready"].includes(data?.status) || (service.id === "factory" && data?.status === "live");
+          : ["ok", "healthy", "ready"].includes(data?.status);
         state = available && (service.id !== "ai" || ready?.status === "ready") ? "available" : "unavailable";
         // Only these two APIs publish the revision of their responding backend.
         const reported = service.id === "ai" ? data?.source_commit

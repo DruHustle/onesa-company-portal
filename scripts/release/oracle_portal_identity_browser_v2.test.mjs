@@ -4,7 +4,20 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {PRODUCTS, authorizationBinding, permittedResource, permittedRedirect, fillPortalInput, portalPrincipal, validateProduct,
   validateRequest, observeHostedAdministrator} from './oracle_portal_identity_browser_v2.mjs';
-import {verifyCallback} from './oracle_portal_identity_browser.mjs';
+import {productSignInLabel, verifyCallback} from './oracle_portal_identity_browser.mjs';
+
+test('both observers match only the two exact Drone sign-in button labels', () => {
+  for (const label of [productSignInLabel('drone'), PRODUCTS.drone.label]) {
+    for (const accepted of ['Sign in with Onesa', 'Continue with Onesa']) assert.match(accepted, label);
+    for (const other of ['Sign in', 'Sign in with Onesa administrator', 'Do not Continue with Onesa', 'sign in with onesa']) {
+      assert.doesNotMatch(other, label);
+    }
+  }
+  for (const product of ['ai', 'robot']) {
+    assert.equal(productSignInLabel(product), 'Continue with Onesa');
+    assert.equal(PRODUCTS[product].label, 'Continue with Onesa');
+  }
+});
 
 const origins = {portal:'https://portal.onesa.eu',ai:'https://platform.onesa.eu',drone:'https://drone.onesa.eu',
   robot:'https://robot.onesa.eu',farmer:'https://farmer.onesa.eu',logistics:'https://logistics.onesa.eu',
@@ -144,7 +157,10 @@ test('native Chromium redirects cannot replay authentication posts, bearers or l
   });
   const destination=issuer+'/api/v1/identity/auth';
   assert.equal(permittedRedirect(origins,'mobile',event(start,destination)),true);
-  assert.equal(permittedRedirect(origins,'mobile',event(destination,'/account/sign-in/test_flow')),true);
+  assert.equal(permittedRedirect(origins,'mobile',event(destination,'/account?interaction=test_flow')),true);
+  for (const invalid of ['/admin', '/account?interaction=short', '/account?interaction=test_flow&next=/', '/account?interaction=test_flow#private', '/engineering/sign-in/test_flow', '/account/sign-in/test_flow']) {
+    assert.equal(permittedRedirect(origins,'mobile',event(destination,invalid)),false);
+  }
   assert.equal(permittedRedirect(origins,'mobile',event(destination,origins.mobile+PRODUCTS.mobile.callback)),true);
   for(const status of [301,302,303,307,308]) {
     assert.equal(permittedRedirect(origins,'mobile',event(start,'https://foreign.example/','GET',status)),false);

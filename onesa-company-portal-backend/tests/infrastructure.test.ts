@@ -70,6 +70,8 @@ test("The collector maps deployed health contracts to the administrator's observ
   await writeFile(transport, `
     const health = new Map([
       ["https://factory.onesa.eu/health/live", [{ status: "live" }, 200]],
+      ["https://factory.onesa.eu/health/ready", process.env.FACTORY_FIXTURE_READY === "1"
+        ? [{ status: "ready" }, 200] : [{ status: "not-ready", dependency: "redis" }, 503]],
       ["https://robot.onesa.eu/api/v1/health", [{ status: "live", mode: "simulation" }, 200]],
       ["https://robot.onesa.eu/api/v1/ready", process.env.ROBOT_FIXTURE_READY === "1"
         ? [{ status: "ready", mode: "simulation", physical_actuation: false }, 200]
@@ -91,24 +93,25 @@ test("The collector maps deployed health contracts to the administrator's observ
     };
   `);
   const collector = new URL("../../scripts/observe-infrastructure.mts", import.meta.url);
-  const collect = (robotReady: boolean, aiReady: boolean) => execFileSync(process.execPath,
+  const collect = (robotReady: boolean, aiReady: boolean, factoryReady: boolean) => execFileSync(process.execPath,
     ["--import", "tsx", "--import", transport, collector.pathname, file],
-    { timeout: 10000, env: { ...process.env, AI_FIXTURE_READY: aiReady ? "1" : "0", ROBOT_FIXTURE_READY: robotReady ? "1" : "0" } });
-  collect(false, true);
+    { timeout: 10000, env: { ...process.env, FACTORY_FIXTURE_READY: factoryReady ? "1" : "0", AI_FIXTURE_READY: aiReady ? "1" : "0", ROBOT_FIXTURE_READY: robotReady ? "1" : "0" } });
+  collect(false, true, false);
   const result = await infrastructureOverview(file);
   assert.equal(result.observationState, "loaded");
   const states = Object.fromEntries(result.services.map(service => [service.id, service.status]));
   assert.deepEqual(states, {
     portal: "unavailable", ai: "available", robot: "unavailable", farmer: "unavailable",
-    drone: "unavailable", logistics: "available", mobile: "available", factory: "available",
+    drone: "unavailable", logistics: "available", mobile: "available", factory: "unavailable",
     pasofi: "available", kubernetes: "not_observed", portainer: "not_observed",
   });
   assert.deepEqual(result.services.filter(service => service.revision !== null).map(service => [service.id, service.revision]), [
     ["ai", "a".repeat(40)], ["logistics", "b".repeat(40)],
   ]);
-  collect(true, false);
+  collect(true, false, true);
   const recovered = await infrastructureOverview(file);
   assert.equal(recovered.services.find(service => service.id === "robot")?.status, "available");
+  assert.equal(recovered.services.find(service => service.id === "factory")?.status, "available");
   const ai = recovered.services.find(service => service.id === "ai");
   assert.equal(ai?.status, "unavailable");
   assert.equal(ai?.revision, null);
