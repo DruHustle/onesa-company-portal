@@ -34,8 +34,14 @@ const observation = z.object({
   environment: z.enum(["production", "staging", "local"]),
   revision: z.string().regex(/^[a-f0-9]{40,64}$/).nullable(),
 }).strict();
+const privateServiceIds = new Set<string>(serviceRegistry.filter(service => service.health === null).map(service => service.id));
 export const snapshotSchema = z.object({ version: z.literal(1), observations: z.array(observation).max(serviceRegistry.length) }).strict()
-  .refine(value => new Set(value.observations.map(item => item.id)).size === value.observations.length, "Duplicate service observation");
+  .refine(value => new Set(value.observations.map(item => item.id)).size === value.observations.length, "Duplicate service observation")
+  // The registry describes production services. A direct configured snapshot must
+  // not turn staging results or untrusted public probes of private controls into
+  // a green production health indicator, even without going through the merger.
+  .refine(value => value.observations.every(item => item.environment === "production" &&
+    (item.source === "owner_runtime" || !privateServiceIds.has(item.id))), "Observation source or environment is not authorized");
 export const infrastructureSchema = z.object({
   checkedAt: z.iso.datetime(), staleAfterSeconds: z.literal(300),
   observationState: z.enum(["loaded", "not_configured", "unavailable"]),
