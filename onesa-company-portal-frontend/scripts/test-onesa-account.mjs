@@ -784,7 +784,7 @@ try {
       await isolated(failure, async (page, state) => {
         await page.goto(origin + entry);
         await expect(page.getByRole("heading", { name: "Onesa Account is temporarily unavailable" })).toBeVisible();
-        await expect(page.getByText(/use your Company Portal account/i)).toBeVisible();
+        await expect(page.getByText(/do not create another account/i)).toBeVisible();
         await expect(page.locator("form")).toHaveCount(0);
         assert.equal(state.writes.length, 0);
         state.enabled = true;
