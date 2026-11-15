@@ -48,6 +48,9 @@ def check(root=ROOT):
             target = target.split("#", 1)[0]
             if target and not (path.parent / target).exists():
                 findings.append(f"broken local link: {path.relative_to(root)} -> {target}")
+    account = root / "docs/engineering/ONESA_ACCOUNT.md"
+    if account.is_file() and "|\\n|" in account.read_text():
+        findings.append("malformed escaped newline in Onesa Account ownership table")
     public = root / "docs/public"
     if public.is_dir():
         for page in public.glob("*.md"):
