@@ -33,7 +33,7 @@ test('Staging binding verifies existing restricted role and schema before one en
   pg.Pool.prototype.connect=(async()=>({connection:{stream:{encrypted:true,authorized:true}},release(){},async query(sql:string){
    queries.push(sql);
    if(sql.includes('current_database()'))return {rows:[{database:'neondb',role:'onesa_portal_app'}]};
-   if(sql.includes('AS elevated_role'))return {rowCount:1,rows:[{elevated_role:unsafe,schema_create:false,relation_owner:false,migration_write:false,elevated_membership:false}]};
+   if(sql.includes('AS elevated_role'))return {rowCount:1,rows:[{elevated_role:unsafe,schema_create:false,database_create:false,relation_owner:false,migration_write:false,dangerous_table_privileges:false,sequence_update:false,elevated_membership:false}]};
    if(sql.includes('SELECT name,checksum'))return {rows:migrations};
    if(sql.includes('pg_tables'))return {rows:[...tables].map(tablename=>({tablename}))};
    return {rows:[{allowed:true}]};
@@ -71,7 +71,7 @@ test('Read-only runtime inspection ignores an unrelated migration credential and
    return {connection:{stream:{encrypted:true,authorized:true}},release(){},async query(sql:string){
     queries.push(sql);
     if(sql.includes('current_database()'))return {rows:[{database:'neondb',role:'fixture'}]};
-    if(sql.includes('AS elevated_role'))return {rowCount:1,rows:[{elevated_role:!safe,schema_create:false,relation_owner:false,migration_write:false,elevated_membership:false}]};
+    if(sql.includes('AS elevated_role'))return {rowCount:1,rows:[{elevated_role:!safe,schema_create:false,database_create:false,relation_owner:false,migration_write:false,dangerous_table_privileges:false,sequence_update:false,elevated_membership:false}]};
     if(sql.includes('SELECT name,checksum'))return {rows:migrations};
     if(sql.includes('pg_tables'))return {rows:[...tables].map(tablename=>({tablename}))};
     return {rows:[{allowed:true}]};
