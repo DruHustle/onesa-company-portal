@@ -1,0 +1,712 @@
+{
+  "origin": "Owner-supplied brand images, 2026-10-10",
+  "images": [
+    {
+      "path": "/social/onesa-banner.png",
+      "source": "Onesa Banner.PNG",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "eee23f075852ea0b8b9c932bf2a586f138db4301a4d0e80d1488473a0669763e",
+      "role": "Company banner"
+    },
+    {
+      "path": "/brand/onesa-orbit.png",
+      "source": "Screenshot 2026-10-10 at 02.23.12.png",
+      "width": 972,
+      "height": 882,
+      "sha256": "4dc5ada01211fe5127ab59f33a9e4b19482658ef9878300fa088de4b27e6d7e6",
+      "role": "Favicon and website/link preview"
+    },
+    {
+      "path": "/favicon.ico",
+      "source": "/brand/icons/v1/onesa-company.svg",
+      "width": null,
+      "height": null,
+      "sha256": "c4ea593a721f331eb23a7bc56027532e2cf1db17c5dfbaf8b974e82e8e460ad6",
+      "role": "Optimized Company browser-icon fallback; source-derived product frame",
+      "dimensions": [
+        16,
+        32,
+        64
+      ]
+    },
+    {
+      "path": "/social/onesa-social-card.png",
+      "source": "/social/onesa-social-card.svg; existing company homepage wordmark, orbit motif, navy/cyan palette and Arial typography",
+      "width": 1200,
+      "height": 630,
+      "sha256": "55b539d18fc716499e7cfb1fdf06b59fb7a8b64695e9de779d0481e5832ec67c",
+      "role": "Homepage Open Graph and Twitter preview"
+    },
+    {
+      "path": "/images/andrew-gotora-800.webp",
+      "width": 800,
+      "height": 800,
+      "bytes": 75070,
+      "sha256": "ac95538b6b86d671e896ee1097af96cd1c6248082e23b5f1eeacf3d950d7b604",
+      "source": "Owner-supplied portrait, 2026-10-20",
+      "role": "About leadership portrait; resized WebP without retouching"
+    }
+  ],
+  "processing": "Owner-supplied originals preserved byte-for-byte. Version1.0.0 source-traced product icons, SVG/16-32-64 ICO/180PNG, are generated with the existing browser renderer; see /brand/icons/v1/sources.json.",
+  "illustrations": [
+    {
+      "role": "Robot product concept artwork",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-14",
+        "source": "Original generated concept artwork",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2265712,
+        "sha256": "06afa48dcca5f767a6afc310ee5f922f26d84b1f72a6b873a0becdbd1c2fd9b7"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "format": "WebP",
+        "quality": 76,
+        "effort": 6,
+        "operation": "Proportional resizing and encoding; no crop or compositional alteration"
+      },
+      "images": [
+        {
+          "path": "/images/robot-concept-640.webp",
+          "width": 640,
+          "height": 427,
+          "bytes": 32546,
+          "sha256": "4a1ca154b15cf24087c52a5f776cd319436e3fe5a3068916749ba6dcb6c381f7"
+        },
+        {
+          "path": "/images/robot-concept-1280.webp",
+          "width": 1280,
+          "height": 853,
+          "bytes": 86610,
+          "sha256": "9fc38d19cc86ae59b4155a0060ff21326a834a7fd348ea78b84f9c30223c8845"
+        }
+      ],
+      "use": "Company Products Robot presentation; reuse of the approved Onesa Robot concept artwork without re-encoding or compositional changes"
+    },
+    {
+      "role": "AI Platform professional concept visual",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-15",
+        "source": "Original Onesa artwork; owner-requested image edit replaces AI with Onesa while preserving the professional concept composition",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1786669,
+        "sha256": "b34a72cb2fb70607ae51285125405490c031fe2a7c967d649eeee081a923d351"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "format": "WebP",
+        "quality": 76,
+        "effort": 6,
+        "operation": "Proportional resizing and encoding; no crop or compositional alteration"
+      },
+      "images": [
+        {
+          "path": "/images/ai-platform-concept-640.webp",
+          "width": 640,
+          "height": 427,
+          "bytes": 23718,
+          "sha256": "d72b65f25b1953c3015738fa07ea7437fd7aedd42afbb3b06038599bcaa59a36"
+        },
+        {
+          "path": "/images/ai-platform-concept-1280.webp",
+          "width": 1280,
+          "height": 853,
+          "bytes": 61530,
+          "sha256": "3daa9a07d2756ecfe2dcb9883647db0ae03541ca5dee0f1464d011f0182d5e9d"
+        }
+      ],
+      "use": "Company Products AI Platform presentation; illustrative AI interaction, not a photograph of existing Onesa hardware"
+    },
+    {
+      "role": "Industry editorial image: enterprise",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial architectural photograph of a contemporary enterprise technology workspace: glass meeting room, discreet unbranded laptop workstations, layered reflections, navy and muted cyan accents, natural daylight. No people, no readable screens or text.",
+        "sharedPrompt": "Wide 3:2 editorial image for Onesa industry cards, clear subject, navy/steel/cyan palette, natural material detail; no typography, logos, watermark, UI overlays or sci-fi holograms.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2195300,
+        "sha256": "c4921911802bfd393ca33d43cbe294e04f0ac920ac73317b4f23205ee9211295"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/industry-enterprise-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 20458,
+          "sha256": "a97dc862b93293d76d5844b8fabfd06c4635b5b52528fd6d96243b822afc3391"
+        },
+        {
+          "path": "/images/industry-enterprise-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 54716,
+          "sha256": "97e71a3665b2f2e124e33b68bbaa961d4c616726c51c4d358ffd687ee1132e89"
+        }
+      ],
+      "use": "Company Industries; enterprise and industrial scenes also support About and Technology. English/German descriptive alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Industry editorial image: industrial",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial photograph of an industrial digitalization setting: precision sensor attached to a clean industrial pipework system, orderly cables, brushed metal and softly glowing cyan sensor light, dark blue depth, believable contemporary engineering. No people, no logos, no screens or text.",
+        "sharedPrompt": "Wide 3:2 editorial image for Onesa industry cards, clear subject, navy/steel/cyan palette, natural material detail; no typography, logos, watermark, UI overlays or sci-fi holograms.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1921452,
+        "sha256": "235e8fcca7f8a6b7189e60c60a04dbdf4363adad67f9320c8174fca5d6f7013a"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/industry-industrial-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 16864,
+          "sha256": "d3fdd0411f0d48f2d0ab29210f535d3df02907b11eb4a7a175e02c25e443188c"
+        },
+        {
+          "path": "/images/industry-industrial-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 39786,
+          "sha256": "c71cabbd12cb8614797cb4cf332ce63a2f57f003881c2c8273f265b0d75548f1"
+        }
+      ],
+      "use": "Company Industries; enterprise and industrial scenes also support About and Technology. English/German descriptive alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Industry editorial image: manufacturing",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial photograph of precision manufacturing: close view of an unbranded industrial robotic arm beside a milled metal component on an orderly factory production cell, dark navy and steel materials, restrained cyan lighting. No people, no text.",
+        "sharedPrompt": "Wide 3:2 editorial image for Onesa industry cards, clear subject, navy/steel/cyan palette, natural material detail; no typography, logos, watermark, UI overlays or sci-fi holograms.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2068670,
+        "sha256": "7f1519e530dd901113262c6cf34d0cb00b10b7efce470242fe023ec7a089e35e"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/industry-manufacturing-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 22686,
+          "sha256": "0315628123d82282b5d3ceec59b75588c6de1992bc5bd1af23d0346618cdf4d1"
+        },
+        {
+          "path": "/images/industry-manufacturing-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 54146,
+          "sha256": "9b70d2d2930c2f84e5b4c1ded3821a3ee28b58187c068129071f84b377ced830"
+        }
+      ],
+      "use": "Company Industries; enterprise and industrial scenes also support About and Technology. English/German descriptive alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Industry editorial image: travel",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial travel photograph: Lisbon-inspired waterfront at early morning, warm stone architecture and quiet blue water, contemporary transport connections in distant view, understated premium editorial composition. No identifiable people, no logos or text.",
+        "sharedPrompt": "Wide 3:2 editorial image for Onesa industry cards, clear subject, navy/steel/cyan palette, natural material detail; no typography, logos, watermark, UI overlays or sci-fi holograms.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2658175,
+        "sha256": "1f8dc976eafb3f4cdc44f45982f10a66dbe30982854fe770092d385173ebb5e1"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/industry-travel-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 22276,
+          "sha256": "fef8c6a2baca980ff7f22419b998afec2ffe1a515a2b9fd83bb93cde08f93102"
+        },
+        {
+          "path": "/images/industry-travel-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 79226,
+          "sha256": "b958c317cde1e911e6a0fc6996bf8eee4b52c31d8d52dc16cc263e3393c2c17e"
+        }
+      ],
+      "use": "Company Industries; enterprise and industrial scenes also support About and Technology. English/German descriptive alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Industry editorial image: commerce",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial photograph of modern commerce infrastructure: beautifully organized small parcels and an unbranded handheld scanner on a clean fulfillment workstation, deep navy shelving, warm neutral cardboard, subtle cyan details. No people, no readable text, no logos.",
+        "sharedPrompt": "Wide 3:2 editorial image for Onesa industry cards, clear subject, navy/steel/cyan palette, natural material detail; no typography, logos, watermark, UI overlays or sci-fi holograms.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1958600,
+        "sha256": "6150f2513ada1fd3c710f69ca768c5175aac779c4c1538d43bc6d2c7179b27ba"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/industry-commerce-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 11954,
+          "sha256": "cdeed864af4ebe8a2e1f3e26312c164194f507125046400e9c952faaf74cba35"
+        },
+        {
+          "path": "/images/industry-commerce-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 28704,
+          "sha256": "e5218052fb5738b423d2cbe6d5274c4616805c024e3030983614746fed2338cf"
+        }
+      ],
+      "use": "Company Industries; enterprise and industrial scenes also support About and Technology. English/German descriptive alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Industry editorial image: finance",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial architectural photograph suggesting financial technology: sculptural glass towers seen through a layered modern atrium, elegant blue reflections and warm natural sunlight, precise geometric rhythm, no money symbols, no charts, no logos or text.",
+        "sharedPrompt": "Wide 3:2 editorial image for Onesa industry cards, clear subject, navy/steel/cyan palette, natural material detail; no typography, logos, watermark, UI overlays or sci-fi holograms.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2489596,
+        "sha256": "582c8ffcc7f3800ddc592ce3cb3eb124f27d443b57ebbe2bd20b5736d5fe6ad3"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/industry-finance-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 28012,
+          "sha256": "2e8b156254222b35e01477edf017bf02686446b746305b97a8846432f8406d34"
+        },
+        {
+          "path": "/images/industry-finance-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 87828,
+          "sha256": "031bfd3900da31e7c5eabf9d1ed618b40f6c3e5f41c043e2a7fea99b62b62d0c"
+        }
+      ],
+      "use": "Company Industries; enterprise and industrial scenes also support About and Technology. English/German descriptive alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Company editorial image: research",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial photograph suggesting applied research: a precise unbranded optical bench with a glass prism, small lenses and carefully aligned laboratory components, gentle cyan light through glass, navy background, realistic material detail. No people, no text, no logos, no readable data.",
+        "sharedPrompt": "Wide landscape 3:2 supporting editorial image for Onesa, clear subject, crop-safe center, calm professional finish; original illustrative scene, not evidence of an existing Onesa operation; no typography, watermark or UI overlays.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1979399,
+        "sha256": "a48648c61a1542d14fd19d12c215bf882d70d32ad53806e9b0425bd8b31a7a62"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/editorial-research-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 15404,
+          "sha256": "592477582bb1eed24a60454142714e06d51e5d450f714bc609f137f4f07e740f"
+        },
+        {
+          "path": "/images/editorial-research-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 37524,
+          "sha256": "97c0245c187f22316cd6a7397e91587d36d37401fcd661fd2c100d5f5be27eb4"
+        }
+      ],
+      "use": "Company Research, Careers, Partnerships and planned Smart farming app presentation; descriptive English/German alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Company editorial image: partnerships",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial still-life photograph suggesting engineering collaboration: an elegant shared table with two unbranded closed laptops, blank notebooks, a small metal mechanical component and carefully arranged material samples, a modern light-filled workspace, navy and warm neutral palette. No people, no text, no logos, no fake interface.",
+        "sharedPrompt": "Wide landscape 3:2 supporting editorial image for Onesa, clear subject, crop-safe center, calm professional finish; original illustrative scene, not evidence of an existing Onesa operation; no typography, watermark or UI overlays.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2111718,
+        "sha256": "ed92e0ae02f285b65b1c23fa4a3c3456d61a66394f437a84e4c5608b749f2578"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/editorial-partnerships-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 21228,
+          "sha256": "37a52155ac08ac079d4e5b27e8baad268d3c4cbed19db98e04c9553b1159f072"
+        },
+        {
+          "path": "/images/editorial-partnerships-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 52428,
+          "sha256": "ff99515495b8eecf37a03227405a838926cb8d5ed899edcfad0d9bcbede3c1b5"
+        }
+      ],
+      "use": "Company Research, Careers, Partnerships and planned Smart farming app presentation; descriptive English/German alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Company editorial image: careers",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial photograph suggesting a welcoming engineering workplace: a quiet modern workstation near tall windows, unbranded monitor seen from an angle with no readable display, notebook, tasteful plant, daylight and warm timber with deep blue accents, spacious and authentic. No people, no text, no logos.",
+        "sharedPrompt": "Wide landscape 3:2 supporting editorial image for Onesa, clear subject, crop-safe center, calm professional finish; original illustrative scene, not evidence of an existing Onesa operation; no typography, watermark or UI overlays.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2113501,
+        "sha256": "52d0bebb3b1d9a6e3a9a4c5e8c8de1728ce6e666a33327498b1fcb18dc573d53"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/editorial-careers-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 21848,
+          "sha256": "ad350c04a6b481d6c31b94f0f1c0f32d0faa1a565c96b8676f11e82a2ffe274d"
+        },
+        {
+          "path": "/images/editorial-careers-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 57128,
+          "sha256": "ff2975cda835612e41705736d2cd84f0fc7dd687e19546ca4b88859c97c41e74"
+        }
+      ],
+      "use": "Company Research, Careers, Partnerships and planned Smart farming app presentation; descriptive English/German alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Company editorial image: farming",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-17",
+        "source": "Original generated illustrative scene; not an Onesa facility, customer or implementation claim",
+        "prompt": "A refined editorial agricultural photograph: rows of healthy green crops in a gently rolling field at early morning, one discreet unbranded soil moisture sensor in the foreground and a small irrigation line, warm low sunlight and fresh natural greens, practical believable agriculture rather than sci-fi. No people, no screens, no text, no logos, no holograms.",
+        "sharedPrompt": "Wide landscape 3:2 supporting editorial image for Onesa, clear subject, crop-safe center, calm professional finish; original illustrative scene, not evidence of an existing Onesa operation; no typography, watermark or UI overlays.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2613601,
+        "sha256": "dcaece08b8fbfcd94a4c73b638d27713f5c9f7f3a3c957a9e985b182d9030776"
+      },
+      "processing": {
+        "tool": "sharp",
+        "version": "0.35.5",
+        "operation": "Proportional resize and WebP encoding; original composition preserved",
+        "quality": 76,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/editorial-farming-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 33568,
+          "sha256": "51c9c49c6f125042c1f66384fa4cade5ed5c4d0c242a0f1a01eb1fed513ff38e"
+        },
+        {
+          "path": "/images/editorial-farming-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 94468,
+          "sha256": "1017ed8592db6c204495ac59568e4a101292a6a9499d86d2cb117672913be4da"
+        }
+      ],
+      "use": "Company Research, Careers, Partnerships and planned Smart farming app presentation; descriptive English/German alt text identifies illustrative scenes."
+    },
+    {
+      "role": "Homepage opening visual",
+      "source": "Owner-supplied Onesa robotic-hand artwork, supplied for homepage publication on 2026-10-19",
+      "original": {
+        "filename": "Pasted 17-10-2026 at 00.07.27.png",
+        "sha256": "45c59bba459b86ef4cdb593f80f5b61194a82ab0cd606292674dad227aff2495"
+      },
+      "processing": {
+        "tool": "sharp",
+        "format": "WebP",
+        "quality": 80,
+        "operation": "Proportional resizing; responsive CSS crops presentation only"
+      },
+      "images": [
+        {
+          "path": "/images/onesa-home-hero-640.webp",
+          "width": 640,
+          "height": 427,
+          "bytes": 27904,
+          "sha256": "e8f91af5c5e0b15d76d0c3c1479b92ab080857b9b0d35d4fac7b0448fbd05276"
+        },
+        {
+          "path": "/images/onesa-home-hero-1024.webp",
+          "width": 1024,
+          "height": 683,
+          "bytes": 53164,
+          "sha256": "66d10495d47b455772eeeebf91d68283ef9574a0a1af69e958123c9b44e0b332"
+        },
+        {
+          "path": "/images/onesa-home-hero-1536.webp",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 90556,
+          "sha256": "02a3f7574c970c31a6d55acf61c5b08e6034d0e1b506abd1f8de4318919f8037"
+        }
+      ],
+      "use": "Homepage hero artwork; does not represent available physical hardware"
+    },
+    {
+      "role": "Industrial AI automotive assembly illustration",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-20",
+        "source": "Original generated illustration; not an Onesa deployment or customer facility",
+        "prompt": "Create a premium photorealistic editorial illustration for the Industrial AI section of a technology company website. Landscape 3:2 composition. A precisely engineered industrial robotic arm in the foreground working beside an unfinished silver car body on a modern automotive assembly line, additional assembly robots receding into the background. Clean organized factory, believable joints and tooling, refined cool steel and blue lighting with restrained warm safety accents, realistic materials, cinematic architectural photography, crisp focal subject, visual depth. No people, logos, branding, text, labels, charts, UI overlays or watermarks. This is illustrative automotive manufacturing imagery, not a named company’s real factory.",
+        "sha256": "efd1a028036be2c81720033a2f61010281f5cd6231b5e25065fed1ef251b7d4a"
+      },
+      "processing": {
+        "tool": "sharp",
+        "quality": 76,
+        "effort": 6,
+        "operation": "Proportional resizing and WebP encoding; no crop"
+      },
+      "images": [
+        {
+          "path": "/images/industry-automotive-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 43674,
+          "sha256": "ce2e2b7a284776f1d7c7cea57b116c9613bd87bd74610107037eb7bea84ff22d"
+        },
+        {
+          "path": "/images/industry-automotive-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 119612,
+          "sha256": "897cc2808444d152804716dcb20969959fd1fd1cd0996c0ba253c9784f415574"
+        }
+      ],
+      "use": "Home Industrial AI preview and Products Industrial AI section; responsive, lazy-loaded illustration with descriptive English/German alt text."
+    },
+    {
+      "role": "Onesa Drone flight concept illustration",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-28",
+        "source": "Original AI-generated concept artwork; not an existing Onesa aircraft, facility, operation or validated specification",
+        "prompt": "Use case: product-mockup. Create one original wide 16:9 cinematic concept visualization for Onesa Drone, an early-stage aerial logistics product. A credible compact electric delivery hexacopter with six black rotors, matte ivory central fuselage, charcoal arms, subtle cyan status lights, and a securely integrated small rectangular cargo pod, in flight above a verdant semi-rural landscape with a small contemporary logistics building in the distance, warm dawn sunlight and soft haze. Premium precise industrial design, realistic materials, tasteful technology campaign photography style, welcoming and vibrant natural color, sophisticated and restrained. Drone clearly visible occupying the right middle two thirds, plenty of dark green/blue negative space on the left for website headline overlay. Horizontal panoramic composition, camera at aircraft height, crisp drone, depth in terrain. Concept aircraft only, avoid recognizable manufacturers and actual brands. No text, no logos, no numerical specs, no watermark, no people, no military elements. High resolution, intended as website hero and video poster.",
+        "width": 1672,
+        "height": 941,
+        "bytes": 2091456,
+        "sha256": "b3c94e1ee6d008e165474b1748bf6fe7f952660259ad03b464277dcdb272785a"
+      },
+      "processing": {
+        "tool": "sharp",
+        "operation": "Resize, crop to 16:9 for flight or 3:2 for cargo, encode responsive WebP",
+        "quality": 80,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/drone-flight-640.webp",
+          "width": 640,
+          "height": 360,
+          "bytes": 36418,
+          "sha256": "421a20754aa84e538f98c08c35324e11f4a08286b33d456a52270f1bda3eafd7"
+        },
+        {
+          "path": "/images/drone-flight-1280.webp",
+          "width": 1280,
+          "height": 720,
+          "bytes": 88206,
+          "sha256": "521126466c5db49d1cf3f0ca4cf4e13ebf27982552d3b4b513746db152c0752c"
+        }
+      ],
+      "use": "EN/DE Drone product page, Company homepage and product portfolio; descriptive alt text and explicit concept captions."
+    },
+    {
+      "role": "Onesa Drone cargo concept illustration",
+      "generation": {
+        "tool": "OpenAI built-in imagegen",
+        "date": "2026-10-28",
+        "source": "Original AI-generated concept artwork; not an existing Onesa aircraft, facility, operation or validated specification",
+        "prompt": "Use case: product-mockup. The supplied image is a reference for a fictional Onesa delivery drone concept. Create a second original companion website photograph-style concept visualization of the SAME matte ivory and charcoal six-rotor hexacopter, matching its central shape, subtle cyan lights, six black arms and small secure cargo pod. This time show the aircraft resting on a simple ground-level landing pad beside a clean modern warehouse at morning blue hour, front three-quarter angle from near the ground, integrated cargo pod clearly visible beneath the body. One or two small closed unbranded parcels sit on a workstation in the background. Open, calm space, a few warm interior warehouse lights, authentic materials, cool navy surroundings, tasteful cyan highlights. Rich cinematic photographic lighting, premium precise industrial design, practical believable scale. Wide 3:2 composition with the entire drone and landing legs visible, balanced center composition suitable for mobile crop. This is a design concept, not a real prototype or customer facility. No typography, no labels, no visible logos, no people, no military elements, no watermark.",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 2185209,
+        "sha256": "a90a9d5ad5cd9261c5f3aff54a395c360b928c43ba23e9a67192c127f4ba2ea4",
+        "reference_sha256": "b3c94e1ee6d008e165474b1748bf6fe7f952660259ad03b464277dcdb272785a"
+      },
+      "processing": {
+        "tool": "sharp",
+        "operation": "Resize, crop to 16:9 for flight or 3:2 for cargo, encode responsive WebP",
+        "quality": 80,
+        "effort": 6
+      },
+      "images": [
+        {
+          "path": "/images/drone-cargo-640.webp",
+          "width": 640,
+          "height": 427,
+          "bytes": 37544,
+          "sha256": "00f62b1be063d1c2af12ec836cb0d7cc819740fb2cf067887c9730b85497c70d"
+        },
+        {
+          "path": "/images/drone-cargo-1280.webp",
+          "width": 1280,
+          "height": 853,
+          "bytes": 103356,
+          "sha256": "a6898dc95fc2240e1d41854940788378a7c74b54e21651fda472431b7c07e485"
+        }
+      ],
+      "use": "EN/DE Drone product page, Company homepage and product portfolio; descriptive alt text and explicit concept captions."
+    }
+  ],
+  "product_interface_examples": {
+    "captured_at": "2026-10-20",
+    "rights": "Onesa product interface; invented local transport fixtures; no customer or real operator data",
+    "qualification_limit": "Source-interface examples, not actual hosted model output or industrial/hardware acceptance",
+    "files": [
+      {
+        "path": "onesa-company-portal-frontend/public/images/ai-workspace-example-light.png",
+        "bytes": 84415,
+        "sha256": "3b7c55df33b27bd662502703791fcd53e0c88a52ab7de737ada60cb4b09b77d4",
+        "product": "ai",
+        "scheme": "light"
+      },
+      {
+        "path": "onesa-company-portal-frontend/public/images/ai-workspace-example-dark.png",
+        "bytes": 86433,
+        "sha256": "45d64cba63417c43c1d11eb6c83b448fe394a284c4c17b8ca2a0835da3cec4d6",
+        "product": "ai",
+        "scheme": "dark"
+      },
+      {
+        "path": "onesa-company-portal-frontend/public/images/robot-workspace-example-light.png",
+        "bytes": 116126,
+        "sha256": "fa8859bf1f044698a9d82ad108cfb9a7a82c84b24f21468b668e2e2e90025816",
+        "product": "robot",
+        "scheme": "light"
+      },
+      {
+        "path": "onesa-company-portal-frontend/public/images/robot-workspace-example-dark.png",
+        "bytes": 118349,
+        "sha256": "6208a295108c23e3fcbb0e100af28fbaf72b856678ad10291ff533782f151244",
+        "product": "robot",
+        "scheme": "dark"
+      }
+    ]
+  },
+  "product_motion": [
+    {
+      "role": "Onesa Drone concept film",
+      "date": "2026-10-28",
+      "path": "/media/onesa-drone-concept.mp4",
+      "bytes": 1485459,
+      "sha256": "6b3b5349d82c56170d9c01e59d5761fbd9958eb7451ec51b25783b98ff73ab78",
+      "width": 1280,
+      "height": 720,
+      "duration_seconds": 12,
+      "fps": 24,
+      "codec": "H.264 / yuv420p, MP4 with faststart",
+      "audio": false,
+      "source_sha256": [
+        "b3c94e1ee6d008e165474b1748bf6fe7f952660259ad03b464277dcdb272785a",
+        "a90a9d5ad5cd9261c5f3aff54a395c360b928c43ba23e9a67192c127f4ba2ea4"
+      ],
+      "processing": {
+        "tool": "FFmpeg 6.1.1",
+        "operation": "Two 6.5-second still-image scenes with centered 3.5 percent zoom, 1-second crossfade; libx264 medium CRF24; no synthesized aircraft movement",
+        "qualification": "Animated concept illustrations; not flight, prototype, simulation or product interface footage"
+      },
+      "use": "Play on explicit request only, native controls, no autoplay or loop, no video source or download before interaction; static poster and all content remain available without playback or JavaScript."
+    }
+  ]
+}

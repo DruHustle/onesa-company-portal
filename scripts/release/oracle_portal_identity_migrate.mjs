@@ -10,6 +10,13 @@ export const additions={
  '015_mobile_identity.sql':'424c55596b0a3ee98330a2b2cd9171ab9dd2b23b8b20961a5f4b16b59f9867df',
  '016_engineering_account_links.sql':'37416e013033aedfc54478f569ccc2b0eb8b0bf67e32bc76e13ae4fec24b5577',
 };
+const historical = Object.freeze({version:16, baselines:[12,14,15,16], additions});
+const eightClients = Object.freeze({version:19, baselines:[12,14,15,16,17,18,19], additions:{
+ ...additions,
+ '017_farmer_identity.sql':'82c0f9306f627c51686f69598c303c84ff2d4d3d0d1dc1520dca299747f39231',
+ '018_customer_product_identity.sql':'c9abe17297fd4df3e9e1a6ca5d10816ca233c34ffdecc31c1644ec36ceb0dd3c',
+ '019_engineering_enrollment_accounts.sql':'ba981080164f8a223e395f7a452ac5d12759ffeff6b639a1451bd3471cad06d7',
+}});
 const need=(value,code='IDENTITY_MIGRATION_REFUSED')=>{if(!value)throw Error(code);};
 const exact=(value,keys)=>value&&Object.getPrototypeOf(value)===Object.prototype&&Object.keys(value).sort().join(',')===[...keys].sort().join(',');
 const hex=/^[a-f0-9]{64}$/;
@@ -24,7 +31,9 @@ export function connectionScope(uri,target,owner){
  return u;
 }
 
-export function validateRequest(request){
+export function validateRequest(request){return reviewedRequest(request,historical);}
+
+function reviewedRequest(request,policy){
  const fields=['action','environment','operation_id','source_commit','database','owner_uri','runtime_uri','migrations'];
  if(Object.hasOwn(request||{},'database_ca_pem'))fields.push('database_ca_pem');
  need(exact(request,fields));
@@ -36,10 +45,10 @@ export function validateRequest(request){
  need(exact(db,['host','database','owner_role','application_role']));
  need(/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/.test(db.host)&&/^[a-z][a-z0-9_]{0,62}$/.test(db.database));
  need([db.owner_role,db.application_role].every(v=>/^[a-z][a-z0-9_]{0,62}$/.test(v))&&db.owner_role!==db.application_role);
- need(exact(request.migrations,Object.keys(request.migrations))&&Object.keys(request.migrations).length===16);
+ need(exact(request.migrations,Object.keys(request.migrations))&&Object.keys(request.migrations).length===policy.version);
  const names=Object.keys(request.migrations).sort();
  need(names.every((n,i)=>n.startsWith(String(i+1).padStart(3,'0')+'_')&&/^\d{3}_[a-z_]+\.sql$/.test(n)&&hex.test(request.migrations[n])));
- need(Object.entries(additions).every(([n,h])=>request.migrations[n]===h),'IDENTITY_MIGRATION_SOURCE_CHANGED');
+ need(Object.entries(policy.additions).every(([n,h])=>request.migrations[n]===h),'IDENTITY_MIGRATION_SOURCE_CHANGED');
  connectionScope(request.owner_uri,db,true);connectionScope(request.runtime_uri,db,false);
  return request;
 }
@@ -53,8 +62,10 @@ export function validateDatabaseCA(pem){
  return pem;
 }
 
-export function validateState(rows,manifest){
- need(Array.isArray(rows)&&[12,14,15,16].includes(rows.length),'IDENTITY_MIGRATION_BASELINE_REQUIRED');
+export function validateState(rows,manifest){return reviewedState(rows,manifest,historical);}
+
+function reviewedState(rows,manifest,policy){
+ need(Array.isArray(rows)&&policy.baselines.includes(rows.length),'IDENTITY_MIGRATION_BASELINE_REQUIRED');
  const names=Object.keys(manifest).sort();
  const actual=new Map(rows.map(r=>[r.name,r.checksum]));
  need(actual.size===rows.length&&rows.every(r=>exact(r,['name','checksum'])),'IDENTITY_MIGRATION_ROWS_INVALID');
@@ -63,37 +74,43 @@ export function validateState(rows,manifest){
 }
 
 /** The I/O implementation must own one transaction; every error rolls it back. */
-export async function migrate(request,io){
- validateRequest(request);
+export function migrate(request,io){return runMigration(request,io,historical);}
+export function migrateV3(request,io){return runMigration(request,io,eightClients);}
+
+async function runMigration(request,io,policy){
+ reviewedRequest(request,policy);
  try{
   await io.begin(request.action==='inspect');
   await io.lock();
   need(await io.identity(request.database),'IDENTITY_DATABASE_IDENTITY_CHANGED');
   const files=await io.files();
   need(exact(files,Object.keys(request.migrations))&&Object.entries(files).every(([n,sql])=>typeof sql==='string'&&digest(sql)===request.migrations[n]),'IDENTITY_MIGRATION_IMAGE_CHANGED');
-  const count=validateState(await io.rows(),request.migrations);
+  const count=reviewedState(await io.rows(),request.migrations,policy);
   const before=await io.preservation();
   let applied=0;
   if(request.action==='apply'){
-   for(const [name,checksum] of Object.entries(additions)){
+   for(const [name,checksum] of Object.entries(policy.additions)){
     if(Number(name.slice(0,3))<=count)continue;
     await io.apply(name,files[name],checksum);applied++;
    }
    await io.grants(request.database.application_role);
-   need(validateState(await io.rows(),request.migrations)===16,'IDENTITY_MIGRATION_READBACK_FAILED');
+   need(reviewedState(await io.rows(),request.migrations,policy)===policy.version,'IDENTITY_MIGRATION_READBACK_FAILED');
    need(await io.preservation()===before,'IDENTITY_EXISTING_ACCOUNTS_CHANGED');
   }
   await io.commit();
   if(request.action==='apply')need(await io.runtimeReady(),'IDENTITY_APPLICATION_GRANTS_UNQUALIFIED');
-  return {state:request.action==='apply'?'IDENTITY_SCHEMA_016_APPLIED_NOT_AUTHORIZATION':'IDENTITY_SCHEMA_INSPECTED_NOT_AUTHORIZATION',
+  return {state:request.action==='apply'?`IDENTITY_SCHEMA_${String(policy.version).padStart(3,"0")}_APPLIED_NOT_AUTHORIZATION`:'IDENTITY_SCHEMA_INSPECTED_NOT_AUTHORIZATION',
    environment:request.environment,operation_id:request.operation_id,source_commit:request.source_commit,
-   applied_migrations:applied,schema_version:request.action==='apply'?16:count,
+   applied_migrations:applied,schema_version:request.action==='apply'?policy.version:count,
    existing_accounts_preserved:true,credential_changes:0,down_migrations:0};
  }catch(error){await io.rollback().catch(()=>{});throw error;}finally{await io.close();}
 }
 
-export async function live(request){
- validateRequest(request);
+export function live(request){return liveRevision(request,historical);}
+export function liveV3(request){return liveRevision(request,eightClients);}
+
+async function liveRevision(request,policy){
+ reviewedRequest(request,policy);
  // Keep the application TLS trust policy even though readiness is side-effect-free.
  const {permittedCertificateRoots}=await import('/app/dist/src/security/tls-trust.js');
  if(request.database_ca_pem)need(permittedCertificateRoots([request.database_ca_pem]).length===1,'IDENTITY_DATABASE_CA_BLOCKED');
@@ -107,7 +124,7 @@ export async function live(request){
   await c.connect();need(c.connection.stream.encrypted===true&&c.connection.stream.authorized===true);return c;
  };
  let client,runtime,active=false;
- return migrate(request,{
+ return runMigration(request,{
   async begin(readonly){client=await connect(request.owner_uri,true);await client.query(readonly?'BEGIN READ ONLY':'BEGIN');active=true;await client.query("SET LOCAL lock_timeout='5s'");},
   async lock(){await client.query('SELECT pg_advisory_xact_lock(757830)');},
   async identity(target){const row=(await client.query('SELECT current_user AS role,current_database() AS database')).rows[0];return row.role===target.owner_role&&row.database===target.database;},
@@ -117,20 +134,33 @@ export async function live(request){
    // Existing credential/role identities are compared inside the transaction;
    // only a digest remains in memory and no data rows enter a receipt.
    if(request.action==='apply')await client.query('LOCK TABLE public.users,public.engineering_memberships,public.engineering_credentials,public.access_registrations IN SHARE ROW EXCLUSIVE MODE');
-   return (await client.query("SELECT md5(row((SELECT coalesce(string_agg(row(id,email,password_hash,mfa_secret,role,disabled)::text,E'\\n' ORDER BY id),'') FROM public.users),(SELECT coalesce(string_agg(m::text,E'\\n' ORDER BY id),'') FROM public.engineering_memberships m),(SELECT coalesce(string_agg(c::text,E'\\n' ORDER BY membership_id),'') FROM public.engineering_credentials c),(SELECT coalesce(string_agg(a::text,E'\\n' ORDER BY id),'') FROM public.access_registrations a))::text) AS fingerprint")).rows[0].fingerprint;
+   const existing = (await client.query("SELECT md5(row((SELECT coalesce(string_agg(row(id,email,password_hash,mfa_secret,role,disabled)::text,E'\\n' ORDER BY id),'') FROM public.users),(SELECT coalesce(string_agg(m::text,E'\\n' ORDER BY id),'') FROM public.engineering_memberships m),(SELECT coalesce(string_agg(c::text,E'\\n' ORDER BY membership_id),'') FROM public.engineering_credentials c),(SELECT coalesce(string_agg(a::text,E'\\n' ORDER BY id),'') FROM public.access_registrations a))::text) AS fingerprint")).rows[0].fingerprint;
+   if(policy!==eightClients)return existing;
+   const access=[existing];
+   // Missing pre-migration tables and newly created empty tables share the empty relation digest.
+   for(const name of ['identity_product_access','identity_drone_memberships','identity_registration_links','identity_engineering_links','engineering_enrollment_accounts']){
+    const exists=(await client.query('SELECT to_regclass($1) IS NOT NULL AS present',['public.'+name])).rows[0].present;
+    if(!exists){access.push('d41d8cd98f00b204e9800998ecf8427e');continue;}
+    if(request.action==='apply')await client.query(`LOCK TABLE public.${name} IN SHARE ROW EXCLUSIVE MODE`);
+    const rows=(await client.query(`SELECT md5(coalesce(string_agg(md5(to_jsonb(t)::text),'' ORDER BY md5(to_jsonb(t)::text)),'')) AS fingerprint FROM public.${name} t`)).rows[0];
+    access.push(rows.fingerprint);
+   }
+   return digest(access.join(':'));
   },
   async apply(name,sql,checksum){await client.query(sql);await client.query('INSERT INTO public.schema_migrations(name,checksum) VALUES($1,$2)',[name,checksum]);},
   async grants(role){
    const state=(await client.query('SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=$1',[role])).rows;
    need(state.length===1&&Object.values(state[0]).every(v=>v===false),'IDENTITY_EXISTING_APPLICATION_ROLE_REQUIRED');
    const quoted='"'+role+'"';
-   for(const name of ['identity_profiles','identity_sessions','identity_records','identity_product_access','identity_drone_memberships','identity_registration_links','identity_grant_sessions','identity_engineering_links'])await client.query(`GRANT SELECT,INSERT,UPDATE,DELETE ON TABLE public.${name} TO ${quoted}`);
+   const targets=['identity_profiles','identity_sessions','identity_records','identity_product_access','identity_drone_memberships','identity_registration_links','identity_grant_sessions','identity_engineering_links'];
+   if(policy===eightClients)targets.push('engineering_enrollment_accounts');
+   for(const name of targets)await client.query(`GRANT SELECT,INSERT,UPDATE,DELETE ON TABLE public.${name} TO ${quoted}`);
   },
   async commit(){await client.query('COMMIT');active=false;},
   async rollback(){if(active)await client.query('ROLLBACK');active=false;},
   async runtimeReady(){runtime=await connect(request.runtime_uri,false);await runtime.query('BEGIN READ ONLY');try{await databaseReady(runtime,true);return await applicationRoleSafe(runtime);}finally{await runtime.query('ROLLBACK');}},
   async close(){await runtime?.end();await client?.end();},
- });
+ },policy);
 }
 
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){

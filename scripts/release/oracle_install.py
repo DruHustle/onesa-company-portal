@@ -40,6 +40,14 @@ IDENTITY_FRONTEND_ALLOWED = {
     **NVIDIA_ALLOWED,
     "runners/oracle_portal_identity_scope.py": "scripts/release/oracle_portal_identity_scope.py",
 }
+IDENTITY_FRONTEND_V2_ALLOWED = {
+    **NVIDIA_ALLOWED,
+    "runners/oracle_portal_frontend_identity_v2.py": "scripts/release/oracle_portal_frontend_identity_v2.py",
+}
+IDENTITY_FRONTEND_V3_ALLOWED = {
+    **IDENTITY_FRONTEND_V2_ALLOWED,
+    "runners/oracle_portal_frontend_identity_v3.py": "scripts/release/oracle_portal_frontend_identity_v3.py",
+}
 SCANNER_ALLOWED = {
     **ALLOWED,
     "runners/oracle_portal_scanner.py": "scripts/release/oracle_portal_scanner.py",
@@ -83,6 +91,18 @@ IDENTITY_ALLOWED = {
         ]
     },
     "runners/oracle_backup_open.mjs": "scripts/oracle_backup_open.mjs",
+}
+
+IDENTITY_V2_ALLOWED = {
+    **IDENTITY_ALLOWED,
+    **{"runners/" + name: "scripts/release/" + name for name in (
+        "oracle_portal_identity_v2.py", "oracle_portal_identity_acceptance_v2.py",
+        "oracle_portal_identity_browser_v2.mjs",
+    )},
+}
+
+IDENTITY_V3_ALLOWED = {**IDENTITY_V2_ALLOWED,
+    "runners/oracle_portal_identity_v3.py": "scripts/release/oracle_portal_identity_v3.py",
 }
 
 MAX_BYTES = 2 * 1024 * 1024
@@ -157,6 +177,17 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "oracle_portal_frontend.py",
             "portal-",
         )
+    elif set(m["files"]) == set(IDENTITY_FRONTEND_V2_ALLOWED):
+        allowed, component, script, prefix = (
+            IDENTITY_FRONTEND_V2_ALLOWED,
+            "frontend",
+            "oracle_portal_frontend.py",
+            "portal-",
+        )
+    elif set(m["files"]) == set(IDENTITY_FRONTEND_V3_ALLOWED):
+        allowed, component, script, prefix = (
+            IDENTITY_FRONTEND_V3_ALLOWED, "frontend", "oracle_portal_frontend.py", "portal-",
+        )
     elif set(m["files"]) == set(SCANNER_ALLOWED):
         allowed, component, script, prefix = (
             SCANNER_ALLOWED,
@@ -177,6 +208,14 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "api",
             "oracle_portal_api.py",
             "portal-api-",
+        )
+    elif set(m["files"]) == set(IDENTITY_V3_ALLOWED):
+        allowed, component, script, prefix = (
+            IDENTITY_V3_ALLOWED, "identity", "oracle_portal_identity_v3.py", "portal-identity-v3-",
+        )
+    elif set(m["files"]) == set(IDENTITY_V2_ALLOWED):
+        allowed, component, script, prefix = (
+            IDENTITY_V2_ALLOWED, "identity", "oracle_portal_identity_v2.py", "portal-identity-v2-",
         )
     elif set(m["files"]) == set(IDENTITY_ALLOWED):
         # The same complete reviewed closure supports two independent owner
@@ -199,12 +238,13 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         and policy["schema_version"] == (2 if consolidated else 1),
         "Installation policy schema",
     )
-    if allowed is IDENTITY_ALLOWED and set(policy["components"]) == {
+    if (allowed is IDENTITY_ALLOWED or allowed is IDENTITY_V2_ALLOWED) and set(policy["components"]) == {
         verifier.component_scope({**m, "component": "identity-acceptance"})
     }:
         component, script, prefix = (
-            "identity-acceptance", "oracle_portal_identity_acceptance.py",
-            "portal-identity-acceptance-",
+            "identity-acceptance",
+            "oracle_portal_identity_acceptance_v2.py" if allowed is IDENTITY_V2_ALLOWED else "oracle_portal_identity_acceptance.py",
+            "portal-identity-acceptance-v2-" if allowed is IDENTITY_V2_ALLOWED else "portal-identity-acceptance-",
         )
     if consolidated:
         prefix += "canonical-"
@@ -289,6 +329,16 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "Shared identity frontend requires its complete reviewed installation",
         )
         require(
+            (allowed is IDENTITY_FRONTEND_V2_ALLOWED)
+            == (selected == getattr(module, "IDENTITY_PROFILE_V2", None)),
+            "Seven-client frontend requires its complete reviewed installation",
+        )
+        require(
+            (allowed is IDENTITY_FRONTEND_V3_ALLOWED)
+            == (selected == getattr(module, "IDENTITY_PROFILE_V3", None)),
+            "Eight-client frontend requires its complete reviewed installation",
+        )
+        require(
             all(
                 module.profile_checks(profile, phase)
                 <= set(profile["required_checks"][phase])
@@ -322,6 +372,8 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     if selected in {
         module.NVIDIA_PROFILE,
         getattr(module, "IDENTITY_PROFILE", "frontend-identity-v1"),
+        getattr(module, "IDENTITY_PROFILE_V2", "frontend-identity-v2"),
+        getattr(module, "IDENTITY_PROFILE_V3", "frontend-identity-v3"),
     }:
         tool_fields.add("frontend_baseline")
     require(
@@ -334,6 +386,8 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     if selected in {
         module.NVIDIA_PROFILE,
         getattr(module, "IDENTITY_PROFILE", "frontend-identity-v1"),
+        getattr(module, "IDENTITY_PROFILE_V2", "frontend-identity-v2"),
+        getattr(module, "IDENTITY_PROFILE_V3", "frontend-identity-v3"),
     }:
         baseline = tool["frontend_baseline"]
         require(
@@ -425,7 +479,7 @@ def validate(bundle, manifest_pin, github, *, uid=0):
                 identity_module.CHECKS[phase] <= set(profile["required_checks"][phase])
                 for phase in verifier.PHASES
             )
-            and tool["identity_files"] == source_module.identity_source_files(files),
+            and tool["identity_files"] == source_module.identity_source_files(files, profile=identity_module.PROFILE),
             "Explicit identity profile/source or mandatory observations missing",
         )
         images += ["probe_image", "postgres_image"]

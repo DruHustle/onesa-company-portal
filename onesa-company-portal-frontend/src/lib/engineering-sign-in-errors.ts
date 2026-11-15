@@ -1,4 +1,4 @@
-export type EngineeringSignInAction = "session" | "details" | "link" | "password" | "link-verify" | "handoff-verify";
+export type EngineeringSignInAction = "enroll" | "session" | "details" | "link" | "password" | "link-verify" | "handoff-verify";
 
 /** Describe only the state reported by the server; a failed login does not prove registration status. */
 export function engineeringSignInError(status: number, code: unknown, action: EngineeringSignInAction) {

@@ -255,12 +255,11 @@ test("catalog recognition cannot commission future applications or grant their a
     );
   const before = (await counts()).rows;
   for (const [product, status] of [
-    ["farmer", 400],
-    ["logistics", 400],
-    ["factory", 400],
-    ["pasofi", 400],
-    // Mobile has a published vocabulary, but this fixed-client registry does not
-    // commission it. Preserve its existing unavailable-client contract.
+    ["logistics", 503],
+    ["factory", 503],
+    ["pasofi", 503],
+    // Recognized products still require their own exact client registration.
+    ["farmer", 503],
     ["mobile", 503],
   ] as const) {
     const result = await browser().request({
@@ -310,7 +309,8 @@ test("linking is explicit, requires both passwords' authorities, and preserves i
     email: identity.email,
     password: docsPassword,
   });
-  assert.equal(ordinary.statusCode, 200, ordinary.body);
+  assert.equal(ordinary.statusCode, 403, ordinary.body);
+  assert.equal(ordinary.json().error.code, "ENGINEERING_ACCOUNT_PROOF");
   assert.equal(
     (
       await db.query(
@@ -378,12 +378,13 @@ test("linking is explicit, requires both passwords' authorities, and preserves i
   });
   assert.equal(refused.statusCode, 401);
   assert.equal(refused.json().error.code, "ONESA_SESSION_REQUIRED");
+  const fallback = await authorization();
   const enabled = process.env.ONESA_IDENTITY_ENABLED;
   process.env.ONESA_IDENTITY_ENABLED = "false";
   try {
-    const fallback = await authorization();
-    assert.equal(fallback.details.onesaAccount, undefined);
-    assert.equal(fallback.details.onesaSignInPath, undefined);
+    const details = await fallback.request({url:"/api/v1/engineering-sign-in/" + fallback.uid + "/details"});
+    assert.equal(details.statusCode, 503);
+    assert.equal(details.json().error.code, "IDENTITY_UNAVAILABLE");
     const blocked = await submit(fallback, "password", {
       email: identity.email,
       password: docsPassword,
@@ -474,6 +475,8 @@ test("approved mail proof links once under concurrency and failed account proof 
   const identity = await fixture("email-link"),
     wrongIdentity = await fixture("email-wrong");
   const flow = await authorization(await signIn(wrongIdentity));
+  assert.equal((await submit(flow, "link", { email: identity.email })).statusCode, 403);
+  await signIn(identity, flow);
   assert.equal(
     (await submit(flow, "link", { email: identity.email })).statusCode,
     200,
@@ -488,6 +491,7 @@ test("approved mail proof links once under concurrency and failed account proof 
     /#access-link=([a-f0-9]{64})/,
   )?.[1];
   assert.ok(raw);
+  await signIn(wrongIdentity, flow);
   assert.equal(
     (await submit(flow, "link-verify", { token: raw, linkOnesaAccount: true }))
       .statusCode,
@@ -527,6 +531,8 @@ test("approved mail proof links once under concurrency and failed account proof 
 test("cross-browser email handoff survives central-login recovery without extending or consuming its proof", async () => {
   const identity = await fixture("handoff-link"),
     original = await authorization();
+  assert.equal((await submit(original, "link", {email: identity.email})).statusCode, 403);
+  await signIn(identity, original);
   assert.equal(
     (await submit(original, "link", { email: identity.email })).statusCode,
     200,
@@ -631,6 +637,127 @@ test("administrator linking retains MFA and cannot bypass an unapproved Engineer
     ).rows[0].n,
     0,
   );
+});
+
+test("an MFA administrator enrolls in Docs without a second password; exact preapproval or owner review controls access", async () => {
+  process.env.ACCESS_REGISTRATION_ENABLED = "true";
+  process.env.ACCESS_APPROVAL_OWNER_ID = owner;
+  process.env.ACCESS_POLICY_EVIDENCE = "Synthetic verified exact email policy";
+  try {
+    for (const preapproved of [true, false]) {
+      const account = await fixture(preapproved ? "preapproved-admin" : "pending-admin", "administrator");
+      await db.query("DELETE FROM engineering_memberships WHERE id=$1", [account.membership]);
+      await db.query("UPDATE users SET mfa_secret=$1 WHERE id=$2", [encrypt("JBSWY3DPEHPK3PXP"), account.id]);
+      const code = randomUUID();
+      await db.query("INSERT INTO mfa_recovery(user_id,code_hash) VALUES($1,$2)", [account.id, hash(code)]);
+      process.env.ACCESS_PREAPPROVED_EMAILS = JSON.stringify(preapproved ? [account.email] : []);
+      const central = await signIn(account, browser(), code);
+      const flow = await authorization(central);
+      assert.equal(flow.details.onesaEnrollment, "available");
+      const enrolled = await submit(flow, "enroll");
+      assert.equal(enrolled.statusCode, 200, enrolled.body);
+      assert.equal(enrolled.json().status, preapproved ? "approved" : "pending");
+      const next = await authorization(browser(new Map([["onesa_account", central.jar.get("onesa_account")!]])));
+      if (preapproved) {
+        assert.deepEqual(next.details.onesaAccount, { email: account.email });
+        const finish = await submit(next, "session");
+        assert.equal(finish.statusCode, 200, finish.body);
+        assert.equal((await exchange(next, finish.json().continuePath)).statusCode, 200);
+      } else {
+        assert.equal(next.details.onesaAccount, undefined);
+        assert.equal(next.details.onesaEnrollment, "pending");
+        assert.equal((await submit(next, "session")).statusCode, 401);
+        assert.equal((await submit(next, "enroll")).json().status, "pending");
+      }
+      assert.equal((await db.query("SELECT 1 FROM engineering_credentials c JOIN engineering_memberships m ON m.id=c.membership_id WHERE m.email=$1", [account.email])).rowCount, 0);
+    }
+    const unprivileged = await fixture("must-prove-existing");
+    const existing = await authorization(await signIn(unprivileged));
+    assert.equal((await submit(existing, "enroll")).statusCode, 409);
+
+    const member = await fixture("pending-member");
+    await db.query("DELETE FROM engineering_memberships WHERE id=$1", [member.membership]);
+    process.env.ACCESS_PREAPPROVED_EMAILS = JSON.stringify([member.email]);
+    const memberBrowser = await signIn(member);
+    const first = await authorization(memberBrowser);
+    assert.equal(first.details.onesaEnrollment, "available");
+    assert.equal((await submit(first, "enroll")).json().status, "pending");
+    const pending = await authorization(memberBrowser);
+    assert.equal(pending.details.onesaEnrollment, "pending");
+    assert.equal((await submit(pending, "session")).statusCode, 401);
+    assert.equal((await db.query("SELECT role FROM users WHERE id=$1", [member.id])).rows[0].role, "member");
+    assert.equal((await db.query("SELECT 1 FROM engineering_memberships WHERE email=$1", [member.email])).rowCount, 0);
+    // Exercise the owner review endpoint with a fresh factor, then finish the same Docs interaction.
+    const reviewApp = await buildApp({ logging: false });
+    try {
+      const ownerSession = randomBytes(32).toString("hex");
+      const csrf = randomBytes(32).toString("hex");
+      await db.query("UPDATE users SET mfa_secret=$1 WHERE id=$2", [encrypt("JBSWY3DPEHPK3PXP"), owner]);
+      await db.query("INSERT INTO sessions(token_hash,user_id,csrf,expires_at) VALUES($1,$2,$3,now()+interval '1 hour')", [hash(ownerSession),owner,csrf]);
+      async function approve(email: string) {
+        const request = (await db.query("SELECT id,revision FROM access_registrations WHERE email=$1 AND audience='engineering'", [email])).rows[0];
+        const code = randomUUID();
+        await db.query("INSERT INTO mfa_recovery(user_id,code_hash) VALUES($1,$2)", [owner,hash(code)]);
+        return reviewApp.inject({
+          method: "POST", url: `/api/v1/admin/access/requests/${request.id}/review`,
+          headers: {origin, "x-portal-proxy-key":process.env.PROXY_SHARED_KEY!,cookie:"onesa_session="+ownerSession,"x-csrf-token":csrf},
+          payload: {decision:"approve",expectedRevision:request.revision,evidence:"Synthetic owner-approved new Docs reader",role:"viewer",password,code},
+        });
+      }
+      const approval = await approve(member.email);
+      assert.equal(approval.statusCode, 200, approval.body);
+      const granted = await authorization(memberBrowser);
+      assert.deepEqual(granted.details.onesaAccount, {email:member.email});
+      const admitted = await submit(granted, "session");
+      assert.equal(admitted.statusCode, 200, admitted.body);
+      assert.equal((await exchange(granted, admitted.json().continuePath)).statusCode, 200);
+      assert.equal((await db.query("SELECT 1 FROM engineering_credentials c JOIN engineering_memberships m ON m.id=c.membership_id WHERE m.email=$1", [member.email])).rowCount,0);
+
+      const disabled = await fixture("disabled-while-awaiting-docs");
+      await db.query("DELETE FROM engineering_memberships WHERE id=$1", [disabled.membership]);
+      assert.equal((await submit(await authorization(await signIn(disabled)), "enroll")).json().status,"pending");
+      await db.query("UPDATE users SET disabled=true WHERE id=$1", [disabled.id]);
+      assert.equal((await approve(disabled.email)).statusCode,409);
+      assert.equal((await db.query("SELECT 1 FROM engineering_memberships WHERE email=$1", [disabled.email])).rowCount,0);
+    } finally {
+      await reviewApp.close();
+    }
+
+  } finally {
+    for (const key of ["ACCESS_REGISTRATION_ENABLED","ACCESS_APPROVAL_OWNER_ID","ACCESS_POLICY_EVIDENCE","ACCESS_PREAPPROVED_EMAILS"]) delete process.env[key];
+  }
+});
+
+test("a signed-out Docs member follows the emailed account link back to their approved Docs session", async () => {
+  const identity = await fixture("docs-account-email");
+  await linkWithPassword(identity);
+  const flow = await authorization();
+  const requestLink = await submit(flow, "account-email-link", {email: identity.email});
+  assert.equal(requestLink.statusCode, 202, requestLink.body);
+  const mail = (await db.query("SELECT payload FROM jobs WHERE payload->>'to'=$1 AND payload->>'subject'='Your Onesa account sign-in link'", [identity.email])).rows[0];
+  const link = new URL(decrypt(mail.payload.encryptedText).split("\n")[1]);
+  assert.equal(link.origin + link.pathname, origin + "/account");
+  assert.equal(link.searchParams.get("docs"), flow.uid);
+  const emailToken = link.hash.slice("#signin-link=".length);
+  const input = {email: identity.email, emailToken};
+  assert.equal((await flow.request({method: "POST", url: "/api/v1/account/login", payload: input})).statusCode, 401);
+  const other = await authorization();
+  assert.equal((await submit(other, "account-email-login", input)).statusCode, 401);
+  assert.equal((await submit(flow, "account-email-login", {...input, csrf: "b".repeat(64)})).statusCode, 403);
+  const rejectedBrowser = await browser().request({method: "POST", url: "/api/v1/engineering-sign-in/" + flow.uid + "/account-email-login", payload: {...input, csrf: flow.details.csrf}});
+  assert.equal(rejectedBrowser.statusCode, 401);
+  const confirmed = await submit(flow, "account-email-login", input);
+  assert.equal(confirmed.statusCode, 200, confirmed.body);
+  assert.equal((await submit(flow, "account-email-login", input)).statusCode, 401);
+  assert.equal((await flow.request({url: "/api/v1/auth/me"})).statusCode, 401);
+  const result = await submit(flow, "session");
+  assert.equal(result.statusCode, 200, result.body);
+  const tokens = await exchange(flow, result.json().continuePath);
+  assert.equal(tokens.statusCode, 200, tokens.body);
+  const claims = JSON.parse(Buffer.from(tokens.json().id_token.split(".")[1], "base64url").toString());
+  assert.equal(claims.sub, identity.membership);
+  const grants = await db.query("SELECT amr FROM identity_grant_sessions WHERE user_id=$1", [identity.id]);
+  assert.ok(grants.rows.some(row => JSON.stringify(row.amr) === '["email"]'));
 });
 
 test("global logout invalidates linked issuer artifacts and late writes without claiming to clear Cloudflare cookies", async () => {

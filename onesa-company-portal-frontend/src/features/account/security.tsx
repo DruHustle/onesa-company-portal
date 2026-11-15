@@ -29,41 +29,45 @@ const copy = {
     failed: "Die Passwortwiederherstellung konnte nicht abgeschlossen werden.",
   },
 };
-export function AccountSecurity() {
+export function AccountSecurity({legacyAdmin = false}: {legacyAdmin?: boolean}) {
   const [language, setLanguage] = useState<"en" | "de">("en");
   const t = copy[language];
   useEffect(() => { try { if (localStorage.getItem("onesa.account.language") === "de") setLanguage("de"); } catch { /* storage is optional */ } }, []);
   function chooseLanguage(value: "en" | "de") { setLanguage(value); try { localStorage.setItem("onesa.account.language", value); } catch { /* storage is optional */ } }
   const [session, setSession] = useState<AccountSession | null>(null), [link, setLink] = useState<string | null>(null), [loading, setLoading] = useState(true);
+  const [legacyReset, setLegacyReset] = useState(false);
   const [busy, setBusy] = useState(false), [done, setDone] = useState(false), [notice, setNotice] = useState(""), [error, setError] = useState(false);
   const pending = useRef(false);
   useEffect(() => {
-    const receive = () => { setLink(accessLinkToken(window.location.hash)); window.history.replaceState(null, "", window.location.pathname); };
+    const receive = () => { setLink(accessLinkToken(window.location.hash)); window.history.replaceState(null, "", window.location.pathname + window.location.search); };
     receive(); window.addEventListener("hashchange", receive);
     let active = true;
+    if (legacyAdmin) { setLoading(false); return () => window.removeEventListener("hashchange", receive); }
     accountRequest<AccountSession>("/api/v1/account/me").then(value => { if (active) setSession(value); }).catch(reason => { if (active && !(reason instanceof AccountError && reason.status === 401)) { setError(true); setNotice(reason instanceof Error ? reason.message : copy.en.checkError); } }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; window.removeEventListener("hashchange", receive); };
-  }, []);
+  }, [legacyAdmin]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (pending.current) return;
     const data = new FormData(event.currentTarget); pending.current = true; setBusy(true); setNotice(""); setError(false);
     try {
-      if (link || session) {
+      const resetToken = link || (legacyAdmin && legacyReset ? String(data.get("token") || "").trim() : "");
+      if (resetToken || session) {
         const password = String(data.get("password"));
         if (password !== data.get("confirmation")) throw Error(t.mismatch);
-        if (link) await accountRequest("/api/v1/auth/password/reset", { token: link, password });
+        if (resetToken) await accountRequest("/api/v1/auth/password/reset", { token: resetToken, password });
         else await accountRequest("/api/v1/account/password/change", { currentPassword: String(data.get("currentPassword")), password, code: String(data.get("code") || "") }, session!.csrf);
         setLink(null); setSession(null); setDone(true); setNotice(t.changed);
-      } else { await accountRequest("/api/v1/account/password/request", { email: String(data.get("email")).trim().toLowerCase() }); setDone(true); setNotice(t.sent); }
+      } else { await accountRequest(legacyAdmin ? "/api/v1/auth/password/request" : "/api/v1/account/password/request", { email: String(data.get("email")).trim().toLowerCase() }); setDone(true); setNotice(t.sent); }
     } catch (reason) { setError(true); setNotice(reason instanceof Error ? reason.message : t.failed); }
     finally { pending.current = false; setBusy(false); }
   }
   return <main className={styles.shell} lang={language}><header className={styles.header}><a className={styles.brand} href="/account">onesa<span>ACCOUNT</span></a><label><span className={styles.srOnly}>Language / Sprache</span><select aria-label="Language / Sprache" value={language} onChange={event => chooseLanguage(event.target.value as "en" | "de")}><option value="en">English</option><option value="de">Deutsch</option></select></label></header><section className={styles.card}><h1>{t.title}</h1><p className={styles.muted}>{session ? t.manage : link ? t.reset : t.recover}</p>
     {loading ? <p role="status">{t.checking}</p> : !done && <form onSubmit={submit} aria-busy={busy}><fieldset disabled={busy}>
-      {link || session ? <>{session && !link && <label>{t.current}<input name="currentPassword" type="password" autoComplete="current-password" required maxLength={256}/></label>}<label>{t.password}<input name="password" type="password" autoComplete="new-password" required minLength={14} maxLength={256}/></label><label>{t.confirmation}<input name="confirmation" type="password" autoComplete="new-password" required minLength={14} maxLength={256}/></label>{session?.account.mfaEnrolled && !link && <label>{t.code}<input name="code" autoComplete="one-time-code" required minLength={6} maxLength={64}/></label>}</> : <label>{t.email}<input name="email" type="email" autoComplete="email" required maxLength={254}/></label>}
-      <button className="button">{busy ? t.wait : link || session ? t.change : t.send}</button>
+      {link || session || legacyReset ? <>{legacyReset && !link && <label>Recovery token from email<input name="token" required autoComplete="off"/></label>}{session && !link && <label>{t.current}<input name="currentPassword" type="password" autoComplete="current-password" required maxLength={256}/></label>}<label>{t.password}<input name="password" type="password" autoComplete="new-password" required minLength={14} maxLength={256}/></label><label>{t.confirmation}<input name="confirmation" type="password" autoComplete="new-password" required minLength={14} maxLength={256}/></label>{session?.account.mfaEnrolled && !link && <label>{t.code}<input name="code" autoComplete="one-time-code" required minLength={6} maxLength={64}/></label>}</> : <label>{t.email}<input name="email" type="email" autoComplete="email" required maxLength={254}/></label>}
+      <button className="button">{busy ? t.wait : link || session || legacyReset ? t.change : t.send}</button>
     </fieldset></form>}
+    {legacyAdmin && !link && !session && !done && <button className={styles.action} type="button" onClick={() => {setLegacyReset(!legacyReset); setNotice("");}}>{legacyReset ? "Request a recovery email" : "Use your recovery token"}</button>}
     {notice && <p className={styles.notice} role={error ? "alert" : "status"}>{notice}</p>}
-    <nav className={styles.support} aria-label={t.nav}><a href="/account">{t.back}</a>{session && !session.account.mfaEnrolled && <a href="/account/setup-authenticator">{t.setup}</a>}</nav>
+    <nav className={styles.support} aria-label={t.nav}><a href={legacyAdmin ? "/account?next=/admin" : "/account"}>{t.back}</a>{session && !session.account.mfaEnrolled && <a href="/account/setup-authenticator">{t.setup}</a>}</nav>
   </section></main>;
 }

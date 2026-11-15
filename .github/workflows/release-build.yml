@@ -23,6 +23,8 @@ jobs:
         persist-credentials: false
         ref: ${{ github.sha }}
     - name: Require protected main and exact-candidate CI
+      env:
+        RELEASE_GOVERNANCE_READ_TOKEN: ${{ secrets.RELEASE_GOVERNANCE_READ_TOKEN }}
       run: python3 scripts/release/evidence.py build-preflight --output "$RUNNER_TEMP/build-preflight/record.json"
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
       with:

@@ -235,3 +235,24 @@ entry point; it does not cancel charges, delete financial records, revoke other
 provider sessions or undo the independent service's data. Qualification and
 recovery must preserve both services' original identity and operation records.
 This source boundary supplies no live migration, restore or payment acceptance.
+
+Migration 017 adds the Farmer product and its ordinary `user` role to the existing
+product-access constraints. It changes no identity, membership or approval rows.
+
+### Migration 018: ordinary customer product grants
+
+`018_customer_product_identity.sql` extends the product/role check constraints
+for Logistics `user`, PasoFi `customer`, and Factory `user`. It changes no existing
+accounts, grants, approvals or memberships. Apply through the normal bounded
+transactional migrator after migration 017; the exact new source requires isolated
+qualification and a compatible release profile. Product databases remain independent.
+
+For a disposable local copy restored at schema 016, 017 or 018, set
+`TEST_DATABASE_URL` to its loopback PostgreSQL URL (database name ending in
+`_test`) and run `npm run rehearse:customer-identity` from the backend. It checks
+the actual loopback TCP peer (including a loopback-published Docker port) and the
+exact reviewed migration inventory, runs the application migration plan, verifies
+existing product grants and the eight ordinary product roles, repeats the plan for
+idempotency, and rolls back the whole rehearsal. Output gives counts and the original
+schema version. A production upgrade still requires a separately commissioned release
+profile, restore/rollback evidence and hosted identity acceptance.

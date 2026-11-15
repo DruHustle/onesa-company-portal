@@ -8,6 +8,12 @@ import {
   randomBytes,
   randomUUID,
 } from "node:crypto";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { createServer } from "node:https";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
 import type { InjectOptions } from "fastify";
 if (!process.env.TEST_DATABASE_URL)
   throw Error("Isolated loopback test database required");
@@ -20,7 +26,7 @@ const origin = process.env.PUBLIC_ORIGIN;
 const key = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const config = {
   issuer: origin + "/api/v1/identity",
-  clients: ["ai", "drone", "robot", "mobile"].map((product) => ({
+  clients: ["ai", "drone", "robot", "mobile", "farmer", "logistics", "pasofi", "factory"].map((product) => ({
     product,
     clientId: "synthetic_onesa_" + product,
     clientSecret: randomBytes(48).toString("hex") + "+%",
@@ -181,6 +187,13 @@ async function authorization(
   const location = new URL(String(start.headers.location));
   assert.match(location.pathname, /^\/account\/sign-in\/[A-Za-z0-9_-]+$/);
   const uid = location.pathname.split("/").pop()!;
+  for (const name of ["onesa_identity_interaction", "onesa_identity_interaction.sig"]) {
+    const cookie = start.cookies.find(value => value.name === name);
+    assert.ok(cookie);
+    assert.equal(cookie.path, "/api/v1/account/interaction/" + uid);
+    assert.equal(cookie.httpOnly, true);
+    assert.equal(cookie.secure, true);
+  }
   const details = await existing.request({
     url: "/api/v1/account/interaction/" + uid,
   });
@@ -265,7 +278,7 @@ const inspect = (token: string, index = 0) =>
 
 test("Configuration is opt-in, fixed-client, exact issuer/callback and strong-key only", () => {
   assert.equal(identityConfiguration({}, origin), null);
-  assert.equal(identityConfiguration(process.env, origin)?.clients.length, 4);
+  assert.equal(identityConfiguration(process.env, origin)?.clients.length, 8);
   assert.equal(
     identityConfiguration(
       {
@@ -323,6 +336,63 @@ test("Protocol artifact custody is encrypted, bound, atomic and single-use", asy
   );
   await adapter.revokeByGrantId("fixture-grant");
   assert.equal(await adapter.find(id), undefined);
+});
+test("shared email sign-in is single-use, account-bound, and preserves member and administrator roles", async () => {
+  const client = browser();
+  const requestLink = (email:string, returnTo?:string) => client.request({method:"POST",url:"/api/v1/account/email-link",payload:{email,returnTo}});
+  const tokenFor = async (email:string, expectedSearch="") => {
+    const job = (await db.query("SELECT payload FROM jobs WHERE payload->>'to'=$1 AND payload->>'subject'='Your Onesa account sign-in link' ORDER BY created_at DESC",[email])).rows[0];
+    const link = new URL(decrypt(job.payload.encryptedText).split("\n")[1]);
+    assert.equal(link.pathname,"/account"); assert.equal(link.search,expectedSearch);
+    return link.hash.slice("#signin-link=".length);
+  };
+  const redeem = (email:string,emailToken:string,code="") => client.request({method:"POST",url:"/api/v1/account/login",payload:{email,emailToken,code}});
+  assert.equal((await requestLink("absent@example.invalid")).statusCode,202);
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM jobs")).rows[0].n,0);
+  assert.equal((await requestLink(emails.member)).statusCode,202);
+  const raw=await tokenFor(emails.member);
+  const invalid = await redeem(emails.admin,raw);
+  const unknown = await redeem("absent@example.invalid",raw);
+  assert.equal(invalid.statusCode,401);
+  assert.equal(unknown.json().error.code,invalid.json().error.code);
+  const pair=await Promise.all([redeem(emails.member,raw),redeem(emails.member,raw)]);
+  assert.deepEqual(pair.map(x=>x.statusCode).sort(),[200,401]);
+  const accepted=pair.find(x=>x.statusCode===200)!;
+  assert.equal(accepted.json().account.portalAccess,false);
+  assert.equal(accepted.cookies.some(x=>x.name==="onesa_session" && x.value),false);
+  assert.equal((await client.request({url:"/api/v1/auth/me"})).statusCode,401);
+  assert.equal((await requestLink(emails.admin,"https://elsewhere.invalid")).statusCode,400);
+  assert.equal((await requestLink(emails.admin,"/admin")).statusCode,202);
+  const adminLink=await tokenFor(emails.admin,"?next=/admin");
+  assert.equal((await redeem(emails.admin,adminLink)).json().error.code,"MFA_REQUIRED");
+  assert.equal((await redeem(emails.admin,adminLink,await factor(ids.admin))).json().account.globalAdmin,true);
+});
+
+test("shared email proofs honour expiry, revocation and the original product interaction", async () => {
+  const client=browser(), flow=await authorization("member",0,client);
+  const ask=async(interactionId?:string)=>{
+    const res = interactionId ? await flow.request({method:"POST",url:"/api/v1/account/interaction/"+interactionId+"/email-link",payload:{email:emails.member,csrf:flow.details.csrf}})
+      : await client.request({method:"POST",url:"/api/v1/account/email-link",payload:{email:emails.member}});
+    assert.equal(res.statusCode,202);
+    const j=(await db.query("SELECT payload FROM jobs WHERE payload->>'to'=$1 ORDER BY created_at DESC LIMIT 1",[emails.member])).rows[0];
+    return new URL(decrypt(j.payload.encryptedText).split("\n")[1]);
+  };
+  const url = "/api/v1/account/interaction/" + flow.uid + "/email-link";
+  assert.equal((await flow.request({method:"POST",url,payload:{email:emails.member,csrf:"0".repeat(64)}})).statusCode,403);
+  assert.equal((await browser().request({method:"POST",url,payload:{email:emails.member,csrf:flow.details.csrf}})).statusCode,401);
+  const delivered=await ask(flow.uid), emailToken=delivered.hash.slice("#signin-link=".length);
+  assert.equal(delivered.searchParams.get("interaction"),flow.uid);
+  const accountLogin=(t:string)=>client.request({method:"POST",url:"/api/v1/account/login",payload:{email:emails.member,emailToken:t}});
+  assert.equal((await accountLogin(emailToken)).statusCode,401);
+  const bound=await flow.request({method:"POST",url:"/api/v1/account/interaction/"+flow.uid+"/login",payload:{csrf:flow.details.csrf,email:emails.member,emailToken}});
+  assert.equal(bound.statusCode,200);assert.match(bound.json().continuePath,/^\/api\/v1\/identity\/auth\//);
+  const expiring=(await ask()).hash.slice("#signin-link=".length);
+  await db.query("UPDATE identity_records SET expires_at=now()-interval '1 second' WHERE model='AccountEmailSignIn' AND id=$1",[hash(expiring)]);
+  assert.equal((await accountLogin(expiring)).statusCode,401);
+  const revoked=(await ask()).hash.slice("#signin-link=".length);
+  await db.query("UPDATE users SET disabled=true WHERE id=$1",[ids.member]);
+  await db.query("UPDATE users SET disabled=false WHERE id=$1",[ids.member]);
+  assert.equal((await accountLogin(revoked)).statusCode,401);
 });
 test("Registration verifies email once and grants no product or administrator authority", async () => {
   const client = browser(),
@@ -390,6 +460,30 @@ test("Registration verifies email once and grants no product or administrator au
       .statusCode,
     401,
   );
+});
+test("A Docs-only signup verifies the central identity without creating any product or Docs membership", async () => {
+  const client = browser();
+  const email = "docs-only-signup@example.invalid";
+  const registration = await client.request({
+    method: "POST", url: "/api/v1/account/register",
+    payload: { email, name: "Docs reader", products: [] },
+  });
+  assert.equal(registration.statusCode, 202, registration.body);
+  const queued = await db.query("SELECT payload FROM jobs WHERE payload->>'to'=$1", [email]);
+  const token = decrypt(queued.rows[0].payload.encryptedText).match(/#access-link=([a-f0-9]{64})/)?.[1];
+  assert.ok(token);
+  const verified = await client.request({
+    method: "POST", url: "/api/v1/account/confirm", payload: { token, password },
+  });
+  assert.equal(verified.statusCode, 200, verified.body);
+  const account = (await db.query(
+    `SELECT u.id, u.role, p.email_verified_at FROM users u
+     JOIN identity_profiles p ON p.user_id=u.id WHERE u.email=$1`, [email],
+  )).rows[0];
+  assert.equal(account.role, "member");
+  assert.ok(account.email_verified_at);
+  assert.equal((await db.query("SELECT 1 FROM identity_product_access WHERE user_id=$1", [account.id])).rowCount, 0);
+  assert.equal((await db.query("SELECT 1 FROM engineering_memberships WHERE email=$1", [email])).rowCount, 0);
 });
 test("Existing account verification cannot replace its password or link with email alone", async () => {
   await db.query("DELETE FROM identity_profiles WHERE user_id=$1", [member]);
@@ -576,6 +670,74 @@ test("Global Administrators need MFA and receive all applications without per-pr
   });
   assert.ok(claims.amr.includes("otp"));
 });
+test("an MFA platform session signs into all configured clients with the contract for that audience", async () => {
+  const central = await signIn("admin");
+  const legacy = ["ai", "drone", "robot"];
+  const tokens: string[] = [];
+  for (const [index, client] of config.clients.entries()) {
+    const flow = await authorization("admin", index, central);
+    assert.equal(flow.details.account.id, admin);
+    const { token } = await complete(flow, true);
+    const claims = (await inspect(token, index)).json();
+    assert.equal(claims.active, true);
+    assert.equal(claims.sub, admin);
+    assert.equal(claims.aud, client.clientId);
+    assert.deepEqual(claims.onesa_roles, ["global_admin"]);
+    assert.ok(claims.amr.includes("otp"));
+    const expected = legacy.includes(client.product) ? legacy :
+      client.product === "mobile" ? [...legacy, "mobile"] : [client.product];
+    assert.deepEqual(claims.onesa_applications, expected);
+    assert.deepEqual(claims.onesa_product_roles, Object.fromEntries(expected.map((name) => [name, "admin"])));
+    assert.deepEqual(claims.onesa_memberships, []);
+    tokens.push(token);
+  }
+  await db.query("UPDATE users SET role='member' WHERE id=$1", [admin]);
+  for (const [index, token] of tokens.entries())
+    assert.deepEqual((await inspect(token, index)).json(), { active: false });
+});
+
+test("ordinary product membership cannot authorize an administrator-only client", async () => {
+  const central = await signIn("member");
+  for (const [index, client] of config.clients.entries()) {
+    if (!["farmer", "logistics", "pasofi"].includes(client.product)) continue;
+    const flow = await authorization("member", index, central);
+    const response = await flow.request({
+      method: "POST", url: "/api/v1/account/interaction/" + flow.uid + "/continue",
+      payload: {csrf: flow.details.csrf},
+    });
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().error.code, "PRODUCT_ACCESS_REQUIRED");
+  }
+});
+
+test("switching from AI to PasoFi and Mobile keeps OIDC state, enforces max_age and preserves prior proof", async () => {
+  const central = await signIn("admin");
+  const oldTime = Math.floor(Date.now() / 1000) - 600;
+  await db.query("UPDATE identity_sessions SET authenticated_at=to_timestamp($2) WHERE user_id=$1", [admin, oldTime]);
+  const first = await complete(await authorization("admin", 0, central), true);
+  const original = (await inspect(first.token, 0)).json();
+  assert.equal(original.auth_time, oldTime);
+  const pasofi = config.clients.findIndex(client => client.product === "pasofi");
+  const mobile = config.clients.findIndex(client => client.product === "mobile");
+  const stepUp = { max_age: "300", acr_values: "urn:onesa:mfa" };
+  const stale = await authorization("admin", pasofi, central, stepUp);
+  assert.equal(stale.details.freshRequired, true);
+  const refused = await stale.request({method: "POST", url: "/api/v1/account/interaction/" + stale.uid + "/continue", payload: {csrf: stale.details.csrf}});
+  assert.equal(refused.statusCode, 403);
+  const refreshed = await complete(stale);
+  const fresh = (await inspect(refreshed.token, pasofi)).json();
+  assert.equal(fresh.active, true);
+  assert.ok(fresh.auth_time > oldTime);
+  const next = await authorization("admin", mobile, central, stepUp);
+  assert.equal(next.details.freshRequired, false);
+  const continued = await complete(next, true);
+  assert.equal((await inspect(continued.token, mobile)).json().auth_time, fresh.auth_time);
+  assert.deepEqual((await inspect(first.token, 0)).json(), original);
+  await db.query("UPDATE users SET role='member' WHERE id=$1", [admin]);
+  for (const [index, grant] of [[0, first], [pasofi, refreshed], [mobile, continued]] as const)
+    assert.deepEqual((await inspect(grant.token, index)).json(), { active: false });
+});
+
 test("Fresh step-up cannot reuse an existing login session", async () => {
   const central = await signIn("admin"),
     flow = await authorization("admin", 0, central, {
@@ -1482,3 +1644,443 @@ test("An unconfigured Mobile client does not enable registration, access request
     process.env.ONESA_IDENTITY_CONFIG_B64 = saved;
   }
 });
+
+test("A deletion request belongs to the verified session and concurrent retries queue one privacy case", async () => {
+  const url = "/api/v1/account/deletion-requests";
+  const input = { method: "POST" as const, url, payload: { confirmed: true } };
+  assert.equal((await browser().request(input)).statusCode, 401);
+  const client = await signIn();
+  assert.equal((await client.request(input)).statusCode, 403);
+  const headers = { "x-csrf-token": client.session.csrf };
+  assert.equal(
+    (await client.request({ ...input, headers, payload: { confirmed: false } }))
+      .statusCode,
+    400,
+  );
+  const offOrigin = await client.request({
+    ...input,
+    headers: { ...headers, origin: "https://foreign.example.invalid" },
+  });
+  assert.equal(offOrigin.statusCode, 403);
+  const replies = await Promise.all([
+    client.request({ ...input, headers }),
+    client.request({ ...input, headers }),
+  ]);
+  for (const reply of replies) assert.equal(reply.statusCode, 202);
+  const id = replies[0].json().reference;
+  assert.match(id, /^[a-f\d-]{36}$/);
+  assert.equal(replies[1].json().reference, id);
+  const jobs = (
+    await db.query(
+      "SELECT payload FROM jobs WHERE dedupe_key LIKE 'identity-deletion-request:%'",
+    )
+  ).rows;
+  assert.equal(jobs.length, 1);
+  assert.equal(jobs[0].payload.text, undefined);
+  assert.ok(decrypt(jobs[0].payload.encryptedText).includes(member));
+  assert.equal(
+    (
+      await db.query(
+        "SELECT count(*)::int n FROM audit WHERE action='identity.deletion_requested' AND actor_id=$1 AND record_id=$2",
+        [member, id],
+      )
+    ).rows[0].n,
+    1,
+  );
+  assert.equal(
+    (await client.request({ url: "/api/v1/account/me" })).statusCode,
+    200,
+  );
+});
+async function enableDroneOperator() {
+  await db.query(
+    "INSERT INTO identity_product_access(user_id,product,role,status) VALUES($1,'drone','operator','active')",
+    [member],
+  );
+  const tenant = randomUUID();
+  await db.query(
+    "INSERT INTO identity_drone_memberships VALUES($1,$2,'operator','Simulation only')",
+    [member, tenant],
+  );
+  return tenant;
+}
+test("Drone password recovery ends live grants, preserves the subject and workspace, and consumes the email link once", async () => {
+  const tenant = await enableDroneOperator();
+  const flow = await authorization("member", 1);
+  const { token } = await complete(flow);
+  const previous = (await inspect(token, 1)).json();
+  assert.equal(previous.active, true);
+  assert.equal(previous.sub, member);
+  assert.deepEqual(previous.onesa_memberships, [
+    { product: "drone", tenant_id: tenant, role: "operator" },
+  ]);
+  const client = browser();
+  assert.equal(
+    (
+      await client.request({
+        method: "POST",
+        url: "/api/v1/account/password/request",
+        payload: { email: emails.member },
+      })
+    ).statusCode,
+    202,
+  );
+  const { payload } = (
+    await db.query("SELECT payload FROM jobs WHERE payload->>'to'=$1", [
+      emails.member,
+    ])
+  ).rows[0];
+  const secret = decrypt(payload.encryptedText).match(
+    /#access-link=([a-f0-9]{64})/,
+  )?.[1];
+  assert.ok(secret);
+  const newPassword = randomBytes(36).toString("base64url");
+  const reset = () =>
+    client.request({
+      method: "POST",
+      url: "/api/v1/auth/password/reset",
+      payload: { token: secret, password: newPassword },
+    });
+  assert.equal((await reset()).statusCode, 200);
+  assert.equal((await reset()).statusCode, 400);
+  assert.deepEqual((await inspect(token, 1)).json(), { active: false });
+  const old = await client.request({
+    method: "POST",
+    url: "/api/v1/account/login",
+    payload: { email: emails.member, password },
+  });
+  assert.equal(old.statusCode, 401);
+  const fresh = await client.request({
+    method: "POST",
+    url: "/api/v1/account/login",
+    payload: { email: emails.member, password: newPassword },
+  });
+  assert.equal(fresh.statusCode, 200);
+  const { token: newToken } = await complete(
+    await authorization("member", 1, client),
+    true,
+  );
+  const now = (await inspect(newToken, 1)).json();
+  assert.equal(now.active, true);
+  assert.equal(now.sub, member);
+  assert.deepEqual(now.onesa_memberships, previous.onesa_memberships);
+});
+test("An expired central account session invalidates the issued Drone grant", async () => {
+  await enableDroneOperator();
+  const { token } = await complete(await authorization("member", 1));
+  assert.equal((await inspect(token, 1)).json().active, true);
+  await db.query(
+    "UPDATE identity_sessions SET expires_at=now()-interval '1 second' WHERE user_id=$1",
+    [member],
+  );
+  assert.deepEqual((await inspect(token, 1)).json(), { active: false });
+});
+
+test("An administrator can disable and restore an ordinary member with fresh MFA and retained Drone assignments", async () => {
+  const tenant = await enableDroneOperator();
+  const { token } = await complete(await authorization("member", 1));
+  const staff = await signIn("admin");
+  const url = "/api/v1/admin/identity/accounts/" + member + "/member-status";
+  const headers = { "x-csrf-token": staff.session.csrf };
+  const fresh = async () => ({ password, code: await factor(admin) });
+  const setStatus = async (disabled: boolean) =>
+    staff.request({
+      method: "PUT",
+      url,
+      headers,
+      payload: { disabled, stepUp: await fresh() },
+    });
+  const ordinary = await signIn("member");
+  assert.equal(
+    (
+      await ordinary.request({
+        method: "PUT",
+        url,
+        headers: { "x-csrf-token": ordinary.session.csrf },
+        payload: { disabled: true, stepUp: await fresh() },
+      })
+    ).statusCode,
+    401,
+  );
+  assert.equal(
+    (
+      await staff.request({
+        method: "PUT",
+        url,
+        headers,
+        payload: { disabled: true },
+      })
+    ).statusCode,
+    400,
+  );
+  assert.equal(
+    (
+      await staff.request({
+        method: "PUT",
+        url,
+        headers,
+        payload: { disabled: true, stepUp: { password, code: "invalid" } },
+      })
+    ).statusCode,
+    403,
+  );
+  assert.equal((await setStatus(true)).statusCode, 200);
+  assert.deepEqual((await inspect(token, 1)).json(), { active: false });
+  assert.equal(
+    (await ordinary.request({ url: "/api/v1/account/me" })).statusCode,
+    401,
+  );
+  assert.equal(
+    (
+      await browser().request({
+        method: "POST",
+        url: "/api/v1/account/login",
+        payload: { email: emails.member, password },
+      })
+    ).statusCode,
+    401,
+  );
+  const directory = await staff.request({
+    url:
+      "/api/v1/admin/identity/accounts?search=" +
+      encodeURIComponent(emails.member),
+  });
+  assert.equal(directory.json().items[0].disabled, true);
+  const protectedStaff = await staff.request({
+    method: "PUT",
+    url: url.replace(member, owner),
+    headers,
+    payload: { disabled: true, stepUp: await fresh() },
+  });
+  assert.equal(protectedStaff.statusCode, 409);
+  assert.equal((await setStatus(false)).statusCode, 200);
+  assert.deepEqual((await inspect(token, 1)).json(), { active: false });
+  const { token: newToken } = await complete(await authorization("member", 1));
+  const restored = (await inspect(newToken, 1)).json();
+  assert.equal(restored.sub, member);
+  assert.deepEqual(restored.onesa_roles, []);
+  assert.equal(restored.onesa_product_roles.drone, "operator");
+  assert.deepEqual(restored.onesa_memberships, [
+    { product: "drone", tenant_id: tenant, role: "operator" },
+  ]);
+});
+
+test("Farmer admits verified Portal staff and approved customers, and enforces later revocation", async () => {
+  const farmer = config.clients.findIndex((client) => client.product === "farmer");
+  const first = await signIn("member");
+  const requested = await first.request({
+    method: "POST", url: "/api/v1/account/products/farmer/request",
+    headers: {"x-csrf-token": first.session.csrf}, payload: {},
+  });
+  assert.equal(requested.statusCode, 200, requested.body);
+  assert.equal(requested.json().access.find((grant: {product: string}) => grant.product === "farmer").status, "pending");
+  const waiting = await authorization("member", farmer, first);
+  const denied = await waiting.request({method: "POST", url: "/api/v1/account/interaction/" + waiting.uid + "/continue", payload: {csrf: waiting.details.csrf}});
+  assert.equal(denied.statusCode, 403);
+
+  const reviewer = await signIn("admin");
+  const decision = async (id: string, status: "active" | "revoked", revision: number) => {
+    const result = await reviewer.request({
+      method: "PUT", url: "/api/v1/admin/identity/accounts/" + id + "/products/farmer",
+      headers: {"x-csrf-token": reviewer.session.csrf},
+      payload: {role: "user", status, expectedRevision: revision, memberships: [],
+        stepUp: {password, code: await factor(admin)}},
+    });
+    assert.equal(result.statusCode, 200, result.body);
+  };
+  await decision(member, "active", 1);
+  const grant = await complete(await authorization("member", farmer, first), true);
+  const claims = (await inspect(grant.token, farmer)).json();
+  assert.deepEqual(claims.onesa_product_roles, {farmer: "user"});
+  assert.deepEqual(claims.onesa_applications, ["farmer"]);
+  assert.deepEqual(claims.onesa_roles, []);
+  assert.deepEqual(claims.onesa_memberships, []);
+
+  await db.query("UPDATE users SET role='viewer',mfa_secret=$2 WHERE id=$1", [outsider, encrypt("JBSWY3DPEHPK3PXP")]);
+  const staffBrowser = browser();
+  const login = await staffBrowser.request({method:"POST", url:"/api/v1/account/login",
+    payload: {email: emails.outsider, password, code: await factor(outsider)}});
+  assert.equal(login.statusCode, 200, login.body);
+  const staff = await complete(await authorization("outsider", farmer, staffBrowser), true);
+  assert.deepEqual((await inspect(staff.token, farmer)).json().onesa_product_roles, {farmer: "user"});
+  await decision(outsider, "revoked", 0);
+  await decision(member, "revoked", 2);
+  assert.deepEqual((await inspect(staff.token, farmer)).json(), {active: false});
+  assert.deepEqual((await inspect(grant.token, farmer)).json(), {active: false});
+});
+
+test("Farmer asks the same browser to authenticate again when its original Portal session expires", async () => {
+  const farmer = config.clients.findIndex((client) => client.product === "farmer");
+  await db.query("INSERT INTO identity_product_access(user_id,product,role,status) VALUES($1,'farmer','user','active')", [member]);
+  const client = browser();
+  const first = await complete(await authorization("member", farmer, client));
+  assert.equal((await inspect(first.token, farmer)).json().active, true);
+  const expired = await db.query("UPDATE identity_sessions SET expires_at=now()-interval '1 second' WHERE user_id=$1", [member]);
+  assert.equal(expired.rowCount, 1);
+  assert.equal((await inspect(first.token, farmer)).json().active, false);
+  const retry = await authorization("member", farmer, client);
+  assert.equal(retry.details.account, null);
+  const fresh = await complete(retry);
+  const identity = (await inspect(fresh.token, farmer)).json();
+  assert.equal(identity.active, true);
+  assert.equal(identity.sub, member);
+  assert.equal((await inspect(first.token, farmer)).json().active, false);
+  await db.query("UPDATE identity_sessions SET expires_at=now()-interval '1 second' WHERE user_id=$1", [member]);
+  const reviewer = await signIn("admin");
+  const revoked = await reviewer.request({
+    method: "PUT", url: "/api/v1/admin/identity/accounts/" + member + "/products/farmer",
+    headers: {"x-csrf-token": reviewer.session.csrf},
+    payload: {role: "user", status: "revoked", expectedRevision: 1, memberships: [],
+      stepUp: {password, code: await factor(admin)}},
+  });
+  assert.equal(revoked.statusCode, 200, revoked.body);
+  assert.equal((await inspect(fresh.token, farmer)).json().active, false);
+  const denied = await authorization("member", farmer, client);
+  const attempt = await denied.request({
+    method: "POST", url: "/api/v1/account/interaction/" + denied.uid + "/login",
+    payload: {csrf: denied.details.csrf, email: emails.member, password},
+  });
+  assert.equal(attempt.statusCode, 403, attempt.body);
+  assert.equal(attempt.json().error.code, "PRODUCT_ACCESS_REQUIRED");
+});
+
+test("Cancelling Farmer sign-in returns the original state without issuing a grant", async () => {
+  const farmer = config.clients.findIndex((client) => client.product === "farmer");
+  const flow = await authorization("member", farmer);
+  const url = "/api/v1/account/interaction/" + flow.uid + "/cancel";
+  assert.equal((await flow.request({method:"POST", url, payload:{csrf: "0".repeat(64)}})).statusCode, 403);
+  const cancelled = await flow.request({method:"POST", url, payload:{csrf:flow.details.csrf}});
+  assert.equal(cancelled.statusCode, 200, cancelled.body);
+  const resumed = await flow.request({url:cancelled.json().continuePath});
+  assert.equal(resumed.statusCode, 303, resumed.body);
+  const callback = new URL(String(resumed.headers.location));
+  assert.equal(callback.origin + callback.pathname, config.clients[farmer].redirectUri);
+  assert.equal(callback.searchParams.get("state"), flow.state);
+  assert.equal(callback.searchParams.get("error"), "access_denied");
+  assert.equal(callback.searchParams.has("code"), false);
+  assert.equal((await db.query("SELECT count(*) FROM identity_grant_sessions")).rows[0].count, "0");
+});
+
+test("A real HTTPS cookie jar carries an administrator's signed interaction through the account API", async () => {
+  const run = promisify(execFile);
+  const directory = await mkdtemp(join(tmpdir(), "onesa-cookie-path-"));
+  try {
+    const { hostname } = new URL(origin);
+    const cert = join(directory, "cert.pem"), key = join(directory, "key.pem");
+    await run("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
+      "-subj", "/CN=" + hostname, "-addext", "subjectAltName=DNS:" + hostname,
+      "-keyout", key, "-out", cert]);
+    const server = createServer({ cert: await readFile(cert), key: await readFile(key) }, (req, res) => {
+      // The public TLS listener supplies the same private header as Portal's proxy.
+      req.headers["x-portal-proxy-key"] = proxy["x-portal-proxy-key"];
+      app.server.emit("request", req, res);
+    });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        server.once("error", reject);
+        server.listen(0, "127.0.0.1", resolve);
+      });
+      const address = server.address();
+      assert.ok(address && typeof address === "object");
+      const port = address.port;
+      const jar = join(directory, "cookies"), body = join(directory, "response");
+      async function request(path: string, input?: Record<string, string>) {
+        const { stdout } = await run("curl", ["--silent", "--show-error", "--max-time", "10",
+          "--noproxy", "*", "--connect-to", hostname + ":443:127.0.0.1:" + port,
+          "--cacert", cert, "--cookie", jar, "--cookie-jar", jar, "--output", body,
+          "--write-out", "%{response_code}\n%{redirect_url}",
+          ...(input ? ["--header", "Origin: " + origin, "--header", "Content-Type: application/json",
+                       "--data-binary", JSON.stringify(input)] : []), origin + path]);
+        const [status, location] = stdout.split("\n");
+        return { status: Number(status), location, json: async () => JSON.parse(await readFile(body, "utf8")) };
+      }
+      for (const existingSession of [false, true]) {
+        const client = config.clients[existingSession ? 1 : 2], state = randomBytes(32).toString("base64url");
+        const params = new URLSearchParams({
+          client_id: client.clientId, redirect_uri: client.redirectUri, response_type: "code",
+          scope: "openid email profile onesa", state, nonce: randomBytes(32).toString("base64url"),
+          code_challenge: createHash("sha256").update(randomBytes(32)).digest("base64url"), code_challenge_method: "S256",
+        });
+        const start = await request("/api/v1/identity/auth?" + params);
+        assert.equal(start.status, 303);
+        const form = new URL(start.location);
+        assert.equal(form.origin, origin, existingSession ? "second product" : "first product");
+        assert.match(form.pathname, /^\/account\/sign-in\/[A-Za-z0-9_-]+$/);
+        const uid = form.pathname.split("/").pop()!;
+        const interaction = "/api/v1/account/interaction/" + uid;
+        const details = await request(interaction);
+        assert.equal(details.status, 200);
+        const account = await details.json();
+        if (existingSession) assert.equal(account.account?.email, emails.admin);
+        const submitted = existingSession
+          ? await request(interaction + "/continue", { csrf: account.csrf })
+          : await request(interaction + "/login", { csrf: account.csrf, email: emails.admin, password, code: await factor(admin) });
+        assert.equal(submitted.status, 200);
+        const resume = (await submitted.json()).continuePath;
+        assert.match(resume, /^\/api\/v1\/identity\/auth\/[A-Za-z0-9_-]+$/);
+        const result = await request(resume);
+        assert.equal(result.status, 303);
+        const callback = new URL(result.location);
+        assert.equal(callback.origin + callback.pathname, client.redirectUri);
+        assert.equal(callback.searchParams.get("state"), state);
+        assert.ok(callback.searchParams.get("code"));
+      }
+    } finally {
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+for (const [product, role] of [["logistics", "user"], ["pasofi", "customer"], ["factory", "user"]] as const) {
+  test(`${product} customers need explicit approval, receive only their own role and lose access on revocation`, async () => {
+    const index = config.clients.findIndex(client => client.product === product);
+    const customer = await signIn("member");
+    const requested = await customer.request({method: "POST", url: `/api/v1/account/products/${product}/request`, headers: {"x-csrf-token": customer.session.csrf}, payload: {}});
+    assert.equal(requested.statusCode, 200, requested.body);
+    assert.equal(requested.json().access.find((grant: {product: string}) => grant.product === product).status, "pending");
+    const pending = await authorization("member", index, customer);
+    assert.equal((await pending.request({method: "POST", url: `/api/v1/account/interaction/${pending.uid}/continue`, payload: {csrf: pending.details.csrf}})).statusCode, 403);
+    const administrator = await signIn("admin");
+    async function decision(status: "active" | "revoked", revision: number, selectedRole: string = role) {
+      return administrator.request({method: "PUT", url: `/api/v1/admin/identity/accounts/${member}/products/${product}`, headers: {"x-csrf-token": administrator.session.csrf}, payload: {role: selectedRole, status, expectedRevision: revision, memberships: [], stepUp: {password, code: await factor(admin)}}});
+    }
+    assert.equal((await decision("active", 1, "admin")).statusCode, 400, "An ordinary product grant cannot grant global administration");
+    const approved = await decision("active", 1);
+    assert.equal(approved.statusCode, 200, approved.body);
+    const grant = await complete(await authorization("member", index, customer), true);
+    const claims = (await inspect(grant.token, index)).json();
+    assert.equal(claims.active, true);
+    assert.equal(claims.sub, member);
+    assert.deepEqual(claims.onesa_roles, []);
+    assert.deepEqual(claims.onesa_product_roles, {[product]: role});
+    assert.deepEqual(claims.onesa_applications, [product]);
+    assert.deepEqual(claims.onesa_memberships, []);
+    const repeated = await complete(await authorization("member", index));
+    assert.equal((await inspect(repeated.token, index)).json().sub, member);
+    assert.equal((await decision("revoked", 2)).statusCode, 200);
+    assert.equal((await inspect(repeated.token, index)).json().active, false);
+  });
+}
+
+for (const [index, clientConfig] of config.clients.entries()) {
+  test(`An expired Portal session requires fresh administrator authentication for ${clientConfig.product}`, async () => {
+    const client = browser();
+    const original = await complete(await authorization("admin", index, client));
+    assert.equal((await inspect(original.token, index)).json().active, true);
+
+    await db.query("UPDATE identity_sessions SET expires_at = now() - interval '1 second' WHERE user_id = $1", [admin]);
+    await db.query("UPDATE sessions SET expires_at = now() - interval '1 second' WHERE user_id = $1", [admin]);
+    assert.equal((await inspect(original.token, index)).json().active, false);
+
+    const login = await authorization("admin", index, client);
+    assert.equal(login.details.account, null);
+    const renewed = await complete(login);
+    const claims = (await inspect(renewed.token, index)).json();
+    assert.equal(claims.active, true);
+    assert.equal(claims.sub, admin);
+    assert.ok(claims.amr.includes("otp"));
+    assert.equal((await inspect(original.token, index)).json().active, false);
+  });
+}
