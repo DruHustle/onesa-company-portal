@@ -8,17 +8,13 @@ and open PRs; reuse compatible work in flight.
 
 Use ignored repo-local `local-tools/worktrees`, `local-tools/deployment-evidence`,
 `local-tools/release-verification` and `local-tools/migrations` for their named
-artifacts. Keep versioned migrations in source. No shared parent evidence folder.
+artifacts. Keep versioned migrations in source. No shared parent evidence.
 
-Use CI's Node 24 (locally verified 24.12 and npm 11.21.2). npm 11.6.2 misresolves
-nested local overrides; retain lockfiles and security overrides. Use disposable
+Use CI Node 24 (verified 24.12/npm 11.21.2); npm 11.6.2 misresolves nested overrides. Retain lockfiles and security overrides. Use disposable
 loopback PostgreSQL databases ending `_test`. Check native tools at installed
 Xcode/Android paths as well as PATH.
 
-Read README, release checklist and affected architecture/code; finish incomplete
-work and update contracts/docs. Do not create setup/status/handoff documents unless
-requested. Current user scope takes precedence. Preserve concurrent work, history
-and data; stage reviewed paths only. Paid services need explicit budget approval.
+Read README, release checklist and affected code; finish gaps and update contracts/docs. No setup/status/handoff docs unless requested. User scope takes precedence. Preserve concurrent work, history and data; stage reviewed paths only. Paid services need explicit budget approval.
 
 ## Contribution rules
 
@@ -63,8 +59,7 @@ runbooks or expose private bundles to PR jobs; cleanup does not erase history.
 
 ## Security policy
 
-Supported software: the latest reviewed revision of `main`; no historical release
-support promise is made before a release/support policy is approved.
+Support is limited to reviewed `main`; historical releases require an approved support policy.
 
 Report vulnerabilities privately through enabled GitHub reporting or the owner
 (approved contact info@onesa.eu). Never publish credentials, customer data or
@@ -76,7 +71,7 @@ manager and access-controlled storage. Separate frontend public configuration fr
 backend secrets. Local `.env` files must remain ignored; examples contain placeholders.
 Use least-privilege database/service identities and protected production environments.
 
-Global account lifecycle, product access, account status and administrator assignment are owned by Onesa Identity, never Company Portal. Company Portal may manage its own content and business-workspace tasks, but every non-test Portal runtime must fail closed for global account administration. A missing or invalid Identity administration URL must display an unavailable-link state; it must never restore local Portal user-management controls. Only isolated test fixtures may exercise legacy account-administration endpoints.
+Global user administration belongs to Onesa Identity, never Portal; see [Onesa Account](docs/engineering/ONESA_ACCOUNT.md).
 
 If a credential was committed, revoke/rotate it first, assess access and logs, and
 notify the security owner privately. Ignoring or untracking a file does not remove
@@ -104,9 +99,7 @@ human review. Required security/summary checks, exact-main runtime records, trus
 evidence and current owner authority remain mandatory. Automatic staging is private-only,
 opt-in and default-off; preserve scoped manual staging. Do not remove failed checks,
 invent reviewers, enable unqualified native production triggers or routinely bypass
-controls. Recovery needs separate authority/evidence. The existing
-[pipeline report](docs/development/CI_CD_PIPELINE_REPORT.md) records trigger exceptions
-and actual limits; this file grants no future production or credential authority.
+controls. Recovery needs separate authority/evidence. The [pipeline report](docs/development/CI_CD_PIPELINE_REPORT.md) records trigger exceptions and limits.
 
 ## Code Review Rules
 
@@ -184,8 +177,7 @@ Weekly checks use existing CI after qualified main adoption; do not claim a sess
 continues monitoring after it ends.
 Done means source/contracts/docs agree, required tests pass, cleanup and diffs are reviewed,
 and authorized releases have exact-source hosted receipts. Report each real failed,
-blocked or untested gate with its next executable action. Owner authorization is not test
-evidence and this file grants no future session blanket production/credential authority.
+blocked or untested gate with its next executable action. Owner authorization is not test evidence or future production/credential authority.
 
 Private hosted checks require included-allowance opt-in; no paid overages.
 See docs/development/FREE_GITHUB_PLAN.md for transition checks.
