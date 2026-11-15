@@ -1,4 +1,4 @@
-import { legacyEngineeringFixture } from "./engineering-test-fixture.ts";
+import { legacyEngineeringFixture } from "./engineering-test-fixture.js";
 
 /** Global account administration is delegated in every deployed Portal runtime.
  * The only local exception is the explicitly isolated loopback regression fixture.
