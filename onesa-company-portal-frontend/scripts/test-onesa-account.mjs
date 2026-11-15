@@ -312,6 +312,19 @@ try {
         receipts.push({ engine, flow: "access-and-logout", language, width });
       });
     }
+    for (const alreadySignedIn of [true, false]) {
+      await isolated(alreadySignedIn ? {session: session()} : {}, async (page, state) => {
+        await page.goto(origin + "/account?next=%2Faccount%2Fdelete");
+        if (!alreadySignedIn) {
+          await signInFields(page);
+          await page.getByRole("button", {name: "Continue", exact: true}).click();
+        }
+        await expect(page).toHaveURL(origin + "/account/delete");
+        await expect(page.getByRole("checkbox", {name: /I want to request deletion/})).not.toBeChecked();
+        assert.equal(state.writes.some(write => write.path.endsWith("/deletion-requests")), false);
+        receipts.push({engine, flow: "account-deletion-sign-in-return", alreadySignedIn});
+      });
+    }
     const mobileSession = session();
     mobileSession.catalog = catalog(["ai", "drone", "robot", "mobile"]);
     mobileSession.access.push({product: "mobile", role: "customer", status: "active", revision: 1});

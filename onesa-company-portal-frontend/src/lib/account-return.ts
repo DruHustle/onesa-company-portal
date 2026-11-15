@@ -51,6 +51,14 @@ export function accountDestination(search: string): string {
   return "/account";
 }
 
+/** These member pages can resume after either an existing session or fresh login. */
+export function memberReturnPath(search: string): string | null {
+  const destination = accountDestination(search);
+  if (destination === "/account?next=/engineering") return "/engineering";
+  if (destination === "/account?next=/account/delete") return "/account/delete";
+  return null;
+}
+
 // Workspace filters and privacy anchors stay in the browser fragment during sign-in.
 const workspaceParameters = ["section", "page", "search", "status", "category"];
 function adminWorkspaceSuffix(url: URL): string {

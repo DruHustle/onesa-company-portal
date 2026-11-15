@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { accountApplicationUrl } from "@/lib/onesa-identity";
 import { accessLinkToken, sharedSignInToken } from "@/lib/access-link";
-import { adminWorkspaceReturn, accountDestination, accountReturnPath, accountReauthenticationRequired, docsAccountPath, productAccountPath } from "@/lib/account-return";
+import { adminWorkspaceReturn, accountDestination, memberReturnPath, accountReturnPath, accountReauthenticationRequired, docsAccountPath, productAccountPath } from "@/lib/account-return";
 import { AccountError, accountRequest, productNames, adminProductNames, type ApplicationProduct, futureProductNames, enabledProducts, type Product, type ProductCatalog, type AccountConfig, type AccountSession, type Account } from "./api";
 import { AdminSignIn } from "@/features/admin/sign-in";
 import { AccessManager } from "./access-manager";
@@ -105,7 +105,8 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
         if (interactionId) { const result = await accountRequest<Interaction>("/api/v1/account/interaction/" + encodeURIComponent(interactionId)); if (active) setInteraction(result); }
         else if (mode === "login" && !adminEntry && !forceLogin && !explicitEmailProof.current && !accountReauthenticationRequired(window.location.search)) {
           try { const result = await accountRequest<AccountSession>("/api/v1/account/me"); if (active && !explicitEmailProof.current) {
-            if (accountDestination(window.location.search) === "/account?next=/engineering") window.location.replace("/engineering");
+            const resume = memberReturnPath(window.location.search);
+            if (resume) window.location.replace(resume);
             else setSession(result);
           } }
           catch (reason) { if (!(reason instanceof AccountError && reason.status === 401)) throw reason; }
@@ -183,10 +184,10 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
       else {
         const result = await accountRequest<AccountSession>("/api/v1/account/login", body);
         if (docsInteractionId) { window.location.replace(docsAccountPath(docsInteractionId)!); return; }
-        if (accountDestination(window.location.search) === "/account?next=/engineering") { window.location.assign("/engineering"); return; }
+        const resume = memberReturnPath(window.location.search);
+        if (resume) { window.location.assign(resume); return; }
         const destination = accountReturnPath(window.location.search);
         if (destination) window.location.assign(destination);
-        else if (new URLSearchParams(window.location.search).get("next") === "/account/delete") window.location.assign("/account/delete");
         else if (new URLSearchParams(window.location.search).get("next") === "/admin" && result.account.portalAccess) window.location.assign(adminWorkspace);
         else {
           setSharedToken(null);
