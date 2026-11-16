@@ -75,3 +75,78 @@ test("existing account links move once and keep their interaction or staff desti
   assert.equal(legacySignInEntry("/account/sign-in/synthetic_123", old), "/account?interaction=synthetic_123");
   assert.equal(legacySignInEntry("/engineering/sign-in/synthetic_123/details", old), null);
 });
+
+test("managed Portal entry retains workspace filters and a privacy anchor", async () => {
+  const {managedAdminEntry} = await import("../src/lib/account-return.ts");
+  const url=new URL("https://portal.example/admin?section=Content&page=2&unexpected=discard#privacy/tasks");
+  const start=new URL(managedAdminEntry(url),url.origin);
+  assert.equal(start.pathname,"/api/v1/auth/managed/start");
+  assert.equal(start.searchParams.get("next"),"/admin?section=Content&page=2#privacy/tasks");
+});
+
+test("managed redirects remain bound to the configured provider and Portal callback", async()=>{
+  const {managedPortalRedirect}=await import("../src/lib/managed-portal-redirect.ts");
+  const origin="https://portal.example",issuer="https://auth.example/";
+  const start=["auth","managed","start"],callback=["auth","managed","callback"];
+  assert.equal(managedPortalRedirect(start,issuer+"authorize?state=local",origin,issuer),issuer+"authorize?state=local");
+  assert.equal(managedPortalRedirect(callback,"/admin?section=Content",origin,issuer),origin+"/admin?section=Content");
+  assert.equal(managedPortalRedirect(callback,"/api/v1/auth/managed/retry?next=%2Fadmin",origin,issuer),origin+"/api/v1/auth/managed/retry?next=%2Fadmin");
+  for(const url of ["https://other.example/authorize","//auth.example/other","/account","https://auth.example/authorize#proof=private"])
+    assert.equal(managedPortalRedirect(start,url,origin,issuer),null);
+});
+
+test("managed operation start and completion accept only their configured destinations", async () => {
+  const { managedPortalRedirect } = await import("../src/lib/managed-portal-redirect.ts");
+  const origin = "https://portal.example", issuer = "https://auth.example/";
+  const step = ["auth", "managed", "step-up"], callback = ["auth", "managed", "callback"];
+  assert.equal(managedPortalRedirect(step, issuer + "authorize?state=local", origin, issuer), issuer + "authorize?state=local");
+  assert.equal(managedPortalRedirect(callback, "/admin/step-up-complete", origin, issuer), origin + "/admin/step-up-complete");
+  for (const destination of ["/admin/step-up-complete?next=elsewhere", "/admin/step-up-complete#state", "//portal.example/admin/step-up-complete"])
+    assert.equal(managedPortalRedirect(callback, destination, origin, issuer), null);
+  for (const destination of ["/admin", "/admin/step-up-complete", issuer + "account", "https://other.example/authorize"])
+    assert.equal(managedPortalRedirect(step, destination, origin, issuer), null);
+});
+
+test("one verified operation retries the original revision, targets and id once", async () => {
+  const { submitOwnerOperation } = await import("../src/lib/managed-operation.ts");
+  const body = { id: "original-id", expectedRevision: 2, targets: [{ kind: "enquiry", id: "original-target" }] };
+  const challenge = "ab".repeat(32), inputs: unknown[] = [], verified: string[] = [];
+  const result = await submitOwnerOperation(body, { managed: true }, async input => {
+    inputs.push(input);
+    if (inputs.length === 1) throw new Error("provider verification required");
+    return "saved";
+  }, () => challenge, async value => { verified.push(value); });
+  assert.equal(result, "saved");
+  assert.deepEqual(verified, [challenge]);
+  assert.deepEqual(inputs, [{ ...body, stepUp: { managed: true } }, { ...body, stepUp: { managed: true, receipt: challenge } }]);
+});
+
+test("legacy, cancellation and stale or missing proofs never reissue another verification", async () => {
+  const { submitOwnerOperation } = await import("../src/lib/managed-operation.ts");
+  const challenge = "fe".repeat(32), local = { password: "fixture", code: "synthetic" };
+  for (const [proof, header, cancelled, attempts, prompts] of [
+    [local, challenge, false, 1, 0],
+    [{ managed: true }, "", false, 1, 0],
+    [{ managed: true }, "incorrect", false, 1, 0],
+    [{ managed: true }, challenge, true, 1, 1],
+    [{ managed: true }, challenge, false, 2, 1],
+    [{ managed: true, receipt: challenge }, challenge, false, 1, 0],
+  ] as const) {
+    let sent = 0, prompted = 0;
+    await assert.rejects(submitOwnerOperation({}, proof, async () => { sent++; throw new Error("not verified"); },
+      () => header, async () => { prompted++; if (cancelled) throw new Error("cancelled"); }));
+    assert.equal(sent, attempts);
+    assert.equal(prompted, prompts);
+  }
+});
+
+test("the browser accepts the completion message only from its own same-origin verification window", async () => {
+  const { completionMessage, verifiedPopupMessage } = await import("../src/lib/managed-operation.ts");
+  const popup = {} as Window, origin = "https://portal.example";
+  const event = { source: popup, origin, data: completionMessage } as MessageEvent;
+  assert.equal(verifiedPopupMessage(event, popup, origin), true);
+  assert.equal(verifiedPopupMessage(event, null, origin), false);
+  assert.equal(verifiedPopupMessage(event, {} as Window, origin), false);
+  assert.equal(verifiedPopupMessage({ ...event, origin: "https://other.example" }, popup, origin), false);
+  assert.equal(verifiedPopupMessage({ ...event, data: "other" }, popup, origin), false);
+});

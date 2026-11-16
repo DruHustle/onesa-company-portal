@@ -2,13 +2,16 @@ import type { PoolClient } from 'pg';
 import type { Role } from '../access/roles.js';
 import { decrypt, hash, passwordValid, validStep } from './crypto.js';
 import { HttpError } from '../services/workflows.js';
+import { authorizeOperation } from "./managed-operation.js";
 
-type Proof = { password: string; code: string };
+type Proof = { password: string; code: string } | { managed: true; receipt?: string };
 type Session = { userId: string; token: string; csrf: string };
 
 /** Consume a fresh factor in the same transaction as the sensitive operation. */
 export async function reauthenticate(client: PoolClient, session: Session, proof?: Proof): Promise<Role> {
-  if (!proof) throw new HttpError(403, 'STEP_UP_REQUIRED', 'Confirm your password and a fresh authenticator or unused recovery code.');
+  if (process.env.ONESA_IDENTITY_PORTAL_LOGIN === "managed")
+    return authorizeOperation(client, session, proof && "managed" in proof ? proof : undefined);
+  if (!proof || "managed" in proof) throw new HttpError(403, 'STEP_UP_REQUIRED', 'Confirm your password and a fresh authenticator or unused recovery code.');
   // Serialize credential/account changes without blocking audit foreign-key reads.
   // FOR UPDATE can deadlock with a deletion holding its target identity lock while
   // step-up waits for that same target and the deletion records its actor.

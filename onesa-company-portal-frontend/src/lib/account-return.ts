@@ -51,6 +51,14 @@ export function accountDestination(search: string): string {
   return "/account";
 }
 
+/** These member pages can resume after either an existing session or fresh login. */
+export function memberReturnPath(search: string): string | null {
+  const destination = accountDestination(search);
+  if (destination === "/account?next=/engineering") return "/engineering";
+  if (destination === "/account?next=/account/delete") return "/account/delete";
+  return null;
+}
+
 // Workspace filters and privacy anchors stay in the browser fragment during sign-in.
 const workspaceParameters = ["section", "page", "search", "status", "category"];
 function adminWorkspaceSuffix(url: URL): string {
@@ -73,4 +81,8 @@ export function adminWorkspaceReturn(fragment: string): string {
   const suffix = values.get("workspace");
   if (values.size !== 1 || !suffix || suffix.length > 6144 || !["?", "#"].includes(suffix[0])) return "/admin";
   return "/admin" + adminWorkspaceSuffix(new URL("/admin" + suffix, "https://portal.example.invalid"));
+}
+
+export function managedAdminEntry(url: URL) {
+  return "/api/v1/auth/managed/start?" + new URLSearchParams({ next: "/admin" + adminWorkspaceSuffix(url) });
 }
