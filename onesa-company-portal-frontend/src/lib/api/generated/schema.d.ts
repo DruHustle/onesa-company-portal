@@ -4616,6 +4616,10 @@ export interface operations {
                     stepUp?: {
                         password: string;
                         code: string;
+                    } | {
+                        /** @enum {boolean} */
+                        managed: true;
+                        receipt?: string;
                     };
                 };
             };
@@ -4796,6 +4800,10 @@ export interface operations {
                     stepUp?: {
                         password: string;
                         code: string;
+                    } | {
+                        /** @enum {boolean} */
+                        managed: true;
+                        receipt?: string;
                     };
                 };
             };
@@ -24090,6 +24098,10 @@ export interface operations {
                     stepUp?: {
                         password: string;
                         code: string;
+                    } | {
+                        /** @enum {boolean} */
+                        managed: true;
+                        receipt?: string;
                     };
                 };
             };
@@ -24260,6 +24272,10 @@ export interface operations {
                     stepUp?: {
                         password: string;
                         code: string;
+                    } | {
+                        /** @enum {boolean} */
+                        managed: true;
+                        receipt?: string;
                     };
                 };
             };
@@ -25285,6 +25301,10 @@ export interface operations {
                     stepUp?: {
                         password: string;
                         code: string;
+                    } | {
+                        /** @enum {boolean} */
+                        managed: true;
+                        receipt?: string;
                     };
                 };
             };
@@ -25462,6 +25482,10 @@ export interface operations {
                     stepUp?: {
                         password: string;
                         code: string;
+                    } | {
+                        /** @enum {boolean} */
+                        managed: true;
+                        receipt?: string;
                     };
                 };
             };
@@ -25821,6 +25845,10 @@ export interface operations {
                     stepUp?: {
                         password: string;
                         code: string;
+                    } | {
+                        /** @enum {boolean} */
+                        managed: true;
+                        receipt?: string;
                     };
                     processorEvidenceRefs: string[];
                     backupReplayEvidenceRefs: string[];
@@ -27316,6 +27344,10 @@ export interface operations {
                     stepUp?: {
                         password: string;
                         code: string;
+                    } | {
+                        /** @enum {boolean} */
+                        managed: true;
+                        receipt?: string;
                     };
                 };
             };
