@@ -877,7 +877,7 @@ def lifecycle_scope(binding):
         portal_operational_source(binding)
         # Repository migration cannot create a second controller for the same
         # resource or discard an old controller's unresolved global hold.
-        return "DruHustle/onesa-company-portal:" + binding["component"]
+        return "DruHustle/onesa-portal:" + binding["component"]
     return component_scope(binding)
 
 

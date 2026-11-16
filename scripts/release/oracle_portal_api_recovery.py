@@ -34,7 +34,7 @@ PEER_PINS = {
 PEER_REPOSITORIES = {
     "robot": "DruHustle/onesa-robot",
     "ai": "DruHustle/onesa-ai-platform",
-    "portal-scanner": "DruHustle/onesa-company-portal",
+    "portal-scanner": "DruHustle/onesa-portal",
 }
 PEER_TARGETS = {
     ("DruHustle/onesa-robot", "api"): {
@@ -45,7 +45,7 @@ PEER_TARGETS = {
         "staging": "onesa-ai-oracle-api-staging-1",
         "production": "onesa-ai-oracle-api-production-1",
     },
-    ("DruHustle/onesa-company-portal", "scanner"): {
+    ("DruHustle/onesa-portal", "scanner"): {
         # This legacy name serves the production consumer; its name is not
         # evidence of isolation. Only an accepted production record may match.
         "production": "onesa-portal-oracle-staging-scanner-1",
@@ -511,7 +511,7 @@ def original(store, operation):
     intent = signed_unrevoked(store, operation, "deployment-intent")["record"]
     binding = intent["binding"]
     owner.require(
-        binding["repository"] == "DruHustle/onesa-company-portal"
+        binding["repository"] == "DruHustle/onesa-portal"
         and binding["component"] == "api"
         and binding["target_environment"] == "production"
         and intent["details"]["provider_request_budget"] == 1
@@ -552,7 +552,7 @@ def installed_files(root):
 def reviewed_source(github, source, root):
     owner.require(
         set(source) == {"repository", "candidate_commit", "source_tree"}
-        and source["repository"] == "DruHustle/onesa-company-portal"
+        and source["repository"] == "DruHustle/onesa-portal"
         and root.name == "portal-api-observer-" + source["source_tree"],
         "OBSERVER_SOURCE_SCOPE_REQUIRED",
     )

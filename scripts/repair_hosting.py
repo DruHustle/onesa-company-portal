@@ -168,7 +168,7 @@ def repair_portal_staging_layout():
         status != 200
         or data.get("id") != PORTAL_STAGING_SERVICE
         or data.get("repo", "").removesuffix(".git").rstrip("/")
-        != "https://github.com/DruHustle/onesa-company-portal"
+        != "https://github.com/DruHustle/onesa-portal"
         or data.get("type") != "web_service"
         or details.get("runtime", details.get("env")) != "docker"
         or details.get("plan") != "free"
@@ -190,7 +190,7 @@ def repair_portal_staging_layout():
         update == 200 and current_status == 200
         and current.get("id") == PORTAL_STAGING_SERVICE
         and current.get("repo", "").removesuffix(".git").rstrip("/")
-        == "https://github.com/DruHustle/onesa-company-portal"
+        == "https://github.com/DruHustle/onesa-portal"
         and current.get("type") == "web_service"
         and current.get("autoDeployTrigger") == "off"
         and current.get("branch") == payload["branch"]
@@ -210,7 +210,7 @@ def repair_portal_staging_layout():
 def main():
     repo = os.environ.get("GITHUB_REPOSITORY", "")
     if os.environ.get("PORTAL_REPAIR_SCOPE") == "staging":
-        if repo != "DruHustle/onesa-company-portal" or os.environ.get("GITHUB_REF") != PORTAL_AUDIT_REF:
+        if repo != "DruHustle/onesa-portal" or os.environ.get("GITHUB_REF") != PORTAL_AUDIT_REF:
             raise SystemExit("Staging layout repair requires the identified Portal audit branch")
         report = repair_portal_staging_layout()
         print(json.dumps(report, indent=2))
@@ -218,7 +218,7 @@ def main():
             raise SystemExit("Staging layout was not verified; no deployment requested")
         return
     if (
-        repo not in {"DruHustle/onesa-company-portal", "DruHustle/onesa-ai-platform"}
+        repo not in {"DruHustle/onesa-portal", "DruHustle/onesa-ai-platform"}
         or os.environ.get("GITHUB_REF") != "refs/heads/main"
     ):
         raise SystemExit(

@@ -33,7 +33,7 @@ after(async()=>{
 });
 function request(){
  return {qualification_profile:PROFILE,environment:'staging',origin,bypass:null,provider_token_included:false,
-  binding:{repository:'DruHustle/onesa-company-portal',component:'frontend'},
+  binding:{repository:'DruHustle/onesa-portal',component:'frontend'},
   nvidia:{contract:CONTRACT,catalog_sha256:digest(fs.readFileSync(new URL('../../onesa-company-portal-frontend/public/models/nvidia/manifest.json',import.meta.url))),renderer_license_sha256:digest(fs.readFileSync(new URL('../../onesa-company-portal-frontend/public/licenses/three.txt',import.meta.url)))}};
 }
 

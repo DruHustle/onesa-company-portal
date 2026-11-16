@@ -24,7 +24,7 @@ from portal_profile_test_fixtures import schema_016_migrations
 
 def binding():
     return {
-        "repository": "DruHustle/onesa-company-portal",
+        "repository": "DruHustle/onesa-portal",
         "component": "identity",
         "candidate_commit": "a" * 40,
         "source_tree": "b" * 40,

@@ -448,7 +448,7 @@ def staging_frontend_routing():
     if (
         service_status != 200
         or service.get("repo", "").removesuffix(".git")
-        != "https://github.com/DruHustle/onesa-company-portal"
+        != "https://github.com/DruHustle/onesa-portal"
         or service.get("branch") != "staging"
     ):
         return {"target_verified": False}

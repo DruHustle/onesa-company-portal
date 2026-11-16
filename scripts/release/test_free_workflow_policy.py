@@ -353,7 +353,7 @@ for(const privateRepo of [false,true]) for(const allowance of ['', 'false', 'tru
         program = r"""
 for(const {job,condition} of JSON.parse(process.argv[1])) {
  for(const allowance of ['', 'false']) {
-  const github={repository:'DruHustle/onesa-company-portal',repository_id:'1412150327',
+  const github={repository:'DruHustle/onesa-portal',repository_id:'1412150327',
    actor:'DruHustle',triggering_actor:'DruHustle',ref:'refs/heads/main',run_attempt:'1',
    event_name:'workflow_dispatch',event:{repository:{private:true}}};
   const vars={ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED:allowance};
@@ -379,7 +379,7 @@ for(const {job,condition} of JSON.parse(process.argv[1])) {
         }
         program = r"""
 const conditions=JSON.parse(process.argv[1]);
-for(const repository of ['DruHustle/onesa-company-portal','foreign/repository'])
+for(const repository of ['DruHustle/onesa-portal','foreign/repository'])
 for(const repository_id of ['1412150327','1444746154'])
 for(const privateRepo of [false,true])
 for(const allowance of ['', 'false', 'true'])
@@ -387,7 +387,7 @@ for(const run_attempt of ['1','2'])
 for(const event_name of ['pull_request','push','workflow_dispatch','pull_request_target','workflow_run','schedule']) {
  const github={repository,repository_id,run_attempt,event_name,event:{repository:{private:privateRepo}}};
  const vars={ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED:allowance};
- const canonical=repository==='DruHustle/onesa-company-portal' && repository_id==='1412150327';
+ const canonical=repository==='DruHustle/onesa-portal' && repository_id==='1412150327';
  const expected={amd64:canonical && (!privateRepo || allowance==='true'),
   arm64:canonical && !privateRepo && run_attempt==='1' && ['pull_request','push','workflow_dispatch'].includes(event_name)};
  for(const [architecture,condition] of Object.entries(conditions)) {

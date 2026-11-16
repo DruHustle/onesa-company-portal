@@ -76,7 +76,7 @@ class HostingInspectionTests(unittest.TestCase):
     def staging_service():
         return {
             "id": repair_hosting.PORTAL_STAGING_SERVICE,
-            "repo": "https://github.com/DruHustle/onesa-company-portal.git",
+            "repo": "https://github.com/DruHustle/onesa-portal.git",
             "type": "web_service",
             "autoDeployTrigger": "commit",
             "serviceDetails": {
@@ -176,7 +176,7 @@ class HostingInspectionTests(unittest.TestCase):
 
     def test_staging_repair_entrypoint_refuses_main_and_other_repositories(self):
         for repo, ref in [
-            ("DruHustle/onesa-company-portal", "refs/heads/main"),
+            ("DruHustle/onesa-portal", "refs/heads/main"),
             ("DruHustle/onesa-ai-platform", repair_hosting.PORTAL_AUDIT_REF),
         ]:
             with (
@@ -218,7 +218,7 @@ class HostingInspectionTests(unittest.TestCase):
         marker = "synthetic-private-provider-value"
         item = {
             "id": "srv-fixture",
-            "repo": "https://github.com/DruHustle/onesa-company-portal.git",
+            "repo": "https://github.com/DruHustle/onesa-portal.git",
             "branch": "staging",
             "type": "web_service",
             "rootDir": "onesa-company-portal-backend",
@@ -350,7 +350,7 @@ class HostingInspectionTests(unittest.TestCase):
             patch("repair_hosting.write_json") as write,
         ):
             result = repair_hosting.repair_render(
-                "DruHustle/onesa-company-portal", "srv-testonly", True
+                "DruHustle/onesa-portal", "srv-testonly", True
             )
             self.assertFalse(result["repository_matches"])
             write.assert_not_called()

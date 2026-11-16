@@ -22,7 +22,7 @@ jobs:
   verify:
     name: company-billing-amd64
     if: >-
-      github.repository == 'DruHustle/onesa-company-portal' && github.repository_id == '1412150327' &&
+      github.repository == 'DruHustle/onesa-portal' && github.repository_id == '1412150327' &&
       (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true')
     runs-on: ubuntu-24.04
     timeout-minutes: 20

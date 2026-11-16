@@ -77,7 +77,7 @@ class PipelineTests(unittest.TestCase):
         )[1].split("    - run: npm ci", 1)[0]
         script = textwrap.dedent(step.split("script: |\n", 1)[1])
         harness = r"""
-const mode=process.argv[1], script=process.argv[2], sha='a'.repeat(40), repository='DruHustle/onesa-company-portal';
+const mode=process.argv[1], script=process.argv[2], sha='a'.repeat(40), repository='DruHustle/onesa-portal';
 process.env.RUNNER_ENVIRONMENT=mode==='local'?'self-hosted':'github-hosted';
 const context={ref:mode==='main'?'refs/heads/main':'refs/heads/staging',sha,repo:{owner:'DruHustle',repo:'onesa-company-portal'},payload:{repository:{full_name:repository}}};
 const run={head_sha:mode==='wrong-ci-sha'?'b'.repeat(40):sha,head_branch:mode==='wrong-ci-branch'?'dev':'staging',head_repository:{full_name:mode==='foreign-repo'?'other/portal':repository},status:mode==='pending'?'in_progress':'completed',conclusion:mode==='failed'?'failure':'success'};
