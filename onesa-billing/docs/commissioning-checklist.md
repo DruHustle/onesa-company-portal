@@ -18,7 +18,7 @@ observations until the changed boundary has been verified again.
 
 | Required field | Value or retained evidence reference |
 | --- | --- |
-| Canonical repository and repository ID | `DruHustle/onesa-company-portal`, `1412150327` |
+| Canonical repository and repository ID | `DruHustle/onesa-portal`, `1412150327` |
 | Billing PR and reviewed branch head | Unset |
 | Actual tested checkout commit (`GITHUB_SHA`) | Unset; keep the PR merge commit distinct from its branch head |
 | Root tree and `onesa-billing` subtree | Unset |

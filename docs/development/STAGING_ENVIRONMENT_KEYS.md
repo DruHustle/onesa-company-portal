@@ -5,7 +5,7 @@ Each product uses its own Vercel project. Within this product, `STAGING_VERCEL_P
 The existing secrets are configured under **Environment secrets → Staging**. Verify
 actual injection with the trusted diagnostic below before selecting that deployment
 binding. For private GitHub Free, the supported fallback is **Repository secrets →
-New repository secret** at https://github.com/DruHustle/onesa-company-portal/settings/secrets/actions,
+New repository secret** at https://github.com/DruHustle/onesa-portal/settings/secrets/actions,
 using the same staging-only names. Repository secrets do **not** provide environment-level
 isolation: repository writers can modify Actions to access them. Keep production credentials
 outside editable Actions; restrict repository write access and use a separately controlled
@@ -22,9 +22,9 @@ registered owner-only inspection workflow offers boolean-only diagnostics with n
 checkout, provider requests or secret-value output:
 
 ```sh
-gh secret list --env Staging -R DruHustle/onesa-company-portal
-gh workflow run inspect-hosting.yml --repo DruHustle/onesa-company-portal --ref dev -f secret_scope=environment
-gh workflow run inspect-hosting.yml --repo DruHustle/onesa-company-portal --ref dev -f secret_scope=repository
+gh secret list --env Staging -R DruHustle/onesa-portal
+gh workflow run inspect-hosting.yml --repo DruHustle/onesa-portal --ref dev -f secret_scope=environment
+gh workflow run inspect-hosting.yml --repo DruHustle/onesa-portal --ref dev -f secret_scope=repository
 ```
 
 The environment diagnostic explicitly declares `environment: Staging`. A missing or
@@ -61,7 +61,7 @@ needed to register a staging workflow. Forwarded named secrets are overridden by
 the selected callee's Staging environment only in the verified public mode.
 
 ```sh
-gh workflow run deploy.yml --repo DruHustle/onesa-company-portal --ref staging -f target=staging -f fixture_mode=temporary -f application=both
+gh workflow run deploy.yml --repo DruHustle/onesa-portal --ref staging -f target=staging -f fixture_mode=temporary -f application=both
 ```
 
 ## Required workflow secret names
