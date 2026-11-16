@@ -247,7 +247,7 @@ accounts, grants, approvals or memberships. Apply through the normal bounded
 transactional migrator after migration 017; the exact new source requires isolated
 qualification and a compatible release profile. Product databases remain independent.
 
-For a disposable local copy restored at schema 016, 017 or 018, set
+For a disposable local copy restored at schema 016 through 021, set
 `TEST_DATABASE_URL` to its loopback PostgreSQL URL (database name ending in
 `_test`) and run `npm run rehearse:customer-identity` from the backend. It checks
 the actual loopback TCP peer (including a loopback-published Docker port) and the

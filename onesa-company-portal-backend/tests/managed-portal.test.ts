@@ -276,12 +276,31 @@ test("managed Portal callback verifies the signed grant and keeps an existing ed
       return id as string;
     }
     async function beginChallenge(id: string) {
-      const challengeUrl = prefix + "/step-up?challenge=" + id;
-      assert.equal((await app.inject({ url: challengeUrl })).statusCode, 403);
-      const init = await app.inject({
-        url: challengeUrl,
-        headers: { cookie: ownerCookie },
-      });
+      const activation = {
+        method: "POST" as const,
+        url: prefix + "/step-up",
+        payload: "challenge=" + id,
+      };
+      const activate = (cookie = "", requestOrigin = origin) =>
+        app.inject({
+          ...activation,
+          headers: {
+            cookie,
+            origin: requestOrigin,
+            "content-type": "application/x-www-form-urlencoded",
+          },
+        });
+      assert.equal(
+        (await app.inject({ url: activation.url + "?challenge=" + id }))
+          .statusCode,
+        404,
+      );
+      assert.equal((await activate()).statusCode, 403);
+      assert.equal(
+        (await activate(ownerCookie, "https://other.example.test")).statusCode,
+        403,
+      );
+      const init = await activate(ownerCookie);
       assert.equal(init.statusCode, 303, init.body);
       const auth = new URL(init.headers.location!);
       assert.equal(auth.searchParams.get("max_age"), "0");
@@ -292,15 +311,8 @@ test("managed Portal callback verifies the signed grant and keeps an existing ed
           ?.split(" ")
           .includes("urn:onesa:authentication:operation-mfa"),
       );
-      assert.equal(
-        (
-          await app.inject({
-            url: challengeUrl,
-            headers: { cookie: ownerCookie },
-          })
-        ).statusCode,
-        403,
-      );
+      assert.equal((await activate(ownerCookie)).statusCode, 403);
+      assert.ok(!init.headers.location!.includes(id));
       nonce = auth.searchParams.get("nonce")!;
       challenge = auth.searchParams.get("code_challenge")!;
       operationNonce = nonce;

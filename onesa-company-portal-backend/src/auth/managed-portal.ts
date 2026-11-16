@@ -359,15 +359,29 @@ export function registerManagedPortal(
     { schema: { hide: true }, logLevel: "silent" },
     (req, reply) => begin(req, reply),
   );
-  app.get(
-    prefix + "/step-up",
-    { schema: { hide: true }, logLevel: "silent" },
-    (req, reply) => {
-      const challenge = (req.query as { challenge?: string }).challenge;
-      if (typeof challenge !== "string") throw failedProof();
-      return begin(req, reply, challenge);
-    },
-  );
+  app.register(async (operation) => {
+    operation.addContentTypeParser(
+      "application/x-www-form-urlencoded",
+      { parseAs: "string", bodyLimit: 96 },
+      (_req, body, done) => done(null, body),
+    );
+    operation.post(
+      prefix + "/step-up",
+      { schema: { hide: true }, logLevel: "silent", bodyLimit: 96 },
+      (req, reply) => {
+        const match =
+          typeof req.body === "string" &&
+          /^challenge=([a-f0-9]{64})$/.exec(req.body);
+        if (
+          !match ||
+          req.headers.origin !== env.PUBLIC_ORIGIN ||
+          req.url.includes("?")
+        )
+          throw failedProof();
+        return begin(req, reply, match[1]);
+      },
+    );
+  });
   app.get(
     prefix + "/callback",
     { schema: { hide: true }, logLevel: "silent" },

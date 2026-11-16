@@ -12,6 +12,7 @@ const issuer = "https://provider.example.invalid/";
 const target = "00000000-0000-4000-8000-000000000001";
 const challenges = new Map();
 const requests = [];
+const providerStates = new Map();
 const api = http.createServer(async (req, res) => {
   const url = new URL(req.url, origin);
   const json = (data, status = 200, headers = {}) => {
@@ -42,11 +43,22 @@ const api = http.createServer(async (req, res) => {
     challenges.delete(stepUp.receipt);
     return json({}, 201);
   }
-  if (url.pathname === "/api/v1/auth/managed/step-up" && challenges.has(url.searchParams.get("challenge")))
-    return redirect(issuer + "authorize?state=" + url.searchParams.get("challenge"));
+  if (url.pathname === "/api/v1/auth/managed/step-up") {
+    if (url.search || req.method !== "POST" || req.headers.origin !== origin) return json({ error: { code: "START" } }, 400);
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const challenge = new URLSearchParams(Buffer.concat(chunks).toString()).get("challenge");
+    if (!challenges.has(challenge)) return json({ error: { code: "CHALLENGE" } }, 400);
+    const state = randomBytes(24).toString("hex");
+    providerStates.set(state, challenge);
+    res.writeHead(303, { location: issuer + "authorize?state=" + state,
+      "set-cookie": "fixture-" + state + "=started; Path=/api/v1/auth/managed/callback; HttpOnly; SameSite=Lax" });
+    return res.end();
+  }
   if (url.pathname === "/api/v1/auth/managed/callback") {
-    const item = challenges.get(url.searchParams.get("state"));
-    if (!item) return json({ error: { code: "STATE" } }, 400);
+    const item = challenges.get(providerStates.get(url.searchParams.get("state")));
+    const state = url.searchParams.get("state");
+    if (!item || !req.headers.cookie?.split("; ").includes("fixture-" + state + "=started")) return json({ error: { code: "STATE" } }, 400);
     item.verified = true;
     return redirect("/admin/step-up-complete");
   }
@@ -73,12 +85,16 @@ try {
     const executablePath = engine === "chromium" ? process.env.ONESA_TEST_CHROMIUM_EXECUTABLE : undefined;
     browser = await engines[engine].launch({ executablePath });
     const context = await browser.newContext();
+    context.setDefaultTimeout(15_000);
+    context.setDefaultNavigationTimeout(20_000);
     const page = await context.newPage();
     await context.route(issuer + "authorize?*", route => {
       const state = new URL(route.request().url()).searchParams.get("state");
       return route.fulfill({ status: 200, contentType: "text/html", body:
         '<a href="' + origin + '/api/v1/auth/managed/callback?state=' + encodeURIComponent(state) + '">Confirm synthetic verification</a>' });
     });
+    const seenUrls = [];
+    context.on("request", request => seenUrls.push(request.url()));
     await page.goto(origin + "/admin#privacy/requests");
     await page.getByText("Create a hold", { exact: true }).click();
     const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Record hold" }) });
@@ -122,6 +138,9 @@ try {
     assert.deepEqual(requests.at(-2).id, requests.at(-1).id);
     assert.notEqual(requests.at(-1).id, operation.id);
 
+    for (const request of requests.slice(initial)) {
+      if (request.stepUp.receipt) assert(seenUrls.every(url => !url.includes(request.stepUp.receipt)));
+    }
     await context.close();
     await browser.close();
     browser = null;

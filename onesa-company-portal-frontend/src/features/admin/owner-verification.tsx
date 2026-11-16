@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ApiError } from "@/lib/api/client";
 import { submitOwnerOperation, verifiedPopupMessage, type OwnerProof } from "@/lib/managed-operation";
 
@@ -9,6 +10,7 @@ type Pending = {
   resolve: () => void;
   reject: (error: Error) => void;
   popup: Window | null;
+  controller: AbortController;
 };
 const VerificationContext = createContext<{ managed: boolean; verify: (challenge: string) => Promise<void> } | null>(null);
 
@@ -17,12 +19,14 @@ export function OwnerVerification({ managed, children }: { managed: boolean; chi
   const mounted = useRef(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const [pending, setPending] = useState<Pending | null>(null);
-  const [windowState, setWindowState] = useState<"ready" | "open" | "blocked">("ready");
+  const [windowState, setWindowState] = useState<"ready" | "opening" | "open" | "blocked">("ready");
+  const [authorizeUrl, setAuthorizeUrl] = useState("");
 
   const finish = useCallback((error?: Error) => {
     const item = current.current;
     if (!item) return;
     current.current = null;
+    item.controller.abort();
     item.popup?.close();
     if (mounted.current) setPending(null);
     if (error) item.reject(error);
@@ -42,7 +46,8 @@ export function OwnerVerification({ managed, children }: { managed: boolean; chi
       reject(new Error("The verification window is unavailable. Submit the change again."));
       return;
     }
-    current.current = { challenge, resolve, reject, popup: null };
+    current.current = { challenge, resolve, reject, popup: null, controller: new AbortController() };
+    setAuthorizeUrl("");
     setWindowState("ready");
     setPending(current.current);
   }), []);
@@ -66,31 +71,58 @@ export function OwnerVerification({ managed, children }: { managed: boolean; chi
     };
   }, [pending, finish]);
 
-  function openVerification() {
+  async function openVerification() {
     const item = current.current;
-    if (!item) return;
-    const url = "/api/v1/auth/managed/step-up?challenge=" + encodeURIComponent(item.challenge);
-    // Open only from the button's click so browser popup policies preserve the form.
-    item.popup = window.open(url, "_blank", "popup,width=560,height=740");
-    setWindowState(item.popup ? "open" : "blocked");
+    if (!item || windowState !== "ready") return;
+    // Reserve the popup during the click, before the network request consumes user activation.
+    item.popup = window.open("about:blank", "_blank", "popup,width=560,height=740");
+    setWindowState("opening");
+    try {
+      // Send only the public origin to the same-origin proxy. Keep the workspace URL private.
+      const response = await fetch("/api/v1/auth/managed/step-up", {
+        method: "POST", mode: "cors", credentials: "same-origin", redirect: "error", cache: "no-store",
+        referrer: window.location.origin + "/", referrerPolicy: "same-origin",
+        headers: { Accept: "application/json" }, body: new URLSearchParams({ challenge: item.challenge }),
+        signal: AbortSignal.any([item.controller.signal, AbortSignal.timeout(25_000)]),
+      });
+      if (!response.ok) throw new Error("Onesa could not start verification. Submit the change again.");
+      const body = await response.json();
+      if (current.current !== item) return;
+      const destination = new URL(body.authorizeUrl);
+      if (destination.protocol !== "https:" || destination.pathname !== "/authorize" || destination.hash || destination.username || destination.password)
+        throw new Error("Onesa returned an invalid verification destination.");
+      if (item.popup && !item.popup.closed) {
+        item.popup.location.replace(destination.href);
+        setWindowState("open");
+      } else {
+        setAuthorizeUrl(destination.href);
+        setWindowState("blocked");
+      }
+    } catch (error) {
+      if (current.current === item) finish(error instanceof Error ? error : new Error("Verification could not be started."));
+    }
   }
 
   return <VerificationContext.Provider value={{ managed, verify }}>
     {children}
-    {pending && <dialog ref={dialog} aria-labelledby="owner-verification-title"
+    {pending && createPortal(<dialog ref={dialog} aria-labelledby="owner-verification-title"
       onCancel={event => { event.preventDefault(); finish(new Error("Verification was cancelled.")); }}>
       <h2 id="owner-verification-title">Confirm this change with Onesa</h2>
-      {windowState === "open" ? <>
+      {windowState === "ready" && <>
+        <p>Verify your identity in a separate window to submit this change.</p>
+        <button type="button" className="button" onClick={() => void openVerification()}>Verify with Onesa</button>
+      </>}
+      {windowState === "opening" && <p role="status">Opening Onesa verification…</p>}
+      {windowState === "blocked" && <>
+        <p role="status">Your browser blocked the verification window. Open verification in a new tab.</p>
+        <a href={authorizeUrl} target="_blank" rel="noopener noreferrer" onClick={() => setWindowState("open")}>Open verification in a new tab</a>
+      </>}
+      {windowState === "open" && <>
         <p>Complete verification in the Onesa window. If you have finished and this dialog is still open, continue below.</p>
         <button type="button" className="button" onClick={() => finish()}>I completed verification</button>
-      </> : <>
-        <p role="status">{windowState === "blocked" ? "Your browser blocked the verification window. Open verification in a new tab or allow pop-ups and try again." : "Verify your identity in a separate window to submit this change."}</p>
-        <button type="button" className="button" onClick={openVerification}>Verify with Onesa</button>
       </>}
-      {windowState === "blocked" && <a href={"/api/v1/auth/managed/step-up?challenge=" + encodeURIComponent(pending.challenge)}
-        target="_blank" rel="noopener noreferrer" onClick={() => setWindowState("open")}>Open verification in a new tab</a>}
       <button type="button" onClick={() => finish(new Error("Verification was cancelled."))}>Cancel</button>
-    </dialog>}
+    </dialog>, document.body)}
   </VerificationContext.Provider>;
 }
 
