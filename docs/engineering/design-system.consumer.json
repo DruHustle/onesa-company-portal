@@ -1,13 +1,13 @@
 {
   "version": "1.0.0",
-  "owner": "DruHustle/onesa-company-portal",
+  "owner": "DruHustle/onesa-portal",
   "source": "onesa-company-portal-frontend/src/styles/onesa-foundation.css",
   "sha256": "903893a34aab19b3a46cb9543cd7d96d1dbc219c1a69b14678aeceb50eeff7a4",
   "local_artifacts": [
     "onesa-company-portal-frontend/src/styles/onesa-foundation.css"
   ],
   "guide": "https://docs.internal.onesa.eu/docs/architecture/ONESA_DESIGN_SYSTEM",
-  "adoption": "Review the versioned owner artifact, verify SHA256, copy into this repository, test affected consumers, promote dev \u2192 staging \u2192 main. No sibling imports or mutable runtime dependency.",
+  "adoption": "Review the versioned owner artifact, verify SHA256, copy into this repository, test affected consumers, promote dev → staging → main. No sibling imports or mutable runtime dependency.",
   "applications": {
     "version": "1.0.1",
     "source": "onesa-company-portal-frontend/src/config/onesa-applications.json",

@@ -48,7 +48,7 @@ def main():
     args = parser.parse_args()
     workflows = sorted((ROOT / ".github/workflows").glob("*.yml"))
     checks = {}
-    if ROOT.name == "onesa-company-portal":
+    if ROOT.name in {"onesa-company-portal", "onesa-portal"}:
         checks["documentation"] = subprocess.run(
             ["python3", "scripts/validate-docs.py"], cwd=ROOT, check=False
         ).returncode

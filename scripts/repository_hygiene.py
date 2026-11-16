@@ -148,12 +148,13 @@ def main():
             args.monorepo_root is None
             or args.monorepo_root.resolve() != repository_root
             or ROOT.parent != repository_root
-            or ROOT.name not in {"onesa-company-portal", "onesa-ai-platform", "onesa-robot", "onesa-drone"}
+            or ROOT.name not in {"onesa-company-portal", "onesa-portal", "onesa-ai-platform", "onesa-robot", "onesa-drone"}
             or gate.is_symlink()
             or not gate.is_file()
         ):
             raise SystemExit("Refusing to scan an inherited ancestor repository")
-        command = [sys.executable, str(gate), "--product", ROOT.name]
+        product = "onesa-company-portal" if ROOT.name == "onesa-portal" else ROOT.name
+        command = [sys.executable, str(gate), "--product", product]
         command += ["--history"] if args.history else []
         command += ["--json"] if args.json else []
         raise SystemExit(subprocess.run(command, cwd=repository_root, check=False).returncode)

@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import oracle_owner as owner
 import runtime_lifecycle as lifecycle
 
-REPOSITORY = "DruHustle/onesa-company-portal"
+REPOSITORY = "DruHustle/onesa-portal"
 ROOT = Path("/opt/onesa/runtime-recovery")
 UNITS = Path("/etc/systemd/system")
 SERVICE = "onesa-runtime-recovery.service"

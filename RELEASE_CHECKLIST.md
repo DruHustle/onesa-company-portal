@@ -376,12 +376,12 @@ target. See docs/engineering/VERCEL_RENDER.md.
 
 - Verified repository scope, online/idle state, Linux ARM64/custom labels, checksum,
   idempotent registration, systemd service restart and LaunchAgent VM boot recovery.
-- Initial [push CI](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131161012),
-  [PR CI](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131178868),
-  [publication hygiene](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131161041)
-  and [manual smoke](https://github.com/DruHustle/onesa-company-portal/actions/runs/38131160962)
+- Initial [push CI](https://github.com/DruHustle/onesa-portal/actions/runs/38131161012),
+  [PR CI](https://github.com/DruHustle/onesa-portal/actions/runs/38131178868),
+  [publication hygiene](https://github.com/DruHustle/onesa-portal/actions/runs/38131161041)
+  and [manual smoke](https://github.com/DruHustle/onesa-portal/actions/runs/38131160962)
   passed at `09a5bc6`; job metadata identifies `onesa-portal-local-arm64` (ID 21).
-- Owner merged [the runner-policy PR](https://github.com/DruHustle/onesa-company-portal/pull/4). The audit merge retains all newer application fixes and requires fresh exact-revision hosted checks, including x86 runtime jobs.
+- Owner merged [the runner-policy PR](https://github.com/DruHustle/onesa-portal/pull/4). The audit merge retains all newer application fixes and requires fresh exact-revision hosted checks, including x86 runtime jobs.
   ARM CI/security images do not establish x86 runtime security equivalence. Production commands remain untested against providers; no
   production workflow was dispatched. Existing release gates still apply.
 - No private registration is currently active. Real Mac reboot/login and sleep

@@ -104,7 +104,7 @@ class BrowserDependenciesTests(unittest.TestCase):
             "GITHUB_ACTIONS": "true",
             "RUNNER_ENVIRONMENT": "github-hosted",
             "RUNNER_OS": "Linux",
-            "GITHUB_REPOSITORY": "DruHustle/onesa-company-portal",
+            "GITHUB_REPOSITORY": "DruHustle/onesa-portal",
         }
         with (
             patch.dict(os.environ, values, clear=True),

@@ -19,7 +19,7 @@ class SevenClientFrontendTests(unittest.TestCase):
         self.origins = {"staging": staging, "production": dict(seven.PRODUCTION)}
         self.issuer = {"qualification_profile": "portal-shared-identity-v2",
                        "environments": {env: {"origins": origins} for env, origins in self.origins.items()}}
-        self.binding = {"repository": "DruHustle/onesa-company-portal", "component": "frontend"}
+        self.binding = {"repository": "DruHustle/onesa-portal", "component": "frontend"}
         self.fixture = provider_fixture.ProviderConfigurationTests()
         self.fixture.setUp()
         self.fixture.plan.update(qualification_profile=seven.PROFILE, binding=self.binding)

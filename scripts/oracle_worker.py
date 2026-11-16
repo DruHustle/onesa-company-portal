@@ -43,7 +43,7 @@ def ssh():
 
 def qualified_source(sha, github):
     require(bool(re.fullmatch(r"[a-f0-9]{40}", sha or "")), "Exact staging commit required")
-    stage = github.api("repos/DruHustle/onesa-company-portal/branches/staging")
+    stage = github.api("repos/DruHustle/onesa-portal/branches/staging")
     require(stage["commit"]["sha"] == sha, "Candidate must equal current remote staging")
     status, references = evidence.checked_ci(github, sha)
     require(status == "PASS", "Full exact-source staging CI and hygiene must pass before VM writes")
