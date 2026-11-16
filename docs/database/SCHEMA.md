@@ -256,3 +256,5 @@ existing product grants and the eight ordinary product roles, repeats the plan f
 idempotency, and rolls back the whole rehearsal. Output gives counts and the original
 schema version. A production upgrade still requires a separately commissioned release
 profile, restore/rollback evidence and hosted identity acceptance.
+
+Migration 020 adds short-lived portal_login_transactions (hashed browser key, single-use state, nonce, encrypted verifier, local destination, expiry). The nullable sessions.managed_expires_at caps managed grants across cookie rotation. Existing accounts, session rows and ownership foreign keys retain their IDs.

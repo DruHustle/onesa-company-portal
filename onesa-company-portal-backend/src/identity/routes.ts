@@ -1,3 +1,4 @@
+import { externalIdentityAdministration } from "./administration.js";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import type { IncomingMessage } from "node:http";
@@ -128,7 +129,7 @@ const safeAccount = (account: AccountSession["account"]) => ({
   id: account.id,
   email: account.email,
   name: account.display_name,
-  globalAdmin: isGlobalAdmin(account.role),
+  globalAdmin: !externalIdentityAdministration() && isGlobalAdmin(account.role),
   owner: account.role === "owner",
   portalAccess: account.role !== "member",
   emailVerified: Boolean(account.email_verified_at),
