@@ -243,6 +243,7 @@ class HostingInspectionTests(unittest.TestCase):
         self.assertTrue(report["complete"])
         self.assertEqual(len(report["services"]), 1)
         self.assertEqual(report["services"][0]["branch"], "staging")
+        self.assertTrue(report["services"][0]["backend_root_matches"])
         self.assertEqual(report["services"][0]["plan"], "free")
         self.assertNotIn(marker, json.dumps(report))
         self.assertNotIn("private-project", json.dumps(report))
