@@ -8,14 +8,14 @@ import { portalDatabaseURL, confirmedPortalDatabaseURL, assertConfirmedClientTLS
 
 const host='ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech';
 const fixture='postgresql://fixture:synthetic-password@'+host+'/neondb?sslmode=require';
-const stagingService={id:'srv-db5k5had0e5s73fos4g0',repo:'https://github.com/DruHustle/onesa-company-portal',branch:'staging',type:'web_service',rootDir:'onesa-company-portal-backend',autoDeployTrigger:'off',serviceDetails:{runtime:'docker',plan:'free',region:'frankfurt',url:'https://onesa-company-portal-backend-staging.onrender.com'}};
+const stagingService={id:'srv-db5k5had0e5s73fos4g0',repo:'https://github.com/DruHustle/onesa-portal',branch:'staging',type:'web_service',rootDir:'onesa-company-portal-backend',autoDeployTrigger:'off',serviceDetails:{runtime:'docker',plan:'free',region:'frankfurt',url:'https://onesa-company-portal-backend-staging.onrender.com'}};
 
 test('Staging database binding refuses production, foreign services, paid targets and auto deploy',async()=>{
  assert.doesNotThrow(()=>assertPortalStagingService(stagingService));
  for(const changed of [{id:'srv-production'},{branch:'main'},{repo:'https://github.com/DruHustle/onesa-ai-platform'},{autoDeployTrigger:'commit'},{serviceDetails:{...stagingService.serviceDetails,plan:'starter'}},{serviceDetails:{...stagingService.serviceDetails,url:'https://onesa-company-portal-backend.onrender.com'}}])assert.throws(()=>assertPortalStagingService({...stagingService,...changed}));
  const previous={...process.env};
  try {
-  process.env.GITHUB_REPOSITORY='DruHustle/onesa-company-portal';
+  process.env.GITHUB_REPOSITORY='DruHustle/onesa-portal';
   for(const branch of ['main','dev']){process.env.GITHUB_REF='refs/heads/'+branch;await assert.rejects(repairPortalStagingDatabase(),/staging operator branch/);}
  }finally{process.env=previous;}
 });
@@ -29,7 +29,7 @@ test('Staging binding verifies existing restricted role and schema before one en
  }
  const requests:{url:string;method:string}[]=[];const queries:string[]=[];let saved='';let unsafe=true;
  try {
-  process.env.GITHUB_REPOSITORY='DruHustle/onesa-company-portal';process.env.GITHUB_REF='refs/heads/staging';process.env.RENDER_API_KEY='synthetic-render-token';process.env.PORTAL_APP_DB_PASSWORD='x'.repeat(64);
+  process.env.GITHUB_REPOSITORY='DruHustle/onesa-portal';process.env.GITHUB_REF='refs/heads/staging';process.env.RENDER_API_KEY='synthetic-render-token';process.env.PORTAL_APP_DB_PASSWORD='x'.repeat(64);
   pg.Pool.prototype.connect=(async()=>({connection:{stream:{encrypted:true,authorized:true}},release(){},async query(sql:string){
    queries.push(sql);
    if(sql.includes('current_database()'))return {rows:[{database:'neondb',role:'onesa_portal_app'}]};
@@ -63,9 +63,9 @@ test('Read-only runtime inspection ignores an unrelated migration credential and
  }
  const methods:string[]=[];const queries:string[]=[];let safe=true;
  try {
-  process.env.GITHUB_REPOSITORY='DruHustle/onesa-company-portal';process.env.GITHUB_REF='refs/heads/dev';process.env.RENDER_API_KEY='synthetic-render';process.env.RENDER_BACKEND_SERVICE_ID='srv-synthetic';
+  process.env.GITHUB_REPOSITORY='DruHustle/onesa-portal';process.env.GITHUB_REF='refs/heads/dev';process.env.RENDER_API_KEY='synthetic-render';process.env.RENDER_BACKEND_SERVICE_ID='srv-synthetic';
   process.env.PORTAL_MIGRATION_DATABASE_URL='postgresql://unrelated:synthetic@unrelated.example.invalid/neondb?sslmode=require';
-  globalThis.fetch=async(input,init)=>{methods.push(init?.method||'GET');return Response.json(String(input).includes('/env-vars?')?[{envVar:{key:'DATABASE_URL',value:fixture}}]:{repo:'https://github.com/DruHustle/onesa-company-portal',branch:'main',type:'web_service',rootDir:'onesa-company-portal-backend',autoDeployTrigger:'off',serviceDetails:{runtime:'docker',url:'https://onesa-company-portal-backend.onrender.com'}});};
+  globalThis.fetch=async(input,init)=>{methods.push(init?.method||'GET');return Response.json(String(input).includes('/env-vars?')?[{envVar:{key:'DATABASE_URL',value:fixture}}]:{repo:'https://github.com/DruHustle/onesa-portal',branch:'main',type:'web_service',rootDir:'onesa-company-portal-backend',autoDeployTrigger:'off',serviceDetails:{runtime:'docker',url:'https://onesa-company-portal-backend.onrender.com'}});};
   pg.Pool.prototype.connect=(async function(this:pg.Pool){
    assert.equal((this as unknown as {options:{connectionString:string}}).options.connectionString,fixture);
    return {connection:{stream:{encrypted:true,authorized:true}},release(){},async query(sql:string){
@@ -116,7 +116,7 @@ test('Operator repair cannot target staging AI or a different repository/service
  try {
   process.env.GITHUB_REPOSITORY='DruHustle/onesa-ai-platform';process.env.GITHUB_REF='refs/heads/main';
   await assert.rejects(repairPortalRole(true),/Approved Portal/);
-  process.env.GITHUB_REPOSITORY='DruHustle/onesa-company-portal';process.env.GITHUB_REF='refs/heads/staging';
+  process.env.GITHUB_REPOSITORY='DruHustle/onesa-portal';process.env.GITHUB_REF='refs/heads/staging';
   await assert.rejects(repairPortalRole(true),/Approved Portal/);
   process.env.GITHUB_REF='refs/heads/main';process.env.RENDER_BACKEND_SERVICE_ID='srv-testfixture';process.env.RENDER_API_KEY='synthetic-private-token';
   const methods:string[]=[];
@@ -200,7 +200,7 @@ test('Confirmed inventory distinguishes seeded configuration from operational re
 test('Retained dev/staging branches cannot mutate production databases',async()=>{
  const previous={...process.env};const previousFetch=globalThis.fetch;let providerCalls=0;
  try {
-  process.env.GITHUB_REPOSITORY='DruHustle/onesa-company-portal';
+  process.env.GITHUB_REPOSITORY='DruHustle/onesa-portal';
   globalThis.fetch=async()=>{providerCalls++;throw new Error('Provider must not be called');};
   for(const ref of ['refs/heads/dev','refs/heads/staging']) {
    process.env.GITHUB_REF=ref;

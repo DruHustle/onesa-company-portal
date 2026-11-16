@@ -2,7 +2,7 @@
 
 ## Canonical checkout and local artifacts
 
-`DruHustle/onesa-company-portal` contains frontend, backend and billing with
+`DruHustle/onesa-portal` contains frontend, backend and billing with
 independent runtimes. Inspect remote refs, deployments
 and open PRs; reuse compatible work in flight.
 

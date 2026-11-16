@@ -32,7 +32,7 @@ import oracle_portal_scanner_workflow as workflows
 PLAN = Path("/etc/onesa/oracle-portal-scanner-release.json")
 ROOT = Path("/var/lib/onesa/release-verification/portal/scanner")
 TARGET = "onesa-portal-oracle-staging-scanner-1"
-REPOSITORY = "DruHustle/onesa-company-portal"
+REPOSITORY = "DruHustle/onesa-portal"
 PREFIX = "infra/oracle/clamav/"
 SHIPPED = {
     "clamd.conf": "/etc/clamav/clamd.conf",
