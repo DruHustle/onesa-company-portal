@@ -4,10 +4,11 @@ export function managedPortalRedirect(path: string[], target: string | null, ori
   try {
     const url = new URL(target,origin);
     if (url.username || url.password) return null;
-    if (path[2] === "start" && url.protocol === "https:" && url.origin === new URL(issuer).origin &&
+    if ((path[2] === "start" || path[2] === "step-up") && url.protocol === "https:" && url.origin === new URL(issuer).origin &&
       url.pathname === "/authorize" && !url.hash) return url.href;
     if (url.origin !== origin || !target.startsWith("/") || target.startsWith("//")) return null;
     if ((path[2] === "start" || path[2] === "callback") && url.pathname === "/api/v1/auth/managed/retry") return url.href;
+    if (path[2] === "callback" && target === "/admin/step-up-complete") return url.href;
     if (path[2] === "callback" && url.pathname === "/admin") return url.href;
   } catch { /* Reject malformed issuer or upstream destination. */ }
   return null;
