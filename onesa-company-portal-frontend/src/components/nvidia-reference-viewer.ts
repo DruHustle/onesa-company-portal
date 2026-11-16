@@ -28,7 +28,6 @@ export function createReferenceViewer(options: {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.5;
   renderer.domElement.setAttribute('aria-hidden', 'true');
-  host.append(renderer.domElement);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 100);
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -39,7 +38,7 @@ export function createReferenceViewer(options: {
   key.position.set(3, 6, 4);
   scene.add(ambient, key);
   const draw = () => {
-    if (disposed || frame || renderer.getContext().isContextLost()) return;
+    if (disposed || !model || frame || renderer.getContext().isContextLost()) return;
     frame = requestAnimationFrame(() => {
       frame = 0;
       if (!disposed && !renderer.getContext().isContextLost()) {
@@ -61,7 +60,7 @@ export function createReferenceViewer(options: {
     camera.updateProjectionMatrix(); controls.update(); draw();
   };
   const resize = new ResizeObserver(() => {
-    if (disposed) return;
+    if (disposed || !model) return;
     camera.aspect = Math.max(host.clientWidth, 1) / Math.max(host.clientHeight, 1);
     renderer.setSize(Math.max(host.clientWidth, 1), Math.max(host.clientHeight, 1), false);
     camera.updateProjectionMatrix(); draw();
@@ -73,7 +72,7 @@ export function createReferenceViewer(options: {
   theme();
   const contextLost = (event: Event) => {event.preventDefault(); abort.abort(); if (!disposed) onState('failed');};
   renderer.domElement.addEventListener('webglcontextlost', contextLost);
-  fit(); onState('loading');
+  onState('loading');
   const deadline = window.setTimeout(() => abort.abort(), 15000);
   void (async () => {
     try {
@@ -107,6 +106,9 @@ export function createReferenceViewer(options: {
       model.position.sub(bounds.getCenter(new THREE.Vector3()));
       const pivot = new THREE.Group();
       pivot.add(model); pivot.scale.setScalar(3.6 / longest); scene.add(pivot); model = pivot;
+      // Keep the static preview while loading. Compositing an empty WebGL canvas
+      // can otherwise block interactions with adjacent controls on software GPUs.
+      host.append(renderer.domElement);
       fit(); draw(); onState('ready');
     } catch {if (!disposed) onState('failed');}
     finally {clearTimeout(deadline);}

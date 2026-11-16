@@ -28,7 +28,10 @@ PREFIX = "onesa-company-portal-frontend/"
 # Additional shared-entry predecessors are public blobs from Portal a746c55e.
 # The standalone Admin entry and original routing proxy come from Portal 9e8c939a.
 # Portal 550e007e retains the original domain routing helper.
+# Gallery sources precede the deferred canvas change, at Portal 2096ad1e42.
 REVIEWED_FILES = {
+    PREFIX + "src/components/nvidia-reference-viewer.ts": (6365, "affbb2eddbc6fca2e280aa0ad541a8e5958b692c8a7634d89c92954fa02d9d98"),
+    PREFIX + "src/components/nvidia-reference-library.tsx": (6444, "92c4eb64c6ff97542ebf5fe618d2b50a7f4e96f2dff04910698f16e379d9691c"),
     PREFIX + "src/lib/domains.ts": (2553, "9cc261a9580b01ffa7215c4db10b6b8ece118e913e06fa4f3f815f0c77916447"),
     PREFIX + "src/proxy.ts": (2917, "01acb9084f2d2af5610a723896602b1578b83baa59c0fa8e55b0e31add46955f"),
     PREFIX + "src/app/admin/page.tsx": (546, "163d7517e01aee14108a335aaf1594fc4d140ddff649966621d75130543fcb1f"),
@@ -61,6 +64,8 @@ REVIEWED_FILES = {
     PREFIX + "src/lib/api/generated/schema.d.ts": (787032, "e84ad11bf072ba1c2aee94b70af9ea73e98d8dea426979d55e09479d23cf37f8"),
 }
 REVIEWED_BLOBS = {
+    PREFIX + "src/components/nvidia-reference-viewer.ts": "b164621a5783bedbcc40296bf563b7451abc45d2",
+    PREFIX + "src/components/nvidia-reference-library.tsx": "730a158ea6ee9c78baa7a14963cc32a400ab0bba",
     PREFIX + "src/lib/domains.ts": "1f8a8db0addb2f3cb52a3cf6735a1cb501cc77f4",
     PREFIX + "src/proxy.ts": "5b9eea107d3199433b5e98b7db76674ba400fd17",
     PREFIX + "src/app/admin/page.tsx": "b630ba8e08e5849d8eaf5d311d099dff6a8f12e7",
