@@ -33,7 +33,7 @@ PLAN = Path("/etc/onesa/oracle-portal-identity-acceptance.json")
 PLAN_V2 = Path("/etc/onesa/oracle-portal-identity-acceptance-v2.json")
 ROOT = Path("/var/lib/onesa/release-verification/portal/identity-acceptance")
 REPOSITORIES = {
-    "portal": "DruHustle/onesa-company-portal",
+    "portal": "DruHustle/onesa-portal",
     "ai": "DruHustle/onesa-ai-platform",
     "drone": "DruHustle/onesa-drone",
     "robot": "DruHustle/onesa-robot",

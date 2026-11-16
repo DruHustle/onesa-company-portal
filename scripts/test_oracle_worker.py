@@ -14,7 +14,7 @@ class GitHub:
         self.sha = sha
 
     def api(self, path):
-        if path != "repos/DruHustle/onesa-company-portal/branches/staging":
+        if path != "repos/DruHustle/onesa-portal/branches/staging":
             raise AssertionError("Unexpected provider access")
         return {"commit": {"sha": self.sha}}
 

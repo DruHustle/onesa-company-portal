@@ -23,7 +23,7 @@ class PreviewTargetTests(unittest.TestCase):
     ):
         operation = str(uuid4())
         binding = {
-            "repository": "DruHustle/onesa-company-portal",
+            "repository": "DruHustle/onesa-portal",
             "component": "frontend",
             "candidate_commit": "a" * 40,
         }

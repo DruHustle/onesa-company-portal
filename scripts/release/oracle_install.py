@@ -152,7 +152,7 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     )
     require(
         consolidated or (m["schema_version"] == 1
-        and m["repository"] == "DruHustle/onesa-company-portal"),
+        and m["repository"] == "DruHustle/onesa-portal"),
         "Installation repository refused",
     )
     source_binding = verifier.portal_operational_source(m) if consolidated else None
@@ -399,7 +399,7 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "Frontend comparison baseline must be separately pinned",
         )
         observed = github.api(
-            "repos/" + ("DruHustle/onesa-company-portal" if consolidated else m["repository"])
+            "repos/" + ("DruHustle/onesa-portal" if consolidated else m["repository"])
             + "/git/commits/" + baseline["source"]
         )
         require(
@@ -424,7 +424,7 @@ def validate(bundle, manifest_pin, github, *, uid=0):
             "API comparison baseline must be separately pinned",
         )
         observed = github.api(
-            "repos/" + ("DruHustle/onesa-company-portal" if consolidated else m["repository"])
+            "repos/" + ("DruHustle/onesa-portal" if consolidated else m["repository"])
             + "/git/commits/" + baseline["candidate_commit"]
         )
         require(

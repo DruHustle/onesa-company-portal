@@ -93,7 +93,7 @@ def portal_component_scope(binding, component=None):
     if binding.get("repository") == CANONICAL_REPOSITORY:
         portal_source_binding(binding)
         return CANONICAL_REPOSITORY + ":portal:" + selected
-    require(binding.get("repository") == "DruHustle/onesa-company-portal",
+    require(binding.get("repository") == "DruHustle/onesa-portal",
             "PORTAL_COMPONENT_REPOSITORY")
     return binding["repository"] + ":" + selected
 
@@ -241,7 +241,7 @@ def verify_canonical_component_custody(binding, plan, checks):
 
 def frontend_component_scope(binding):
     require(binding.get("component") == "frontend"
-            and binding.get("repository") in {CANONICAL_REPOSITORY, "DruHustle/onesa-company-portal"},
+            and binding.get("repository") in {CANONICAL_REPOSITORY, "DruHustle/onesa-portal"},
             "PORTAL_FRONTEND_COMPONENT_SCOPE")
     return portal_component_scope(binding, "frontend")
 
