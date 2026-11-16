@@ -51,7 +51,7 @@ export function validateRequest(r) {
   check(keys(b, canonical ? [...fields,...provenance] : fields) &&
     (canonical ? b.schema_version === 2 && b.repository_id === 1444746154 && b.product === 'portal' &&
       b.source_path === 'onesa-company-portal' && b.branch === 'main' && matches(b.product_source_tree,sha40) :
-      b.repository === 'DruHustle/onesa-company-portal') &&
+      b.repository === 'DruHustle/onesa-portal') &&
     b.component === (r.scope === 'account' ? 'identity' : 'identity-acceptance') &&
     b.target_environment === 'production' && matches(b.candidate_commit,sha40) && matches(b.source_tree,sha40) &&
     matches(b.source_sha256,sha64) && matches(b.build_sha256,sha64) && matches(b.artifact_digest,/^sha256:[a-f0-9]{64}$/) &&

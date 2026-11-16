@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
-PRODUCT = ROOT.name
+PRODUCT = "onesa-company-portal" if ROOT.name == "onesa-portal" else ROOT.name
 GATES = ("CODE_VERIFIED", "STAGING_VERIFIED", "OPERATIONS_VERIFIED", "CONTENT_LEGAL_APPROVED")
 
 def run(command, cwd=ROOT):

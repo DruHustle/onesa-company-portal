@@ -12,7 +12,7 @@ function durable(directory,name,value){
 function createGuard(directory,approvedOrigin='https://api.vercel.com'){
  const scope=JSON.parse(fs.readFileSync(path.join(directory,'scope.json')));
  const canonical=scope.repository==='DruHustle/onesa-ug'&&scope.schema_version===2&&scope.repository_id===1444746154&&scope.product==='portal'&&scope.source_path==='onesa-company-portal'&&scope.branch==='main'&&['candidate_commit','source_tree','product_source_tree'].every(key=>typeof scope[key]==='string'&&/^[a-f0-9]{40}$/.test(scope[key]));
- if(scope.request_budget!==1||!/^[a-f0-9-]{36}$/.test(scope.operation_id)||(!canonical&&scope.repository!=='DruHustle/onesa-company-portal')||scope.component!=='frontend'||!['staging','production'].includes(scope.environment))throw Error('Invalid owner transport scope');
+ if(scope.request_budget!==1||!/^[a-f0-9-]{36}$/.test(scope.operation_id)||(!canonical&&scope.repository!=='DruHustle/onesa-portal')||scope.component!=='frontend'||!['staging','production'].includes(scope.environment))throw Error('Invalid owner transport scope');
  return function check(origin,method,requestPath){
   if(String(method).toUpperCase()!=='POST'||!endpoint.test(String(requestPath)))return;
   if(new URL(String(origin)).origin!==approvedOrigin)throw Error('Deployment create target refused');

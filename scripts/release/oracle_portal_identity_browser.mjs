@@ -68,7 +68,7 @@ export function validateRequest(value) {
     require(Object.values(binding.configuration_sha256).every(pin => typeof pin === 'string' &&
       /^[a-f0-9]{64}$/.test(pin)), 'IDENTITY_CANONICAL_CONFIGURATION');
   }
-  require(binding && (binding.repository === 'DruHustle/onesa-company-portal' ||
+  require(binding && (binding.repository === 'DruHustle/onesa-portal' ||
     binding.repository === 'DruHustle/onesa-ug' && binding.schema_version === 2 &&
     binding.repository_id === 1444746154 && binding.product === 'portal' &&
     binding.source_path === 'onesa-company-portal' && binding.branch === 'main' &&

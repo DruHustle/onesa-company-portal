@@ -97,7 +97,7 @@ class EightClientInstall(install_tests.IdentityInstallTests):
 
     def test_current_authority_cannot_be_seven_client(self):
         self.validate()
-        scope = "DruHustle/onesa-company-portal:identity"
+        scope = "DruHustle/onesa-portal:identity"
         self.policy["components"][scope]["qualification_profile"] = identity.PROFILE_V2
         self.seal()
         with self.assertRaises(installer.verifier.Rejected):

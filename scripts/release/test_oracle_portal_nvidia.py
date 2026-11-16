@@ -439,7 +439,7 @@ class NvidiaProfileBindingTests(unittest.TestCase):
             "processing_scope": "existing-public-presentation-no-new-processing", "privacy_decision": "G14_DEFERRED",
             "publication_controls_unchanged": True, "physical_hardware_authorized": False, "rollback": {},
         }
-        binding = {"repository": "DruHustle/onesa-company-portal", "candidate_commit": "b" * 40}
+        binding = {"repository": "DruHustle/onesa-portal", "candidate_commit": "b" * 40}
         for env in r.ENV:
             legacy = r.configuration_value(binding, plan, env)
             expanded = r.configuration_value(binding, plan | {"qualification_profile": r.NVIDIA_PROFILE}, env)
@@ -448,7 +448,7 @@ class NvidiaProfileBindingTests(unittest.TestCase):
             self.assertEqual(expanded["nvidia_observation_contract"], r.NVIDIA_CONTRACT)
 
     def test_profile_cannot_be_selected_by_plan_against_other_commissioned_policy(self):
-        binding = {"repository": "DruHustle/onesa-company-portal", "component": "frontend", "target_environment": "production"}
+        binding = {"repository": "DruHustle/onesa-portal", "component": "frontend", "target_environment": "production"}
         trust = {key: "0" * 64 for key in ["installation_id", "key_id", "verifier_sha256", "policy_sha256", "openssl_sha256"]}
         for plan_profile, policy_profile in [(r.NVIDIA_PROFILE, r.PRESENTATION_PROFILE), (r.PRESENTATION_PROFILE, r.NVIDIA_PROFILE)]:
             policy = {"components": {binding["repository"] + ":frontend": {"qualification_attempt_limit": 1, "qualification_profile": policy_profile}}}
@@ -501,7 +501,7 @@ class NvidiaInstallTests(unittest.TestCase):
         tool["probe_files"] = r.probe_source_files({name: hashlib.sha256(body).hexdigest() for name, body in files.items()}, r.NVIDIA_PROFILE)
         tool["frontend_baseline"] = {"source": "b" * 40, "source_tree": "c" * 40, "source_sha256": "d" * 64}
         fixture.github.baseline_expected = ("b" * 40, "c" * 40)
-        self.profile = fixture.policy["components"]["DruHustle/onesa-company-portal:frontend"]
+        self.profile = fixture.policy["components"]["DruHustle/onesa-portal:frontend"]
         self.profile["qualification_profile"] = r.NVIDIA_PROFILE
         for phase, runner in self.profile["runners"].items():
             runner["path"] = str(installer.INSTALL_PARENT / ("portal-" + tree) / "runners/oracle_portal_frontend.py")

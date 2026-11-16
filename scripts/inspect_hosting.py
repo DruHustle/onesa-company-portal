@@ -86,7 +86,12 @@ def render_inventory(token):
     """Bounded inventory; provider environment values and commands never leave this function."""
     if not token:
         return {"configured": False, "complete": False, "services": []}
-    projects = {"onesa-company-portal", "onesa-ai-platform", "onesa-ai-robot"}
+    projects = {
+        "onesa-company-portal",
+        "onesa-portal",
+        "onesa-ai-platform",
+        "onesa-ai-robot",
+    }
     services, seen, cursor = [], set(), None
     for _ in range(3):
         query = {"limit": 100, "includePreviews": "true"}
@@ -152,7 +157,9 @@ def render_inventory(token):
                     "native_auto_deploy_disabled": item.get("autoDeployTrigger")
                     == "off"
                     or item.get("autoDeploy") == "no",
-                    "backend_root_matches": item.get("rootDir") == project + "-backend",
+                    "backend_root_matches": item.get("rootDir")
+                    == ("onesa-company-portal" if project == "onesa-portal" else project)
+                    + "-backend",
                     "persistent_disk_configured": bool(details.get("disk")),
                 }
             )
@@ -448,7 +455,7 @@ def staging_frontend_routing():
     if (
         service_status != 200
         or service.get("repo", "").removesuffix(".git")
-        != "https://github.com/DruHustle/onesa-company-portal"
+        != "https://github.com/DruHustle/onesa-portal"
         or service.get("branch") != "staging"
     ):
         return {"target_verified": False}
@@ -509,7 +516,7 @@ def staging_frontend_routing():
 
 
 def main():
-    portal = os.environ.get("GITHUB_REPOSITORY", "").endswith("/onesa-company-portal")
+    portal = os.environ.get("GITHUB_REPOSITORY", "").endswith(("/onesa-company-portal", "/onesa-portal"))
     scope = os.environ.get("PORTAL_INSPECTION_SCOPE") or "production"
     backend_id, worker_id = (
         portal_services(scope)
