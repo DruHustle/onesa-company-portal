@@ -166,7 +166,7 @@ automatic production deployment. Urgent fixes exclude unfinished work and requir
 staging qualification, owner release and reconciliation into development.
 Review [agent policies](AGENTS.md), [deployment](docs/engineering/DEPLOYMENT.md) and
 [qualification](docs/engineering/AUTOMATED_QUALIFICATION.md). Current CI is available in
-[GitHub Actions](https://github.com/DruHustle/onesa-company-portal/actions).
+[GitHub Actions](https://github.com/DruHustle/onesa-portal/actions).
 [Onesa Developer Docs](https://docs.onesa.eu) contains approved public guides;
 [Onesa Internal Documents](https://docs.internal.onesa.eu) requires authorized access
 for engineering, HR and other internal collections. The engineering collection includes architecture, onboarding and the design system.

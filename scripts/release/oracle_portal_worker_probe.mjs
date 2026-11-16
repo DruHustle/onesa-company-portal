@@ -41,7 +41,7 @@ export function validate(request,raw,actual,now=Date.now()){
  need(exact(request,['binding','operation_id','environment','ci_run_id','fixture_id','expires_at','runtime_sha256','certificate_sha256','rollback']),'WORKER_PROBE_SCHEMA');
  const b=request.binding;
  need(exact(b,[...['repository','component','candidate_commit','source_tree','source_sha256','build_sha256','artifact_digest','configuration_sha256','target_environment'],...(b.repository==='DruHustle/onesa-ug'?sourceFields:[])]),'WORKER_PROBE_BINDING_SCHEMA');
- need((b.repository==='DruHustle/onesa-company-portal'||canonicalSource(b))&&(b.component==='worker'||b.component==='api'&&request.environment==='staging')&&b.target_environment==='production','WORKER_PROBE_COMPONENT_SCOPE');
+ need((b.repository==='DruHustle/onesa-portal'||canonicalSource(b))&&(b.component==='worker'||b.component==='api'&&request.environment==='staging')&&b.target_environment==='production','WORKER_PROBE_COMPONENT_SCOPE');
  need(matches(hex40,b.candidate_commit)&&matches(hex40,b.source_tree)&&matches(hex64,b.source_sha256)&&matches(hex64,b.build_sha256)&&matches(/^sha256:[a-f0-9]{64}$/,b.artifact_digest),'WORKER_PROBE_ARTIFACT_SCOPE');
  need(exact(b.configuration_sha256,['staging','production'])&&Object.values(b.configuration_sha256).every(value=>typeof value==='string'&&hex64.test(value)),'WORKER_PROBE_CONFIGURATION_BINDING');
  need(['staging','production'].includes(request.environment)&&matches(uuid,request.operation_id)&&matches(uuid,request.fixture_id),'WORKER_PROBE_OPERATION_SCOPE');

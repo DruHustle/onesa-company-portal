@@ -154,7 +154,7 @@ for (const privateRepo of [false, true]) {
 }
 """
         result = subprocess.run(
-            ["node", "-e", program, json.dumps(conditions), "DruHustle/" + ROOT.name],
+            ["node", "-e", program, json.dumps(conditions), "DruHustle/onesa-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else "DruHustle/" + ROOT.name],
             capture_output=True,
             text=True,
             check=False,
@@ -188,7 +188,7 @@ for (const privateRepo of [true, false]) {
 }
 """
         result = subprocess.run(
-            ["node", "-e", program, condition, "DruHustle/" + ROOT.name],
+            ["node", "-e", program, condition, "DruHustle/onesa-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else "DruHustle/" + ROOT.name],
             capture_output=True,
             text=True,
             check=False,
@@ -197,7 +197,7 @@ for (const privateRepo of [true, false]) {
 
     def test_git_previews_do_not_enable_native_production_deployment(self):
         config = json.loads(
-            (ROOT / (ROOT.name + "-frontend") / "vercel.json").read_text()
+            (ROOT / (("onesa-company-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else ROOT.name) + "-frontend") / "vercel.json").read_text()
         )
         self.assertEqual(
             config["git"]["deploymentEnabled"],
@@ -234,7 +234,7 @@ for (const privateRepo of [true, false]) {
             "onesa-company-portal": "verify.yml",
             "onesa-ai-platform": "ci.yml",
             "onesa-ai-robot": "scaffold.yml",
-        }[ROOT.name]
+        }["onesa-company-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else ROOT.name]
         for name in (ci, "repository-hygiene.yml"):
             text = (ROOT / ".github/workflows" / name).read_text()
             self.assertNotIn("local-validation", text)
@@ -272,7 +272,7 @@ if(new Function('github','vars','return ('+conditions[0]+')')(github,vars))proce
                 "-e",
                 program,
                 json.dumps([condition, *staging_conditions]),
-                "DruHustle/" + ROOT.name,
+                "DruHustle/onesa-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else "DruHustle/" + ROOT.name,
             ],
             capture_output=True,
             text=True,
@@ -329,7 +329,7 @@ class HostedOnlyRunnerRemovalTests(unittest.TestCase):
             "onesa-company-portal": "verify.yml",
             "onesa-ai-platform": "ci.yml",
             "onesa-ai-robot": "scaffold.yml",
-        }[ROOT.name]
+        }["onesa-company-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else ROOT.name]
         text = (ROOT / ".github/workflows" / ci).read_text()
         job = text.split("  changes:\n", 1)[1]
         condition = re.search(r"^    if: (.+)", job, re.MULTILINE).group(1)
@@ -353,7 +353,7 @@ for(const privateRepo of [false,true]) for(const allowance of ['', 'false', 'tru
         program = r"""
 for(const {job,condition} of JSON.parse(process.argv[1])) {
  for(const allowance of ['', 'false']) {
-  const github={repository:'DruHustle/onesa-company-portal',repository_id:'1412150327',
+  const github={repository:'DruHustle/onesa-portal',repository_id:'1412150327',
    actor:'DruHustle',triggering_actor:'DruHustle',ref:'refs/heads/main',run_attempt:'1',
    event_name:'workflow_dispatch',event:{repository:{private:true}}};
   const vars={ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED:allowance};
@@ -379,7 +379,7 @@ for(const {job,condition} of JSON.parse(process.argv[1])) {
         }
         program = r"""
 const conditions=JSON.parse(process.argv[1]);
-for(const repository of ['DruHustle/onesa-company-portal','foreign/repository'])
+for(const repository of ['DruHustle/onesa-portal','foreign/repository'])
 for(const repository_id of ['1412150327','1444746154'])
 for(const privateRepo of [false,true])
 for(const allowance of ['', 'false', 'true'])
@@ -387,7 +387,7 @@ for(const run_attempt of ['1','2'])
 for(const event_name of ['pull_request','push','workflow_dispatch','pull_request_target','workflow_run','schedule']) {
  const github={repository,repository_id,run_attempt,event_name,event:{repository:{private:privateRepo}}};
  const vars={ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED:allowance};
- const canonical=repository==='DruHustle/onesa-company-portal' && repository_id==='1412150327';
+ const canonical=repository==='DruHustle/onesa-portal' && repository_id==='1412150327';
  const expected={amd64:canonical && (!privateRepo || allowance==='true'),
   arm64:canonical && !privateRepo && run_attempt==='1' && ['pull_request','push','workflow_dispatch'].includes(event_name)};
  for(const [architecture,condition] of Object.entries(conditions)) {

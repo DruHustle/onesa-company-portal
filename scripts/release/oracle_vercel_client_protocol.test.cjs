@@ -15,7 +15,7 @@ async function fixture(mode){
  fs.mkdirSync(path.join(workspace,'.vercel/output/static'),{recursive:true});
  fs.writeFileSync(path.join(workspace,'.vercel/output/config.json'),'{"version":3}');
  fs.writeFileSync(path.join(workspace,'.vercel/output/static/owned.js'),'console.log("credential-free protocol fixture");');
- fs.writeFileSync(path.join(transport,'scope.json'),JSON.stringify({request_budget:1,operation_id:crypto.randomUUID(),repository:'DruHustle/onesa-company-portal',component:'frontend',environment}),{mode:0o600});
+ fs.writeFileSync(path.join(transport,'scope.json'),JSON.stringify({request_budget:1,operation_id:crypto.randomUUID(),repository:'DruHustle/onesa-portal',component:'frontend',environment}),{mode:0o600});
  const uploaded=new Set();let posts=0,created=0,uploads=0;const errors=[];
  const server=http.createServer(async(req,res)=>{
   if(process.env.ONESA_PROTOCOL_DIAGNOSTICS==='1')process.stderr.write(req.method+' '+req.url.split('?')[0]+'\n');
@@ -48,7 +48,7 @@ async function fullCliFixture(mode){
  const cli='/opt/onesa-vercel-tool/node_modules/vercel/dist/index.js';
  const project=JSON.parse(fs.readFileSync(workspace+'/.vercel/project.json'));
  const directory=fs.mkdtempSync('/tmp/onesa-full-cli-'),transport=path.join(directory,'transport');fs.mkdirSync(transport,{mode:0o700});
- const operation=crypto.randomUUID();fs.writeFileSync(path.join(transport,'scope.json'),JSON.stringify({request_budget:1,operation_id:operation,repository:'DruHustle/onesa-company-portal',component:'frontend',environment}),{mode:0o600});
+ const operation=crypto.randomUUID();fs.writeFileSync(path.join(transport,'scope.json'),JSON.stringify({request_budget:1,operation_id:operation,repository:'DruHustle/onesa-portal',component:'frontend',environment}),{mode:0o600});
  const before=Object.fromEntries(['auth.json','config.json'].map(name=>[name,fs.readFileSync('/private/creds/'+name)]));
  let posts=0,created=0,uploads=0,regions=null;const uploaded=new Set(),errors=[];
  const team={id:project.orgId,slug:'fixture-team',name:'Synthetic loopback team',membership:{role:'OWNER'},billing:{plan:'hobby'}};
@@ -104,7 +104,7 @@ else{
   const bootstrap=fs.readFileSync(path.join(__dirname,'oracle_portal_frontend.py'),'utf8').match(/CLI_BOOTSTRAP = r"""([\s\S]*?)"""/)[1];
   const before=Object.fromEntries(['auth.json','config.json'].map(name=>[name,fs.readFileSync('/private/creds/'+name)]));
   const transport='/private/transport';fs.mkdirSync(transport,{mode:0o700,recursive:true});
-  fs.writeFileSync(path.join(transport,'scope.json'),JSON.stringify({request_budget:1,operation_id:crypto.randomUUID(),repository:'DruHustle/onesa-company-portal',component:'frontend',environment}),{mode:0o600});
+  fs.writeFileSync(path.join(transport,'scope.json'),JSON.stringify({request_budget:1,operation_id:crypto.randomUUID(),repository:'DruHustle/onesa-portal',component:'frontend',environment}),{mode:0o600});
   assert.equal(fs.existsSync('/tmp/onesa-vercel-cli'),false);
   try {
    const args=['-e',bootstrap,'--','--require','/private/guard.cjs','/opt/onesa-vercel-tool/node_modules/vercel/dist/index.js','deploy','--prebuilt','--yes','--no-wait','--json','--global-config','/tmp/onesa-vercel-cli','--project','prj_fixture','--meta','githubCommitRef='+ (environment==='production'?'main':'staging'),...(environment==='production'?['--prod']:[]),'--help'];

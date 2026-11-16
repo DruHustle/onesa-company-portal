@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PRODUCT = ROOT.name
+PRODUCT = "onesa-company-portal" if ROOT.name == "onesa-portal" else ROOT.name
 FIELDS = (
     "backend",
     "frontend",

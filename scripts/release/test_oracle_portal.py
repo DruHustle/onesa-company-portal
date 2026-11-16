@@ -483,7 +483,7 @@ class FrontendScopeTests(unittest.TestCase):
     def test_other_component_or_repository_cannot_enter_this_runner(self):
         for repository, component in [
             ("DruHustle/onesa-ai-robot", "frontend"),
-            ("DruHustle/onesa-company-portal", "api"),
+            ("DruHustle/onesa-portal", "api"),
         ]:
             with (
                 self.subTest(component=component),

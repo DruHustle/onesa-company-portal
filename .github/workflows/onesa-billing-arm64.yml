@@ -23,7 +23,7 @@ jobs:
   verify:
     name: company-billing-arm64
     if: >-
-      github.repository == 'DruHustle/onesa-company-portal' && github.repository_id == '1412150327' &&
+      github.repository == 'DruHustle/onesa-portal' && github.repository_id == '1412150327' &&
       github.event.repository.private == false && github.run_attempt == '1' &&
       (github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04-arm
@@ -38,7 +38,7 @@ jobs:
         test "$RUNNER_OS" = Linux
         test "$RUNNER_ARCH" = ARM64
         test "$(uname -m)" = aarch64
-        test "$GITHUB_REPOSITORY" = DruHustle/onesa-company-portal
+        test "$GITHUB_REPOSITORY" = DruHustle/onesa-portal
         test "$GITHUB_REPOSITORY_ID" = 1412150327
         test "$GITHUB_RUN_ATTEMPT" = 1
         test "$EXPECTED_PRIVATE" = false
