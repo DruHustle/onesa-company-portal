@@ -17,7 +17,7 @@ class OracleBackendConfigTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.config = json.loads((ROOT / "compose.oracle-backend.yaml").read_text())
-        product = "onesa-company-portal" if ROOT.name == "onesa-portal" else ROOT.name
+        product = "onesa-company-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else ROOT.name
         cls.product, cls.stage_port, cls.prod_port, cls.target_port = POLICY[product]
 
     def test_explicit_profiles_required_image_pins_and_source_labels(self):

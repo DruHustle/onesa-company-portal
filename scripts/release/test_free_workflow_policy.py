@@ -154,7 +154,7 @@ for (const privateRepo of [false, true]) {
 }
 """
         result = subprocess.run(
-            ["node", "-e", program, json.dumps(conditions), "DruHustle/onesa-portal" if ROOT.name == "onesa-portal" else "DruHustle/" + ROOT.name],
+            ["node", "-e", program, json.dumps(conditions), "DruHustle/onesa-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else "DruHustle/" + ROOT.name],
             capture_output=True,
             text=True,
             check=False,
@@ -188,7 +188,7 @@ for (const privateRepo of [true, false]) {
 }
 """
         result = subprocess.run(
-            ["node", "-e", program, condition, "DruHustle/onesa-portal" if ROOT.name == "onesa-portal" else "DruHustle/" + ROOT.name],
+            ["node", "-e", program, condition, "DruHustle/onesa-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else "DruHustle/" + ROOT.name],
             capture_output=True,
             text=True,
             check=False,
@@ -197,7 +197,7 @@ for (const privateRepo of [true, false]) {
 
     def test_git_previews_do_not_enable_native_production_deployment(self):
         config = json.loads(
-            (ROOT / (("onesa-company-portal" if ROOT.name == "onesa-portal" else ROOT.name) + "-frontend") / "vercel.json").read_text()
+            (ROOT / (("onesa-company-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else ROOT.name) + "-frontend") / "vercel.json").read_text()
         )
         self.assertEqual(
             config["git"]["deploymentEnabled"],
@@ -234,7 +234,7 @@ for (const privateRepo of [true, false]) {
             "onesa-company-portal": "verify.yml",
             "onesa-ai-platform": "ci.yml",
             "onesa-ai-robot": "scaffold.yml",
-        }["onesa-company-portal" if ROOT.name == "onesa-portal" else ROOT.name]
+        }["onesa-company-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else ROOT.name]
         for name in (ci, "repository-hygiene.yml"):
             text = (ROOT / ".github/workflows" / name).read_text()
             self.assertNotIn("local-validation", text)
@@ -272,7 +272,7 @@ if(new Function('github','vars','return ('+conditions[0]+')')(github,vars))proce
                 "-e",
                 program,
                 json.dumps([condition, *staging_conditions]),
-                "DruHustle/onesa-portal" if ROOT.name == "onesa-portal" else "DruHustle/" + ROOT.name,
+                "DruHustle/onesa-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else "DruHustle/" + ROOT.name,
             ],
             capture_output=True,
             text=True,
@@ -329,7 +329,7 @@ class HostedOnlyRunnerRemovalTests(unittest.TestCase):
             "onesa-company-portal": "verify.yml",
             "onesa-ai-platform": "ci.yml",
             "onesa-ai-robot": "scaffold.yml",
-        }["onesa-company-portal" if ROOT.name == "onesa-portal" else ROOT.name]
+        }["onesa-company-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else ROOT.name]
         text = (ROOT / ".github/workflows" / ci).read_text()
         job = text.split("  changes:\n", 1)[1]
         condition = re.search(r"^    if: (.+)", job, re.MULTILINE).group(1)

@@ -293,7 +293,7 @@ new AsyncFunction('context','github',script)(context,github).then(()=>process.ex
                 os.environ,
                 GITHUB_ACTIONS="true",
                 GITHUB_EVENT_NAME="push",
-                GITHUB_REPOSITORY="DruHustle/onesa-portal" if ROOT.name == "onesa-portal" else "DruHustle/" + ROOT.name,
+                GITHUB_REPOSITORY="DruHustle/onesa-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else "DruHustle/" + ROOT.name,
                 GITHUB_EVENT_PATH=str(event),
                 REVIEWDOG_GITHUB_API_TOKEN="test-read-only",
             )
