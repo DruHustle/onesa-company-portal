@@ -153,10 +153,11 @@ test('real Chromium billing journey uses only synthetic same-origin APIs', { tim
     { stdio: ['ignore', 'ignore', 'pipe'], detached: true });
     chromium.stderr.on('data', value => { if (chromiumError.length < 8192) chromiumError += String(value).slice(0, 8192 - chromiumError.length); });
     chromium.once('error', () => {});
+    // A fresh Chrome profile can start slowly on a cold hosted runner. UI waits keep their own deadline.
     let port;
     try { port = await until(async () => {
       const content = await readFile(join(profile, 'DevToolsActivePort'), 'utf8'); return Number(content.split('\n')[0]);
-    }, 'Chromium did not start'); } catch {
+    }, 'Chromium did not start', 30_000); } catch {
       throw Error(`Chromium startup failed (exit=${chromium.exitCode}, signal=${chromium.signalCode}): ${chromiumError}`);
     }
     const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json(); observations.browser = version.Browser;
