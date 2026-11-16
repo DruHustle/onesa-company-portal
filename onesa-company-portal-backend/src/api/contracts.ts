@@ -26,4 +26,5 @@ export const factKey=z.object({key:z.string().regex(/^[a-z0-9_-]+$/).max(100)});
 
 export const publicFact=fact.pick({key:true,value:true,status:true,verified_at:true});
 
-export const reauthentication=z.object({password:z.string().min(1).max(256),code:z.string().min(6).max(64)});
+export const localReauthentication=z.object({password:z.string().min(1).max(256),code:z.string().min(6).max(64)});
+export const reauthentication=z.union([localReauthentication,z.object({managed:z.literal(true),receipt:z.string().regex(/^[a-f0-9]{64}$/).optional()}).strict()]);

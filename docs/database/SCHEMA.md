@@ -247,7 +247,7 @@ accounts, grants, approvals or memberships. Apply through the normal bounded
 transactional migrator after migration 017; the exact new source requires isolated
 qualification and a compatible release profile. Product databases remain independent.
 
-For a disposable local copy restored at schema 016, 017 or 018, set
+For a disposable local copy restored at schema 016 through 021, set
 `TEST_DATABASE_URL` to its loopback PostgreSQL URL (database name ending in
 `_test`) and run `npm run rehearse:customer-identity` from the backend. It checks
 the actual loopback TCP peer (including a loopback-published Docker port) and the
@@ -258,3 +258,5 @@ schema version. A production upgrade still requires a separately commissioned re
 profile, restore/rollback evidence and hosted identity acceptance.
 
 Migration 020 adds short-lived portal_login_transactions (hashed browser key, single-use state, nonce, encrypted verifier, local destination, expiry). The nullable sessions.managed_expires_at caps managed grants across cookie rotation. Existing accounts, session rows and ownership foreign keys retain their IDs.
+
+Migration 021 records the verified issuer and subject on managed sessions. Each short-lived operation challenge stores only the hashed challenge, session reference, exact operation digest and verification times. Session revocation deletes pending challenges. The final mutation consumes its verified challenge in the same database transaction.

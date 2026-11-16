@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError } from '@/lib/api/client';
+import { useOwnerVerification } from './owner-verification';
 import { EvidenceLink } from './governance-document';
 import {useWorkspaceGuard,useWorkspaceMutation} from './use-unsaved-work';
 import type { operations } from '@/lib/api/generated/schema';
@@ -20,6 +21,7 @@ const lines = (value: string) =>
     .filter(Boolean);
 const human = (value: string) => value.toLowerCase().replaceAll('_', ' ');
 export function PrivacyLifecycle({ owner }: { owner: boolean }) {
+  const verification = useOwnerVerification();
   const guard=useWorkspaceGuard(),mutation=useWorkspaceMutation();
   const [holds, setHolds] = useState<Hold[]>([]),
     [cases, setCases] = useState<Case[]>([]),
@@ -35,7 +37,7 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
     setNotice(
       error instanceof ApiError
         ? `${error.message} · Request ${error.requestId || error.status}`
-        : 'Unable to complete the request. Refresh before trying again.',
+        : error instanceof Error ? error.message : 'Unable to complete the request. Refresh before trying again.',
     );
   }
   useEffect(() => {
@@ -102,27 +104,21 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
       value = (name: string) => String(data.get(name) || '');
     setBusy(true);
     setNotice('');
-    const stepUp = { password: value('password'), code: value('code') };
     try {
       if (action === 'hold') {
-        await api.POST('/api/v1/admin/governance/holds', {
-          body: {
-            id: crypto.randomUUID(),
-            target: { kind: value('kind') as Target['kind'], id: value('target') },
-            reason: value('reason'),
-            evidenceRefs: lines(value('evidence')),
-            stepUp,
-          },
-        });
+        await verification.submit(data, {
+          id: crypto.randomUUID(),
+          target: { kind: value('kind') as Target['kind'], id: value('target') },
+          reason: value('reason'),
+          evidenceRefs: lines(value('evidence')),
+        }, body => api.POST('/api/v1/admin/governance/holds', { body }));
         setNotice('Hold recorded. Existing deletion routes enforce it.');
       }
       if (action === 'release') {
         const hold = holds.find((h) => h.id === value('hold'));
         if (!hold) throw new Error('Choose a hold');
-        await api.POST('/api/v1/admin/governance/holds/{id}/release', {
-          params: { path: { id: hold.id } },
-          body: { expectedVersion: hold.version, reason: value('reason'), stepUp },
-        });
+        await verification.submit(data, { expectedVersion: hold.version, reason: value('reason') },
+          body => api.POST('/api/v1/admin/governance/holds/{id}/release', { params: { path: { id: hold.id } }, body }));
         setNotice('Hold release recorded; history is retained.');
       }
       if (action === 'plan') {
@@ -176,18 +172,14 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
       }
       if (action === 'complete') {
         if (!selected) throw new Error('Choose a request');
-        const result = await api.POST('/api/v1/admin/governance/requests/{id}/complete', {
-          params: { path: { id: selected.id } },
-          body: {
-            expectedVersion: selected.version,
-            planSha256: selected.planSha256,
-            note: value('reason'),
-            processorEvidenceRefs: lines(value('processors')),
-            backupReplayEvidenceRefs: lines(value('backups')),
-            storageVerificationEvidenceRefs: lines(value('storage')),
-            stepUp,
-          },
-        });
+        const result = await verification.submit(data, {
+          expectedVersion: selected.version,
+          planSha256: selected.planSha256,
+          note: value('reason'),
+          processorEvidenceRefs: lines(value('processors')),
+          backupReplayEvidenceRefs: lines(value('backups')),
+          storageVerificationEvidenceRefs: lines(value('storage')),
+        }, body => api.POST('/api/v1/admin/governance/requests/{id}/complete', { params: { path: { id: selected.id } }, body }));
         setSelected(result.data!);
         setNotice('Owner completion and supporting references recorded.');
       }
@@ -197,14 +189,12 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
           expectedVersion: selected.version,
           planSha256: selected.planSha256,
           note: value('reason'),
-          ...(action === 'execute' ? { stepUp } : {}),
         };
         const result =
           action === 'execute'
-            ? await api.POST('/api/v1/admin/governance/requests/{id}/execute', {
-                params: { path: { id: selected.id } },
-                body,
-              })
+            ? await verification.submit(data, body, input => api.POST('/api/v1/admin/governance/requests/{id}/execute', {
+                params: { path: { id: selected.id } }, body: input,
+              }))
             : await api.POST('/api/v1/admin/governance/requests/{id}/cancel', {
                 params: { path: { id: selected.id } },
                 body,
@@ -227,7 +217,7 @@ export function PrivacyLifecycle({ owner }: { owner: boolean }) {
       setBusy(false);
     }
   }
-  const proof = (
+  const proof = verification.managed ? <p>Onesa will ask you to verify this change.</p> : (
     <fieldset>
       <legend>Fresh owner confirmation</legend>
       <label>
