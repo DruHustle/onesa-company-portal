@@ -87,7 +87,7 @@ Repository code or an unsigned JSON file supplies no release authority.
 The protected guide contains installation, qualification and recovery instructions;
 source implementation alone does not establish commissioning or deployment.
 
-The current source repository is `DruHustle/onesa-company-portal`. Standalone
+The current source repository is `DruHustle/onesa-portal`. Standalone
 releases use the existing schema-1 repository and component bindings, with
 `onesa-company-portal-frontend` as the frontend provider root. Requalification
 must use the new exact standalone commit and its own hosted verification;

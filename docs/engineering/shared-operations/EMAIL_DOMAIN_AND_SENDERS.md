@@ -8,7 +8,7 @@ establish that the new domain has completed provider verification.
 ## Maintained home and ownership
 
 This shared policy is maintained in the standalone
-`DruHustle/onesa-company-portal` repository. Portal owns the shared account mail
+`DruHustle/onesa-portal` repository. Portal owns the shared account mail
 and the existing operations monitor. The independently released AI Platform owns
 its API and identity-mail worker. Robot, Drone and the other products retain their
 own runtime configuration and release authority; a shared sender policy does not

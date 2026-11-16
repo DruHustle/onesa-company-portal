@@ -11,7 +11,7 @@ it must not recreate the deleted Render service. Production's legacy worker is
 retained until its qualified Oracle replacement is verified.
 
 ```sh
-gh workflow run inspect-hosting.yml --repo DruHustle/onesa-company-portal \
+gh workflow run inspect-hosting.yml --repo DruHustle/onesa-portal \
   --ref staging -f portal_scope=staging
 ```
 
@@ -32,7 +32,7 @@ For the supplied API, check **Render → service → Settings** against:
 | Setting | Value |
 |---|---|
 | Name | Owner-created `onesa-company-portal-backend_staging` |
-| Repository | `DruHustle/onesa-company-portal` |
+| Repository | `DruHustle/onesa-portal` |
 | Branch | `staging` |
 | Root Directory | `onesa-company-portal-backend` |
 | Runtime | Docker |

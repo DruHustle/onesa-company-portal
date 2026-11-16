@@ -1,6 +1,6 @@
 # Automated release qualification
 
-The protected-main verifier reads classic branch protection before building, reviewing or promoting. For a standard Actions token, configure the optional repository secret `RELEASE_GOVERNANCE_READ_TOKEN` for a dedicated fine-grained credential with read-only **Administration** access on `DruHustle/onesa-company-portal` only. The verifier uses it for the single main protection GET. The existing job token still handles CI, artifacts and ordinary repository reads. A missing or unreadable policy blocks the release. The expected branch controls, required checks and owner approval still apply.
+The protected-main verifier reads classic branch protection before building, reviewing or promoting. For a standard Actions token, configure the optional repository secret `RELEASE_GOVERNANCE_READ_TOKEN` for a dedicated fine-grained credential with read-only **Administration** access on `DruHustle/onesa-portal` only. The verifier uses it for the single main protection GET. The existing job token still handles CI, artifacts and ordinary repository reads. A missing or unreadable policy blocks the release. The expected branch controls, required checks and owner approval still apply.
 
 ## Current execution: Oracle / Vercel
 
@@ -152,7 +152,7 @@ certifying long-term operation.
 ```json
 {
   "schema_version": 1,
-  "repository": "DruHustle/onesa-company-portal",
+  "repository": "DruHustle/onesa-portal",
   "workflow_run_id": "<observed Actions run ID>",
   "candidate_commit": "<exact candidate SHA>",
   "reviewed_commit": "<exact candidate SHA>",
@@ -220,7 +220,7 @@ Sources: [environment plan limits](https://docs.github.com/en/actions/how-tos/de
 3. Generate a separate random 32-byte encryption key privately and store its 64-character
    lowercase hex value as repository Actions secret `RELEASE_BUILD_KEY`. For example,
    `openssl rand -hex 32` in a private terminal, then `gh secret set RELEASE_BUILD_KEY
-   --repo DruHustle/onesa-company-portal`. Never paste the key into chat, Git or evidence. Retain it
+   --repo DruHustle/onesa-portal`. Never paste the key into chat, Git or evidence. Retain it
    through the candidate's lifetime; rotating it invalidates encrypted candidate builds.
 4. Keep existing Render/Vercel credentials. Portal additionally needs the owner-verified
    `STAGING_VERCEL_PROJECT_ID` and protected Preview routing/bypass configuration. AI
