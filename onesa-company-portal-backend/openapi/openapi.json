@@ -5547,22 +5547,45 @@
                     ]
                   },
                   "stepUp": {
-                    "type": "object",
-                    "properties": {
-                      "password": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "password": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256
+                          },
+                          "code": {
+                            "type": "string",
+                            "minLength": 6,
+                            "maxLength": 64
+                          }
+                        },
+                        "required": [
+                          "password",
+                          "code"
+                        ]
                       },
-                      "code": {
-                        "type": "string",
-                        "minLength": 6,
-                        "maxLength": 64
+                      {
+                        "type": "object",
+                        "properties": {
+                          "managed": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "receipt": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          }
+                        },
+                        "required": [
+                          "managed"
+                        ],
+                        "additionalProperties": false
                       }
-                    },
-                    "required": [
-                      "password",
-                      "code"
                     ]
                   }
                 },
@@ -5988,22 +6011,45 @@
                     "type": "boolean"
                   },
                   "stepUp": {
-                    "type": "object",
-                    "properties": {
-                      "password": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "password": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256
+                          },
+                          "code": {
+                            "type": "string",
+                            "minLength": 6,
+                            "maxLength": 64
+                          }
+                        },
+                        "required": [
+                          "password",
+                          "code"
+                        ]
                       },
-                      "code": {
-                        "type": "string",
-                        "minLength": 6,
-                        "maxLength": 64
+                      {
+                        "type": "object",
+                        "properties": {
+                          "managed": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "receipt": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          }
+                        },
+                        "required": [
+                          "managed"
+                        ],
+                        "additionalProperties": false
                       }
-                    },
-                    "required": [
-                      "password",
-                      "code"
                     ]
                   }
                 },
@@ -54998,22 +55044,45 @@
                     }
                   },
                   "stepUp": {
-                    "type": "object",
-                    "properties": {
-                      "password": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "password": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256
+                          },
+                          "code": {
+                            "type": "string",
+                            "minLength": 6,
+                            "maxLength": 64
+                          }
+                        },
+                        "required": [
+                          "password",
+                          "code"
+                        ]
                       },
-                      "code": {
-                        "type": "string",
-                        "minLength": 6,
-                        "maxLength": 64
+                      {
+                        "type": "object",
+                        "properties": {
+                          "managed": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "receipt": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          }
+                        },
+                        "required": [
+                          "managed"
+                        ],
+                        "additionalProperties": false
                       }
-                    },
-                    "required": [
-                      "password",
-                      "code"
                     ]
                   }
                 },
@@ -55430,22 +55499,45 @@
                     "maxLength": 2000
                   },
                   "stepUp": {
-                    "type": "object",
-                    "properties": {
-                      "password": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "password": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256
+                          },
+                          "code": {
+                            "type": "string",
+                            "minLength": 6,
+                            "maxLength": 64
+                          }
+                        },
+                        "required": [
+                          "password",
+                          "code"
+                        ]
                       },
-                      "code": {
-                        "type": "string",
-                        "minLength": 6,
-                        "maxLength": 64
+                      {
+                        "type": "object",
+                        "properties": {
+                          "managed": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "receipt": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          }
+                        },
+                        "required": [
+                          "managed"
+                        ],
+                        "additionalProperties": false
                       }
-                    },
-                    "required": [
-                      "password",
-                      "code"
                     ]
                   }
                 },
@@ -58123,22 +58215,45 @@
                     "maxLength": 2000
                   },
                   "stepUp": {
-                    "type": "object",
-                    "properties": {
-                      "password": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "password": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256
+                          },
+                          "code": {
+                            "type": "string",
+                            "minLength": 6,
+                            "maxLength": 64
+                          }
+                        },
+                        "required": [
+                          "password",
+                          "code"
+                        ]
                       },
-                      "code": {
-                        "type": "string",
-                        "minLength": 6,
-                        "maxLength": 64
+                      {
+                        "type": "object",
+                        "properties": {
+                          "managed": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "receipt": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          }
+                        },
+                        "required": [
+                          "managed"
+                        ],
+                        "additionalProperties": false
                       }
-                    },
-                    "required": [
-                      "password",
-                      "code"
                     ]
                   }
                 },
@@ -58603,22 +58718,45 @@
                     "maxLength": 2000
                   },
                   "stepUp": {
-                    "type": "object",
-                    "properties": {
-                      "password": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "password": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256
+                          },
+                          "code": {
+                            "type": "string",
+                            "minLength": 6,
+                            "maxLength": 64
+                          }
+                        },
+                        "required": [
+                          "password",
+                          "code"
+                        ]
                       },
-                      "code": {
-                        "type": "string",
-                        "minLength": 6,
-                        "maxLength": 64
+                      {
+                        "type": "object",
+                        "properties": {
+                          "managed": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "receipt": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          }
+                        },
+                        "required": [
+                          "managed"
+                        ],
+                        "additionalProperties": false
                       }
-                    },
-                    "required": [
-                      "password",
-                      "code"
                     ]
                   }
                 },
@@ -59610,22 +59748,45 @@
                     "maxLength": 2000
                   },
                   "stepUp": {
-                    "type": "object",
-                    "properties": {
-                      "password": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "password": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256
+                          },
+                          "code": {
+                            "type": "string",
+                            "minLength": 6,
+                            "maxLength": 64
+                          }
+                        },
+                        "required": [
+                          "password",
+                          "code"
+                        ]
                       },
-                      "code": {
-                        "type": "string",
-                        "minLength": 6,
-                        "maxLength": 64
+                      {
+                        "type": "object",
+                        "properties": {
+                          "managed": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "receipt": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          }
+                        },
+                        "required": [
+                          "managed"
+                        ],
+                        "additionalProperties": false
                       }
-                    },
-                    "required": [
-                      "password",
-                      "code"
                     ]
                   },
                   "processorEvidenceRefs": {
@@ -65083,22 +65244,45 @@
                     "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                   },
                   "stepUp": {
-                    "type": "object",
-                    "properties": {
-                      "password": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "password": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256
+                          },
+                          "code": {
+                            "type": "string",
+                            "minLength": 6,
+                            "maxLength": 64
+                          }
+                        },
+                        "required": [
+                          "password",
+                          "code"
+                        ]
                       },
-                      "code": {
-                        "type": "string",
-                        "minLength": 6,
-                        "maxLength": 64
+                      {
+                        "type": "object",
+                        "properties": {
+                          "managed": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "receipt": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          }
+                        },
+                        "required": [
+                          "managed"
+                        ],
+                        "additionalProperties": false
                       }
-                    },
-                    "required": [
-                      "password",
-                      "code"
                     ]
                   }
                 },

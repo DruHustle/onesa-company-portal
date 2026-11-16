@@ -258,3 +258,5 @@ schema version. A production upgrade still requires a separately commissioned re
 profile, restore/rollback evidence and hosted identity acceptance.
 
 Migration 020 adds short-lived portal_login_transactions (hashed browser key, single-use state, nonce, encrypted verifier, local destination, expiry). The nullable sessions.managed_expires_at caps managed grants across cookie rotation. Existing accounts, session rows and ownership foreign keys retain their IDs.
+
+Migration 021 records the verified issuer and subject on managed sessions. Each short-lived operation challenge stores only the hashed challenge, session reference, exact operation digest and verification times. Session revocation deletes pending challenges. The final mutation consumes its verified challenge in the same database transaction.

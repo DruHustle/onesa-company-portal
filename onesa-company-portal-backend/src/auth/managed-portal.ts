@@ -1,9 +1,10 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import * as oidc from "openid-client";
 import { createRemoteJWKSet, customFetch, jwtVerify } from "jose";
 import { z } from "zod";
 import { db, transaction } from "../services/db.js";
 import { decrypt, encrypt, hash, token } from "./crypto.js";
+import { failedProof } from "./managed-operation.js";
 import { setSessionCookie } from "./session-cookie.js";
 import { env } from "../config/env.js";
 import { HttpError } from "../services/workflows.js";
@@ -96,8 +97,17 @@ export function managedConfig() {
 }
 
 export type PortalOIDCConfig = ReturnType<typeof managedConfig>;
-type Flow = { state: string; nonce: string; verifier: string };
+type Flow = {
+  state: string;
+  nonce: string;
+  verifier: string;
+  operationStartedAt?: number;
+};
+const operationCookie = (state: string) =>
+  "onesa_portal_operation_" + hash(state).slice(0, 24);
+const operationAcr = "urn:onesa:authentication:operation-mfa";
 type Principal = {
+  subject: string;
   id: string;
   roles: string[];
   expires: number;
@@ -137,6 +147,7 @@ export function portalClaims(
   )
     throw denied();
   return {
+    subject,
     id: id.data,
     roles: grantedRoles.filter(
       (r): r is string =>
@@ -223,8 +234,13 @@ export function portalProvider(
         nonce: flow.nonce,
         code_challenge: await oidc.calculatePKCECodeChallenge(flow.verifier),
         code_challenge_method: "S256",
-        acr_values:
+        acr_values: [
           "http://schemas.openid.net/pape/policies/2007/06/multi-factor",
+          ...(flow.operationStartedAt === undefined ? [] : [operationAcr]),
+        ].join(" "),
+        ...(flow.operationStartedAt === undefined
+          ? {}
+          : { prompt: "login", max_age: "0" }),
       }).href;
     },
     async redeem(url, flow) {
@@ -241,7 +257,25 @@ export function portalProvider(
         audience: config.audience,
         requiredClaims: ["sub", "iat", "exp"],
       });
-      return portalClaims(payload, result.claims()?.sub ?? "", config.clientId);
+      const idToken = result.claims();
+      const principal = portalClaims(
+        payload,
+        idToken?.sub ?? "",
+        config.clientId,
+      );
+      if (flow.operationStartedAt !== undefined) {
+        const now = Math.floor(Date.now() / 1000);
+        if (
+          payload[ns + "operation_mfa_nonce"] !== flow.nonce ||
+          principal.mfaTime < flow.operationStartedAt ||
+          typeof idToken?.auth_time !== "number" ||
+          !Number.isSafeInteger(idToken.auth_time) ||
+          idToken.auth_time < flow.operationStartedAt ||
+          idToken.auth_time > now
+        )
+          throw failedProof();
+      }
+      return principal;
     },
   };
 }
@@ -254,52 +288,96 @@ export function registerManagedPortal(
     request: import("fastify").FastifyRequest,
   ) => Promise<void> = async () => {},
 ) {
+  async function begin(
+    req: FastifyRequest,
+    reply: FastifyReply,
+    challenge?: string,
+  ) {
+    await admission(req);
+    const browser = token();
+    const destination = portalReturnPath((req.query as { next?: string }).next);
+    const step = challenge !== undefined;
+    if (
+      step &&
+      (!/^[0-9a-f]{64}$/.test(challenge) || !req.cookies.onesa_session)
+    )
+      throw failedProof();
+    const flow: Flow = {
+      state: oidc.randomState(),
+      nonce: oidc.randomNonce(),
+      verifier: oidc.randomPKCECodeVerifier(),
+    };
+    if (step) flow.operationStartedAt = Math.floor(Date.now() / 1000);
+    let location: string;
+    try {
+      location = await client.authorize(flow);
+    } catch {
+      if (step) throw unavailable();
+      return reply.redirect(
+        prefix + "/retry?next=" + encodeURIComponent(destination),
+        303,
+      );
+    }
+    await transaction(async (c) => {
+      await c.query(
+        "DELETE FROM portal_login_transactions WHERE expires_at<now()",
+      );
+      const challengeHash = step ? hash(challenge) : null;
+      if (step) {
+        const started = await c.query(
+          `UPDATE portal_operation_challenges SET started_at=to_timestamp($3)
+           WHERE challenge_hash=$1 AND session_hash=$2 AND expires_at>now() AND started_at IS NULL`,
+          [
+            challengeHash,
+            hash(req.cookies.onesa_session!),
+            flow.operationStartedAt,
+          ],
+        );
+        if (!started.rowCount) throw failedProof();
+      }
+      await c.query(
+        `INSERT INTO portal_login_transactions(browser_hash,state,nonce,encrypted_verifier,return_path,expires_at,operation_challenge)
+         VALUES($1,$2,$3,$4,$5,now()+interval '10 minutes',$6)`,
+        [
+          hash(browser),
+          flow.state,
+          flow.nonce,
+          encrypt(flow.verifier),
+          destination,
+          challengeHash,
+        ],
+      );
+    });
+    reply.setCookie(step ? operationCookie(flow.state) : cookieName, browser, {
+      ...cookieOptions,
+      maxAge: 600,
+    });
+    return reply.redirect(location, 303);
+  }
   app.get(
     prefix + "/start",
     { schema: { hide: true }, logLevel: "silent" },
-    async (req, reply) => {
-      await admission(req);
-      const flow = {
-        state: oidc.randomState(),
-        nonce: oidc.randomNonce(),
-        verifier: oidc.randomPKCECodeVerifier(),
-      };
-      const browser = token(),
-        destination = portalReturnPath((req.query as { next?: string }).next);
-      let location: string;
-      try {
-        location = await client.authorize(flow);
-      } catch {
-        return reply.redirect(
-          prefix + "/retry?next=" + encodeURIComponent(destination),
-          303,
-        );
-      }
-      await transaction(async (c) => {
-        await c.query(
-          "DELETE FROM portal_login_transactions WHERE expires_at<now()",
-        );
-        await c.query(
-          "INSERT INTO portal_login_transactions(browser_hash,state,nonce,encrypted_verifier,return_path,expires_at) VALUES($1,$2,$3,$4,$5,now()+interval '10 minutes')",
-          [
-            hash(browser),
-            flow.state,
-            flow.nonce,
-            encrypt(flow.verifier),
-            destination,
-          ],
-        );
-      });
-      reply.setCookie(cookieName, browser, { ...cookieOptions, maxAge: 600 });
-      return reply.redirect(location, 303);
+    (req, reply) => begin(req, reply),
+  );
+  app.get(
+    prefix + "/step-up",
+    { schema: { hide: true }, logLevel: "silent" },
+    (req, reply) => {
+      const challenge = (req.query as { challenge?: string }).challenge;
+      if (typeof challenge !== "string") throw failedProof();
+      return begin(req, reply, challenge);
     },
   );
   app.get(
     prefix + "/callback",
     { schema: { hide: true }, logLevel: "silent" },
     async (req, reply) => {
-      const cookie = req.cookies[cookieName],
-        query = req.query as { state?: string };
+      const query = req.query as { state?: string };
+      if (typeof query.state !== "string" || query.state.length > 256)
+        throw denied();
+      const stepCookie = operationCookie(query.state);
+      const name = req.cookies[stepCookie] ? stepCookie : cookieName;
+      const cookie = req.cookies[name];
       if (
         !cookie ||
         !/^[0-9a-f]{64}$/.test(cookie) ||
@@ -312,8 +390,19 @@ export function registerManagedPortal(
           [hash(cookie), query.state],
         )
       ).rows[0];
-      if (!row) throw denied();
-      reply.clearCookie(cookieName, cookieOptions);
+      if (!row || Boolean(row.operation_challenge) !== (name === stepCookie))
+        throw denied();
+      reply.clearCookie(name, cookieOptions);
+      const operation = row.operation_challenge
+        ? (
+            await db.query(
+              `SELECT extract(epoch FROM started_at)::bigint AS started FROM portal_operation_challenges
+          WHERE challenge_hash=$1 AND expires_at>now() AND started_at IS NOT NULL AND verified_at IS NULL`,
+              [row.operation_challenge],
+            )
+          ).rows[0]
+        : null;
+      if (row.operation_challenge && !operation) throw failedProof();
       let principal: Principal;
       try {
         const url = new URL(config.callback);
@@ -322,14 +411,41 @@ export function registerManagedPortal(
           state: row.state,
           nonce: row.nonce,
           verifier: decrypt(row.encrypted_verifier),
+          ...(operation
+            ? { operationStartedAt: Number(operation.started) }
+            : {}),
         });
       } catch (error) {
         if (error instanceof HttpError && error.status === 403) throw error;
+        if (operation) throw unavailable();
         // The retry target is a previously validated Portal path retained server-side.
         return reply.redirect(
           prefix + "/retry?next=" + encodeURIComponent(row.return_path),
           303,
         );
+      }
+      if (operation) {
+        await transaction(async (c) => {
+          const verified = await c.query(
+            `UPDATE portal_operation_challenges p
+              SET verified_at=now(), expires_at=least(p.expires_at,to_timestamp($6),now()+interval '90 seconds')
+              FROM sessions s JOIN users u ON u.id=s.user_id
+              WHERE p.challenge_hash=$1 AND p.session_hash=s.token_hash AND p.expires_at>now()
+              AND p.verified_at IS NULL AND NOT u.disabled AND u.id=$2 AND s.managed_subject=$3
+              AND s.managed_issuer=$4 AND s.managed_role=u.role AND u.role=ANY($5::text[])
+              AND s.expires_at>now() AND s.managed_expires_at>now() AND to_timestamp($6)>now()`,
+            [
+              row.operation_challenge,
+              principal.id,
+              principal.subject,
+              config.issuer,
+              principal.roles,
+              principal.expires,
+            ],
+          );
+          if (!verified.rowCount) throw failedProof();
+        });
+        return reply.redirect("/admin/step-up-complete", 303);
       }
       const session = token(),
         csrf = token();
@@ -347,8 +463,16 @@ export function registerManagedPortal(
         )
           throw denied();
         await c.query(
-          "INSERT INTO sessions(token_hash,user_id,csrf,expires_at,managed_expires_at,managed_role) VALUES($1,$2,$3,to_timestamp($4),to_timestamp($4),$5)",
-          [hash(session), principal.id, csrf, principal.expires, user.role],
+          "INSERT INTO sessions(token_hash,user_id,csrf,expires_at,managed_expires_at,managed_role,managed_subject,managed_issuer) VALUES($1,$2,$3,to_timestamp($4),to_timestamp($4),$5,$6,$7)",
+          [
+            hash(session),
+            principal.id,
+            csrf,
+            principal.expires,
+            user.role,
+            principal.subject,
+            config.issuer,
+          ],
         );
         await c.query(
           "INSERT INTO audit(actor_id,action,request_id) VALUES($1,'auth.managed_login',$2)",
