@@ -46,6 +46,7 @@ def main():
     from pathlib import Path
 
     product = Path(__file__).resolve().parents[2].name
+    product = "onesa-company-portal" if product == "onesa-portal" else product
     failures = check(
         json.loads(os.environ["CI_SELECTION"]),
         json.loads(os.environ["CI_RESULTS"]),

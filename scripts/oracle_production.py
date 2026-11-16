@@ -90,7 +90,7 @@ def production_values(service, values, staging):
         service.get("id") == SERVICE
         and service.get("branch") == "main"
         and service.get("repo", "").removesuffix(".git")
-        == "https://github.com/DruHustle/onesa-company-portal"
+        == "https://github.com/DruHustle/onesa-portal"
         and service.get("autoDeployTrigger") == "off",
         "Existing production Portal target with auto-deploy off required",
     )
@@ -159,7 +159,7 @@ def legacy_mail_profile(service, values, staging):
         service.get("id") == LEGACY_WORKER
         and service.get("branch") == "main"
         and service.get("repo", "").removesuffix(".git")
-        == "https://github.com/DruHustle/onesa-company-portal"
+        == "https://github.com/DruHustle/onesa-portal"
         and service.get("autoDeployTrigger") == "off",
         "Existing production worker identity required before mail reuse",
     )

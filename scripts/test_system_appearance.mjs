@@ -9,7 +9,7 @@ const root=new URL('../',import.meta.url);
 const manifest=JSON.parse(await readFile(new URL('docs/engineering/design-system.consumer.json',root),'utf8'));
 const css=await readFile(new URL(manifest.local_artifacts[0],root),'utf8');
 test('shared foundation has an explicit pinned owner/version/digest',()=>{
-  assert.equal(manifest.owner,'DruHustle/onesa-company-portal');
+  assert.equal(manifest.owner,'DruHustle/onesa-portal');
   assert.equal(manifest.version,'1.0.0');
   assert.equal(createHash('sha256').update(css).digest('hex'),manifest.sha256);
   assert.match(css,/@media \(prefers-color-scheme: dark\)/);

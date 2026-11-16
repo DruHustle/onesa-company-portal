@@ -39,7 +39,7 @@ export async function revokeFixtureAccounts(client:Connection,run:string,account
 }
 
 async function main() {
- if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-company-portal'||process.env.GITHUB_REF!=='refs/heads/staging'||process.env.GITHUB_ACTOR!=='DruHustle'||process.env.RUNNER_ENVIRONMENT!=='github-hosted')throw new Error('STAGING_FIXTURE_CONTEXT');
+ if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-portal'||process.env.GITHUB_REF!=='refs/heads/staging'||process.env.GITHUB_ACTOR!=='DruHustle'||process.env.RUNNER_ENVIRONMENT!=='github-hosted')throw new Error('STAGING_FIXTURE_CONTEXT');
  const action=process.argv[2];
  if(!['create','cleanup'].includes(action))throw new Error('STAGING_FIXTURE_ACTION');
  let inputText='';

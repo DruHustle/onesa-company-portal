@@ -31,7 +31,7 @@ export function validate(input,raw,actual,now=Date.now()){
  const key=Object.hasOwn(input||{},'api_binding')?'api_binding':Object.hasOwn(input||{},'scanner_binding')?'scanner_binding':'worker_binding';
  need(keys(input,[key,'fixture','worker_probe']));
  const binding=input[key],probe=input.worker_probe,worker=key==='worker_binding',api=key==='api_binding',application=worker||api;
- need(keys(binding,[...fields,...(binding.repository==='DruHustle/onesa-ug'?sourceFields:[])])&&(binding.repository==='DruHustle/onesa-company-portal'||canonicalSource(binding))&&binding.component===(api?'api':worker?'worker':'scanner')&&binding.target_environment==='production');
+ need(keys(binding,[...fields,...(binding.repository==='DruHustle/onesa-ug'?sourceFields:[])])&&(binding.repository==='DruHustle/onesa-portal'||canonicalSource(binding))&&binding.component===(api?'api':worker?'worker':'scanner')&&binding.target_environment==='production');
  const checked=workerPlan(probe,raw,actual,now),fixture=fixturePlan(input.fixture,now);
  need(probe.binding.component===(api?'api':'worker'));
  need(probe.environment==='staging'&&input.fixture.action==='provision');

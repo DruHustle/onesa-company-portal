@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 POLICY = {
     "onesa-company-portal": ("portal", 18301, 18300, 8300),
-    "onesa-ai-platform": ("ai", 18001, 18000, 8000),
+        "onesa-ai-platform": ("ai", 18001, 18000, 8000),
     "onesa-ai-robot": ("robot", 18432, 18431, 8431),
 }
 
@@ -17,7 +17,8 @@ class OracleBackendConfigTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.config = json.loads((ROOT / "compose.oracle-backend.yaml").read_text())
-        cls.product, cls.stage_port, cls.prod_port, cls.target_port = POLICY[ROOT.name]
+        product = "onesa-company-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else ROOT.name
+        cls.product, cls.stage_port, cls.prod_port, cls.target_port = POLICY[product]
 
     def test_explicit_profiles_required_image_pins_and_source_labels(self):
         self.assertEqual(set(self.config["services"]), {"staging", "production"})
@@ -58,7 +59,8 @@ class OracleBackendConfigTests(unittest.TestCase):
         expected = "/api/v1/health" if self.product == "portal" else "/health"
         self.assertIn(expected, " ".join(stage["test"]))
         self.assertNotIn("healthcheck", self.config["services"]["production"])
-        dockerfile = ROOT / (ROOT.name + "-backend") / "Dockerfile"
+        source_product = "onesa-company-portal" if self.product == "portal" else ROOT.name
+        dockerfile = ROOT / (source_product + "-backend") / "Dockerfile"
         probe = next(
             line
             for line in dockerfile.read_text().splitlines()

@@ -13,7 +13,7 @@ class ProductionBindingGuards(unittest.TestCase):
             "id": production.SERVICE,
             "branch": "main",
             "autoDeployTrigger": "off",
-            "repo": "https://github.com/DruHustle/onesa-company-portal",
+            "repo": "https://github.com/DruHustle/onesa-portal",
         }
         self.values = {
             "DATABASE_URL": "postgresql://onesa_portal_app:synthetic-only@"
