@@ -23,7 +23,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 PRODUCT = "onesa-billing"
-REPOSITORY = "DruHustle/onesa-company-portal"
+REPOSITORY = "DruHustle/onesa-portal"
 REPOSITORY_ID = "1412150327"
 POSTGRES = (
     "postgres@sha256:2ad58d61b036d41f2613302e8c0fee03f6fe51e94d68087327ac45d1cebd4b5e"

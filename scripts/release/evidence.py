@@ -17,9 +17,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PRODUCT = ROOT.name
+REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "DruHustle/onesa-portal")
 OWNER = "DruHustle"
-REPOSITORY = OWNER + "/" + PRODUCT
+PRODUCT = "onesa-company-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else ROOT.name
+APPLICATION_PREFIX = "onesa-company-portal" if PRODUCT == "onesa-company-portal" else PRODUCT
 GATES = (
     "CODE_VERIFIED",
     "STAGING_VERIFIED",
@@ -390,7 +391,7 @@ def artifacts_for_ci(github, references):
         if reference["workflow"] != POLICY["ci"]:
             continue
         run = github.run(reference["run_id"])
-        for application in [PRODUCT + "-backend", PRODUCT + "-frontend"]:
+        for application in [APPLICATION_PREFIX + "-backend", APPLICATION_PREFIX + "-frontend"]:
             manifest, origin = github.artifact(run, "runtime-" + application)
             require(
                 manifest["repository"] == REPOSITORY

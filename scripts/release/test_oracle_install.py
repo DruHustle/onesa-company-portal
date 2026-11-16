@@ -82,7 +82,7 @@ class InstallTests(unittest.TestCase):
         self.root.chmod(0o700)
         self.manifest = {
             "schema_version": 1,
-            "repository": "DruHustle/onesa-company-portal",
+            "repository": "DruHustle/onesa-portal",
             "candidate_commit": "a" * 40,
             "source_tree": "",
             "files": {},
@@ -169,7 +169,7 @@ class InstallTests(unittest.TestCase):
             },
         }
         for component, script in [(self.component, self.script)]:
-            self.policy["components"]["DruHustle/onesa-company-portal:" + component] = {
+            self.policy["components"]["DruHustle/onesa-portal:" + component] = {
                 "qualification_attempt_limit": 1,
                 "runners": {
                     phase: {
@@ -226,7 +226,7 @@ class InstallTests(unittest.TestCase):
             if self.allowed == installer.IDENTITY_V3_ALLOWED:
                 import oracle_portal_identity_v3 as selected
             profile = self.policy["components"][
-                "DruHustle/onesa-company-portal:" + self.component
+                "DruHustle/onesa-portal:" + self.component
             ]
             profile["qualification_profile"] = selected.PROFILE
             profile["required_checks"] = {
@@ -297,7 +297,7 @@ class InstallTests(unittest.TestCase):
             setattr(self.github, field, original)
 
     def test_incomplete_policy_refused(self):
-        self.policy["components"]["DruHustle/onesa-company-portal:" + self.component][
+        self.policy["components"]["DruHustle/onesa-portal:" + self.component][
             "required_checks"
         ]["staging"].remove("persistence")
         self.seal()
@@ -308,10 +308,10 @@ class InstallTests(unittest.TestCase):
         import copy
 
         extra = "frontend" if self.component == "api" else "api"
-        self.policy["components"]["DruHustle/onesa-company-portal:" + extra] = (
+        self.policy["components"]["DruHustle/onesa-portal:" + extra] = (
             copy.deepcopy(
                 self.policy["components"][
-                    "DruHustle/onesa-company-portal:" + self.component
+                    "DruHustle/onesa-portal:" + self.component
                 ]
             )
         )
@@ -335,7 +335,7 @@ class InstallTests(unittest.TestCase):
             # Regenerate paths in the checked policy for this disposable location.
             for component, script in [(self.component, self.script)]:
                 for r in self.policy["components"][
-                    "DruHustle/onesa-company-portal:" + component
+                    "DruHustle/onesa-portal:" + component
                 ]["runners"].values():
                     r["path"] = str(
                         installer.INSTALL_PARENT
@@ -359,9 +359,9 @@ class ScannerInstallTests(InstallTests):
 
     def test_scanner_profile_cannot_install_or_authorize_frontend(self):
         profile = self.policy["components"].pop(
-            "DruHustle/onesa-company-portal:scanner"
+            "DruHustle/onesa-portal:scanner"
         )
-        self.policy["components"]["DruHustle/onesa-company-portal:frontend"] = profile
+        self.policy["components"]["DruHustle/onesa-portal:frontend"] = profile
         self.seal()
         with self.assertRaises(verifier.Rejected):
             self.validate()
@@ -374,8 +374,8 @@ class WorkerInstallTests(InstallTests):
     prefix = "portal-worker-"
 
     def test_worker_installation_cannot_authorize_scanner(self):
-        profile = self.policy["components"].pop("DruHustle/onesa-company-portal:worker")
-        self.policy["components"]["DruHustle/onesa-company-portal:scanner"] = profile
+        profile = self.policy["components"].pop("DruHustle/onesa-portal:worker")
+        self.policy["components"]["DruHustle/onesa-portal:scanner"] = profile
         self.seal()
         with self.assertRaises(verifier.Rejected):
             self.validate()
@@ -411,8 +411,8 @@ class APIInstallTests(InstallTests):
             self.validate()
 
     def test_api_profile_cannot_install_or_authorize_worker(self):
-        profile = self.policy["components"].pop("DruHustle/onesa-company-portal:api")
-        self.policy["components"]["DruHustle/onesa-company-portal:worker"] = profile
+        profile = self.policy["components"].pop("DruHustle/onesa-portal:api")
+        self.policy["components"]["DruHustle/onesa-portal:worker"] = profile
         self.seal()
         with self.assertRaises(verifier.Rejected):
             self.validate()
@@ -464,7 +464,7 @@ class IdentityInstallTests(InstallTests):
         with self.assertRaises(verifier.Rejected):
             self.validate()
         tool["identity_files"][name] = original
-        self.policy["components"]["DruHustle/onesa-company-portal:identity"][
+        self.policy["components"]["DruHustle/onesa-portal:identity"][
             "required_checks"
         ]["staging"].remove("identity_migration")
         self.seal()
@@ -486,7 +486,7 @@ class IdentityAcceptanceInstallTests(IdentityInstallTests):
 
     def test_account_profile_cannot_issue_integrated_acceptance(self):
         profile = self.policy["components"][
-            "DruHustle/onesa-company-portal:identity-acceptance"
+            "DruHustle/onesa-portal:identity-acceptance"
         ]
         profile["qualification_profile"] = "portal-shared-identity-v1"
         self.seal()

@@ -16,7 +16,7 @@ export function safeDiagnostic(error:unknown,phase:string) {
  return phase+': '+category+'; no credentials or response bodies emitted';
 }
 
-const repository = 'https://github.com/DruHustle/onesa-company-portal';
+const repository = 'https://github.com/DruHustle/onesa-portal';
 const runtimeHost = 'ep-dark-boat-b91lg22g-pooler.c-7.eu-central-1.aws.neon.tech';
 // Owner-authenticated Neon inventory, 2026-10-12: production and *-staging projects.
 // Neither inspection nor initialization changes a runtime binding.
@@ -33,7 +33,7 @@ export function assertPortalStagingService(service:{id?:string;repo?:string;bran
 
 /** Reuse the saved restricted login; never initialize, grant, rotate, deploy or modify production. */
 export async function repairPortalStagingDatabase() {
- if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-company-portal'||process.env.GITHUB_REF!=='refs/heads/staging')throw new PortalRepairError('Exact Portal staging operator branch required');
+ if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-portal'||process.env.GITHUB_REF!=='refs/heads/staging')throw new PortalRepairError('Exact Portal staging operator branch required');
  const password=process.env.PORTAL_APP_DB_PASSWORD||'';
  if(!/^[A-Za-z0-9_-]{64}$/.test(password))throw new PortalRepairError('Existing dedicated application password required');
  diagnosticPhase='staging-provider-identity';
@@ -101,7 +101,7 @@ export async function confirmedTargetInventory(connection:Pick<pg.Pool,'query'>)
 }
 
 async function confirmedTargetContext(readOnly=false) {
- if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-company-portal'||!(readOnly?['refs/heads/main','refs/heads/dev']:['refs/heads/main']).includes(process.env.GITHUB_REF||''))throw new PortalRepairError('Reviewed Portal inspection branch required');
+ if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-portal'||!(readOnly?['refs/heads/main','refs/heads/dev']:['refs/heads/main']).includes(process.env.GITHUB_REF||''))throw new PortalRepairError('Reviewed Portal inspection branch required');
  diagnosticPhase='confirmed-migration-url-validation';
  const owner=confirmedPortalDatabaseURL(process.env.PORTAL_MIGRATION_DATABASE_URL||'');
  const serviceID=process.env.RENDER_BACKEND_SERVICE_ID||'';
@@ -222,7 +222,7 @@ async function verifyRuntime(url:URL,requireSafe=true) {
 
 export async function repairPortalRole(apply=false) {
  const approved=['refs/heads/main',...(!apply?['refs/heads/dev']:[])];
- if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-company-portal'||!approved.includes(process.env.GITHUB_REF||''))throw new PortalRepairError('Approved Portal operator branch required');
+ if(process.env.GITHUB_REPOSITORY!=='DruHustle/onesa-portal'||!approved.includes(process.env.GITHUB_REF||''))throw new PortalRepairError('Approved Portal operator branch required');
  const serviceID=process.env.RENDER_BACKEND_SERVICE_ID||'';
  if(!/^srv-[a-zA-Z0-9]+$/.test(serviceID))throw new PortalRepairError('Missing Portal service ID');
  const service=await provider('services/'+serviceID);

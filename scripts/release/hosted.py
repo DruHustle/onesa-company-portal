@@ -717,7 +717,7 @@ def production():
 
 def configure_staging_preview():
     """Only the approved staging API's server settings may reach its Git Preview."""
-    require(PRODUCT == "onesa-company-portal" and os.environ.get("GITHUB_REPOSITORY") == REPOSITORY and os.environ.get("GITHUB_REF") == "refs/heads/dev" and os.environ.get("GITHUB_ACTOR") == "DruHustle" and os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted", "Identified hosted development operator required")
+    require(PRODUCT == "onesa-company-portal" and REPOSITORY == "DruHustle/onesa-portal" and os.environ.get("GITHUB_REPOSITORY") == REPOSITORY and os.environ.get("GITHUB_REF") == "refs/heads/dev" and os.environ.get("GITHUB_ACTOR") == "DruHustle" and os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted", "Identified hosted development operator required")
     verified = preflight(configuration_dev=True)
     proxy = verified["settings"].get("PROXY_SHARED_KEY", "")
     require(isinstance(proxy, str) and len(proxy) >= 32, "Staging API proxy credential missing")

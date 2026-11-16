@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 
 export function assertFrontendSourceBinding(binding){
  assert.equal(binding.component,'frontend');
- if(binding.repository==='DruHustle/onesa-company-portal')return;
+ if(binding.repository==='DruHustle/onesa-portal')return;
  assert.equal(binding.repository,'DruHustle/onesa-ug');assert.equal(binding.schema_version,2);
  assert.equal(binding.repository_id,1444746154);assert.equal(binding.product,'portal');
  assert.equal(binding.source_path,'onesa-company-portal');assert.equal(binding.branch,'main');

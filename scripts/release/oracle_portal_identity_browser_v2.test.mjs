@@ -28,7 +28,7 @@ const email = 'test-administrator@example.invalid';
 function request(scope='integrated') {
   const hex = 'a'.repeat(64);
   return {schema_version:2,environment:'production',scope,operation_id:id,origins:{...origins},preview_sessions:{},
-    binding:{repository:'DruHustle/onesa-company-portal',component:scope==='account'?'identity':'identity-acceptance',
+    binding:{repository:'DruHustle/onesa-portal',component:scope==='account'?'identity':'identity-acceptance',
       candidate_commit:'7'.repeat(40),source_tree:'8'.repeat(40),source_sha256:hex,build_sha256:hex,artifact_digest:'sha256:'+hex,
       configuration_sha256:{staging:hex,production:hex},target_environment:'production'},
     fixtures:{owner:{email,password:'Synthetic '+id,totp_secret:'A'.repeat(32)},drone_workspace:{tenant_id:tenantId,label:'Test'},

@@ -9,7 +9,7 @@ import {validateMailbox, parseImapResponse, messageLink, deliveredLink, observeZ
 
 const operation = '12345678-1234-1234-1234-123456789abc';
 function request() {
-  return {schema_version: 1, binding: {repository: 'DruHustle/onesa-company-portal', component: 'identity',
+  return {schema_version: 1, binding: {repository: 'DruHustle/onesa-portal', component: 'identity',
     candidate_commit: 'a'.repeat(40), source_tree: 'b'.repeat(40)}, environment: 'staging', operation_id: operation,
   scope: 'account', origins: {portal: 'https://onesa-portal-staging.vercel.app', ai: 'https://onesa-ai-staging.vercel.app',
     drone: 'https://onesa-drone-staging.vercel.app', robot: 'https://onesa-robot-staging.vercel.app'},

@@ -25,7 +25,7 @@ class SecretScopeTests(unittest.TestCase):
             self.assertEqual(set(re.findall(r"secrets\.(STAGING_[A-Z0-9_]+)", job)), expected)
             program = job.split("node <<'NODE'\n", 1)[1].split("        NODE", 1)[0]
             for supplied in (False, True):
-                env = {"PATH": os.environ.get("PATH", ""), "STAGING_SECRET_SCOPE": scope, "GITHUB_REPOSITORY": "DruHustle/" + ROOT.name}
+                env = {"PATH": os.environ.get("PATH", ""), "STAGING_SECRET_SCOPE": scope, "GITHUB_REPOSITORY": "DruHustle/onesa-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else "DruHustle/" + ROOT.name}
                 sentinel = "SYNTHETIC-NEVER-LOG-THIS-CREDENTIAL"
                 if supplied:
                     env.update({name: sentinel for name in expected})
