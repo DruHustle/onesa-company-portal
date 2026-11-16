@@ -59,7 +59,8 @@ class OracleBackendConfigTests(unittest.TestCase):
         expected = "/api/v1/health" if self.product == "portal" else "/health"
         self.assertIn(expected, " ".join(stage["test"]))
         self.assertNotIn("healthcheck", self.config["services"]["production"])
-        dockerfile = ROOT / (self.product + "-backend") / "Dockerfile"
+        source_product = "onesa-company-portal" if self.product == "portal" else ROOT.name
+        dockerfile = ROOT / (source_product + "-backend") / "Dockerfile"
         probe = next(
             line
             for line in dockerfile.read_text().splitlines()

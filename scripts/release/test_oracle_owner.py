@@ -640,9 +640,14 @@ class GitHubEvidenceTests(unittest.TestCase):
         raise AssertionError("Unexpected fixture API path")
 
     def test_valid_CI_keeps_real_run_and_artifact_identity(self):
+        self.assertEqual(o.POLICIES["onesa-portal"], o.POLICIES["onesa-company-portal"])
         refs = self.github.qualify(self.binding)
         self.assertEqual([r["run_id"] for r in refs], [1, 2])
         self.assertEqual(refs[0]["artifacts"][0]["id"], 10)
+        self.assertEqual(
+            {a["name"] for a in refs[0]["artifacts"]},
+            {"runtime-onesa-company-portal-backend", "runtime-onesa-company-portal-frontend"},
+        )
 
     def test_source_review_and_failed_skipped_missing_CI_fail_closed(self):
         cases = [

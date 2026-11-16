@@ -27,6 +27,9 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 OWNER = "DruHustle"
+REPOSITORY_PRODUCTS = {
+    "onesa-portal": "onesa-company-portal",
+}
 POLICIES = {
     "onesa-company-portal": (
         "verify.yml",
@@ -67,6 +70,8 @@ POLICIES = {
         ],
     ),
 }
+for repository, product in REPOSITORY_PRODUCTS.items():
+    POLICIES[repository] = POLICIES[product]
 PHASES = ("staging", "operations", "deploy", "production")
 REQUIRED_CHECKS = {
     "staging": {
@@ -716,7 +721,9 @@ class GitHub:
             ),
             "Owner-merged main PR required",
         )
-        workflow, jobs = POLICIES[repo.split("/")[1]]
+        repository = repo.split("/")[1]
+        product = REPOSITORY_PRODUCTS.get(repository, repository)
+        workflow, jobs = POLICIES[repository]
         references = []
         for name, required in [
             (workflow, jobs),
@@ -820,7 +827,7 @@ class GitHub:
             if name == workflow:
                 require(
                     {
-                        "runtime-" + repo.split("/")[1] + "-" + x
+                        "runtime-" + product + "-" + x
                         for x in ["backend", "frontend"]
                     }
                     <= {a["name"] for a in manifests},
