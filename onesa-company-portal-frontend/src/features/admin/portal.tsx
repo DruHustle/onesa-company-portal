@@ -11,6 +11,7 @@ import { fileBase64 } from "@/components/application-form";
 import { privateDocument } from "@/lib/api/transfers";
 import { Infrastructure } from "./infrastructure";
 import { BackgroundProcessing } from "./background-processing";
+import { OwnerVerification } from "./owner-verification";
 import { PrivacyGovernance } from "./privacy-governance";
 import { EngineeringMemberships } from "./engineering-memberships";
 import { adminAccountEntry, managedAdminEntry } from "@/lib/account-return";
@@ -701,7 +702,7 @@ export function AdminPortal({
               )}
             {tab === "Governance & Compliance" &&
               ["owner", "administrator"].includes(user.role) && (
-                <PrivacyGovernance role={user.role} />
+                <OwnerVerification managed={managedLogin}><PrivacyGovernance role={user.role} /></OwnerVerification>
               )}
             {tab === "Dashboard" && dashboard && (
               <>
