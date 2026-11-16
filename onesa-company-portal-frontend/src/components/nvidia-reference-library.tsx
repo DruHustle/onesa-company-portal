@@ -8,19 +8,19 @@ const germanNames = ['Förderband', 'Transportwagen', 'Lagerregal'];
 
 export function NvidiaReferenceLibrary({locale}: {locale: Locale}) {
   const de = locale === 'de';
-  const section = useRef<HTMLElement>(null), host = useRef<HTMLDivElement>(null);
+  const host = useRef<HTMLDivElement>(null);
   const viewer = useRef<ReferenceViewer | null>(null);
   const [visible, setVisible] = useState(false), [index, setIndex] = useState(0);
   const [attempt, setAttempt] = useState(0), [angle, setAngle] = useState(0);
   const [state, setState] = useState<ReferenceState>('loading');
   const asset = catalog.assets[index], name = de ? germanNames[index] : asset.name;
   useEffect(() => {
-    if (!section.current) return;
+    if (!host.current) return;
     if (!('IntersectionObserver' in window)) {setVisible(true); return;}
     const observer = new IntersectionObserver(entries => {
       if (entries.some(entry => entry.isIntersecting)) {setVisible(true); observer.disconnect();}
-    }, {rootMargin: '160px'});
-    observer.observe(section.current);
+    });
+    observer.observe(host.current);
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
@@ -40,7 +40,7 @@ export function NvidiaReferenceLibrary({locale}: {locale: Locale}) {
       : state === 'unavailable'
         ? (de ? '3D ist in diesem Browser nicht verfügbar. Die Modellvorschau bleibt sichtbar.' : '3D is unavailable in this browser. The model preview remains available.')
         : (de ? 'Das 3D-Modell konnte nicht angezeigt werden. Die Vorschau bleibt verfügbar.' : 'The 3D model could not be displayed. Its preview remains available.');
-  return <section ref={section} id="nvidia-environments" className={styles.library} aria-labelledby="nvidia-environments-title" data-state={state}>
+  return <section id="nvidia-environments" className={styles.library} aria-labelledby="nvidia-environments-title" data-state={state}>
     <div className={styles.heading}><p className="eyebrow">{de ? 'SIMULATIONSUMGEBUNGEN' : 'SIMULATION ENVIRONMENTS'}</p><h2 id="nvidia-environments-title">{de ? 'Eine Umgebung, die Sie erkunden können.' : 'An environment you can explore.'}</h2><p>{de ? 'NVIDIA-Referenzmodelle für digitale Zwillinge und die Planung von Robotik- und Drohnenszenarien. Wählen Sie ein Objekt und erkunden Sie seine Form.' : 'NVIDIA reference models for digital twins and for planning robot and drone scenarios. Select an object and explore its shape.'}</p></div>
     <div className={styles.layout}>
       <div className={styles.choices} role="group" aria-label={de ? 'Referenzmodell auswählen' : 'Choose a reference model'}>{catalog.assets.map((item, itemIndex) => <button type="button" key={item.id} aria-pressed={index === itemIndex} onClick={() => {if (index !== itemIndex) {setIndex(itemIndex); setAngle(0); setState('loading');}}}>
