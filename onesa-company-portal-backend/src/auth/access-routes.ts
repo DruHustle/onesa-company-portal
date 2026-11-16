@@ -55,21 +55,26 @@ export async function registerAccess(
       "INTERNAL Portal access. Email verification does not grant authorization. New registrations require owner approval; existing explicitly approved addresses retain that decision.",
   });
   const origin = async (req: FastifyRequest) => {
-    if (!config)
-      throw new HttpError(
-        503,
-        "ACCESS_UNAVAILABLE",
-        "Registration and email-link sign-in are not available yet.",
-      );
     if (req.headers.origin !== env.PUBLIC_ORIGIN)
       throw new HttpError(403, "ORIGIN", "Use the Onesa Portal.");
     await limits.limit("access-ip:" + limits.address(req), 20, 900);
+  };
+  const registration = async (req: FastifyRequest) => {
+    if (!config)
+      throw new HttpError(503, "ACCESS_UNAVAILABLE", "Registration is not available yet.");
+    await origin(req);
+  };
+  const emailSignIn = async (req: FastifyRequest) => {
+    if (!config && process.env.PORTAL_EMAIL_LINK_ENABLED !== "true" &&
+        !(env.MAIL_FROM && (env.SMTP_HOST || process.env.MAIL_PROVIDER === "resend")))
+      throw new HttpError(503, "ACCESS_UNAVAILABLE", "Email-link sign-in is not available yet.");
+    await origin(req);
   };
   api.post(
     "/api/v1/access/register",
     {
       logLevel: "silent",
-      preHandler: origin,
+      preHandler: registration,
       schema: {
         ...meta("requestAccessRegistration"),
         body: z.object({
@@ -104,7 +109,7 @@ export async function registerAccess(
     "/api/v1/access/confirm",
     {
       logLevel: "silent",
-      preHandler: origin,
+      preHandler: registration,
       schema: {
         ...meta("confirmAccessRegistration"),
         body: z.object({
@@ -138,7 +143,7 @@ export async function registerAccess(
     "/api/v1/access/link",
     {
       logLevel: "silent",
-      preHandler: origin,
+      preHandler: emailSignIn,
       schema: {
         ...meta("requestAdminSignInLink"),
         body: z.object({ email: z.email().max(254) }),
