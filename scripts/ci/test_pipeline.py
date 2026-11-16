@@ -79,7 +79,7 @@ class PipelineTests(unittest.TestCase):
         harness = r"""
 const mode=process.argv[1], script=process.argv[2], sha='a'.repeat(40), repository='DruHustle/onesa-portal';
 process.env.RUNNER_ENVIRONMENT=mode==='local'?'self-hosted':'github-hosted';
-const context={ref:mode==='main'?'refs/heads/main':'refs/heads/staging',sha,repo:{owner:'DruHustle',repo:'onesa-company-portal'},payload:{repository:{full_name:repository}}};
+const context={ref:mode==='main'?'refs/heads/main':'refs/heads/staging',sha,repo:{owner:'DruHustle',repo:'onesa-portal'},payload:{repository:{full_name:repository}}};
 const run={head_sha:mode==='wrong-ci-sha'?'b'.repeat(40):sha,head_branch:mode==='wrong-ci-branch'?'dev':'staging',head_repository:{full_name:mode==='foreign-repo'?'other/portal':repository},status:mode==='pending'?'in_progress':'completed',conclusion:mode==='failed'?'failure':'success'};
 const github={rest:{repos:{get:async()=>({data:{private:mode==='private'}})},git:{getRef:async()=>({data:{object:{sha:mode==='changed'?'c'.repeat(40):sha}}})},actions:{listWorkflowRuns:async()=>({data:{workflow_runs:mode==='missing'?[]:[run]}})}}};
 const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
@@ -293,7 +293,7 @@ new AsyncFunction('context','github',script)(context,github).then(()=>process.ex
                 os.environ,
                 GITHUB_ACTIONS="true",
                 GITHUB_EVENT_NAME="push",
-                GITHUB_REPOSITORY="DruHustle/" + ROOT.name,
+                GITHUB_REPOSITORY="DruHustle/onesa-portal" if ROOT.name == "onesa-portal" else "DruHustle/" + ROOT.name,
                 GITHUB_EVENT_PATH=str(event),
                 REVIEWDOG_GITHUB_API_TOKEN="test-read-only",
             )

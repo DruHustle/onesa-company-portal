@@ -509,7 +509,7 @@ def staging_frontend_routing():
 
 
 def main():
-    portal = os.environ.get("GITHUB_REPOSITORY", "").endswith("/onesa-company-portal")
+    portal = os.environ.get("GITHUB_REPOSITORY", "").endswith(("/onesa-company-portal", "/onesa-portal"))
     scope = os.environ.get("PORTAL_INSPECTION_SCOPE") or "production"
     backend_id, worker_id = (
         portal_services(scope)

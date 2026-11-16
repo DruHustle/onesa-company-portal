@@ -224,7 +224,7 @@ def main():
         raise SystemExit(
             "Configuration repair requires the approved application repository on main"
         )
-    portal = repo.endswith("/onesa-company-portal")
+    portal = repo.endswith(("/onesa-company-portal", "/onesa-portal"))
     report = {
         "backend": repair_render(
             repo, os.environ.get("RENDER_BACKEND_SERVICE_ID", ""), portal
