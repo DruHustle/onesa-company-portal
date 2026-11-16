@@ -75,3 +75,22 @@ test("existing account links move once and keep their interaction or staff desti
   assert.equal(legacySignInEntry("/account/sign-in/synthetic_123", old), "/account?interaction=synthetic_123");
   assert.equal(legacySignInEntry("/engineering/sign-in/synthetic_123/details", old), null);
 });
+
+test("managed Portal entry retains workspace filters and a privacy anchor", async () => {
+  const {managedAdminEntry} = await import("../src/lib/account-return.ts");
+  const url=new URL("https://portal.example/admin?section=Content&page=2&unexpected=discard#privacy/tasks");
+  const start=new URL(managedAdminEntry(url),url.origin);
+  assert.equal(start.pathname,"/api/v1/auth/managed/start");
+  assert.equal(start.searchParams.get("next"),"/admin?section=Content&page=2#privacy/tasks");
+});
+
+test("managed redirects remain bound to the configured provider and Portal callback", async()=>{
+  const {managedPortalRedirect}=await import("../src/lib/managed-portal-redirect.ts");
+  const origin="https://portal.example",issuer="https://auth.example/";
+  const start=["auth","managed","start"],callback=["auth","managed","callback"];
+  assert.equal(managedPortalRedirect(start,issuer+"authorize?state=local",origin,issuer),issuer+"authorize?state=local");
+  assert.equal(managedPortalRedirect(callback,"/admin?section=Content",origin,issuer),origin+"/admin?section=Content");
+  assert.equal(managedPortalRedirect(callback,"/api/v1/auth/managed/retry?next=%2Fadmin",origin,issuer),origin+"/api/v1/auth/managed/retry?next=%2Fadmin");
+  for(const url of ["https://other.example/authorize","//auth.example/other","/account","https://auth.example/authorize#proof=private"])
+    assert.equal(managedPortalRedirect(start,url,origin,issuer),null);
+});

@@ -7,7 +7,7 @@ import {pathToFileURL} from 'node:url';
 import pg from 'pg';
 import {applyMigrationPlan} from './migration-plan.js';
 
-const reviewedInventory = '49fc970fd6781ab6ad3bdf29949d6003f7bd52d52d3297788adcc59895a5d1fa';
+const reviewedInventory = 'bb1ada87c19d9521b873d610ed0e53a74c1d4fc701ac03f7cc00a2d5cc0a4d5f';
 const ordinaryRoles = {
   ai: 'user', drone: 'viewer', robot: 'viewer', mobile: 'customer',
   farmer: 'user', logistics: 'user', pasofi: 'customer', factory: 'user',
@@ -82,7 +82,7 @@ export async function rehearse(connectionString: string) {
       await client.query('SET LOCAL search_path=public,pg_catalog');
       await client.query('SELECT pg_advisory_xact_lock(757830)');
       before = await storedMigrations(client);
-      assert.ok([16, 17, 18, 19].includes(before.length));
+      assert.ok([16, 17, 18, 19, 20].includes(before.length));
       assert.deepEqual(before, inventory.slice(0, before.length));
       await client.query('LOCK TABLE public.identity_product_access IN SHARE ROW EXCLUSIVE MODE');
       await client.query('CREATE TEMP TABLE retained_grants ON COMMIT DROP AS TABLE public.identity_product_access');
@@ -99,6 +99,8 @@ export async function rehearse(connectionString: string) {
       if (before.length < 19) {
         assert.equal((await client.query('SELECT 1 FROM public.engineering_enrollment_accounts LIMIT 1')).rowCount, 0);
       }
+      const transactions = await client.query("SELECT to_regclass('public.portal_login_transactions') IS NOT NULL AS present");
+      assert.equal(transactions.rows[0].present, true);
       assert.equal(await applyMigrationPlan(client), 0);
       await checkRoles(client);
     } finally {
@@ -107,6 +109,8 @@ export async function rehearse(connectionString: string) {
     assert.deepEqual(await storedMigrations(client), before);
     const rolledBackBinding = await client.query("SELECT to_regclass('public.engineering_enrollment_accounts') IS NOT NULL AS present");
     assert.equal(rolledBackBinding.rows[0].present, before.length >= 19);
+    const rollbackTransactions = await client.query("SELECT to_regclass('public.portal_login_transactions') IS NOT NULL AS present");
+    assert.equal(rollbackTransactions.rows[0].present, before.length >= 20);
     return {baseline: before.length, migrations_rehearsed: inventory.length - before.length, ordinary_roles: 8,
       restricted_admin_roles_denied: 4, grants_preserved: true, rollback_verified: true};
   } finally {
