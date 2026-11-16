@@ -16,7 +16,7 @@ import test_oracle_portal_frontend as provider_fixture
 
 class EightClientFrontendTests(unittest.TestCase):
     def setUp(self):
-        self.binding = {"repository": "DruHustle/onesa-company-portal", "component": "frontend"}
+        self.binding = {"repository": "DruHustle/onesa-portal", "component": "frontend"}
         self.staging = {key: "https://" + key + ".stage.example" for key in eight.PRODUCTION}
         self.issuer = {"qualification_profile": issuer.PROFILE_V3, "environments": {
             "staging": {"origins": self.staging}, "production": {"origins": eight.PRODUCTION}}}

@@ -17,7 +17,7 @@ test('direct NVIDIA CLI completes its import graph and rejects malformed input b
    qualification_profile:'frontend-nvidia-v1',environment:'staging',
    origin:'https://onesa-company-portal-git-staging-synthetic.vercel.app',
    provider_token_included:false,bypass:null,
-   binding:{repository:'DruHustle/onesa-company-portal',component:'frontend'},
+   binding:{repository:'DruHustle/onesa-portal',component:'frontend'},
   }),{mode:0o600});
   const result=spawnSync(process.execPath,[fileURLToPath(new URL('./oracle_portal_browser.mjs',import.meta.url)),request],{
    timeout:10000,encoding:'utf8',maxBuffer:32768,

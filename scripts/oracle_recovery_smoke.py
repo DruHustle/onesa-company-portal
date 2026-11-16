@@ -65,7 +65,7 @@ def runner_guard(image):
         and os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted"
         and os.environ.get("RUNNER_OS") == "Linux"
         and os.environ.get("GITHUB_REPOSITORY")
-        in {"DruHustle/onesa-company-portal", "DruHustle/onesa-ug"}
+        in {"DruHustle/onesa-portal", "DruHustle/onesa-ug"}
         and re.fullmatch(r"[a-f0-9]{40}", os.environ.get("GITHUB_SHA", "")),
         "Disposable GitHub-hosted Portal runner required",
     )

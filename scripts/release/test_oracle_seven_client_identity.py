@@ -212,7 +212,7 @@ class SevenClientInstallTests(install_tests.IdentityInstallTests):
 
     def setUp(self):
         super().setUp()
-        self.profile = self.policy["components"]["DruHustle/onesa-company-portal:identity"]
+        self.profile = self.policy["components"]["DruHustle/onesa-portal:identity"]
         self.profile["qualification_profile"] = identity.PROFILE_V2
         self.profile["required_checks"] = {phase: sorted(keys) for phase, keys in identity.CHECKS_V2.items()}
         self.seal()
@@ -286,7 +286,7 @@ class AcceptanceInstallationTests(install_tests.IdentityAcceptanceInstallTests):
     def setUp(self):
         from oracle_portal_identity_acceptance_v2 import CHECKS, PROFILE
         super().setUp()
-        profile = self.policy["components"]["DruHustle/onesa-company-portal:identity-acceptance"]
+        profile = self.policy["components"]["DruHustle/onesa-portal:identity-acceptance"]
         profile["qualification_profile"] = PROFILE
         profile["required_checks"] = {phase: sorted(keys) for phase, keys in CHECKS.items()}
         self.seal()
@@ -294,7 +294,7 @@ class AcceptanceInstallationTests(install_tests.IdentityAcceptanceInstallTests):
     def test_separate_acceptance_installation_and_profile(self):
         _, target, _, _ = self.validate()
         self.assertEqual(target.name, self.prefix + self.manifest["source_tree"])
-        self.policy["components"]["DruHustle/onesa-company-portal:identity-acceptance"]["qualification_profile"] = identity.PROFILE_V2
+        self.policy["components"]["DruHustle/onesa-portal:identity-acceptance"]["qualification_profile"] = identity.PROFILE_V2
         self.seal()
         with self.assertRaises(installer.verifier.Rejected):
             self.validate()

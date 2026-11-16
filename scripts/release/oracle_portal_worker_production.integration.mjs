@@ -38,7 +38,7 @@ export async function runLocal({owner_uri,values,objects,counts,stageRequest,sta
   const runtime={...values,PUBLIC_ORIGIN:'https://engineering.onesa.eu',DATABASE_URL:database.href,WORKER_PROFILE:'production',WORKER_IDLE_MAX_MS:'5000'};
   const raw=Object.entries(runtime).map(([key,value])=>key+'='+value+'\n').join('');
   const fixture=randomUUID(),operation=randomUUID();
-  const request={binding:{repository:'DruHustle/onesa-company-portal',component:'worker',candidate_commit:'a'.repeat(40),source_tree:'b'.repeat(40),source_sha256:'c'.repeat(64),build_sha256:'d'.repeat(64),artifact_digest:'sha256:'+'e'.repeat(64),configuration_sha256:{staging:'1'.repeat(64),production:'2'.repeat(64)},target_environment:'production'},operation_id:operation,fixture_id:fixture,environment:'production',ci_run_id:1,runtime_sha256:hash(raw),mode:'prepare'};
+  const request={binding:{repository:'DruHustle/onesa-portal',component:'worker',candidate_commit:'a'.repeat(40),source_tree:'b'.repeat(40),source_sha256:'c'.repeat(64),build_sha256:'d'.repeat(64),artifact_digest:'sha256:'+'e'.repeat(64),configuration_sha256:{staging:'1'.repeat(64),production:'2'.repeat(64)},target_environment:'production'},operation_id:operation,fixture_id:fixture,environment:'production',ci_run_id:1,runtime_sha256:hash(raw),mode:'prepare'};
   // The binding and CI number are synthetic parser inputs, not issued evidence.
   try{await unlink('/tmp/onesa-worker-success');}catch(error){if(error.code!=='ENOENT')throw error;}
   const began=Date.now();
