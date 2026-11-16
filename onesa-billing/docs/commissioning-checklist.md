@@ -8,4 +8,4 @@ Use this checklist to review the outcome of a billing commissioning exercise. Th
 - Exercise declined and repeated payment events. Confirm that retries preserve the original transaction and that the resulting account state matches the observed provider result.
 - Record the operator's acceptance or the outstanding defect, and link the restricted evidence to the release record.
 
-The billing owner authorizes live activation separately. Authorized operators can find provider-specific commissioning and recovery procedures in [Onesa Internal Documents](https://docs.internal.onesa.eu).
+The billing owner authorizes live activation separately. Ask the billing owner for the approved commissioning and recovery procedures. [Onesa Internal Documents](https://docs.internal.onesa.eu) is the designated location for restricted operations guidance.

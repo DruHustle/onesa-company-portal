@@ -8,4 +8,4 @@ The frontend, backend and billing components in the [Portal repository](https://
 
 Track component-specific release evidence using the [release checklist](../../RELEASE_CHECKLIST.md) and [qualification reference](AUTOMATED_QUALIFICATION.md). A documentation update does not deploy an application.
 
-Authorized operators can obtain installation, verification and recovery procedures through [Onesa Internal Documents](https://docs.internal.onesa.eu). Use the approved procedure for the component and environment selected by the release owner.
+Ask the release owner for the approved installation, verification and recovery procedures for the selected component and environment. [Onesa Internal Documents](https://docs.internal.onesa.eu) is the designated location for restricted operations guidance.

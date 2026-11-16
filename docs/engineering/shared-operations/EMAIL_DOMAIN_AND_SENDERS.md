@@ -17,4 +17,4 @@ Onesa uses the visible sending domain `onesa.eu`. Each product identifies itself
 
 Product notifications cover normal system messages. Operational alerts identify events that need attention. These addresses identify senders and do not establish whether a mailbox accepts replies. Account access is shared across enabled Onesa products.
 
-Authorized operators can obtain sender configuration and delivery verification procedures through [Onesa Internal Documents](https://docs.internal.onesa.eu).
+Ask the product's release owner for the approved sender configuration and delivery verification procedures. [Onesa Internal Documents](https://docs.internal.onesa.eu) is the designated location for restricted operations guidance.
