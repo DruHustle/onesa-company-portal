@@ -49,7 +49,10 @@ test("managed Portal callback verifies the signed grant and keeps an existing ed
     signedUser = userId,
     role = "administrator",
     operationNonce: string | undefined,
-    authenticationAge = 0;
+    authenticationAge = 0,
+    registrationApproved = false,
+    verifiedEmail = false,
+    email = "staff-" + randomUUID() + "@example.invalid";
   const sign = (claims: Record<string, unknown>, resource: string) =>
     new SignJWT(claims)
       .setProtectedHeader({ alg: "RS256", kid: "test" })
@@ -88,6 +91,9 @@ test("managed Portal callback verifies the signed grant and keeps an existing ed
         const data = {
           [ns + "user_id"]: signedUser,
           [ns + "roles"]: [role],
+          ...(registrationApproved
+            ? { [ns + "portal_staff_registration"]: true }
+            : {}),
           ...(operationNonce
             ? { [ns + "operation_mfa_nonce"]: operationNonce }
             : {}),
@@ -100,6 +106,8 @@ test("managed Portal callback verifies the signed grant and keeps an existing ed
           id_token: await sign(
             {
               nonce,
+              email,
+              email_verified: verifiedEmail,
               auth_time: Math.floor(Date.now() / 1000) - authenticationAge,
             },
             clientId,
@@ -435,6 +443,70 @@ test("managed Portal callback verifies the signed grant and keeps an existing ed
     factorAge = 0;
     scope = "engineering";
     assert.equal((await app.inject(await start())).statusCode, 403);
+    // A verified Identity registration can provision exactly one new managed staff
+    // record. Local account decisions and legacy authentication remain separate.
+    scope = "portal";
+    role = "administrator";
+    signedUser = randomUUID();
+    signedSubject = "new-staff-" + signedUser;
+    assert.equal((await app.inject(await start())).statusCode, 403);
+    registrationApproved = true;
+    assert.equal((await app.inject(await start())).statusCode, 403);
+    verifiedEmail = true;
+    factorAge = 600;
+    assert.equal((await app.inject(await start())).statusCode, 403);
+    factorAge = 0;
+    role = "viewer";
+    assert.equal((await app.inject(await start())).statusCode, 403);
+    role = "administrator";
+    const newStaffEmail = email;
+    email = userId + "@example.invalid";
+    assert.equal((await app.inject(await start())).statusCode, 403);
+    email = newStaffEmail;
+    const firstStaffSignIn = await app.inject(await start());
+    assert.equal(firstStaffSignIn.headers.location, target);
+    const who = await app.inject({
+      url: "/api/v1/auth/me",
+      headers: { cookie: cookies(firstStaffSignIn) },
+    });
+    assert.equal(who.json().user.id, signedUser);
+    assert.equal(who.json().user.role, "administrator");
+    assert.equal((await app.inject(await start())).headers.location, target);
+    assert.equal(
+      (
+        await db.query(
+          "SELECT id FROM audit WHERE actor_id=$1 AND action='auth.managed_staff_provisioned'",
+          [signedUser],
+        )
+      ).rowCount,
+      1,
+    );
+    await assert.rejects(
+      db.query(
+        "INSERT INTO sessions(token_hash,user_id,csrf,expires_at) VALUES($1,$2,$3,now()+interval '1 minute')",
+        [hash(randomUUID()), signedUser, randomUUID()],
+      ),
+      { code: "23514" },
+    );
+    await assert.rejects(
+      db.query(
+        "INSERT INTO identity_sessions(token_hash,user_id,csrf,authenticated_at,amr,expires_at) VALUES($1,$2,$3,now(),ARRAY['pwd'],now()+interval '1 minute')",
+        [hash(randomUUID()), signedUser, randomUUID()],
+      ),
+      { code: "23514" },
+    );
+    const bound = signedSubject;
+    signedSubject = "different-subject";
+    assert.equal((await app.inject(await start())).statusCode, 403);
+    signedSubject = bound;
+    await db.query("UPDATE users SET role='viewer' WHERE id=$1", [signedUser]);
+    assert.equal((await app.inject(await start())).statusCode, 403);
+    await db.query(
+      "UPDATE users SET role='administrator',disabled=true WHERE id=$1",
+      [signedUser],
+    );
+    assert.equal((await app.inject(await start())).statusCode, 403);
+
     assert.equal(portalReturnPath("//other.example/"), "/admin");
   } finally {
     await app.close();
