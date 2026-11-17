@@ -233,7 +233,7 @@ async function signInFields(page) {
 
 try {
   child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "-p", String(port)], {
-    env: { PATH: process.env.PATH, NODE_ENV: "production", PUBLIC_ORIGIN: origin, SITE_URL: origin, BACKEND_URL: "http://127.0.0.1:" + apiPort, PROXY_SHARED_KEY: proxyKey, ONESA_IDENTITY_ENABLED: "true", ACCESS_REGISTRATION_ENABLED: "true", ENGINEERING_SIGNIN_ENABLED: "true", NEXT_TELEMETRY_DISABLED: "1", AWS_EC2_METADATA_DISABLED: "true" },
+    env: { PATH: process.env.PATH, NODE_ENV: "production", PUBLIC_ORIGIN: origin, SITE_URL: origin, BACKEND_URL: "http://127.0.0.1:" + apiPort, PROXY_SHARED_KEY: proxyKey, ONESA_IDENTITY_ENABLED: "true", ACCESS_REGISTRATION_ENABLED: "true", ENGINEERING_SIGNIN_ENABLED: "true", ENGINEERING_LEGACY_TEST_FIXTURE: "true", NEXT_TELEMETRY_DISABLED: "1", AWS_EC2_METADATA_DISABLED: "true" },
     stdio: ["ignore", "pipe", "pipe"],
   });
   let startup = "";
@@ -488,7 +488,7 @@ try {
       await expect(page).toHaveURL(origin + "/account?next=/admin");
       await expect(page.getByRole("heading", {name:"Sign in to Onesa", exact:true})).toBeVisible();
       await expect(page.getByLabel("Password", {exact:true})).toBeEnabled();
-      await expect(page.getByRole("link", {name:"New to Onesa? Create one account"})).toHaveAttribute("href", "/account/register");
+      await expect(page.getByRole("link", {name:"New to Onesa? Create one account"})).toHaveAttribute("href", "/account/register?next=/admin");
       await page.getByRole("button", {name:"Email a sign-in link", exact:true}).click();
       await page.getByLabel("Email address", {exact:true}).fill("synthetic-staff@example.test");
       await page.getByRole("button", {name:"Send sign-in link", exact:true}).click();

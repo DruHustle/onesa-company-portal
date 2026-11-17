@@ -6,7 +6,7 @@ const origin=new URL(process.env.DOMAIN_TEST_FRONTEND_ORIGIN||'http://127.0.0.1:
 assert.equal(origin.protocol,'http:');
 assert.ok(['127.0.0.1','localhost'].includes(origin.hostname),'Only the isolated local frontend may be probed');
 function request(host,path,extra={}){return new Promise((resolve,reject)=>{const req=http.get(new URL(path,origin),{headers:{Host:host,'X-Forwarded-Host':host,'X-Forwarded-Proto':'https',...extra}},res=>{const chunks=[];res.on('data',chunk=>chunks.push(chunk));res.on('end',()=>resolve({status:res.statusCode,headers:res.headers,body:Buffer.concat(chunks)}));});req.setTimeout(25000,()=>req.destroy(new Error('Local probe timed out')));req.on('error',reject);});}
-const cases=[['portal.onesa.eu','/',307,'https://portal.onesa.eu/account'],['onesa.eu','/privacy-policy',308,'/en/privacy'],['onesa.eu','/admin/users',307,'https://portal.onesa.eu/admin/users'],['portal.onesa.eu','/en/contact',307,'https://onesa.eu/en/contact'],['unknown.invalid','/',421],['onesa.eu','/api/v1/auth/me',403],['portal.onesa.eu','/api/v1/auth/me',503]];
+const cases=[['portal.onesa.eu','/',307,'https://portal.onesa.eu/account'],['onesa.eu','/privacy-policy',308,'/en/privacy'],['onesa.eu','/admin/users',307,'https://portal.onesa.eu/admin/users'],['portal.onesa.eu','/en/contact',307,'https://onesa.eu/en/contact'],['unknown.invalid','/',421],['onesa.eu','/api/v1/auth/me',403],['portal.onesa.eu','/api/v1/auth/me',503],['portal.onesa.eu','/access/register?audience=admin',307,'/account/register?next=/admin']];
 for(const [host,path,status,location] of cases){const response=await request(host,path);assert.equal(response.status,status,`${host}${path}`);if(location)assert.equal(response.headers.location,location);console.log(`PASS ${host}${path} → ${status}`);}
 
 for (const path of ['/account', '/account/register', '/account/register?next=%2Fengineering']) {
@@ -18,6 +18,10 @@ for (const path of ['/account', '/account/register', '/account/register?next=%2F
   assert.equal(portal.status, 200, path);
   assert.equal(portal.headers.location, undefined, path);
   assert.match(portal.body.toString(), /<title>Onesa Account(?: \| [^<]+)?<\/title>/, path);
+  if (path.startsWith("/account/register")) {
+    assert.match(portal.body.toString(), /Registration is temporarily unavailable/);
+    assert.doesNotMatch(portal.body.toString(), /<input[^>]+type="password"/);
+  }
   console.log(`PASS central account entry on the Portal hostname ${path}`);
 }
 const spoof=await request('unknown.invalid','/',{'X-Forwarded-Host':'portal.onesa.eu'});assert.equal(spoof.status,421);

@@ -1,13 +1,31 @@
-import { identityAdministrationRequired, identityAdministrationUrl } from "@/lib/identity-administration";
-import { redirect } from "next/navigation";
+import { identityRegistrationUrl } from "@/lib/identity-administration";
+import { notFound } from "next/navigation";
 import { legacyEngineeringFixture } from "@/lib/engineering-test-fixture";
 import { OnesaAccount } from "@/features/account/account";
-import { docsAccountPath } from "@/lib/account-return";
-export default async function Register({ searchParams }: { searchParams: Promise<{ next?: string; docs?: string }> }) {
-  const administration = identityAdministrationUrl();
-  const identityAdminRequired = identityAdministrationRequired();
-  const { next, docs } = await searchParams;
+import { docsAccountPath, productAccountPath } from "@/lib/account-return";
+import styles from "@/features/account/account.module.css";
+import { RegistrationDeparture } from "@/features/account/registration-handoff";
+
+export const metadata = { referrer: "no-referrer" as const };
+
+export default async function Register({ searchParams }: {
+  searchParams: Promise<{ next?: string; docs?: string; interaction?: string; audience?: string }>;
+}) {
+  const { next, docs, interaction, audience } = await searchParams;
   const docsReturnPath = typeof docs === "string" ? docsAccountPath(docs) : null;
-  if (administration && !docsReturnPath) redirect(new URL("/register#registration", administration).href);
-  return <OnesaAccount mode="register" identityAdmin={administration} identityAdminRequired={identityAdminRequired} docsReturnPath={docsReturnPath} adminEntry={next === "/admin"} legacyDocsRegistration={next === "/engineering" && legacyEngineeringFixture()} accessEnabled={process.env.ACCESS_REGISTRATION_ENABLED === "true"}/>;
+  if (legacyEngineeringFixture()) {
+    return <OnesaAccount mode="register" docsReturnPath={docsReturnPath} adminEntry={next === "/admin"} legacyDocsRegistration={next === "/engineering"} accessEnabled={process.env.ACCESS_REGISTRATION_ENABLED === "true"}/>;
+  }
+  const productReturnPath = typeof interaction === "string" ? productAccountPath(interaction) : null;
+  if ((docs !== undefined && !docsReturnPath) || (interaction !== undefined && !productReturnPath) ||
+      (docsReturnPath && productReturnPath)) notFound();
+  const returnPath = docsReturnPath || productReturnPath;
+  const isAdmin = next === "/admin" || audience === "admin";
+  const destination = identityRegistrationUrl(isAdmin ? "admin" : "user");
+  return <main className={styles.shell}><section className={styles.card} aria-labelledby="account-title">
+    <h1 id="account-title">{isAdmin ? "Request administrator access" : "Onesa Account"}</h1>
+    {destination ? <RegistrationDeparture destination={destination} audience={isAdmin ? "admin" : "user"} returnPath={returnPath}/>
+      : <p role="status">Registration is temporarily unavailable. Please try again later.</p>}
+    {returnPath && <p><a href={returnPath} referrerPolicy="no-referrer">{docsReturnPath ? "Return to document sign-in" : "Return to product sign-in"}</a></p>}
+  </section></main>;
 }
