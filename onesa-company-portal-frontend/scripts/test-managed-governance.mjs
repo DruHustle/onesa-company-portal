@@ -9,6 +9,7 @@ import { chromium, firefox, webkit, expect } from "@playwright/test";
 
 const origin = "http://127.0.0.1:3357";
 const issuer = "https://provider.example.invalid/";
+const identityUi = "https://identity.example.invalid";
 const target = "00000000-0000-4000-8000-000000000001";
 const challenges = new Map();
 const requests = [];
@@ -73,7 +74,7 @@ try {
   await once(api, "listening");
   child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "-p", "3357"], {
     env: { PATH: process.env.PATH, NODE_ENV: "production", PUBLIC_ORIGIN: origin, BACKEND_URL: "http://127.0.0.1:" + api.address().port,
-      ONESA_IDENTITY_PORTAL_LOGIN: "managed", ONESA_IDENTITY_ISSUER: issuer, ONESA_IDENTITY_UI_ORIGIN: "https://identity.example.invalid",
+      ONESA_IDENTITY_PORTAL_LOGIN: "managed", ONESA_IDENTITY_ISSUER: issuer, ONESA_IDENTITY_UI_ORIGIN: identityUi, ACCESS_REGISTRATION_ENABLED: "false",
       NEXT_TELEMETRY_DISABLED: "1" }, stdio: ["ignore", "ignore", "inherit"],
   });
   await expect.poll(async () => {
@@ -88,6 +89,10 @@ try {
     context.setDefaultTimeout(15_000);
     context.setDefaultNavigationTimeout(20_000);
     const page = await context.newPage();
+    await context.route(identityUi + "/register", route => route.fulfill({ status: 200, contentType: "text/html", body: "<h1>Onesa registration</h1>" }));
+    await page.goto(origin + "/access/register");
+    await expect(page).toHaveURL(identityUi + "/register#registration");
+    await expect(page.getByRole("heading", { name: "Onesa registration" })).toBeVisible();
     await context.route(issuer + "authorize?*", route => {
       const state = new URL(route.request().url()).searchParams.get("state");
       return route.fulfill({ status: 200, contentType: "text/html", body:
