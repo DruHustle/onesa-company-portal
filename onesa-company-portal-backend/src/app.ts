@@ -61,14 +61,16 @@ export async function buildApp(options:{logging?:boolean;managedPortalProvider?:
  }});
  await app.register(cookie);await app.register(helmet,{global:true});
  app.addHook('onRequest',async(req,reply)=>{reply.header('X-Request-ID',req.id).header('Cache-Control','no-store');if(!['GET','HEAD','OPTIONS'].includes(req.method)){const origin=req.headers.origin;if(((req.cookies.onesa_session||req.cookies.onesa_account)&&!origin)||(origin&&origin!==env.PUBLIC_ORIGIN&&!(companyOrigin&&origin===companyOrigin&&req.url.split('?')[0].startsWith('/api/v1/public/'))))throw new HttpError(403,'ORIGIN','Untrusted origin');if(req.url.startsWith('/api/v1/account/')&&origin!==env.PUBLIC_ORIGIN)throw new HttpError(403,'ORIGIN','Use the Onesa account page');if(req.headers['sec-fetch-site']==='cross-site')throw new HttpError(403,'ORIGIN','Cross-site requests denied');}});
- if (externalIdentityAdministration()) {
-   app.addHook('onRequest', async (req) => {
-     const schema = req.routeOptions.schema as { operationId?: string } | undefined;
-     if (delegatedAccountOperation(schema?.operationId) || (managedPortalEnabled() && legacyStaffCredentialOperation(schema?.operationId))) {
-       throw new HttpError(403, 'IDENTITY_ADMINISTRATION_MOVED', 'Manage accounts and approvals in Onesa Identity.');
-     }
-   });
- }
+ const delegatedAdministration = externalIdentityAdministration();
+ const registrationIssuers = new Set(["requestAccessRegistration", "registerOnesaAccount", "createUser"]);
+ app.addHook('onRequest', async (req) => {
+   const operation = (req.routeOptions.schema as { operationId?: string } | undefined)?.operationId;
+   if (!operation) return;
+   if ((process.env.NODE_ENV !== "test" && registrationIssuers.has(operation)) ||
+       (delegatedAdministration && (delegatedAccountOperation(operation) || (managedPortalEnabled() && legacyStaffCredentialOperation(operation))))) {
+     throw new HttpError(403, 'IDENTITY_ADMINISTRATION_MOVED', 'Manage accounts and approvals in Onesa Identity.');
+   }
+ });
  if (managedPortalEnabled()) app.addHook('onRequest',(req,_reply,done)=>operationRequest.run(req,done));
  app.setErrorHandler(async(err,req,reply)=>{
    if (err instanceof OperationChallengeRequired) {

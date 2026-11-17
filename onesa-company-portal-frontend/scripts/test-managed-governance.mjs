@@ -81,6 +81,24 @@ try {
     if (child.exitCode !== null) throw new Error("Isolated Portal exited");
     try { return (await fetch(origin + "/admin/step-up-complete", { signal: AbortSignal.timeout(1000) })).status; } catch { return 0; }
   }, { timeout: 20_000 }).toBe(200);
+  // Follow the real Portal redirect responses without contacting the synthetic external origin.
+  for (const [entry, canonical, audience] of [
+    ["/access/register?audience=admin", "/account/register?next=/admin", "admin"],
+    ["/access/register?audience=user", "/account/register", "user"],
+    ["/access/register?audience=engineering", "/account/register", "user"],
+  ]) {
+    const bookmark = await fetch(origin + entry, { redirect: "manual" });
+    assert.equal(bookmark.status, 307);
+    assert.equal(new URL(bookmark.headers.get("location"), origin).href, origin + canonical);
+    const shared = await fetch(origin + canonical, { redirect: "manual" });
+    assert.equal(shared.status, 307);
+    assert.equal(shared.headers.get("location"), identityUi + "/register?audience=" + audience);
+  }
+  for (const path of ["/api/v1/access/register", "/api/v1/account/register", "/api/v1/admin/users"]) {
+    const closed = await fetch(origin + path, { method: "POST", headers: { origin } });
+    assert.equal(closed.status, 403, path);
+    assert.equal((await closed.json()).error.code, "IDENTITY_ADMINISTRATION_MOVED", path);
+  }
   for (const engine of browsers) {
     assert(Object.hasOwn(engines, engine));
     const executablePath = engine === "chromium" ? process.env.ONESA_TEST_CHROMIUM_EXECUTABLE : undefined;
@@ -89,10 +107,6 @@ try {
     context.setDefaultTimeout(15_000);
     context.setDefaultNavigationTimeout(20_000);
     const page = await context.newPage();
-    await context.route(identityUi + "/register", route => route.fulfill({ status: 200, contentType: "text/html", body: "<h1>Onesa registration</h1>" }));
-    await page.goto(origin + "/access/register");
-    await expect(page).toHaveURL(identityUi + "/register#registration");
-    await expect(page.getByRole("heading", { name: "Onesa registration" })).toBeVisible();
     await context.route(issuer + "authorize?*", route => {
       const state = new URL(route.request().url()).searchParams.get("state");
       return route.fulfill({ status: 200, contentType: "text/html", body:

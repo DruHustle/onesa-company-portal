@@ -37,6 +37,21 @@ test("a Portal administrator can edit company content but cannot manage Identity
     const access = await accountAccess((await identityAccount(userId))!);
     assert.deepEqual(access.onesa_roles,[]);
     assert.deepEqual(access.onesa_applications,[]);
+    // Creating a new registration belongs to Identity even before a Portal switches staff login or delegates its other administration routes.
+    const previousAdministration = process.env.ONESA_IDENTITY_ADMINISTRATION;
+    delete process.env.ONESA_IDENTITY_ADMINISTRATION;
+    const legacyLogin = await buildApp({logging:false});
+    try {
+      for (const url of ["/api/v1/access/register", "/api/v1/account/register", "/api/v1/admin/users"]) {
+        const refused = await legacyLogin.inject({method:"POST",url,headers});
+        assert.equal(refused.statusCode,403,url);
+        assert.equal(refused.json().error.code,"IDENTITY_ADMINISTRATION_MOVED");
+      }
+    } finally {
+      await legacyLogin.close();
+      if (previousAdministration === undefined) delete process.env.ONESA_IDENTITY_ADMINISTRATION;
+      else process.env.ONESA_IDENTITY_ADMINISTRATION = previousAdministration;
+    }
     const endpoints = [
       ["GET","/api/v1/admin/users"],["POST","/api/v1/admin/users"],["PATCH","/api/v1/admin/users/"+userId],
       ["GET","/api/v1/admin/engineering/memberships"],["PUT","/api/v1/admin/engineering/memberships"],

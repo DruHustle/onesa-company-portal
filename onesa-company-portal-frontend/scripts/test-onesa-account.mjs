@@ -501,7 +501,7 @@ try {
       await expect(page).toHaveURL(origin + "/account?next=/admin");
       await expect(page.getByRole("heading", {name:"Sign in to Onesa", exact:true})).toBeVisible();
       await expect(page.getByLabel("Password", {exact:true})).toBeEnabled();
-      await expect(page.getByRole("link", {name:"New to Onesa? Create one account"})).toHaveAttribute("href", "/account/register");
+      await expect(page.getByRole("link", {name:"New to Onesa? Create one account"})).toHaveAttribute("href", "/account/register?next=/admin");
       await page.getByRole("button", {name:"Email a sign-in link", exact:true}).click();
       await page.getByLabel("Email address", {exact:true}).fill("synthetic-staff@example.test");
       await page.getByRole("button", {name:"Send sign-in link", exact:true}).click();

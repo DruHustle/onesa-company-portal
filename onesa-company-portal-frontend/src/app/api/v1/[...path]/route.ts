@@ -1,4 +1,5 @@
 import '@/lib/server/tls-trust';
+import {legacyEngineeringFixture} from "@/lib/engineering-test-fixture";
 import {operationChallenge} from "@/lib/managed-operation";
 import {managedPortalRedirect} from "@/lib/managed-portal-redirect";
 import {identityProtocolPath,identityRedirectLocation} from "@/lib/onesa-identity";
@@ -28,6 +29,9 @@ async function boundedBody(request: NextRequest, limit: number): Promise<ArrayBu
   } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
 }
 async function proxy(request:NextRequest,{params}:{params:Promise<{path:string[]}>}){const {path}=await params;if(path.some(p=>!/^[a-zA-Z0-9_-]+$/.test(p))&&!engineeringProtocolPath(path)&&!identityProtocolPath(path))return Response.json({error:{code:'PATH',message:'Invalid path',requestId:'proxy'}},{status:400});const hostOrigin=applicationOrigin(request.headers.get('host'),request.nextUrl.origin);const current=hostOrigin?surface(hostOrigin):'unknown';if(current==='unknown'||(current==='company'&&path[0]!=='public'))return Response.json({error:{code:'HOST',message:'Route unavailable on this hostname',requestId:'proxy'}},{status:403});const origin=current==='combined'&&hostOrigin!==stagingOrigin()?(process.env.PUBLIC_ORIGIN||'http://localhost:3300'):hostOrigin!;const operationStart=path.length===3&&path.join('/')==='auth/managed/step-up';
+if(request.method === "POST" && ["access/register", "account/register", "admin/users"].includes(path.join("/")) && !legacyEngineeringFixture()) {
+  return Response.json({error:{code:"IDENTITY_ADMINISTRATION_MOVED",message:"Register through Onesa Identity.",requestId:"proxy"}},{status:403,headers:{"Cache-Control":"no-store"}});
+}
 if(operationStart){
   if(request.method!=='POST')return new Response(null,{status:405,headers:{Allow:'POST'}});
   if(request.nextUrl.search||request.headers.get('accept')!=='application/json'||request.headers.get('origin')!==origin||request.headers.get('content-type')?.split(';')[0]!=='application/x-www-form-urlencoded')

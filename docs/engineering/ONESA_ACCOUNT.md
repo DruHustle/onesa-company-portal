@@ -1,5 +1,7 @@
 # Onesa Account architecture
 
+Onesa Identity handles new member and administrator registrations. Portal registration bookmarks preserve the requested audience and send applicants to the configured Identity UI. An administrator application requests review and grants no role. When that destination is unavailable, Portal offers no local signup. The Portal proxy and API reject new local registration requests independently of the staff sign-in configuration.
+
 ## Independent Identity pilot
 
 The Portal issuer described below is the pre-migration baseline. During the pilot, the Identity service owns user administration. Portal owns its CMS, settings, business records and /admin. Public Developer Docs at docs.onesa.eu and all internal documents at docs.internal.onesa.eu have separate catalog entries and access policies.
