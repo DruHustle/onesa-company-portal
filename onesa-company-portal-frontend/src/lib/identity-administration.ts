@@ -43,5 +43,5 @@ export function identityAdministrationUrl() {
 
 export function identityRegistrationUrl(audience: "user" | "admin") {
   const origin = identityUiOrigin();
-  return origin ? new URL("/register?audience=" + audience, origin).href : null;
+  return origin ? new URL("/register?product=portal&platform=web&audience=" + audience, origin).href : null;
 }

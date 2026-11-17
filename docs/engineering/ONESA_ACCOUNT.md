@@ -1,6 +1,6 @@
 # Onesa Account architecture
 
-Onesa Identity handles new member and administrator registrations. Portal registration bookmarks preserve the requested audience and send applicants to the configured Identity UI. An administrator application requests review and grants no role. When that destination is unavailable, Portal offers no local signup. The Portal proxy and API reject new local registration requests independently of the staff sign-in configuration.
+Onesa Identity handles new member and administrator registrations. Portal registration bookmarks preserve the requested audience and send applicants to the configured Identity UI. The Identity handoff identifies the product as Portal and the platform as web. The registered member return is /account/registered and the registered staff return is /account/registered?audience=admin on the Portal origin. A retained document or product sign-in resumes only inside its initiating Portal tab. An administrator application requests review and grants no role. When that destination is unavailable, Portal offers no local signup. The Portal proxy and API reject new local registration requests independently of the staff sign-in configuration.
 
 ## Independent Identity pilot
 
