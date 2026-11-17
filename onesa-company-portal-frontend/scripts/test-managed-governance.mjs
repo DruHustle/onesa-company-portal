@@ -9,6 +9,7 @@ import { chromium, firefox, webkit, expect } from "@playwright/test";
 
 const origin = "http://127.0.0.1:3357";
 const issuer = "https://provider.example.invalid/";
+const identityUi = "https://identity.example.invalid";
 const target = "00000000-0000-4000-8000-000000000001";
 const challenges = new Map();
 const requests = [];
@@ -73,13 +74,20 @@ try {
   await once(api, "listening");
   child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "-p", "3357"], {
     env: { PATH: process.env.PATH, NODE_ENV: "production", PUBLIC_ORIGIN: origin, BACKEND_URL: "http://127.0.0.1:" + api.address().port,
-      ONESA_IDENTITY_PORTAL_LOGIN: "managed", ONESA_IDENTITY_ISSUER: issuer, ONESA_IDENTITY_UI_ORIGIN: "https://identity.example.invalid",
+      ONESA_IDENTITY_PORTAL_LOGIN: "managed", ONESA_IDENTITY_ISSUER: issuer, ONESA_IDENTITY_UI_ORIGIN: identityUi, ACCESS_REGISTRATION_ENABLED: "false",
       NEXT_TELEMETRY_DISABLED: "1" }, stdio: ["ignore", "ignore", "inherit"],
   });
   await expect.poll(async () => {
     if (child.exitCode !== null) throw new Error("Isolated Portal exited");
     try { return (await fetch(origin + "/admin/step-up-complete", { signal: AbortSignal.timeout(1000) })).status; } catch { return 0; }
   }, { timeout: 20_000 }).toBe(200);
+  // The Identity fixture implements the registered per-audience return destinations.
+  // Portal never forwards an arbitrary callback or a product interaction to Identity.
+  for (const path of ["/api/v1/access/register", "/api/v1/account/register", "/api/v1/admin/users"]) {
+    const closed = await fetch(origin + path, { method: "POST", headers: { origin } });
+    assert.equal(closed.status, 403, path);
+    assert.equal((await closed.json()).error.code, "IDENTITY_ADMINISTRATION_MOVED", path);
+  }
   for (const engine of browsers) {
     assert(Object.hasOwn(engines, engine));
     const executablePath = engine === "chromium" ? process.env.ONESA_TEST_CHROMIUM_EXECUTABLE : undefined;
@@ -93,6 +101,34 @@ try {
       return route.fulfill({ status: 200, contentType: "text/html", body:
         '<a href="' + origin + '/api/v1/auth/managed/callback?state=' + encodeURIComponent(state) + '">Confirm synthetic verification</a>' });
     });
+    const registrations = [];
+    await context.route(identityUi + "/register?*", async route => {
+      const url = new URL(route.request().url());
+      const audience = url.searchParams.get("audience");
+      assert.deepEqual([...url.searchParams.keys()].sort(), ["audience", "platform", "product"]);
+      assert.equal(url.searchParams.get("product"), "portal");
+      assert.equal(url.searchParams.get("platform"), "web");
+      assert(["user", "admin"].includes(audience));
+      registrations.push(audience);
+      const path = "/account/registered" + (audience === "admin" ? "?audience=admin" : "");
+      await route.fulfill({contentType:"text/html",body:'<a href="' + origin + path + '">Return to Company Portal</a>'});
+    });
+    for (const [start, audience, expected] of [
+      ["/access/register?audience=admin", "admin", "/account/registered?audience=admin"],
+      ["/account/register", "user", "/account/registered"],
+      ["/account/register?docs=synthetic_docs", "user", "/account?docs=synthetic_docs"],
+      ["/account/register?interaction=synthetic_product", "user", "/account?interaction=synthetic_product"],
+    ]) {
+      await page.goto(origin + start);
+      await page.getByRole("link", {name:"Return to Company Portal"}).click();
+      await expect(page).toHaveURL(origin + expected);
+      assert.equal(registrations.at(-1),audience);
+      if (expected.startsWith("/account/registered")) {
+        await expect(page.getByRole("heading", {name:"Company Portal"})).toBeVisible();
+        const label = audience === "admin" ? "Sign in to the staff workspace" : "Open my Onesa account";
+        await expect(page.getByRole("link", {name:label})).toHaveAttribute("href", audience === "admin" ? "/admin#workspace" : "/account");
+      }
+    }
     const seenUrls = [];
     context.on("request", request => seenUrls.push(request.url()));
     await page.goto(origin + "/admin#privacy/requests");

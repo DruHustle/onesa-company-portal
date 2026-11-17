@@ -12,8 +12,7 @@ export function legacyPortalFarmerAccess(input: { mode: "external" | "unavailabl
   return input.mode === "local" && input.product === "farmer" && !input.hasGrant && input.portalAccess && input.emailVerified;
 }
 
-export function identityAdministrationUrl() {
-  if (!identityAdministrationRequired()) return null;
+function identityUiOrigin() {
   const origin = process.env.ONESA_IDENTITY_UI_ORIGIN;
   if (!origin) return null;
   let url: URL;
@@ -28,5 +27,15 @@ export function identityAdministrationUrl() {
       } catch { return []; }
     });
   if (portalOrigins.includes(url.origin)) return null;
-  return new URL("/admin#accounts", url).href;
+  return url.origin;
+}
+
+export function identityAdministrationUrl() {
+  const origin = identityAdministrationRequired() ? identityUiOrigin() : null;
+  return origin ? new URL("/admin#accounts", origin).href : null;
+}
+
+export function identityRegistrationUrl(audience: "user" | "admin") {
+  const origin = identityUiOrigin();
+  return origin ? new URL("/register?product=portal&platform=web&audience=" + audience, origin).href : null;
 }

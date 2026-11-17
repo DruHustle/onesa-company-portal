@@ -7,7 +7,7 @@ import {pathToFileURL} from 'node:url';
 import pg from 'pg';
 import {applyMigrationPlan} from './migration-plan.js';
 
-const reviewedInventory = 'e76b46b58bdbd36c0a68a70804cde931c58c0057bd38472b8a2d5c72910fa658';
+const reviewedInventory = '3beeedfbcea82f5b958ea31cb1819687317270c4a4fea6089dd938652bfae800';
 const ordinaryRoles = {
   ai: 'user', drone: 'viewer', robot: 'viewer', mobile: 'customer',
   farmer: 'user', logistics: 'user', pasofi: 'customer', factory: 'user',
@@ -89,7 +89,7 @@ export async function rehearse(connectionString: string) {
       await client.query('SET LOCAL search_path=public,pg_catalog');
       await client.query('SELECT pg_advisory_xact_lock(757830)');
       before = await storedMigrations(client);
-      assert.ok([16, 17, 18, 19, 20, 21].includes(before.length));
+      assert.ok([16, 17, 18, 19, 20, 21, 22].includes(before.length));
       assert.deepEqual(before, inventory.slice(0, before.length));
       await client.query('LOCK TABLE public.identity_product_access IN SHARE ROW EXCLUSIVE MODE');
       await client.query('CREATE TEMP TABLE retained_grants ON COMMIT DROP AS TABLE public.identity_product_access');
@@ -109,6 +109,7 @@ export async function rehearse(connectionString: string) {
       const transactions = await client.query("SELECT to_regclass('public.portal_login_transactions') IS NOT NULL AS present");
       assert.equal(transactions.rows[0].present, true);
       await assertOperationSchema(client, true);
+      assert.equal((await client.query("SELECT to_regclass('public.users_managed_subject') IS NOT NULL AS present")).rows[0].present, true);
       assert.equal(await applyMigrationPlan(client), 0);
       await checkRoles(client);
     } finally {
@@ -120,6 +121,7 @@ export async function rehearse(connectionString: string) {
     const rollbackTransactions = await client.query("SELECT to_regclass('public.portal_login_transactions') IS NOT NULL AS present");
     assert.equal(rollbackTransactions.rows[0].present, before.length >= 20);
     await assertOperationSchema(client, before.length >= 21);
+    assert.equal((await client.query("SELECT to_regclass('public.users_managed_subject') IS NOT NULL AS present")).rows[0].present, before.length >= 22);
     return {baseline: before.length, migrations_rehearsed: inventory.length - before.length, ordinary_roles: 8,
       restricted_admin_roles_denied: 4, grants_preserved: true, rollback_verified: true};
   } finally {
