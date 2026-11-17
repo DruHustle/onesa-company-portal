@@ -59,7 +59,7 @@ export function OnesaAccount({ mode = "login", interactionId, docsInteractionId,
   }
   const approvalRequest = mode === "register" && Boolean(adminEntry || legacyDocsRegistration);
   const destinationSearch = destination.includes("?") ? destination.slice(destination.indexOf("?")) : "";
-  const signupUrl = adminEntry && !legacyAdmin ? "/account/register" : "/account/register" + destinationSearch;
+  const signupUrl = adminEntry ? "/account/register?next=/admin" : "/account/register" + destinationSearch;
   useEffect(() => {
     if (adminEntry) setAdminWorkspace(adminWorkspaceReturn(window.location.hash));
     let target = interactionId ? productAccountPath(interactionId) ?? "/account" : accountDestination(window.location.search);
