@@ -81,19 +81,8 @@ try {
     if (child.exitCode !== null) throw new Error("Isolated Portal exited");
     try { return (await fetch(origin + "/admin/step-up-complete", { signal: AbortSignal.timeout(1000) })).status; } catch { return 0; }
   }, { timeout: 20_000 }).toBe(200);
-  // Follow the real Portal redirect responses without contacting the synthetic external origin.
-  for (const [entry, canonical, audience] of [
-    ["/access/register?audience=admin", "/account/register?next=/admin", "admin"],
-    ["/access/register?audience=user", "/account/register", "user"],
-    ["/access/register?audience=engineering", "/account/register", "user"],
-  ]) {
-    const bookmark = await fetch(origin + entry, { redirect: "manual" });
-    assert.equal(bookmark.status, 307);
-    assert.equal(new URL(bookmark.headers.get("location"), origin).href, origin + canonical);
-    const shared = await fetch(origin + canonical, { redirect: "manual" });
-    assert.equal(shared.status, 307);
-    assert.equal(shared.headers.get("location"), identityUi + "/register?audience=" + audience);
-  }
+  // The Identity fixture implements the registered per-audience return destinations.
+  // Portal never forwards an arbitrary callback or a product interaction to Identity.
   for (const path of ["/api/v1/access/register", "/api/v1/account/register", "/api/v1/admin/users"]) {
     const closed = await fetch(origin + path, { method: "POST", headers: { origin } });
     assert.equal(closed.status, 403, path);
@@ -112,6 +101,34 @@ try {
       return route.fulfill({ status: 200, contentType: "text/html", body:
         '<a href="' + origin + '/api/v1/auth/managed/callback?state=' + encodeURIComponent(state) + '">Confirm synthetic verification</a>' });
     });
+    const registrations = [];
+    await context.route(identityUi + "/register?*", async route => {
+      const url = new URL(route.request().url());
+      const audience = url.searchParams.get("audience");
+      assert.deepEqual([...url.searchParams.keys()].sort(), ["audience", "platform", "product"]);
+      assert.equal(url.searchParams.get("product"), "portal");
+      assert.equal(url.searchParams.get("platform"), "web");
+      assert(["user", "admin"].includes(audience));
+      registrations.push(audience);
+      const path = "/account/registered" + (audience === "admin" ? "?audience=admin" : "");
+      await route.fulfill({contentType:"text/html",body:'<a href="' + origin + path + '">Return to Company Portal</a>'});
+    });
+    for (const [start, audience, expected] of [
+      ["/access/register?audience=admin", "admin", "/account/registered?audience=admin"],
+      ["/account/register", "user", "/account/registered"],
+      ["/account/register?docs=synthetic_docs", "user", "/account?docs=synthetic_docs"],
+      ["/account/register?interaction=synthetic_product", "user", "/account?interaction=synthetic_product"],
+    ]) {
+      await page.goto(origin + start);
+      await page.getByRole("link", {name:"Return to Company Portal"}).click();
+      await expect(page).toHaveURL(origin + expected);
+      assert.equal(registrations.at(-1),audience);
+      if (expected.startsWith("/account/registered")) {
+        await expect(page.getByRole("heading", {name:"Company Portal"})).toBeVisible();
+        const label = audience === "admin" ? "Sign in to the staff workspace" : "Open my Onesa account";
+        await expect(page.getByRole("link", {name:label})).toHaveAttribute("href", audience === "admin" ? "/admin#workspace" : "/account");
+      }
+    }
     const seenUrls = [];
     context.on("request", request => seenUrls.push(request.url()));
     await page.goto(origin + "/admin#privacy/requests");

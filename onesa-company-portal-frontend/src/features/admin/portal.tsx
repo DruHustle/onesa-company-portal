@@ -1240,9 +1240,7 @@ export function AdminPortal({
             {!identityAdminRequired && tab === "Users" && (
               <div className="admin-grid">
                 <div className="admin-list">
-                  <button onClick={() => navigate(() => setEditUser(null))}>
-                    Exceptional direct account creation
-                  </button>
+                  <a href="/account/register?next=/admin">Request administrator access in Onesa Identity</a>
                   {users.map((u) => (
                     <button
                       key={u.id}
@@ -1256,13 +1254,12 @@ export function AdminPortal({
                     </button>
                   ))}
                 </div>
-                <form
+                {editUser && <form
                   data-workspace-draft
-                  key={editUser?.id || "new-user"}
+                  key={editUser.id}
                   className="admin-card"
                   onSubmit={submitted(async (d) => {
-                    if (editUser)
-                      await api.PATCH("/api/v1/admin/users/{id}", {
+                    await api.PATCH("/api/v1/admin/users/{id}", {
                         params: { path: { id: editUser.id } },
                         body: {
                           role: value(d, "role") as User["role"],
@@ -1274,49 +1271,14 @@ export function AdminPortal({
                           },
                         },
                       });
-                    else
-                      await api.POST("/api/v1/admin/users", {
-                        body: {
-                          email: value(d, "email"),
-                          password: value(d, "password"),
-                          role: value(d, "role") as User["role"],
-                          ...(identityEnabled ? {stepUp: {password: value(d, "stepUpPassword"), code: value(d, "stepUpCode")}} : {}),
-                        },
-                      });
                     await refresh();
                   })}
                 >
-                  <h2>
-                    {editUser
-                      ? editUser.email
-                      : "Exceptional direct account creation"}
-                  </h2>
-                  {editUser && (
-                    <details>
-                      <summary>Technical reference</summary>
-                      <code>{editUser.id}</code>
-                    </details>
-                  )}
-                  {!editUser && (
-                    <p>
-                      Normally, a person registers, verifies their email, then
-                      an owner approves the requested Portal role or Engineering
-                      Docs membership. Direct creation is for separately
-                      verified exceptions; it does not configure Engineering
-                      Docs access.
-                    </p>
-                  )}
-                  {!editUser && (
-                    <>
-                      <Field label="Email" name="email" type="email" required />
-                      <Field
-                        label="Initial password (14+ characters)"
-                        name="password"
-                        type="password"
-                        required
-                      />
-                    </>
-                  )}
+                  <h2>{editUser.email}</h2>
+                  <details>
+                    <summary>Technical reference</summary>
+                    <code>{editUser.id}</code>
+                  </details>
                   <Select
                     label="Role"
                     name="role"
@@ -1328,7 +1290,7 @@ export function AdminPortal({
                       "hr",
                       "viewer",
                     ]}
-                    defaultValue={editUser?.role || "viewer"}
+                    defaultValue={editUser.role}
                   />
                   {editUser && (
                     <>
@@ -1364,15 +1326,10 @@ export function AdminPortal({
                       />
                     </>
                   )}
-                  {identityEnabled && !editUser && <fieldset><legend>Confirm direct account creation</legend><Field label="Your current password" name="stepUpPassword" type="password" required/><Field label="Fresh authenticator or unused recovery code" name="stepUpCode" required/></fieldset>}
                   <button className="button" disabled={busy || unsaved.pending}>
                     Save user
                   </button>
-                  <p>
-                    New users must enroll MFA before login. Share the initial
-                    password through an approved secure channel.
-                  </p>
-                </form>
+                </form>}
               </div>
             )}
             {!identityAdminRequired && tab === "Users" && user.role === "owner" && (

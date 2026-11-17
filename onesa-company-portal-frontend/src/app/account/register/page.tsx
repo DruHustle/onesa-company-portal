@@ -1,9 +1,12 @@
 import { identityRegistrationUrl } from "@/lib/identity-administration";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { legacyEngineeringFixture } from "@/lib/engineering-test-fixture";
 import { OnesaAccount } from "@/features/account/account";
 import { docsAccountPath, productAccountPath } from "@/lib/account-return";
 import styles from "@/features/account/account.module.css";
+import { RegistrationDeparture } from "@/features/account/registration-handoff";
+
+export const metadata = { referrer: "no-referrer" as const };
 
 export default async function Register({ searchParams }: {
   searchParams: Promise<{ next?: string; docs?: string; interaction?: string; audience?: string }>;
@@ -19,10 +22,9 @@ export default async function Register({ searchParams }: {
   const returnPath = docsReturnPath || productReturnPath;
   const isAdmin = next === "/admin" || audience === "admin";
   const destination = identityRegistrationUrl(isAdmin ? "admin" : "user");
-  if (destination && !returnPath) redirect(destination);
   return <main className={styles.shell}><section className={styles.card} aria-labelledby="account-title">
     <h1 id="account-title">{isAdmin ? "Request administrator access" : "Onesa Account"}</h1>
-    {destination ? <p><a href={destination} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">Register with Onesa Identity</a></p>
+    {destination ? <RegistrationDeparture destination={destination} audience={isAdmin ? "admin" : "user"} returnPath={returnPath}/>
       : <p role="status">Registration is temporarily unavailable. Please try again later.</p>}
     {returnPath && <p><a href={returnPath} referrerPolicy="no-referrer">{docsReturnPath ? "Return to document sign-in" : "Return to product sign-in"}</a></p>}
   </section></main>;
