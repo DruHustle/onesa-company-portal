@@ -112,6 +112,7 @@ type Principal = {
   roles: string[];
   expires: number;
   mfaTime: number;
+  registrationEmail?: string;
 };
 export interface PortalProvider {
   authorize(flow: Flow): Promise<string>;
@@ -228,7 +229,7 @@ export function portalProvider(
       return oidc.buildAuthorizationUrl(client, {
         redirect_uri: config.callback,
         response_type: "code",
-        scope: "openid",
+        scope: "openid email",
         audience: config.audience,
         state: flow.state,
         nonce: flow.nonce,
@@ -263,6 +264,25 @@ export function portalProvider(
         idToken?.sub ?? "",
         config.clientId,
       );
+      // Only the Identity policy can authorize first-time staff provisioning.
+      // Existing mapped accounts retain their separately assigned Portal roles.
+      const productClaims = payload[ns + "products"];
+      const roleClaims = payload[ns + "roles"];
+      if (
+        payload[ns + "portal_staff_registration"] === true &&
+        payload.aud === config.audience &&
+        Array.isArray(productClaims) &&
+        productClaims.length === 1 &&
+        Array.isArray(roleClaims) &&
+        roleClaims.length === 1 &&
+        principal.roles[0] === "administrator" &&
+        Math.floor(Date.now() / 1000) - principal.mfaTime <= 300 &&
+        idToken?.email_verified === true
+      ) {
+        const email = z.email().max(254).safeParse(idToken.email);
+        if (email.success)
+          principal.registrationEmail = email.data.toLowerCase();
+      }
       if (flow.operationStartedAt !== undefined) {
         const now = Math.floor(Date.now() / 1000);
         if (
@@ -464,10 +484,32 @@ export function registerManagedPortal(
       const session = token(),
         csrf = token();
       await transaction(async (c) => {
+        if (principal.registrationEmail) {
+          const inserted = await c.query(
+            `INSERT INTO users(id,email,password_hash,role,managed_staff_issuer,managed_staff_subject)
+             SELECT $1,$2,'!managed:','administrator',$3,$4
+             WHERE NOT EXISTS (SELECT 1 FROM users WHERE lower(email)=$2)
+               AND NOT EXISTS (SELECT 1 FROM access_registrations WHERE email=$2 AND audience='admin' AND state='rejected')
+             ON CONFLICT DO NOTHING RETURNING id`,
+            [
+              principal.id,
+              principal.registrationEmail,
+              config.issuer,
+              principal.subject,
+            ],
+          );
+          if (inserted.rowCount) {
+            await c.query(
+              "INSERT INTO audit(actor_id,action,request_id) VALUES($1,'auth.managed_staff_provisioned',$2)",
+              [principal.id, req.id],
+            );
+          }
+        }
         const user = (
           await c.query(
-            "SELECT role FROM users WHERE id=$1 AND NOT disabled FOR SHARE",
-            [principal.id],
+            `SELECT role FROM users WHERE id=$1 AND NOT disabled AND
+             (managed_staff_issuer IS NULL OR (managed_staff_issuer=$2 AND managed_staff_subject=$3)) FOR SHARE`,
+            [principal.id, config.issuer, principal.subject],
           )
         ).rows[0];
         if (
