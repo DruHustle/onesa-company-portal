@@ -1,5 +1,7 @@
 # Onesa Account architecture
 
+Onesa Identity handles new member and administrator registrations. Portal registration bookmarks preserve the requested audience and send applicants to the configured Identity UI. An administrator application requests review and grants no role. When that destination is unavailable, Portal offers no local signup. The Portal proxy and API reject new local registration requests independently of the staff sign-in configuration.
+
 ## Current global-administration boundary
 
 Onesa Identity owns global account lifecycle, verified email, account status, product access and administrator assignment. Company Portal owns company content, its CMS and business-workspace tasks; it is not a global user-administration console. A Portal API using delegated administration must refuse legacy global-account administration endpoints with `IDENTITY_ADMINISTRATION_MOVED`. The Portal admin workspace routes users to the configured Identity administration UI. If that destination is absent or invalid, it must show an explicit unavailable state and never fall back to local user-management controls.
