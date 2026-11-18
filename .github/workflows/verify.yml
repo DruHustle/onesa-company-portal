@@ -22,7 +22,7 @@ jobs:
   verify:
     if: ${{ (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (needs.changes.result == 'success' && needs.changes.outputs.verify == 'true') }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     services:
       postgres:
         image: postgres:17-alpine
@@ -135,7 +135,7 @@ jobs:
     - run: npm run seed
       working-directory: onesa-company-portal-backend
     - name: Install browsers and OS dependencies on GitHub-hosted Ubuntu
-      timeout-minutes: 10
+      timeout-minutes: 20
       run: |
         sudo -n --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,RUNNER_OS,GITHUB_REPOSITORY python3 ../scripts/ci/browser_dependencies.py
         npx playwright install --with-deps chromium firefox webkit
