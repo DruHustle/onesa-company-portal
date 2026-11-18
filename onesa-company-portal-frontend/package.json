@@ -28,7 +28,7 @@
     "test:drone-product": "node --test unit/drone-product-diagnostics.test.mjs && node scripts/test-drone-product.mjs",
     "test:nvidia-assets": "node scripts/validate-nvidia-assets.mjs && node --test unit/nvidia-assets.test.mjs",
     "test:nvidia-browser": "node scripts/test-nvidia-library.mjs",
-    "test:dependency-security": "node --test unit/dependency-security.test.mjs",
+    "test:dependency-security": "node --test unit/dependency-security.test.mjs unit/picomatch-redos.test.mjs",
     "test:infrastructure": "node scripts/test-infrastructure.mjs"
   },
   "dependencies": {
