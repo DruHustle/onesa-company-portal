@@ -222,8 +222,8 @@ def atomic(path, text, mode):
 # intermittent HTTP 429 must not block installing signed Ubuntu browser libs.
 # Ignore it ONLY on a disposable runner after verifying the exact stock source.
 _MICROSOFT_SOURCE = re.compile(
-    r"deb\\s+\\[arch=[a-z0-9,]+\\s+signed-by=/usr/share/keyrings/microsoft-prod\\.gpg\\]"
-    r"\\s+https://packages\\.microsoft\\.com/ubuntu/24\\.04/prod\\s+noble\\s+main"
+    r"deb\s+\[arch=[a-z0-9,]+\s+signed-by=/usr/share/keyrings/microsoft-prod\.gpg\]"
+    r"\s+https://packages\.microsoft\.com/ubuntu/24\.04/prod\s+noble\s+main"
 )
 
 
