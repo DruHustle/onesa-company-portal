@@ -16,6 +16,7 @@ class FrontendIdentityScopeTests(unittest.TestCase):
     def inventories(self):
         new = {name: hashlib.sha256(
                    fixtures.reviewed_frontend_bytes(name) if name in fixtures.REVIEWED_FILES
+                   else fixtures.reviewed_nvidia_lock() if name == identity.PREFIX + 'package-lock.json'
                    else (ROOT / name).read_bytes()).hexdigest()
                for name in identity.PINS}
         old = dict(new)
