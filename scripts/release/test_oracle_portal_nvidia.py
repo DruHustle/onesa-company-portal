@@ -17,7 +17,7 @@ import oracle_portal as r
 import oracle_portal_frontend as frontend
 import test_oracle_install as install_tests
 import test_oracle_portal_product as product_tests
-from portal_profile_test_fixtures import reviewed_frontend_bytes
+from portal_profile_test_fixtures import reviewed_frontend_bytes, reviewed_nvidia_lock
 
 ROOT = Path(__file__).resolve().parents[2]
 PREFIX = r.NVIDIA_PREFIX
@@ -92,6 +92,7 @@ class NvidiaScopeTests(unittest.TestCase):
             PREFIX + "vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
         }:
             self.files[name] = (reviewed_frontend_bytes(name) if name == PREFIX + "package.json"
+                                else reviewed_nvidia_lock() if name == PREFIX + "package-lock.json"
                                 else (ROOT / name).read_bytes())
         self.refresh()
 
