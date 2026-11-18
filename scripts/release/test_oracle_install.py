@@ -14,7 +14,7 @@ from unittest.mock import patch
 import oracle_install as installer
 import oracle_owner as verifier
 import oracle_portal as runner
-from portal_profile_test_fixtures import schema_016_migrations
+from portal_profile_test_fixtures import schema_016_migrations, reviewed_nvidia_lock
 
 
 class Source:
@@ -104,7 +104,9 @@ class InstallTests(unittest.TestCase):
             "onesa-company-portal-frontend/vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
             "scripts/check_tls_bundle.mjs",
         ]:
-            files[name] = (repo / name).read_bytes()
+            files[name] = (reviewed_nvidia_lock()
+                           if name.endswith('/package-lock.json') and self.allowed == installer.NVIDIA_ALLOWED
+                           else (repo / name).read_bytes())
         for name in ["src/config/products.ts", "src/components/home-products.tsx"]:
             files["onesa-company-portal-frontend/" + name] = (
                 b"// disposable parser fixture only\n"

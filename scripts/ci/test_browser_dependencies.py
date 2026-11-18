@@ -141,6 +141,44 @@ class BrowserDependenciesTests(unittest.TestCase):
             self.assertNotIn("AllowUnauthenticated", browser.NETWORK)
             self.assertNotIn("AllowInsecure", browser.NETWORK)
 
+    def test_runner_optional_microsoft_feed_quarantine_is_bounded_and_idempotent(self):
+        stock = (
+            "# GitHub hosted source only\n"
+            "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] "
+            "https://packages.microsoft.com/ubuntu/24.04/prod noble main\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            apt, ubuntu = self.fixture(root)
+            microsoft = apt / "sources.list.d/microsoft-prod.list"
+            microsoft.write_text(stock)
+            microsoft.chmod(0o644)
+            self.assertTrue(browser.optional_microsoft_feed(microsoft, stock))
+            self.assertEqual(browser.prepare(root)["optional_microsoft_feeds_disabled"], 1)
+            parked = microsoft.with_name(microsoft.name + ".disabled")
+            self.assertFalse(microsoft.exists())
+            self.assertEqual(parked.read_text(), stock)
+            self.assertEqual(browser.prepare(root)["optional_microsoft_feeds_disabled"], 0)
+            self.assertIn("https://archive.ubuntu.com/ubuntu", ubuntu.read_text())
+
+        for wrong in (
+            "deb https://packages.microsoft.com/ubuntu/24.04/prod noble main\n",
+            "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] "
+            "https://attacker.example/ubuntu/24.04/prod noble main\n",
+            "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] "
+            "https://packages.microsoft.com/ubuntu/24.04/prod noble main\n"
+            "deb https://unrelated.example noble main\n",
+        ):
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                apt, _ = self.fixture(root)
+                microsoft = apt / "sources.list.d/microsoft-prod.list"
+                microsoft.write_text(wrong)
+                microsoft.chmod(0o644)
+                self.assertFalse(browser.optional_microsoft_feed(microsoft, wrong))
+                self.assertEqual(browser.prepare(root)["optional_microsoft_feeds_disabled"], 0)
+                self.assertEqual(microsoft.read_text(), wrong)
+
     def test_conflicting_config_preserves_sources(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

@@ -123,10 +123,10 @@ jobs:
         sh -n infra/oracle/clamav/health.sh
     - name: Verify backend and shared Mobile identity with disposable PostgreSQL
       run: python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src tests && python3 ../scripts/ci/analyze.py
-        tsc -- node_modules/.bin/tsc --pretty false && npm test && npm audit --audit-level=high
+        tsc -- node_modules/.bin/tsc --pretty false && npm test && node ../scripts/ci/audit-patched-picomatch.mjs
       working-directory: onesa-company-portal-backend
     - run: python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src && python3 ../scripts/ci/analyze.py
-        tsc -- node_modules/.bin/tsc --noEmit --pretty false && npm run test:domains && npm run test:workspace-drafts && npm run test:public-fetch && npm run build && npm run test:homepage-loading && npm audit --audit-level=high
+        tsc -- node_modules/.bin/tsc --noEmit --pretty false && npm run test:domains && npm run test:workspace-drafts && npm run test:public-fetch && npm run build && npm run test:homepage-loading && node --test unit/picomatch-redos.test.mjs ../scripts/ci/audit-patched-picomatch.test.mjs && node ../scripts/ci/audit-patched-picomatch.mjs
       working-directory: onesa-company-portal-frontend
     - name: Verify TLS policy in traced server routes
       run: node scripts/check_tls_bundle.mjs onesa-company-portal-frontend

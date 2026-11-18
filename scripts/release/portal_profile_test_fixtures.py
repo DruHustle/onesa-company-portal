@@ -99,6 +99,23 @@ REVIEWED_BLOBS = {
 }
 
 
+def reviewed_nvidia_lock():
+    """Return the exact pre-upgrade NVIDIA release dependency closure.
+
+    The current lockfile may change for an unrelated security update; historic
+    qualification fixtures must retain their reviewed original dependencies
+    without borrowing new production files or reading Git history.
+    """
+    path = FIXTURE_ROOT / "nvidia-reviewed-package-lock.fixture"
+    try:
+        data = path.read_bytes()
+    except OSError as exc:
+        raise ValueError("LEGACY_TEST_FIXTURE_UNAVAILABLE") from exc
+    if hashlib.sha256(data).hexdigest() != "a14df9606964f633c89d4237cb99b182767f6dbd47adfde92835f2b0d96bd4f1":
+        raise ValueError("LEGACY_TEST_FIXTURE_BYTES_CHANGED")
+    return data
+
+
 def reviewed_frontend_bytes(name):
     if name not in REVIEWED_FILES:
         raise ValueError("UNREVIEWED_LEGACY_TEST_FIXTURE_PATH")
