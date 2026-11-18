@@ -1,5 +1,5 @@
 {
-  "name": "picomatch",
+  "name": "@onesa/picomatch",
   "description": "Onesa reviewed local mitigation of picomatch 4.0.7 repeated-extglob ReDoS; NOT an upstream release.",
   "version": "4.0.8-onesa.1",
   "homepage": "https://github.com/micromatch/picomatch",
