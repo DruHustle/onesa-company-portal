@@ -217,6 +217,24 @@ def atomic(path, text, mode):
         pending.unlink(missing_ok=True)
 
 
+
+# GitHub-hosted Ubuntu includes this unrelated Microsoft package feed. Its
+# intermittent HTTP 429 must not block installing signed Ubuntu browser libs.
+# Ignore it ONLY on a disposable runner after verifying the exact stock source.
+_MICROSOFT_SOURCE = re.compile(
+    r"deb\\s+\\[arch=[a-z0-9,]+\\s+signed-by=/usr/share/keyrings/microsoft-prod\\.gpg\\]"
+    r"\\s+https://packages\\.microsoft\\.com/ubuntu/24\\.04/prod\\s+noble\\s+main"
+)
+
+
+def optional_microsoft_feed(path, content):
+    if path.name != "microsoft-prod.list":
+        return False
+    entries = [line.strip() for line in content.splitlines()
+               if line.strip() and not line.lstrip().startswith("#")]
+    return len(entries) == 1 and _MICROSOFT_SOURCE.fullmatch(entries[0]) is not None
+
+
 def prepare(root, *, archive_dns_unavailable=False):
     apt = root / "etc/apt"
     parts = apt / "sources.list.d"
@@ -226,11 +244,18 @@ def prepare(root, *, archive_dns_unavailable=False):
     if not 1 <= len(files) <= 32:
         raise ValueError("Bounded existing APT source inventory required")
     replacements = []
+    optional_sources = []
     mirror_files = set()
     mirror_updates = 0
     for path in files:
         before = regular(path)
         text = path.read_text()
+        if optional_microsoft_feed(path, text):
+            disabled = path.with_name(path.name + ".disabled")
+            if disabled.exists() or disabled.is_symlink():
+                raise ValueError("Optional source disable target already exists")
+            optional_sources.append((path, disabled))
+            continue
         updated, count = rewrite_sources(text, path.suffix == ".sources", mirror_files)
         if count:
             replacements.append((path, updated, stat.S_IMODE(before.st_mode), count))
@@ -250,9 +275,12 @@ def prepare(root, *, archive_dns_unavailable=False):
         raise ValueError("APT configuration aliases are not accepted")
     for path, updated, mode, _ in replacements:
         atomic(path, updated, mode)
+    for path, disabled in optional_sources:
+        os.replace(path, disabled)
     atomic(config, NETWORK, 0o644)
     return {
         "source_files_updated": len(replacements) - mirror_updates,
+        "optional_microsoft_feeds_disabled": len(optional_sources),
         "mirror_list_files_updated": mirror_updates,
         "mirror_URIs_updated": sum(row[3] for row in replacements),
         "request_timeout_seconds": 20,
