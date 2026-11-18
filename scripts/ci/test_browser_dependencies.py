@@ -259,9 +259,9 @@ class BrowserDependenciesTests(unittest.TestCase):
 
     def test_direct_ec2_archive_source_rewrites_without_changing_signed_suites(self):
         text = (
-            "Types: deb\\nURIs: http://us-east-2.ec2.archive.ubuntu.com/ubuntu/\\n"
-            "Suites: noble noble-updates\\nComponents: main universe\\n"
-            "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\\n"
+            "Types: deb\nURIs: http://us-east-2.ec2.archive.ubuntu.com/ubuntu/\n"
+            "Suites: noble noble-updates\nComponents: main universe\n"
+            "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n"
         )
         updated, count = browser.rewrite_sources(text, True)
         self.assertEqual(count, 1)
@@ -275,20 +275,20 @@ class BrowserDependenciesTests(unittest.TestCase):
             root = Path(directory).resolve()
             apt, source = self.fixture(root)
             source.write_text(
-                "URIs: mirror+file:/etc/apt/apt-mirrors.txt\\n"
-                "Suites: noble noble-security\\nSigned-By: /keys/ubuntu.gpg\\n"
+                "URIs: mirror+file:/etc/apt/apt-mirrors.txt\n"
+                "Suites: noble noble-security\nSigned-By: /keys/ubuntu.gpg\n"
             )
             before = source.read_bytes()
             mirror = apt / "apt-mirrors.txt"
             mirror.write_text(
-                "http://us-east-2.ec2.archive.ubuntu.com/ubuntu/ priority:1\\n"
-                "https://archive.ubuntu.com/ubuntu/ priority:2\\n"
-                "https://security.ubuntu.com/ubuntu/ priority:3\\n"
+                "http://us-east-2.ec2.archive.ubuntu.com/ubuntu/ priority:1\n"
+                "https://archive.ubuntu.com/ubuntu/ priority:2\n"
+                "https://security.ubuntu.com/ubuntu/ priority:3\n"
             )
             mirror.chmod(0o644)
             expected = (
-                "https://archive.ubuntu.com/ubuntu/ priority:2\\n"
-                "https://security.ubuntu.com/ubuntu/ priority:3\\n"
+                "https://archive.ubuntu.com/ubuntu/ priority:2\n"
+                "https://security.ubuntu.com/ubuntu/ priority:3\n"
             )
             result = browser.prepare(root)
             self.assertEqual(result["mirror_URIs_updated"], 1)
@@ -301,9 +301,9 @@ class BrowserDependenciesTests(unittest.TestCase):
             )
 
     def test_regional_failover_removes_reviewed_ec2_and_azure_mirrors(self):
-        regional = "http://us-east-2.ec2.archive.ubuntu.com/ubuntu/ priority:1\\n"
-        azure = "http://azure.archive.ubuntu.com/ubuntu/ priority:2\\n"
-        canonical = "https://archive.ubuntu.com/ubuntu/ priority:3\\n"
+        regional = "http://us-east-2.ec2.archive.ubuntu.com/ubuntu/ priority:1\n"
+        azure = "http://azure.archive.ubuntu.com/ubuntu/ priority:2\n"
+        canonical = "https://archive.ubuntu.com/ubuntu/ priority:3\n"
         self.assertEqual(
             browser.rewrite_mirror_list(regional + azure + canonical),
             (canonical, 2),
