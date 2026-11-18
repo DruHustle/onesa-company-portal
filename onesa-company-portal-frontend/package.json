@@ -68,6 +68,7 @@
     },
     "@typescript-eslint/typescript-estree@8.71.1": {
       "minimatch": "11.0.1"
-    }
+    },
+    "picomatch": "file:vendor/onesa-picomatch-redos-4.0.8-onesa.1"
   }
 }
