@@ -197,7 +197,7 @@ for (const privateRepo of [true, false]) {
 
     def test_git_previews_do_not_enable_native_production_deployment(self):
         config = json.loads(
-            (ROOT / (("onesa-company-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else ROOT.name) + "-frontend") / "vercel.json").read_text()
+            (ROOT / (("onesa-portal" if ROOT.name in {"onesa-portal", "portal-rename-refs"} else ROOT.name) + "-frontend") / "vercel.json").read_text()
         )
         self.assertEqual(
             config["git"]["deploymentEnabled"],
