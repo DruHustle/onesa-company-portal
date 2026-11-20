@@ -544,9 +544,9 @@ export function AdminPortal({
                   <h2>{group.label}</h2>
                   {tabs.map((name) => name === "Users" && identityAdminRequired ? (
                     identityAdmin ? (
-                      <a key={name} href={identityAdmin} referrerPolicy="no-referrer">Manage users in Onesa Identity</a>
+                      <a key={name} href={identityAdmin} referrerPolicy="no-referrer">Manage Portal administrators in Onesa Identity</a>
                     ) : (
-                      <span key={name} role="status">Global user administration is managed in Onesa Identity. The administration URL is not configured for this deployment.</span>
+                      <span key={name} role="status">Portal administrator management is in Onesa Identity. The administration URL is not configured for this deployment.</span>
                     )
                   ) : (
                     <button
