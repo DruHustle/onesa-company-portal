@@ -172,7 +172,7 @@ class ProfileTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         files = {
             str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in (root / "onesa-company-portal-backend").rglob("*")
+            for p in (root / "onesa-portal-backend").rglob("*")
             if p.is_file() and "node_modules" not in p.parts and "dist" not in p.parts
         }
         # The real candidate has migration 017; the historical profile must reject it.

@@ -158,7 +158,7 @@ def render_inventory(token):
                     == "off"
                     or item.get("autoDeploy") == "no",
                     "backend_root_matches": item.get("rootDir")
-                    == ("onesa-company-portal" if project == "onesa-portal" else project)
+                    == ("onesa-portal" if project == "onesa-portal" else project)
                     + "-backend",
                     "persistent_disk_configured": bool(details.get("disk")),
                 }
@@ -259,7 +259,7 @@ def render(
     )
     if (
         role == "backend"
-        and expected_root == "onesa-company-portal-backend"
+        and expected_root == "onesa-portal-backend"
         and isinstance(env, list)
         and len(env) < 100
     ):
@@ -341,7 +341,7 @@ def render(
         "environment_api_http": env_status,
         **(
             {"database_binding": portal_database_binding(env)}
-            if expected_root == "onesa-company-portal-backend"
+            if expected_root == "onesa-portal-backend"
             else {}
         ),
         "required_environment_nonempty": environment_checks(
@@ -528,10 +528,10 @@ def main():
     )
     expected_branch = "staging" if portal and scope == "staging" else "main"
     backend_root = (
-        "onesa-company-portal-backend" if portal else "onesa-ai-platform-backend"
+        "onesa-portal-backend" if portal else "onesa-ai-platform-backend"
     )
     frontend_root = (
-        "onesa-company-portal-frontend"
+        "onesa-portal-frontend"
         if portal
         else "onesa-ai-platform-frontend/apps/chat"
     )

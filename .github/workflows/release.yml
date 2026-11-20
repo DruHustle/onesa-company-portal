@@ -47,7 +47,7 @@ jobs:
     - name: Package selected application
       env:
         APPLICATION: ${{ inputs.application }}
-      run: 'docker build -t "portal-${APPLICATION}:${GITHUB_SHA}" "./onesa-company-portal-${APPLICATION}"
+      run: 'docker build -t "portal-${APPLICATION}:${GITHUB_SHA}" "./onesa-portal-${APPLICATION}"
 
         docker save "portal-${APPLICATION}:${GITHUB_SHA}" | gzip > portal-images.tar.gz
 

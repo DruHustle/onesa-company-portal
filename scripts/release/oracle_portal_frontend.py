@@ -25,7 +25,7 @@ PLAN = Path("/etc/onesa/oracle-portal-frontend-release.json")
 ROOT = Path("/var/lib/onesa/release-verification/portal/frontend")
 PROVIDER = Path("/etc/onesa/oracle-portal-vercel-observer.json")
 CLI_AUTH = Path("/etc/onesa/oracle-vercel-cli")
-APP_ROOT = "onesa-company-portal-frontend"
+APP_ROOT = "onesa-portal-frontend"
 API_ORIGINS = {
     "staging": "https://portal-api-staging.onesa.eu",
     "production": "https://portal-api.onesa.eu",
