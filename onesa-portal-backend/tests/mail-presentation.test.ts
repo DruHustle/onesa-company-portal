@@ -23,7 +23,7 @@ test('branded sign-in mail embeds the exact owner artwork and retains the comple
  assert.match(html,/cid:onesa-company-logo/);
  assert.equal(createHash('sha256').update(Buffer.from(brand.base64,'base64')).digest('hex'),mailBrand.sha256);
  assert.equal(mailBrand.sha256,'8104289c621d141332ac7d8f6176b74fb3b4246cecac1b7c174404cfefb685d0');
- assert.deepEqual(Buffer.from(brand.base64,'base64'),readFileSync(new URL('../../onesa-company-portal-frontend/public/brand/icons/v1/onesa-company-64.png',import.meta.url)));
+ assert.deepEqual(Buffer.from(brand.base64,'base64'),readFileSync(new URL('../../onesa-portal-frontend/public/brand/icons/v1/onesa-company-64.png',import.meta.url)));
  assert.equal(Buffer.from(brand.base64,'base64').length,2916);
  assert.doesNotMatch(html,/<(?:script|iframe|form)|onerror=|@import|src="https?:/i);
  assert.match(html,/Arial, Helvetica, sans-serif/);
