@@ -6,18 +6,18 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules/npm /tmp/npm
 WORKDIR /opt/onesa-company-portal
-COPY onesa-company-portal-frontend/package.json onesa-company-portal-frontend/package-lock.json ./onesa-company-portal-frontend/
-COPY onesa-company-portal-frontend/vendor ./onesa-company-portal-frontend/vendor
-RUN node /tmp/npm/bin/npm-cli.js ci --ignore-scripts --prefix onesa-company-portal-frontend && node onesa-company-portal-frontend/node_modules/playwright/cli.js install --with-deps chromium firefox webkit && ln -s onesa-company-portal-frontend/node_modules node_modules && rm -rf /tmp/npm /root/.npm /var/lib/apt/lists/* /usr/local/lib/node_modules/npm /opt/yarn-* && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn /usr/local/bin/yarnpkg
+COPY onesa-portal-frontend/package.json onesa-portal-frontend/package-lock.json ./onesa-portal-frontend/
+COPY onesa-portal-frontend/vendor ./onesa-portal-frontend/vendor
+RUN node /tmp/npm/bin/npm-cli.js ci --ignore-scripts --prefix onesa-portal-frontend && node onesa-portal-frontend/node_modules/playwright/cli.js install --with-deps chromium firefox webkit && ln -s onesa-portal-frontend/node_modules node_modules && rm -rf /tmp/npm /root/.npm /var/lib/apt/lists/* /usr/local/lib/node_modules/npm /opt/yarn-* && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn /usr/local/bin/yarnpkg
 # The explicit Node/Python probe never starts the base image's service manager.
 # Remove that unused Go executable rather than carrying its vulnerable runtime.
 RUN rm -f /usr/bin/pebble
 COPY scripts/release ./scripts/release
 COPY scripts/check_tls_bundle.mjs ./scripts/check_tls_bundle.mjs
 COPY scripts/oracle_backup_store.mjs ./scripts/oracle_backup_store.mjs
-COPY onesa-company-portal-frontend/public/models/nvidia/manifest.json ./onesa-company-portal-frontend/public/models/nvidia/manifest.json
-COPY onesa-company-portal-frontend/src/config/nvidia-reference-assets.json ./onesa-company-portal-frontend/src/config/nvidia-reference-assets.json
-COPY onesa-company-portal-frontend/public/licenses/three.txt ./onesa-company-portal-frontend/public/licenses/three.txt
+COPY onesa-portal-frontend/public/models/nvidia/manifest.json ./onesa-portal-frontend/public/models/nvidia/manifest.json
+COPY onesa-portal-frontend/src/config/nvidia-reference-assets.json ./onesa-portal-frontend/src/config/nvidia-reference-assets.json
+COPY onesa-portal-frontend/public/licenses/three.txt ./onesa-portal-frontend/public/licenses/three.txt
 # Remove build history/tooling from the final host-mounted credential boundary.
 FROM scratch
 COPY --from=complete / /
