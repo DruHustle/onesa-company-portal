@@ -20,7 +20,7 @@ establish unrelated application deployment/processing approval.
 
 | Hostname | Application | Vercel project / root |
 | --- | --- | --- |
-| `onesa.eu` | Public bilingual company site | `onesa-company-portal` / `onesa-company-portal-frontend` |
+| `onesa.eu` | Public bilingual company site | `onesa-company-portal` / `onesa-portal-frontend` |
 | `portal.onesa.eu` | Private administration | Same project and frontend; hostname selects `/admin` |
 | `platform.onesa.eu` | AI platform | AI chat project / `onesa-ai-platform-frontend/apps/chat` |
 | `robot.onesa.eu` | Future robot operator interface | Reserved intention only; no executable application exists |

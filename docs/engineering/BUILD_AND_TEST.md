@@ -182,7 +182,7 @@ geometry read. Its original click, timeouts, assertions and error are preserved,
 and its exact reviewed script is source-pinned. These optional failure files do
 not supply a PASS receipt or replace any qualification observation.
 
-Run these from `onesa-company-portal-frontend` after a locked install:
+Run these from `onesa-portal-frontend` after a locked install:
 
 ```sh
 npm run test:nvidia-assets
@@ -282,7 +282,7 @@ use the independent local callable adapter; `@typescript-eslint/typescript-estre
 uses minimatch's native named exports. The already locked ESLint version is pinned
 in `package.json` so its exact-parent override remains reproducible. This is a
 consumer-specific change and does not replace every minimatch dependency globally.
-Run `npm --prefix onesa-company-portal-frontend run test:dependency-security` after
+Run `npm --prefix onesa-portal-frontend run test:dependency-security` after
 a clean locked install. Its six cases check installed identities and upstream
 integrity, legacy pattern behavior, actual ESLint enumeration and error detection,
 Redocly header matching, estree's native exports and bounded adverse preprocessing.
@@ -298,7 +298,7 @@ closures. It runs in the existing Oracle preparation suite after frontend instal
 The backend now carries its own independently packaged callable adapter for the
 same patched minimatch 11.0.1 implementation. Its exact ESLint consumers use the
 callable interface, while TypeScript's parser retains the upstream named exports.
-Run `npm --prefix onesa-company-portal-backend run test:dependency-security` after
+Run `npm --prefix onesa-portal-backend run test:dependency-security` after
 a clean locked install. Five tests check the actual installed consumers, upstream
 integrity/license, ESLint file enumeration and errors, pattern behavior and bounded
 adverse preprocessing. Verification runs both frontend and backend suites. The
@@ -546,14 +546,14 @@ and still require compatibility checks and the qualified release path.
 ## Frontend
 
 ```sh
-npm --prefix onesa-company-portal-frontend ci
-npm --prefix onesa-company-portal-frontend run lint
-npm --prefix onesa-company-portal-frontend run typecheck
-npm --prefix onesa-company-portal-frontend run build
-docker build -t onesa-portal-frontend:local onesa-company-portal-frontend
+npm --prefix onesa-portal-frontend ci
+npm --prefix onesa-portal-frontend run lint
+npm --prefix onesa-portal-frontend run typecheck
+npm --prefix onesa-portal-frontend run build
+docker build -t onesa-portal-frontend:local onesa-portal-frontend
 ```
 
-For local development: `npm --prefix onesa-company-portal-frontend run dev`.
+For local development: `npm --prefix onesa-portal-frontend run dev`.
 Configure `BACKEND_URL` privately on the frontend server, never in a browser secret.
 The container listens on 3300 and needs same-origin routing for `/api/v1/*` to the
 backend. `SITE_URL` and public-release settings are build-time configuration.
@@ -563,7 +563,7 @@ root `.env`, so export values explicitly for independent deployments.
 After the production build, run the homepage loading regression:
 
 ```sh
-npm --prefix onesa-company-portal-frontend run test:homepage-loading
+npm --prefix onesa-portal-frontend run test:homepage-loading
 ```
 
 It starts an isolated loopback mock API with synthetic content and exercises both
@@ -575,7 +575,7 @@ does not establish deployed performance or hosted acceptance.
 The Node-only transport regression is independent of Next startup and browser installation:
 
 ```sh
-npm --prefix onesa-company-portal-frontend run test:public-fetch
+npm --prefix onesa-portal-frontend run test:public-fetch
 ```
 
 It checks real synthetic loopback delayed headers, stalled bodies, upstream cancellation,
@@ -583,7 +583,7 @@ recovery and404 with no database or provider. After installing the existing Chro
 Playwright browsers, also run:
 
 ```sh
-npm --prefix onesa-company-portal-frontend run test:public-loading
+npm --prefix onesa-portal-frontend run test:public-loading
 ```
 
 This separate production-renderer regression binds synthetic loopback services and
@@ -651,18 +651,18 @@ Consumed allowance is not reset. See
 [Neon scale to zero](https://neon.com/docs/introduction/scale-to-zero).
 
 ```sh
-npm --prefix onesa-company-portal-backend ci
-npm --prefix onesa-company-portal-backend run lint
-npm --prefix onesa-company-portal-backend run typecheck
-npm --prefix onesa-company-portal-backend run build
-(cd onesa-company-portal-backend && node --import tsx --test tests/unit.test.ts tests/contracts.test.ts)
-docker build -t onesa-portal-backend:local onesa-company-portal-backend
+npm --prefix onesa-portal-backend ci
+npm --prefix onesa-portal-backend run lint
+npm --prefix onesa-portal-backend run typecheck
+npm --prefix onesa-portal-backend run build
+(cd onesa-portal-backend && node --import tsx --test tests/unit.test.ts tests/contracts.test.ts)
+docker build -t onesa-portal-backend:local onesa-portal-backend
 ```
 
 For a simpler unit command, from the backend directory use
 `node --import tsx --test tests/unit.test.ts`. Supply `DATABASE_URL`, `SESSION_KEY`
 and the other backend env values at runtime. Native development:
-`npm --prefix onesa-company-portal-backend run dev`; production: built server or image.
+`npm --prefix onesa-portal-backend run dev`; production: built server or image.
 The native scripts load root `.env` when present; examples are references, not auto-loaders.
 
 ## Integrated checks
@@ -671,7 +671,7 @@ The native scripts load root `.env` when present; examples are references, not a
 validate contracts. Full backend `npm test` requires a disposable PostgreSQL database
 with `TEST_DATABASE_URL` ending `_test`; it truncates test tables. Never point it at
 application data. Browser tests need an isolated seeded stack and installed Chromium:
-`npm --prefix onesa-company-portal-frontend run test:e2e`.
+`npm --prefix onesa-portal-frontend run test:e2e`.
 
 The test preload and every backend test entrypoint apply
 `tests/local-environment.ts` before importing runtime configuration. It rejects
@@ -725,7 +725,7 @@ authentication and SIGTERM. Never supply an application database to this test.
 
 ## Approved company particulars and CMS
 
-The maintained private owner record is `onesa-company-portal-backend/records/company-facts.v1.json`.
+The maintained private owner record is `onesa-portal-backend/records/company-facts.v1.json`.
 Only its eight expressly approved public fields are generated into independent product
 snapshots; unapproved business claims, private records and identifiers remain excluded.
 Run `python3 scripts/sync_company_details.py --workspace --check` when all three local
@@ -733,7 +733,7 @@ repositories are available, or omit `--workspace` for the independent Portal bui
 The generated snapshots are committed, so CI and deployments require no private record
 or sibling checkout. Never commit the private record simply to make a check pass.
 
-`npm --prefix onesa-company-portal-backend run seed` is an explicit operator command,
+`npm --prefix onesa-portal-backend run seed` is an explicit operator command,
 never an application startup action. It synchronizes the approved company particulars
 and EN/DE legal-notice CMS text transactionally, preserving previous CMS revisions.
 New pages remain drafts; existing publication states and all legal/privacy settings
@@ -831,9 +831,9 @@ explicitly approved isolated target, never a fallback from ordinary local tests.
 
 ## Engineering Docs identity verification
 
-`npm --prefix onesa-company-portal-frontend run test:domains` also checks the
+`npm --prefix onesa-portal-frontend run test:domains` also checks the
 identity path/callback allowlist. After a production frontend build and Chromium
-installation, run `npm --prefix onesa-company-portal-frontend run test:engineering-sign-in`.
+installation, run `npm --prefix onesa-portal-frontend run test:engineering-sign-in`.
 It starts isolated loopback synthetic services and tests eight mobile/desktop
 appearance views, validation recovery, focus and axe; it sends no email and reads
 no database/provider configuration. Existing full backend tests exercise the actual
@@ -846,7 +846,7 @@ or email inbox receipt. The separate activation sequence is in
 
 ## Controlled workspace draft regressions
 
-With Node 24, run `npm --prefix onesa-company-portal-frontend run test:workspace-drafts`
+With Node 24, run `npm --prefix onesa-portal-frontend run test:workspace-drafts`
 for history-event ordering, including native confirmation's nested event loop. The
 Governance and editorial Playwright suites use the guarded loopback `_test` database
 and real synthetic accounts. They cover unnamed controlled payloads, review notes,
@@ -866,7 +866,7 @@ acceptance. The owner-held asset brief describes the unchanged hand/Onesa-button
 No third-party embed, audio, looping, new product UI or fabricated asset is permitted.
 Disable the frontend flag to retain the poster without changing any backend.
 
-`npm --prefix onesa-company-portal-frontend run test:hero-motion` runs policy and
+`npm --prefix onesa-portal-frontend run test:hero-motion` runs policy and
 three-engine synthetic DOM controls. It verifies no source assignment for reduced
 motion, data saving, slow connections or invalid assets; rejected/stalled playback,
 mobile selection and changed constraints restore the poster. It does not qualify a
@@ -877,7 +877,7 @@ synthetic browser scratch may need owner cleanup because of macOS protected fold
 ## Engineering sign-in request feedback
 
 After a frontend build, run
-`npm --prefix onesa-company-portal-frontend run test:engineering-sign-in`. The isolated
+`npm --prefix onesa-portal-frontend run test:engineering-sign-in`. The isolated
 renderer covers delayed-send disabled visuals in system light/dark appearance,
 duplicate submission prevention, failed-send email preservation, error clearance
 on retry, a single visible Sent status without a Sent button, the 30-second server
@@ -919,7 +919,7 @@ See the [advisory](https://github.com/advisories/GHSA-6q48-6c7w-9gw2) and
 [Node TLS API](https://nodejs.org/api/tls.html#tlssetdefaultcacertificatescerts).
 Source tests are separate from source-bound staging and production acceptance.
 After the frontend build, run `node scripts/check_tls_bundle.mjs
-onesa-company-portal-frontend` from the repository root. The guard checks actual
+onesa-portal-frontend` from the repository root. The guard checks actual
 gateway and sign-in server traces and rejects trust-code inclusion in browser
 bundles. Check owner-built Vercel artifacts too by supplying their `.vercel/output`
 directory as the third argument. Instrumentation source alone is insufficient
@@ -1427,7 +1427,7 @@ from public hosted acceptance. Neither its concept media nor a Company publicati
 qualifies the Drone service, physical flight or an operational delivery offering.
 
 After building the frontend, run `npm run test:drone-product` from
-`onesa-company-portal-frontend`. The production-renderer fixture refuses private frontend
+`onesa-portal-frontend`. The production-renderer fixture refuses private frontend
 env files, uses a synthetic loopback content service and checks EN/DE, 390/1440px,
 light/dark, keyboard-operable concept rotation, axe and existing enquiry links.
 The drone media checks decode responsive images, require zero video requests before
@@ -1436,7 +1436,7 @@ and native controls, exercise a failed video request and preserve no-JavaScript
 content. They also check the homepage and portfolio entry. The silent film animates
 AI-generated concept stills; it is not footage of aircraft, simulation or a working
 product. Prompts, image/video hashes and processing are in
-`onesa-company-portal-frontend/public/brand/sources.json`.
+`onesa-portal-frontend/public/brand/sources.json`.
 It does not submit a live enquiry or establish hosted publication approval.
 
 If the product interaction fails, its existing optional diagnostic also retains
@@ -1786,13 +1786,13 @@ release qualifications are prerequisites to activation.
 From this Portal product directory after the locked installs:
 
 ```sh
-node onesa-company-portal-frontend/scripts/check-billing-bundle.mjs
-npm --prefix onesa-company-portal-backend run api:export
-npm --prefix onesa-company-portal-frontend run api:generate
+node onesa-portal-frontend/scripts/check-billing-bundle.mjs
+npm --prefix onesa-portal-backend run api:export
+npm --prefix onesa-portal-frontend run api:generate
 python3 scripts/check-contracts.py
 python3 scripts/test-contract-break.py
-npm --prefix onesa-company-portal-backend run typecheck
-npm --prefix onesa-company-portal-frontend run typecheck
+npm --prefix onesa-portal-backend run typecheck
+npm --prefix onesa-portal-frontend run typecheck
 python3 scripts/validate-docs.py
 python3 scripts/repository_hygiene.py
 ```
