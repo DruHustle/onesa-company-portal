@@ -13,7 +13,7 @@ import {listenFixture,closeFixtureServer,spawnFixture,fetchFixture,waitForFixtur
 
 const root=process.env.ONESA_SOURCE_ROOT;
 assert.ok(root&&path.isAbsolute(root),'Explicit isolated source checkout required');
-const cwd=path.join(root,'onesa-company-portal-frontend');
+const cwd=path.join(root,'onesa-portal-frontend');
 for(const name of ['.env','.env.local','.env.production','.env.production.local'])assert.equal(fs.existsSync(path.join(cwd,name)),false);
 let backend,server,origin,directory;
 before(async t=>{
@@ -34,7 +34,7 @@ after(async()=>{
 function request(){
  return {qualification_profile:PROFILE,environment:'staging',origin,bypass:null,provider_token_included:false,
   binding:{repository:'DruHustle/onesa-portal',component:'frontend'},
-  nvidia:{contract:CONTRACT,catalog_sha256:digest(fs.readFileSync(new URL('../../onesa-company-portal-frontend/public/models/nvidia/manifest.json',import.meta.url))),renderer_license_sha256:digest(fs.readFileSync(new URL('../../onesa-company-portal-frontend/public/licenses/three.txt',import.meta.url)))}};
+  nvidia:{contract:CONTRACT,catalog_sha256:digest(fs.readFileSync(new URL('../../onesa-portal-frontend/public/models/nvidia/manifest.json',import.meta.url))),renderer_license_sha256:digest(fs.readFileSync(new URL('../../onesa-portal-frontend/public/licenses/three.txt',import.meta.url)))}};
 }
 
 test('the hosted receipt entry refuses the actual loopback fixture before browser work',async()=>{
@@ -42,7 +42,7 @@ test('the hosted receipt entry refuses the actual loopback fixture before browse
  assert.equal(fs.existsSync(path.join(directory,'browser-receipt.json')),false);
 });
 test('only canonical catalog model GET and HEAD responses allow private revalidation',async()=>{
- const catalog=JSON.parse(fs.readFileSync(new URL('../../onesa-company-portal-frontend/public/models/nvidia/manifest.json',import.meta.url)));
+ const catalog=JSON.parse(fs.readFileSync(new URL('../../onesa-portal-frontend/public/models/nvidia/manifest.json',import.meta.url)));
  const paths=catalog.assets.map(asset=>'/models/nvidia/'+asset.glb.path);
  for(const asset of catalog.assets)for(const method of ['GET','HEAD']){
   const response=await fetchFixture(origin+'/models/nvidia/'+asset.glb.path,{method,redirect:'manual'});
@@ -103,7 +103,7 @@ async function verifyActualTextOverflowGuards(browser,t){
 }
 
 async function verifyActualPreviewPixelGuards(browser,t){
- const catalog=JSON.parse(fs.readFileSync(new URL('../../onesa-company-portal-frontend/public/models/nvidia/manifest.json',import.meta.url)));
+ const catalog=JSON.parse(fs.readFileSync(new URL('../../onesa-portal-frontend/public/models/nvidia/manifest.json',import.meta.url)));
  const thumbnail=catalog.assets[0].thumbnail,preview=fs.readFileSync(path.join(cwd,'public','models','nvidia',thumbnail.path));
  assert.equal(preview.length,thumbnail.byteLength);assert.equal(digest(preview),thumbnail.sha256);
  // A complete 1x1 RGBA PNG whose only pixel is transparent.

@@ -16,7 +16,7 @@ FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures/portal_frontend_v1"
 # 7a63d946688f705b56823b261272d26434981d32, Portal subtree. The history-preserving
 # split retains these exact blobs even though commit IDs and paths have changed.
 # Their bundled copies also support API-published snapshots without that ancestry.
-PREFIX = "onesa-company-portal-frontend/"
+PREFIX = "onesa-portal-frontend/"
 # Public fixtures retain the reviewed bytes before billing, catalog and directory updates.
 # The browser fixture comes from Portal ecc4521dc44dd9e162701a5e34a455f7f27661fc.
 # Portal 25eef94002d43f8732346308a2b10246adee12f0 and
@@ -139,7 +139,7 @@ SCHEMA_016 = {
 
 
 def schema_016_migrations(root):
-    directory = root / "onesa-company-portal-backend/migrations"
+    directory = root / "onesa-portal-backend/migrations"
     migrations = {}
     for name, digest in SCHEMA_016.items():
         data = (directory / name).read_bytes()

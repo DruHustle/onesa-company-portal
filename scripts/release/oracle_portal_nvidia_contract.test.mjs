@@ -6,8 +6,8 @@ import path from 'node:path';
 import {crc32,deflateSync} from 'node:zlib';
 import {PROFILE,CONTRACT,digest,pinnedCatalog,publicReferences,assertDeliveredAsset,readDeliveredModelResponse,TEXT_DIAGNOSTIC_LIMITS,boundedPublicDiagnostic,boundedPublicTextClip,publicTextImage,validatePublicTextRecord,writePublicTextDiagnostics,retainPublicTextDiagnostics} from './oracle_portal_nvidia_contract.mjs';
 
-const bytes=fs.readFileSync(new URL('../../onesa-company-portal-frontend/public/models/nvidia/manifest.json',import.meta.url));
-const license=fs.readFileSync(new URL('../../onesa-company-portal-frontend/public/licenses/three.txt',import.meta.url));
+const bytes=fs.readFileSync(new URL('../../onesa-portal-frontend/public/models/nvidia/manifest.json',import.meta.url));
+const license=fs.readFileSync(new URL('../../onesa-portal-frontend/public/licenses/three.txt',import.meta.url));
 const request={qualification_profile:PROFILE,nvidia:{contract:CONTRACT,catalog_sha256:digest(bytes),renderer_license_sha256:digest(license)}};
 
 test('source-pinned exact three-asset identities and closure',()=>{

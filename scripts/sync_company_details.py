@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "onesa-company-portal-backend/records/company-facts.v1.json"
+SOURCE = ROOT / "onesa-portal-backend/records/company-facts.v1.json"
 FIELDS = {
     "legalName": "company_name", "address": "registered_address",
     "managingDirector": "managing_director", "registerCourt": "register_court",
@@ -34,7 +34,7 @@ def outputs(workspace=False):
     company = publication()
     text = "// Generated from the owner-approved Portal company record; no runtime sibling dependency.\n"
     text += "export const company = " + json.dumps(company, ensure_ascii=False, indent=2) + " as const;\n"
-    paths = [ROOT / "onesa-company-portal-frontend/src/config/company.ts", ROOT / "onesa-company-portal-backend/src/config/company.ts"]
+    paths = [ROOT / "onesa-portal-frontend/src/config/company.ts", ROOT / "onesa-portal-backend/src/config/company.ts"]
     result = {path: text for path in paths}
     if workspace:
         result[ROOT.parent / "onesa-ai-platform/onesa-ai-platform-frontend/apps/chat/src/lib/company.ts"] = text

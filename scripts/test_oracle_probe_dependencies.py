@@ -20,7 +20,7 @@ from pathlib import Path, PurePosixPath
 
 
 ROOT = Path(__file__).resolve().parents[1]
-FRONTEND = "onesa-company-portal-frontend"
+FRONTEND = "onesa-portal-frontend"
 RECIPE = ROOT / "infra/oracle/qualification.Dockerfile"
 
 

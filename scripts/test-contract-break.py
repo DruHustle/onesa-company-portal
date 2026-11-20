@@ -1,10 +1,10 @@
 from pathlib import Path
 import json,subprocess,tempfile
 root=Path(__file__).resolve().parents[1]
-frontend=root/'onesa-company-portal-frontend'
+frontend=root/'onesa-portal-frontend'
 with tempfile.TemporaryDirectory(prefix='.contract-check-',dir=frontend) as directory:
     target=Path(directory)
-    spec=json.loads((root/'onesa-company-portal-backend/openapi/openapi.json').read_text())
+    spec=json.loads((root/'onesa-portal-backend/openapi/openapi.json').read_text())
     body=spec['paths']['/api/v1/public/enquiries']['post']['requestBody']['content']['application/json']['schema']
     body['properties']['contractProbeField']={'type':'string'}
     body['required'].append('contractProbeField')
