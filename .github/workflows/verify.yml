@@ -79,9 +79,9 @@ jobs:
       with:
         node-version: '24.22.1'
         cache: npm
-        cache-dependency-path: 'onesa-company-portal-backend/package-lock.json
+        cache-dependency-path: 'onesa-portal-backend/package-lock.json
 
-          onesa-company-portal-frontend/package-lock.json'
+          onesa-portal-frontend/package-lock.json'
     - name: Verify application TLS trust and isolated certificate rejection
       run: node --test scripts/test_tls_trust.mjs
     - name: Verify system appearance, pinned foundation and measured contrast
@@ -97,16 +97,16 @@ jobs:
     - name: 'Release requirement: shared identity migration boundaries'
       run: node --test scripts/release/oracle_portal_identity_migrate.test.mjs
     - run: npm ci
-      working-directory: onesa-company-portal-backend
+      working-directory: onesa-portal-backend
     - run: npm ci
-      working-directory: onesa-company-portal-frontend
+      working-directory: onesa-portal-frontend
     - name: 'Release requirement: locked development dependency compatibility'
       run: |
-        npm --prefix onesa-company-portal-backend run test:dependency-security
-        npm --prefix onesa-company-portal-frontend run test:dependency-security
+        npm --prefix onesa-portal-backend run test:dependency-security
+        npm --prefix onesa-portal-frontend run test:dependency-security
     - name: 'Release requirement: NVIDIA asset integrity and parser safety'
       run: npm run test:nvidia-assets
-      working-directory: onesa-company-portal-frontend
+      working-directory: onesa-portal-frontend
     - run: python3 scripts/check-contracts.py && python3 scripts/test-contract-break.py
     - run: python3 -m unittest discover -s scripts -p test_inspect_hosting.py
     - name: Verify Oracle staging and production preparation guards
@@ -125,58 +125,58 @@ jobs:
     - name: Verify backend and shared Mobile identity with disposable PostgreSQL
       run: python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src tests && python3 ../scripts/ci/analyze.py
         tsc -- node_modules/.bin/tsc --pretty false && npm test && npm audit --audit-level=high
-      working-directory: onesa-company-portal-backend
+      working-directory: onesa-portal-backend
     - run: python3 ../scripts/ci/analyze.py eslint -- node_modules/.bin/eslint --format json src && python3 ../scripts/ci/analyze.py
         tsc -- node_modules/.bin/tsc --noEmit --pretty false && npm run test:domains && npm run test:workspace-drafts && npm run test:public-fetch && npm run build && npm run test:homepage-loading && npm audit --audit-level=high
-      working-directory: onesa-company-portal-frontend
+      working-directory: onesa-portal-frontend
     - name: Verify TLS policy in traced server routes
-      run: node scripts/check_tls_bundle.mjs onesa-company-portal-frontend
+      run: node scripts/check_tls_bundle.mjs onesa-portal-frontend
     - run: npm run documents
-      working-directory: onesa-company-portal-backend
+      working-directory: onesa-portal-backend
     - run: npm run seed
-      working-directory: onesa-company-portal-backend
+      working-directory: onesa-portal-backend
     - name: Install browsers and OS dependencies on GitHub-hosted Ubuntu
       timeout-minutes: 10
       run: |
         sudo -n --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,RUNNER_OS,GITHUB_REPOSITORY python3 ../scripts/ci/browser_dependencies.py
         npx playwright install --with-deps chromium firefox webkit
-      working-directory: onesa-company-portal-frontend
+      working-directory: onesa-portal-frontend
     - name: 'Release requirement: NVIDIA reference gallery browser journeys'
       run: xvfb-run -a --server-args='-screen 0 1920x1080x24' npm run test:nvidia-browser
-      working-directory: onesa-company-portal-frontend
+      working-directory: onesa-portal-frontend
       env:
         NVIDIA_SCREENSHOT_DIR: ${{ runner.temp }}/portal-nvidia-gallery
         NVIDIA_FIREFOX_HEADED: 'true'
     - name: 'Release requirement: owner probe readiness and NVIDIA observations'
       run: |
         portal_readiness_fixture=$(mktemp -d "$RUNNER_TEMP/portal-readiness.XXXXXX")
-        ln -s "$GITHUB_WORKSPACE/onesa-company-portal-frontend/node_modules" "$portal_readiness_fixture/node_modules"
-        mkdir -p "$portal_readiness_fixture/scripts/release" "$portal_readiness_fixture/onesa-company-portal-frontend/public/models/nvidia" "$portal_readiness_fixture/onesa-company-portal-frontend/public/licenses"
+        ln -s "$GITHUB_WORKSPACE/onesa-portal-frontend/node_modules" "$portal_readiness_fixture/node_modules"
+        mkdir -p "$portal_readiness_fixture/scripts/release" "$portal_readiness_fixture/onesa-portal-frontend/public/models/nvidia" "$portal_readiness_fixture/onesa-portal-frontend/public/licenses"
         cp scripts/release/oracle_portal_browser.mjs scripts/release/oracle_portal_browser_session.mjs scripts/release/oracle_portal_browser_cli.test.mjs scripts/release/oracle_portal_browser_readiness.test.mjs scripts/release/oracle_portal_browser_products.test.mjs scripts/release/oracle_portal_browser_session.test.mjs scripts/release/oracle_portal_nvidia.mjs scripts/release/oracle_portal_nvidia_contract.mjs scripts/release/oracle_portal_nvidia.test.mjs scripts/release/oracle_portal_nvidia_contract.test.mjs scripts/release/oracle_portal_test_lifecycle.mjs scripts/release/oracle_portal_test_lifecycle.test.mjs "$portal_readiness_fixture/scripts/release/"
-        cp onesa-company-portal-frontend/public/models/nvidia/manifest.json "$portal_readiness_fixture/onesa-company-portal-frontend/public/models/nvidia/"
-        cp onesa-company-portal-frontend/public/licenses/three.txt "$portal_readiness_fixture/onesa-company-portal-frontend/public/licenses/"
+        cp onesa-portal-frontend/public/models/nvidia/manifest.json "$portal_readiness_fixture/onesa-portal-frontend/public/models/nvidia/"
+        cp onesa-portal-frontend/public/licenses/three.txt "$portal_readiness_fixture/onesa-portal-frontend/public/licenses/"
         ONESA_SOURCE_ROOT="$GITHUB_WORKSPACE" node --test "$portal_readiness_fixture/scripts/release/oracle_portal_browser_cli.test.mjs" "$portal_readiness_fixture/scripts/release/oracle_portal_browser_readiness.test.mjs" "$portal_readiness_fixture/scripts/release/oracle_portal_browser_products.test.mjs" "$portal_readiness_fixture/scripts/release/oracle_portal_browser_session.test.mjs" "$portal_readiness_fixture/scripts/release/oracle_portal_nvidia_contract.test.mjs" "$portal_readiness_fixture/scripts/release/oracle_portal_test_lifecycle.test.mjs"
         ONESA_SOURCE_ROOT="$GITHUB_WORKSPACE" xvfb-run -a --server-args='-screen 0 1920x1080x24' node --test "$portal_readiness_fixture/scripts/release/oracle_portal_nvidia.test.mjs"
     - name: Verify static-first hero media with isolated synthetic controls
       run: npm run test:hero-motion
-      working-directory: onesa-company-portal-frontend
+      working-directory: onesa-portal-frontend
     - name: Verify Portal engineering sign-in with isolated synthetic services
       run: npm run test:engineering-sign-in
-      working-directory: onesa-company-portal-frontend
+      working-directory: onesa-portal-frontend
     - name: Verify shared Onesa account and access management with isolated synthetic services
       run: npm run test:onesa-account && npm run test:infrastructure
-      working-directory: onesa-company-portal-frontend
+      working-directory: onesa-portal-frontend
     - name: Verify bounded public navigation with isolated synthetic services
       run: npm run test:public-loading && npm run test:drone-product
-      working-directory: onesa-company-portal-frontend
+      working-directory: onesa-portal-frontend
     - run: "cleanup() { kill \"$backend_pid\" \"$frontend_pid\" 2>/dev/null || true; wait \"$backend_pid\" \"$frontend_pid\"\
-        \ 2>/dev/null || true; }\nnode onesa-company-portal-backend/dist/src/server.js > \"$RUNNER_TEMP/portal-backend.log\"\
-        \ 2>&1 &\nbackend_pid=$!\n(cd onesa-company-portal-frontend && npm start) > \"$RUNNER_TEMP/portal-frontend.log\" 2>&1\
+        \ 2>/dev/null || true; }\nnode onesa-portal-backend/dist/src/server.js > \"$RUNNER_TEMP/portal-backend.log\"\
+        \ 2>&1 &\nbackend_pid=$!\n(cd onesa-portal-frontend && npm start) > \"$RUNNER_TEMP/portal-frontend.log\" 2>&1\
         \ &\nfrontend_pid=$!\ntrap cleanup EXIT\nfor attempt in $(seq 1 30); do\n  if curl -fsS http://localhost:3300/en >\
         \ /dev/null; then break; fi\n  echo \"Waiting for frontend: $attempt\"\n  sleep 1\ndone\ncurl -fsS http://localhost:3300/en\
-        \ > /dev/null\nnpm --prefix onesa-company-portal-frontend run test:e2e\n"
+        \ > /dev/null\nnpm --prefix onesa-portal-frontend run test:e2e\n"
     - name: Verify production hostname boundaries and brand metadata
-      working-directory: onesa-company-portal-frontend
+      working-directory: onesa-portal-frontend
       run: "NODE_ENV=production SITE_URL=https://onesa.eu PORTAL_URL=https://portal.onesa.eu PUBLIC_ORIGIN=https://portal.onesa.eu\
         \ BACKEND_URL=http://127.0.0.1:8362 node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3362 >\
         \ \"$RUNNER_TEMP/portal-domain-frontend.log\" 2>&1 &\ndomain_frontend_pid=$!\ntrap 'kill \"$domain_frontend_pid\"\
@@ -187,9 +187,9 @@ jobs:
       with:
         retention-days: ${{ env.PORTAL_LAYOUT_SCREENSHOTS == 'full' && 3 || 2 }}
         name: verification-evidence
-        path: 'onesa-company-portal-frontend/test-results
+        path: 'onesa-portal-frontend/test-results
 
-          onesa-company-portal-backend/openapi/openapi.json
+          onesa-portal-backend/openapi/openapi.json
 
           '
     permissions:
@@ -225,7 +225,7 @@ jobs:
       with:
         persist-credentials: false
     - name: Build application runtime
-      run: docker build -t onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }} ./${{ matrix.application == 'clamav' && 'infra/oracle/clamav' || matrix.application }}
+      run: docker build -t onesa-security-candidate:${{ matrix.application }}-${{ github.run_id }} ./${{ matrix.application == 'clamav' && 'infra/oracle/clamav' || matrix.application == 'onesa-company-portal-backend' && 'onesa-portal-backend' || 'onesa-portal-frontend' }}
     - name: "${{ matrix.application == 'onesa-company-portal-backend' && 'Release requirement: default backend startup and database readiness' || 'Backend startup applies only to the backend image' }}"
       if: matrix.application == 'onesa-company-portal-backend'
       env:

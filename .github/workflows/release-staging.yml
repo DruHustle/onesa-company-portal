@@ -95,7 +95,7 @@ jobs:
         RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
         RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
     - name: Install locked staging fixture tooling
-      run: npm ci --prefix onesa-company-portal-backend
+      run: npm ci --prefix onesa-portal-backend
     - name: Create only temporary approved synthetic staging identities
       if: inputs.fixture_mode != 'provided'
       run: python3 scripts/release/fixture_lifecycle.py create

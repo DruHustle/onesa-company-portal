@@ -113,7 +113,7 @@ credentials*.json
 /docs/internal/release-audit/
 
 # Owner-supplied corporate facts awaiting publication approval.
-/onesa-company-portal-backend/records/
+/onesa-portal-backend/records/
 
 # Generated working tools are private or host-specific; keep reusable source in scripts/.
 local-tools/
