@@ -35,6 +35,12 @@ export function identityAdministrationUrl() {
   return origin ? new URL("/admin#accounts", origin).href : null;
 }
 
+export function productAdministratorUrl(product: string) {
+  if (!/^[a-z][a-z0-9-]{0,39}$/.test(product)) return null;
+  const origin = identityAdministrationRequired() ? identityUiOrigin() : null;
+  return origin ? new URL("/admin?product=" + encodeURIComponent(product), origin).href : null;
+}
+
 export function identityRegistrationUrl(audience: "user" | "admin") {
   const origin = identityUiOrigin();
   return origin ? new URL("/register?product=portal&platform=web&audience=" + audience, origin).href : null;
