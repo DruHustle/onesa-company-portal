@@ -49,7 +49,7 @@ PRODUCTION_ORIGINS = {
 PLAN_V2 = Path("/etc/onesa/oracle-portal-identity-release-v2.json")
 PLAN = Path("/etc/onesa/oracle-portal-identity-release.json")
 ROOT = Path("/var/lib/onesa/release-verification/portal/identity")
-PREFIX = "onesa-company-portal-backend/"
+PREFIX = "onesa-portal-backend/"
 MIGRATIONS = {
     "013_onesa_identity.sql": "ce7f4ab09f7fafb915b4a4e8b1657ef1e6520494bd28a0492fc3d46d0f4d79e7",
     "014_identity_grant_sessions.sql": "a45640fc7a946f410033c0cc9cd666bfcb2e6a8e02a4f5a200bc2b548f7ce03f",

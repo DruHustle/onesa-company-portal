@@ -59,7 +59,7 @@ def main():
         return
     ai = PRODUCT == "onesa-ai-platform"
     commands = ([["make", "contract-check"]] if ai else [["npm", "run", "api:check"], ["npm", "run", "test:contracts"]])
-    results = [run(command, ROOT if ai else ROOT / "onesa-company-portal-frontend") for command in commands]
+    results = [run(command, ROOT if ai else ROOT / "onesa-portal-frontend") for command in commands]
     results.append(run(["python3", "scripts/release/contract_compatibility.py", "--self-test"]))
     results.append(run(["python3", "scripts/release/contract_compatibility.py"]))
     if args.mode == "verify":
@@ -67,8 +67,8 @@ def main():
         database = os.getenv(variable, "")
         if not database or not urlsplit(database).path.endswith("_test"):
             raise SystemExit("Verify requires an explicitly isolated database ending _test")
-        results.append(run(["make", "check"] if ai else ["npm", "test"], ROOT if ai else ROOT / "onesa-company-portal-backend"))
-        results.append(run(["npm", "run", "typecheck"], ROOT / ("onesa-ai-platform-frontend/apps/chat" if ai else "onesa-company-portal-frontend")))
+        results.append(run(["make", "check"] if ai else ["npm", "test"], ROOT if ai else ROOT / "onesa-portal-backend"))
+        results.append(run(["npm", "run", "typecheck"], ROOT / ("onesa-ai-platform-frontend/apps/chat" if ai else "onesa-portal-frontend")))
     raise SystemExit(1 if any(results) else 0)
 
 if __name__ == "__main__":
