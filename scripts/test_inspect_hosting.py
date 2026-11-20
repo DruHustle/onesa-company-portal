@@ -35,7 +35,7 @@ class HostingInspectionTests(unittest.TestCase):
 
     def test_preview_branch_overrides_are_selected_without_exposing_proxy_values(self):
         marker = "synthetic-private-proxy-value"
-        expected = "https://onesa-portal-backend-staging.onrender.com"
+        expected = "https://onesa-company-portal-backend-staging.onrender.com"
         entries = [
             {
                 "key": "BACKEND_URL",
