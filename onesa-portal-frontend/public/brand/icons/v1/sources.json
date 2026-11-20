@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "source": "onesa-portal-frontend/public/brand/onesa-orbit.png",
+  "source": "onesa-company-portal-frontend/public/brand/onesa-orbit.png",
   "sourceSha256": "4dc5ada01211fe5127ab59f33a9e4b19482658ef9878300fa088de4b27e6d7e6",
   "rights": "Owner-supplied Onesa artwork; technical product-icon derivatives authorized by master specification Section10.4. No new official or registered logo is asserted.",
   "method": "Source-traced common O; distinct geometric frames and product accents; existing Chromium SVG export, no generative redraw or source-bitmap modification.",

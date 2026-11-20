@@ -54,7 +54,8 @@ test('versioned identity assets are square, self-contained and distinct across p
   const directory='onesa-portal-frontend/public/brand/icons/v1/';
   const sources=JSON.parse(await readFile(new URL(directory+'sources.json',root),'utf8'));
   assert.equal(sources.version,'1.0.0');
-  assert.equal(createHash('sha256').update(await readFile(new URL(sources.source,root))).digest('hex'),sources.sourceSha256);
+  assert.equal(sources.source,'onesa-company-portal-frontend/public/brand/onesa-orbit.png','preserve immutable asset provenance while relocating the physical tree');
+  assert.equal(createHash('sha256').update(await readFile(new URL('onesa-portal-frontend/public/brand/onesa-orbit.png',root))).digest('hex'),sources.sourceSha256);
   const icons=[];
   for(const product of sources.products){
     if(product.id==='robot')assert.equal(product.title,'Onesa Robot');
