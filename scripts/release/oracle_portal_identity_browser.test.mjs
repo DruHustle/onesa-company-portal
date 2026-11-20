@@ -240,7 +240,7 @@ function zohoMock({account={},rows,content=mail(),id='1709876209452100005',rawId
 const zohoObservation=()=>({recipient,after:Date.now()-1000,portal,path:'/account/confirm'});
 
 test('Zoho TLS roots preserve the application blocked-certificate policy',()=>{
- const source=readFileSync(new URL('../../onesa-company-portal-backend/src/security/tls-trust.ts',import.meta.url),'utf8');
+ const source=readFileSync(new URL('../../onesa-portal-backend/src/security/tls-trust.ts',import.meta.url),'utf8');
  assert.match(source,new RegExp(ZOHO_BLOCKED_CA));
  const blocked=readFileSync(new URL('../fixtures/emsign-ecc-g3-public-cert.txt',import.meta.url),'utf8');
  assert.equal(new X509Certificate(blocked).fingerprint256.replaceAll(':','').toLowerCase(),ZOHO_BLOCKED_CA);

@@ -11,7 +11,7 @@ import {listenFixture,closeFixtureServer,spawnFixture,waitForFixtureFrontend,wit
 
 const root=process.env.ONESA_SOURCE_ROOT;
 assert.ok(root&&path.isAbsolute(root),'Explicit source checkout required');
-const cwd=path.join(root,'onesa-company-portal-frontend');
+const cwd=path.join(root,'onesa-portal-frontend');
 for(const name of ['.env','.env.local','.env.production','.env.production.local'])assert.equal(fs.existsSync(path.join(cwd,name)),false,'No application credentials in test checkout');
 let backend,server,origin;
 before(async t=>{

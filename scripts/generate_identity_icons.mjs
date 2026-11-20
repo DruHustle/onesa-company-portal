@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {dirname,resolve,join} from 'node:path';
 import {createRequire} from 'node:module';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
-const source='onesa-company-portal-frontend/public/brand/onesa-orbit.png';
+const source='onesa-portal-frontend/public/brand/onesa-orbit.png';
 const sourceSha='4dc5ada01211fe5127ab59f33a9e4b19482658ef9878300fa088de4b27e6d7e6';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 if(sha(readFileSync(join(root,source)))!==sourceSha)throw new Error('Approved artwork changed: review derivatives before generating');
@@ -23,7 +23,7 @@ const svgFor=product=>`<svg xmlns="http://www.w3.org/2000/svg" width="32" height
 const titlesOnly=process.argv.includes('--titles-only');
 const arguments_=process.argv.slice(2).filter(value=>value!=='--titles-only');
 if(arguments_.length>1||arguments_.some(value=>value.startsWith('--')))throw new Error('Usage: generate_identity_icons.mjs [--titles-only] [output-directory]');
-const canonicalOutput=join(root,'onesa-company-portal-frontend/public/brand/icons/v1');
+const canonicalOutput=join(root,'onesa-portal-frontend/public/brand/icons/v1');
 const output=arguments_[0]?resolve(arguments_[0]):canonicalOutput;
 const previousFiles=new Map();
 if(titlesOnly){
@@ -46,7 +46,7 @@ if(titlesOnly){
  }
 }
 mkdirSync(output,{recursive:true});
-const require=createRequire(join(root,'onesa-company-portal-frontend/package.json'));
+const require=createRequire(join(root,'onesa-portal-frontend/package.json'));
 const browser=titlesOnly?null:await require('playwright').chromium.launch({headless:true});
 const page=browser?await browser.newPage():null;
 const manifest={version:'1.0.0',source,sourceSha256:sourceSha,rights:'Owner-supplied Onesa artwork; technical product-icon derivatives authorized by master specification Section10.4. No new official or registered logo is asserted.',method:'Source-traced common O; distinct geometric frames and product accents; existing Chromium SVG export, no generative redraw or source-bitmap modification.',products:[]};

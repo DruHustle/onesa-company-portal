@@ -6,7 +6,7 @@ import {readFile,readdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {additions,connectionScope,migrate,migrateV3,validateRequest,validateState} from './oracle_portal_identity_migrate.mjs';
 
-const directory=fileURLToPath(new URL('../../onesa-company-portal-backend/migrations/',import.meta.url));
+const directory=fileURLToPath(new URL('../../onesa-portal-backend/migrations/',import.meta.url));
 // Positive fixtures cover the reviewed schema-016 profile. The source tree also
 // contains the Farmer candidate, which the historical installer must refuse.
 const currentFiles = {};
