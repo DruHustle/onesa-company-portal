@@ -2,11 +2,11 @@ import {expect} from '@playwright/test';
 import {test,db} from './database';
 import AxeBuilder from '@axe-core/playwright';
 import {randomBytes,randomUUID} from 'node:crypto';
-import {governanceSeed} from '../../onesa-company-portal-backend/tests/governance-fixture';
+import {governanceSeed} from '../../onesa-portal-backend/tests/governance-fixture';
 if(!process.env.TEST_DATABASE_URL||!new URL(process.env.TEST_DATABASE_URL).pathname.endsWith('_test'))throw new Error('Governance browsers require an isolated _test database');
 process.env.DATABASE_URL=process.env.TEST_DATABASE_URL;
-const {hash,passwordHash,encrypt}=await import('../../onesa-company-portal-backend/src/auth/crypto');
-const {importGovernance}=await import('../../onesa-company-portal-backend/src/governance/import');
+const {hash,passwordHash,encrypt}=await import('../../onesa-portal-backend/src/auth/crypto');
+const {importGovernance}=await import('../../onesa-portal-backend/src/governance/import');
 const password=randomBytes(32).toString('hex'),email=`governance-${randomUUID()}@example.invalid`,ownerId=randomUUID();
 test.beforeAll(async()=>{
  await db.query('TRUNCATE governance_events,governance_versions,governance_records CASCADE');

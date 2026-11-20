@@ -3,7 +3,7 @@ import { test, db } from "./database";
 import { randomUUID } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
 const { passwordHash, encrypt, hash } =
-  await import("../../onesa-company-portal-backend/src/auth/crypto");
+  await import("../../onesa-portal-backend/src/auth/crypto");
 const run = randomUUID(),
   password = "synthetic-editorial-test-only-1234",
   prefix = "Review " + run;
