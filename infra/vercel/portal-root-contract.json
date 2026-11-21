@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "owner": "DruHustle",
+  "repository": "onesa-portal",
+  "vercel_team": "druhustles-projects",
+  "vercel_project": "onesa-company-portal",
+  "vercel_project_id": "prj_91TBAfa7ByYzG6Q022gTbzI6iR2m",
+  "root_directory": "onesa-company-portal-frontend",
+  "dev_source_directory": "onesa-portal-frontend",
+  "policy": "Every main, staging and dev checkout must contain both real frontend directories, with identical Git tree SHAs. Vercel project root remains onesa-company-portal-frontend; main/staging source is the legacy name, dev source is the modern name. Mirror via scripts/sync-portal-vercel-root.sh. Never substitute a symlink."
+}
