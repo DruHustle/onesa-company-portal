@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "owner": "DruHustle",
+  "repository": "onesa-portal",
+  "vercel_team": "druhustles-projects",
+  "vercel_project": "onesa-company-portal",
+  "vercel_project_id": "prj_91TBAfa7ByYzG6Q022gTbzI6iR2m",
+  "root_directory": "onesa-company-portal-frontend",
+  "dev_source_directory": "onesa-portal-frontend",
+  "policy": "Vercel root is stable across all branches. On dev the root is a mirrored real Git tree, never a symlink; any change to the source requires syncing the mirror so both Git subtree SHAs remain identical."
+}
