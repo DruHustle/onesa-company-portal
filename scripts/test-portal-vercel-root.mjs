@@ -24,11 +24,12 @@ function fixture(t, {modern=true} = {}) {
   return root;
 }
 test("checked-in Vercel root exists with real Next.js files on main and staging", t=>{
-  const root=fixture(t,{modern:false});
+  const root=fixture(t);
   for(const targetBranch of ["main","staging"]) {
-    const v=verifyPortalVercelRoot({root,targetBranch});
+    const v=verifyPortalVercelRoot({root,targetBranch,treeSha:()=>"a".repeat(40)});
     assert.equal(v.rootDirectory,"onesa-company-portal-frontend");
-    assert.equal(v.mirrorVerified,false);
+    assert.equal(v.sourceDirectory,"onesa-company-portal-frontend");
+    assert.equal(v.mirrorVerified,true);
   }
 });
 test("dev checks real mirror identity before allowing Vercel preview",t=>{
@@ -41,7 +42,9 @@ test("dev checks real mirror identity before allowing Vercel preview",t=>{
 });
 test("dev refuses a missing canonical source or an invalid deploy root",t=>{
   const root=fixture(t,{modern:false});
-  assert.throws(()=>verifyPortalVercelRoot({root,targetBranch:"dev"}),/missing/);
+  for(const targetBranch of ["dev","main","staging"]) {
+    assert.throws(()=>verifyPortalVercelRoot({root,targetBranch}),/missing/);
+  }
   rmSync(join(root,"onesa-company-portal-frontend"),{recursive:true,force:true});
   assert.throws(()=>verifyPortalVercelRoot({root,targetBranch:"main"}),/missing/);
 });
