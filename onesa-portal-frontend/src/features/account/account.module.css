@@ -41,7 +41,7 @@
 .security{border-top:1px solid var(--onesa-divider);margin-top:24px!important;padding-top:12px!important}
 .srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .shell :is(a,button,input,select,summary):focus-visible{outline:2px solid var(--onesa-accent);outline-offset:4px}
-@media(max-width:760px){.grid{grid-template-columns:1fr}.header{margin-bottom:32px}.formGrid{grid-template-columns:1fr}.product{padding:24px}.accountLinks>*{flex:1 1 100%}.toolbar{align-items:flex-start}.shell{padding-top:20px}.brand span{margin-left:9px}}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.header{margin-bottom:32px}.formGrid{grid-template-columns:1fr}.product{padding:24px}.accountLinks>*{flex:1 1 100%}.toolbar{align-items:flex-start}.shell{padding-top:20px;padding-bottom:max(128px,calc(128px + env(safe-area-inset-bottom,0px)))}.brand span{margin-left:9px}}
 @media(prefers-reduced-motion:reduce){.shell *{scroll-behavior:auto!important}}
 @media(forced-colors:active){.product,.card,.person,.badge,.notice{border:1px solid CanvasText}.shell :is(a,button,input,select,summary):focus-visible{outline-color:Highlight}}
 .card :is(input,button,select):disabled{cursor:not-allowed;background:var(--onesa-surface);color:var(--onesa-muted);border-color:var(--onesa-divider)}
