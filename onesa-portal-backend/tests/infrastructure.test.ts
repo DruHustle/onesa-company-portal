@@ -5,7 +5,7 @@ import { chmod, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promis
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
-import { infrastructureOverview } from "../src/operations/infrastructure.js";
+import { infrastructureOverview, serviceRegistry } from "../src/operations/infrastructure.js";
 const directory = await mkdtemp(join(tmpdir(), "onesa-infrastructure-"));
 after(() => rm(directory, { recursive: true, force: true }));
 const now = Date.parse("2026-11-11T12:00:00Z");
@@ -21,6 +21,13 @@ test("All products, shared Web services and management services remain unknown w
   assert.equal(view.observationState, "not_configured");
   assert.ok(view.services.every(service => service.status === "not_observed" && service.observedAt === null));
 });
+test("Drone readiness uses the commissioned API origin rather than the static Vercel UI", () => {
+  const drone = serviceRegistry.find(service => service.id === "drone");
+  assert.ok(drone);
+  assert.equal(drone.url, "https://drone.onesa.eu");
+  assert.equal(drone.health, "https://drone-api.onesa.eu/api/v1/ready");
+});
+
 test("Recent failure, stale success and missing evidence have distinct states", async () => {
   const file = await snapshot("states.json", [observed("portal"), observed("ai", "unavailable"), observed("factory", "available", 300000)]);
   const view = await infrastructureOverview(file, now);
@@ -101,7 +108,9 @@ test("The collector maps deployed health contracts to the administrator's observ
         : [{ detail: "dependency_unavailable" }, 503]],
       ["https://platform.onesa.eu/health", [{ status: "ok", source_commit: "a".repeat(40) }, 200]],
       ["https://logistics.onesa.eu/health", [{ status: "ok", release: { revision: "b".repeat(40) } }, 200]],
-      ["https://drone.onesa.eu/api/v1/health", [{ status: "live", source_commit: "c".repeat(40) }, 200]],
+      ["https://drone-api.onesa.eu/api/v1/ready", process.env.DRONE_FIXTURE_READY === "1"
+        ? [{ status: "ready", mode: "simulation" }, 200]
+        : [{ status: "not-ready", mode: "simulation" }, 503]],
     ]);
     globalThis.fetch = async url => {
       const entry = health.get(String(url));
@@ -110,9 +119,9 @@ test("The collector maps deployed health contracts to the administrator's observ
     };
   `);
   const collector = new URL("../../scripts/observe-infrastructure.mts", import.meta.url);
-  const collect = (robotReady: boolean, aiReady: boolean, factoryReady: boolean) => execFileSync(process.execPath,
+  const collect = (robotReady: boolean, aiReady: boolean, factoryReady: boolean, droneReady = false) => execFileSync(process.execPath,
     ["--import", "tsx", "--import", transport, collector.pathname, file],
-    { timeout: 10000, env: { ...process.env, FACTORY_FIXTURE_READY: factoryReady ? "1" : "0", SHARED_VALID: robotReady ? "1" : "0", AI_FIXTURE_READY: aiReady ? "1" : "0", ROBOT_FIXTURE_READY: robotReady ? "1" : "0" } });
+    { timeout: 10000, env: { ...process.env, FACTORY_FIXTURE_READY: factoryReady ? "1" : "0", SHARED_VALID: robotReady ? "1" : "0", AI_FIXTURE_READY: aiReady ? "1" : "0", ROBOT_FIXTURE_READY: robotReady ? "1" : "0", DRONE_FIXTURE_READY: droneReady ? "1" : "0" } });
   collect(false, true, false);
   const result = await infrastructureOverview(file);
   assert.equal(result.observationState, "loaded");
@@ -126,8 +135,9 @@ test("The collector maps deployed health contracts to the administrator's observ
   assert.deepEqual(result.services.filter(service => service.revision !== null).map(service => [service.id, service.revision]), [
     ["ai", "a".repeat(40)], ["logistics", "b".repeat(40)],
   ]);
-  collect(true, false, true);
+  collect(true, false, true, true);
   const recovered = await infrastructureOverview(file);
+  assert.equal(recovered.services.find(service => service.id === "drone")?.status, "available");
   assert.equal(recovered.services.find(service => service.id === "robot")?.status, "available");
   assert.equal(recovered.services.find(service => service.id === "factory")?.status, "available");
   for (const id of ["identity", "public-documents", "internal-documents"]) {
