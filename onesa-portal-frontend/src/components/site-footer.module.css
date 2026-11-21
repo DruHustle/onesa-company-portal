@@ -1,0 +1,18 @@
+.footer { padding: 64px max(6vw, 24px) 20px; background: #081b32; color: #c2cfdf; border-block-start: 1px solid #ffffff26; }
+.grid { display: grid; grid-template-columns: 1.6fr repeat(3, minmax(0, 1fr)); gap: clamp(24px, 4vw, 64px); padding-block-end: 48px; }
+.brand, .group { min-width: 0; }
+.brand > a:first-child { color: #fff; width: fit-content; min-height: 44px; }
+.tagline { max-width: 27ch; margin-block: 20px; font-size: 1rem; line-height: 1.6; }
+.contact { display: inline-flex; align-items: center; gap: 16px; min-height: 44px; color: #fff; font-weight: 600; font-size: .875rem; }
+.brand address { max-width: 34ch; margin-block-start: 20px; color: #a3b8cf; font-size: .8125rem; font-style: normal; line-height: 1.75; }
+.group h2 { margin: 6px 0 18px; color: #fff; font-size: .75rem; line-height: 1.6; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+.group ul { list-style: none; padding: 0; margin: 0; }
+.group a { display: block; min-height: 44px; padding-block: 10px; font-size: .875rem; line-height: 1.6; overflow-wrap: anywhere; }
+.group a:hover, .bottom a:hover { color: #fff; }
+.bottom { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px 32px; border-block-start: 1px solid #ffffff26; padding-block-start: 16px; color: #a3b8cf; font-size: .75rem; }
+.bottom p { margin: 0; }
+.bottom nav { display: flex; flex-wrap: wrap; gap: 0 24px; }
+.bottom a { display: inline-flex; align-items: center; min-height: 44px; }
+@media (max-width: 1000px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; } .brand { grid-column: 1 / -1; } .brand address { margin-block-start: 12px; max-width: none; } }
+@media (max-width: 600px) { .footer { padding-block-start: 48px; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 24px; padding-block-end: 32px; } .resources { grid-column: 1 / -1; } .resources ul { display: flex; flex-wrap: wrap; gap: 0 24px; } .group h2 { margin-block-end: 10px; } .bottom { align-items: flex-start; } .bottom nav { gap: 0 20px; } }
+@media (forced-colors: active) { .footer { background: Canvas; color: CanvasText; border-color: CanvasText; } .footer a, .footer h2, .brand address, .bottom { color: CanvasText; } .bottom { border-color: CanvasText; } }

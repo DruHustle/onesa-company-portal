@@ -1,0 +1,2 @@
+.picture { display:block; width:100%; overflow:hidden; background:#081b32; }
+.picture img { display:block; width:100%; height:auto; aspect-ratio:3 / 2; object-fit:cover; }
