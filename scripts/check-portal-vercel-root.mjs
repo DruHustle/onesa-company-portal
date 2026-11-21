@@ -46,8 +46,8 @@ export function verifyPortalVercelRoot({
   };
 
   checkDirectory(EXPECTED_ROOT, true);
-  const modern = checkDirectory(DEV_SOURCE, targetBranch === "dev");
-  if (modern) {
+  checkDirectory(DEV_SOURCE, true);
+  {
     const legacyTree = treeSha(EXPECTED_ROOT);
     const modernTree = treeSha(DEV_SOURCE);
     if (!/^[0-9a-f]{40}$/.test(legacyTree) || !/^[0-9a-f]{40}$/.test(modernTree) ||
@@ -55,7 +55,7 @@ export function verifyPortalVercelRoot({
       throw Error("Vercel compatibility folder drift: synchronize " + EXPECTED_ROOT + " with " + DEV_SOURCE + " before merging");
   }
   return {project:c.vercel_project, projectId:c.vercel_project_id, rootDirectory:EXPECTED_ROOT,
-    sourceDirectory:modern ? DEV_SOURCE : EXPECTED_ROOT, mirrorVerified:modern, branch:targetBranch};
+    sourceDirectory:["main","staging"].includes(targetBranch) ? EXPECTED_ROOT : DEV_SOURCE, mirrorVerified:true, branch:targetBranch};
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
