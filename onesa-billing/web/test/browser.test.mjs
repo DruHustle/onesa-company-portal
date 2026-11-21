@@ -156,7 +156,7 @@ test('real Chromium billing journey uses only synthetic same-origin APIs', { tim
     let port;
     try { port = await until(async () => {
       const content = await readFile(join(profile, 'DevToolsActivePort'), 'utf8'); return Number(content.split('\n')[0]);
-    }, 'Chromium did not start'); } catch {
+    }, 'Chromium did not start', 30000); } catch {
       throw Error(`Chromium startup failed (exit=${chromium.exitCode}, signal=${chromium.signalCode}): ${chromiumError}`);
     }
     const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json(); observations.browser = version.Browser;
