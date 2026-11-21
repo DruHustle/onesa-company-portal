@@ -1,0 +1,63 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { engineeringSignInError } from "../src/lib/engineering-sign-in-errors.ts";
+
+test("Missing, mismatched or expired browser interactions do not invent clock expiry", () => {
+  for (const action of ["details", "link", "password", "link-verify"] as const) {
+    const value = engineeringSignInError(401, "ENGINEERING_INTERACTION", action);
+    assert.match(value.message, /no longer active in this browser/);
+    assert.match(value.message, /Open your latest email link again/);
+    assert.doesNotMatch(value.message, /has expired/);
+    assert.equal(value.restart, true);
+    assert.equal(value.registration, false);
+  }
+});
+test("Missing password registration uses the server's explicit state", () => {
+  const value = engineeringSignInError(401, "ENGINEERING_REGISTRATION_REQUIRED", "password");
+  assert.match(value.message, /Complete Engineering Docs registration/);
+  assert.equal(value.registration, true);
+  assert.equal(value.restart, false);
+});
+test("Approval pending remains distinct from a password or registration error", () => {
+  const value = engineeringSignInError(403, "ENGINEERING_APPROVAL_PENDING", "password");
+  assert.match(value.message, /awaiting owner approval/);
+  assert.equal(value.registration, false);
+});
+test("Credential failure never invents an unregistered account", () => {
+  const value = engineeringSignInError(401, "CREDENTIALS", "password");
+  assert.match(value.message, /Email or password is incorrect/);
+  assert.equal(value.registration, false);
+});
+test("Invalid or consumed email links have an actionable link-specific message", () => {
+  const value = engineeringSignInError(401, "ACCESS_LINK", "link-verify");
+  assert.match(value.message, /invalid, expired or already used/);
+  assert.equal(value.restart, true);
+});
+test("Rate limits and service failures never masquerade as incorrect credentials", () => {
+  assert.match(engineeringSignInError(429, "RATE_LIMIT", "password").message, /Too many sign-in attempts/);
+  assert.match(engineeringSignInError(503, "BACKEND_UNAVAILABLE", "password").message, /temporarily unavailable/);
+});
+test("Origin/proof failures require a fresh trusted sign-in page", () => {
+  for (const code of ["ORIGIN", "ENGINEERING_PROOF", "ENGINEERING_PROXY", "ENGINEERING_PROTOCOL", "FILE_SIZE"]) {
+    const value = engineeringSignInError(403, code, "password");
+    assert.equal(value.restart, true);
+    assert.match(value.message, /page could not be verified/);
+  }
+});
+test("Shared-account proof and freshness failures never report an incorrect Docs password", () => {
+  for (const code of ["ACCOUNT_REQUIRED", "ONESA_SESSION_REQUIRED", "ONESA_REAUTH_REQUIRED", "ENGINEERING_ACCOUNT_PROOF", "ENGINEERING_ACCOUNT_CONFLICT"]) {
+    for (const action of ["session", "password", "handoff-verify"] as const) {
+      const value = engineeringSignInError(code === "ONESA_SESSION_REQUIRED" ? 401 : 403, code, action);
+      assert.match(value.message, /Onesa account|Onesa again/);
+      assert.doesNotMatch(value.message, /password is incorrect|registration/i);
+      assert.equal(value.restart, code === "ONESA_SESSION_REQUIRED" || code === "ACCOUNT_REQUIRED");
+      assert.equal(value.registration, false);
+    }
+  }
+});
+test("Unexpected backend errors do not copy private error text into the page", () => {
+  const value = engineeringSignInError(400, "synthetic-private-server-detail", "link");
+  assert.equal(value.message.includes("synthetic-private-server-detail"), false);
+  assert.equal(value.restart, true);
+  assert.doesNotThrow(() => engineeringSignInError(400, { toString: null }, "link"));
+});
