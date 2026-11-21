@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {origin, probeIdentity} from "./external_identity_health.mjs";
+import {origin, probeIdentity, isDirectExecution} from "./external_identity_health.mjs";
 
 test("origin is the fixed public account readiness endpoint", () => {
   assert.equal(origin, "https://account.onesa.eu/readyz");
@@ -47,4 +47,11 @@ test("rejects transport failure without printing raw response details", async ()
   const r=await probeIdentity(async()=>{throw Error("secret external host diagnostics");});
   assert.deepEqual(r,{service:"onesa-identity",status:"FAIL",reason:"network_or_timeout"});
   assert.doesNotMatch(JSON.stringify(r),/secret external host diagnostics/);
+});
+
+
+test("probe entrypoint detection cannot silently skip scheduled CLI execution", () => {
+  assert.equal(isDirectExecution(import.meta.url, new URL(import.meta.url).pathname), true);
+  assert.equal(isDirectExecution(import.meta.url, "./unrelated-script.mjs"), false);
+  assert.equal(isDirectExecution(import.meta.url, ""), false);
 });
