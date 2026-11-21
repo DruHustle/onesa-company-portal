@@ -24,7 +24,7 @@ test('Infrastructure observations require Portal administration, retain no-store
  const hosting = Object.fromEntries(allowed.json().services.map((service: {id: string; hosting: string}) => [service.id, service.hosting]));
  assert.match(hosting.robot, /Vercel.*Oracle simulator API.*Turso/);
  assert.match(hosting.farmer, /Cloudflare Tunnel.*Oracle ARM64.*maintenance/);
- assert.match(hosting.drone, /Vercel.*simulation API.*origin host unverified/);
+ assert.match(hosting.drone, /Vercel static frontend.*Oracle simulation API via Cloudflare Tunnel/);
  assert.match(hosting.logistics, /Vercel.*Oracle.*gateway.*two APIs/);
  assert.match(hosting.mobile, /Vercel.*public gateway.*Oracle ARM64.*isolated qualification/);
  assert.match(hosting.factory, /Vercel.*Oracle API and worker.*field gateway/);
