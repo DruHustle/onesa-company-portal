@@ -21,8 +21,13 @@ if [[ -n "$(git status --porcelain -- "$root_dir")" ||
       -n "$(git ls-files --others --exclude-standard -- "$root_dir")" ]]; then
   echo 'Mirror root has local changes; review before synchronizing' >&2; exit 1
 fi
-# Stage ONLY the nominated source frontend path.
-git add -A -- "$source_dir"
+# Never stage source files automatically: an unreviewed .env or other local
+# file must not enter Git history through this helper. Stage intended source
+# changes explicitly before running it.
+if [[ -n "$(git diff --name-only -- "$source_dir")" ||
+      -n "$(git ls-files --others --exclude-standard -- "$source_dir")" ]]; then
+  echo 'Review and git add intended source files before running the sync helper' >&2; exit 1
+fi
 staged_tree=$(git write-tree)
 source_tree=$(git rev-parse "$staged_tree:$source_dir")
 if [[ $(git cat-file -t "$source_tree") != tree ]]; then
