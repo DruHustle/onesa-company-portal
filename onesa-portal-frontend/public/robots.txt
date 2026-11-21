@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Keep administration and backend routes out of crawler discovery.
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://onesa.eu/sitemap.xml
+
+User-agent: facebookexternalhit
+User-agent: Facebot
+Allow: /
+Disallow: /admin
+Disallow: /api/

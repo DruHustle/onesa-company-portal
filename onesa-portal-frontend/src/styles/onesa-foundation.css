@@ -1,0 +1,55 @@
+/* Onesa Design System 1.0.0. Canonical owner: DruHustle/onesa-company-portal.
+ * Consumer copies are pinned by docs/engineering/design-system.consumer.json.
+ * Appearance is exclusively the effective browser/OS preference. */
+:root {
+  color-scheme: light;
+  --onesa-font-body: Arial, Helvetica, sans-serif;
+  --onesa-font-code: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --onesa-space-1: .25rem; --onesa-space-2: .5rem;
+  --onesa-space-3: .75rem; --onesa-space-4: 1rem;
+  --onesa-space-6: 1.5rem; --onesa-space-8: 2rem;
+  --onesa-control-size: 2.75rem;
+  --onesa-radius: .375rem;
+  --onesa-canvas: #ffffff; --onesa-surface: #f5f7fa;
+  --onesa-text: #10263e; --onesa-muted: #56677b;
+  --onesa-border: #6e7d90; --onesa-divider: #dae1e9;
+  --onesa-accent: #2366d1; --onesa-on-accent: #ffffff;
+  --onesa-focus: #2366d1;
+  --onesa-success: #14552d; --onesa-success-surface: #e6f5ec;
+  --onesa-warning: #684110; --onesa-warning-surface: #fff0d6;
+  --onesa-error: #912b2b; --onesa-error-surface: #fceaea;
+  --onesa-info: #1d5275; --onesa-info-surface: #eaf4fa;
+}
+:root[data-onesa-product="ai"] { --onesa-accent: #4f46e5; --onesa-focus: #4f46e5; }
+:root[data-onesa-product="robot"] { --onesa-accent: #0f766e; --onesa-focus: #0f766e; }
+:root[data-onesa-product="docs"] { --onesa-accent: #1d4ed8; --onesa-focus: #1d4ed8; }
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --onesa-canvas: #0b1523; --onesa-surface: #14243a;
+    --onesa-text: #e5edf6; --onesa-muted: #b4c4d6;
+    --onesa-border: #7592ac; --onesa-divider: #557a9e;
+    --onesa-accent: #9bc8ff; --onesa-on-accent: #0b1523;
+    --onesa-focus: #9bc8ff;
+    --onesa-success: #a5e2b7; --onesa-success-surface: #1d392a;
+    --onesa-warning: #ffdf91; --onesa-warning-surface: #382b16;
+    --onesa-error: #ffd1d1; --onesa-error-surface: #392626;
+    --onesa-info: #d6edf9; --onesa-info-surface: #173249;
+  }
+  :root[data-onesa-product="ai"] { --onesa-accent: #c4b5fd; --onesa-focus: #c4b5fd; }
+  :root[data-onesa-product="robot"] { --onesa-accent: #5eead4; --onesa-focus: #5eead4; }
+  :root[data-onesa-product="docs"] { --onesa-accent: #9bc8ff; --onesa-focus: #9bc8ff; }
+}
+:focus-visible { outline: 3px solid var(--onesa-focus); outline-offset: 4px; }
+:is(button, input, textarea, select) { font-family: var(--onesa-font-body); }
+code, pre { font-family: var(--onesa-font-code); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+@media (forced-colors: active) {
+  :focus-visible { outline-color: Highlight; }
+  :is(button, input, textarea, select) { border-color: ButtonText; }
+}
+@media print {
+  :root, :root[data-onesa-product] { color-scheme: light; --onesa-canvas: #fff; --onesa-surface: #fff; --onesa-text: #000; --onesa-muted: #333; --onesa-border: #666; --onesa-divider: #aaa; --onesa-accent: #000; --onesa-on-accent: #fff; }
+}
