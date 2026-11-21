@@ -23,7 +23,7 @@ export const serviceRegistry = [
   { id: "public-documents", name: "Public Documents", hosting: "Vercel static publication", url: "https://docs.onesa.eu", health: "https://docs.onesa.eu/generated/provenance.json", dependencies: ["Approved publication artifact"] },
   { id: "internal-documents", name: "Internal Documents", hosting: "Private document service · production host pending verification", url: "https://docs.internal.onesa.eu", health: "https://docs.internal.onesa.eu/healthz", dependencies: ["Onesa Identity", "private document database and attachments"] },
   { id: "kubernetes", name: "Kubernetes", hosting: "Private k3s cluster on Oracle Onesa UG Backend", url: "https://portal.onesa.eu/engineering", health: null, dependencies: ["qualified VM", "private cluster API", "persistent volumes"] },
-  { id: "portainer", name: "Portainer", hosting: "Private Kubernetes service on Oracle Onesa UG Backend", url: "https://portal.onesa.eu/engineering", health: null, dependencies: ["Kubernetes", "private authenticated management access"] },
+  { id: "portainer", name: "Portainer", hosting: "Private Kubernetes service on Oracle Onesa UG Backend", url: "https://portainer.onesa.eu", health: null, dependencies: ["Kubernetes", "private authenticated management access"] },
 ] as const;
 const serviceId = z.enum(serviceRegistry.map(service => service.id));
 const observation = z.object({
