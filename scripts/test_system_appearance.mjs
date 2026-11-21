@@ -134,3 +134,13 @@ test('canonical title-only generation preserves pixels and rejects changed or mi
     }finally{await rm(fixture,{recursive:true,force:true});}
   });
 });
+
+test('mobile Onesa Account keeps the real Cancel sign-in action clear of Safari toolbar',async()=>{
+  const css=await readFile(new URL('onesa-portal-frontend/src/features/account/account.module.css',root),'utf8');
+  const mobile=css.split('@media(max-width:760px){')[1]?.split('@media(prefers-reduced-motion:reduce)')[0];
+  assert.ok(mobile,'mobile stylesheet breakpoint is required');
+  assert.match(mobile,/padding-bottom:max\(128px,calc\(128px \+ env\(safe-area-inset-bottom,0px\)\)\)/);
+  const account=await readFile(new URL('onesa-portal-frontend/src/features/account/account.tsx',root),'utf8');
+  assert.match(account,/Cancel sign-in/,'retain actual user cancellation control');
+  assert.match(account,/\/cancel/,'retain authorized cancellation endpoint');
+});
