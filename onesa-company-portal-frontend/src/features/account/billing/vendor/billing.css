@@ -1,0 +1,29 @@
+.onesa-billing{max-width:1080px;margin:0 auto;padding:24px clamp(16px,4vw,40px) 64px;color:var(--onesa-text);font-family:var(--onesa-font-body);min-width:0}
+.onesa-billing *{box-sizing:border-box}
+.onesa-billing h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12;letter-spacing:-.045em;margin:0 0 12px}
+.onesa-billing h2{font-size:1.5rem;line-height:1.3;letter-spacing:-.025em;margin:32px 0 18px}
+.onesa-billing h3{font-size:1.1rem;line-height:1.4;letter-spacing:-.015em;margin:0 0 12px}
+.onesa-billing p{line-height:1.65;margin:0 0 14px;overflow-wrap:anywhere}
+.onesa-billing-header{margin-bottom:24px}
+.onesa-billing-muted{color:var(--onesa-muted)}
+.onesa-billing-notice{padding:16px 18px;border:1px solid var(--onesa-divider);border-left:3px solid var(--onesa-accent);border-radius:8px;background:var(--onesa-canvas);margin:18px 0}
+.onesa-billing-notice[hidden]{display:none}
+.onesa-billing-notice[role=alert]{border-left-color:var(--onesa-error)}
+.onesa-billing-toolbar{display:flex;gap:20px;align-items:end;justify-content:space-between;flex-wrap:wrap;margin:24px 0}
+.onesa-billing label{display:grid;gap:8px;margin:0 0 16px;font-size:.9rem;font-weight:600;line-height:1.5}
+.onesa-billing-toolbar label{margin:0;flex:1;max-width:480px}
+.onesa-billing :is(input,select){min-height:48px;border:1px solid var(--onesa-border);border-radius:8px;padding:12px 14px;background:var(--onesa-canvas);color:var(--onesa-text);font:inherit;width:100%;max-width:100%;min-width:0}
+.onesa-billing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.onesa-billing-card{padding:24px;border:1px solid var(--onesa-divider);border-radius:16px;background:var(--onesa-canvas);min-width:0;overflow-wrap:anywhere}
+.onesa-billing-grid .onesa-billing-card{display:flex;flex-direction:column;align-items:stretch}
+.onesa-billing-price{font-size:1.35rem;font-weight:600}
+.onesa-billing-grid label{margin-top:auto}
+.onesa-billing-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:12px 18px;background:var(--onesa-canvas);color:var(--onesa-text);border:1px solid var(--onesa-border);border-radius:8px;font:inherit;font-size:.9rem;line-height:1.4;text-align:center;cursor:pointer;white-space:normal}
+.onesa-billing-primary{background:var(--onesa-accent);color:var(--onesa-on-accent);border-color:var(--onesa-accent)}
+.onesa-billing-button:disabled{opacity:.6;cursor:default}
+.onesa-billing :is(button,input,select,a):focus-visible{outline:3px solid var(--onesa-focus);outline-offset:4px}
+.onesa-billing-history{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.onesa-billing-history .onesa-billing-card{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.onesa-billing-actions{display:flex;gap:12px;flex-wrap:wrap}
+@media(max-width:760px){.onesa-billing-grid{grid-template-columns:minmax(0,1fr)}.onesa-billing-history .onesa-billing-card{display:block}.onesa-billing-actions{margin-top:16px}.onesa-billing-actions>*{flex:1}.onesa-billing-toolbar>*{max-width:100%!important}.onesa-billing-card{padding:20px}}
+@media(forced-colors:active){.onesa-billing-card,.onesa-billing-notice,.onesa-billing-button{border:1px solid CanvasText}.onesa-billing :is(button,input,select,a):focus-visible{outline-color:Highlight}}

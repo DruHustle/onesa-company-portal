@@ -1,0 +1,12 @@
+.card { overflow:hidden; border-radius:20px; min-width:0; }
+.card > picture, .card > :global(.article-media) { margin-bottom:24px; border-radius:12px; }
+.card > picture img { aspect-ratio:16 / 10; }
+.copy { min-width:0; }
+.copy > :first-child { margin-top:0; }
+.copy h2 { text-wrap:balance; }
+.featured { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:40px; align-items:center; }
+.featured > picture, .featured > :global(.article-media) { margin-bottom:0; }
+@media(max-width:760px) {
+ .card { padding:24px; }
+ .featured { grid-template-columns:minmax(0,1fr); gap:24px; }
+}

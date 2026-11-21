@@ -1,0 +1,18 @@
+.directory { margin-block: 0 clamp(3rem, 7vw, 6rem); scroll-margin-top: 6rem; }
+.directory h2 { margin-block: 0 1rem; }
+.directory ul { margin: 0; padding: 0; list-style: none; }
+.row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem 2rem; padding-block: 1rem; border-block-start: 1px solid var(--onesa-divider); }
+.row h3, .row p { margin: 0; }
+.row h3 { font-size: 1.2rem; }
+.row h3 a { display: inline-flex; align-items: center; gap: .45rem; min-height: 44px; overflow-wrap: anywhere; }
+.row p, .badge small { color: var(--onesa-muted); }
+.row p { font-size: .9rem; }
+.platforms { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
+.badge { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; min-width: 8.7rem; max-width: 100%; line-height: 1.3; }
+.badge strong, .badge small { display: block; }
+.badge small { font-size: .85rem; overflow-wrap: anywhere; }
+a.badge { text-decoration: underline; text-underline-offset: .2em; }
+.ios, .android { display: inline-block; width: 1.5rem; height: 1.5rem; flex: none; background-color: currentColor; mask: var(--platform-icon) center / contain no-repeat; }
+.ios { --platform-icon: url('/platforms/apple.svg'); }
+.android { --platform-icon: url('/platforms/android.svg'); }
+@media (forced-colors: active) { .ios, .android { background-color: CanvasText; forced-color-adjust: none; } }
