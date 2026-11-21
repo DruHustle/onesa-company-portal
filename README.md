@@ -97,8 +97,8 @@ flowchart LR
 
 | Directory | Responsibility |
 | --- | --- |
-| `onesa-company-portal-frontend/` | Next.js 16 / React 19, public site and administration |
-| `onesa-company-portal-backend/` | Fastify / TypeScript, APIs, migrations, CMS and worker |
+| `onesa-portal-frontend/` | Next.js 16 / React 19, public site and administration |
+| `onesa-portal-backend/` | Fastify / TypeScript, APIs, migrations, CMS and worker |
 | `infra/` | Deployment, private scanner and operational configuration |
 | `scripts/` | Contracts, local verification and controlled release tooling |
 | `docs/` | Engineering references; restricted evidence is excluded from Git |
@@ -107,8 +107,8 @@ Use Node 24 and a disposable PostgreSQL database for integration tests. Docker i
 for native development and required for container/recovery qualification. Locked installs:
 
 ```sh
-npm --prefix onesa-company-portal-backend ci
-npm --prefix onesa-company-portal-frontend ci
+npm --prefix onesa-portal-backend ci
+npm --prefix onesa-portal-frontend ci
 ```
 
 Copy `.env.example` to an ignored `.env` only when no environment file exists; privately
@@ -118,8 +118,8 @@ setup helper. Full command contexts, prerequisites and side effects are in
 [Build and test](docs/engineering/BUILD_AND_TEST.md).
 
 ```sh
-npm --prefix onesa-company-portal-backend run dev
-npm --prefix onesa-company-portal-frontend run dev
+npm --prefix onesa-portal-backend run dev
+npm --prefix onesa-portal-frontend run dev
 ```
 
 These commands run in separate terminals. The frontend uses port 3300; its server proxy
@@ -127,11 +127,11 @@ uses `BACKEND_URL`. Cloud storage, email and malware scanning require their actu
 configured dependencies; local rendering does not establish hosted operation.
 
 ```sh
-npm --prefix onesa-company-portal-backend run lint
-npm --prefix onesa-company-portal-backend run typecheck
-npm --prefix onesa-company-portal-frontend run lint
-npm --prefix onesa-company-portal-frontend run typecheck
-npm --prefix onesa-company-portal-frontend run build
+npm --prefix onesa-portal-backend run lint
+npm --prefix onesa-portal-backend run typecheck
+npm --prefix onesa-portal-frontend run lint
+npm --prefix onesa-portal-frontend run typecheck
+npm --prefix onesa-portal-frontend run build
 node scripts/test_system_appearance.mjs
 python3 scripts/validate-docs.py
 python3 scripts/repository_hygiene.py

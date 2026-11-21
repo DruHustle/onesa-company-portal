@@ -33,7 +33,7 @@ def write_json(origin, path, token, payload, method):
 
 
 def configuration(portal, worker):
-    root = "onesa-company-portal-backend" if portal else "onesa-ai-platform-backend"
+    root = "onesa-portal-backend" if portal else "onesa-ai-platform-backend"
     command = "node dist/src/jobs/worker.js" if worker else "node dist/src/server.js"
     if not portal:
         command = ""  # Use the verified Dockerfile CMD; no shell-quoted override.

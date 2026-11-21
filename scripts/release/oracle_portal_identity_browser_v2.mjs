@@ -347,7 +347,7 @@ async function observeProduct(context,r,product,principal,seen) {
 
 export async function observeHostedAdministrator(input, launch) {
   const r = validateRequest(input);
-  const browser = await (launch ?? (()=>createRequire(new URL('../../onesa-company-portal-frontend/package.json',import.meta.url))('@playwright/test').chromium.launch({headless:true})))();
+  const browser = await (launch ?? (()=>createRequire(new URL('../../onesa-portal-frontend/package.json',import.meta.url))('@playwright/test').chromium.launch({headless:true})))();
   try {
     const context = await sharedContext(browser,r);
     try {

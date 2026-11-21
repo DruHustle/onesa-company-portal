@@ -132,7 +132,7 @@ def build(
     try:
         with tarfile.open(archive) as source:
             source.extractall(work, filter="data")
-        chat = work / "onesa-company-portal-frontend"
+        chat = work / "onesa-portal-frontend"
         config = work / ".vercel"
         config.mkdir(mode=0o700)
         project = {
@@ -142,7 +142,7 @@ def build(
         # The local CLI sees its product-relative root. The prebuilt archive
         # retains the separately validated provider root and original metadata.
         local_project = {**project, "settings": {**project["settings"],
-                         "rootDirectory": "onesa-company-portal-frontend"}}
+                         "rootDirectory": "onesa-portal-frontend"}}
         r.write(config / "project.json", local_project)
         deployment_project = config / "project.json"
         if binding.get("repository") == r.CANONICAL_REPOSITORY:
@@ -242,7 +242,7 @@ def build(
                 "node",
                 tool_image,
                 "/workspace/scripts/check_tls_bundle.mjs",
-                "/workspace/onesa-company-portal-frontend",
+                "/workspace/onesa-portal-frontend",
                 "/workspace/" + str(output.relative_to(work)),
             ],
             capture_output=True,

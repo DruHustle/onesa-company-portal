@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 const root = process.cwd();
 const ai = path.basename(root) === 'onesa-ai-platform';
-const front = ai ? 'onesa-ai-platform-frontend/apps/chat' : 'onesa-company-portal-frontend';
+const front = ai ? 'onesa-ai-platform-frontend/apps/chat' : 'onesa-portal-frontend';
 const require = createRequire(path.join(root, front, 'package.json'));
 const { chromium } = require('@playwright/test');
 const folder = path.join(root, 'docs/internal/release-audit');

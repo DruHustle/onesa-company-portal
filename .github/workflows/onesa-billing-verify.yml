@@ -5,13 +5,13 @@ name: Company billing verification
     branches: [dev, staging, main]
     paths:
     - onesa-billing/**
-    - onesa-company-portal-frontend/src/styles/onesa-foundation.css
+    - onesa-portal-frontend/src/styles/onesa-foundation.css
     - .github/workflows/onesa-billing-verify.yml
   push:
     branches: [dev, staging, main]
     paths:
     - onesa-billing/**
-    - onesa-company-portal-frontend/src/styles/onesa-foundation.css
+    - onesa-portal-frontend/src/styles/onesa-foundation.css
     - .github/workflows/onesa-billing-verify.yml
   workflow_dispatch: {}
 permissions:

@@ -42,7 +42,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
-    spec_path = ROOT / 'onesa-company-portal-backend/openapi/openapi.json'
+    spec_path = ROOT / 'onesa-portal-backend/openapi/openapi.json'
     baseline = json.loads((ROOT / "docs/api/release-baseline.json").read_text())
     if args.self_test:
         assert not compare(baseline, baseline)

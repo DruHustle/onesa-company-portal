@@ -22,7 +22,7 @@ services:
     cpus: 0.8
   worker:
     image: ${PORTAL_WORKER_IMAGE:-onesa-portal-worker:reviewed}
-    build: ./onesa-company-portal-backend
+    build: ./onesa-portal-backend
     platform: linux/arm64
     command: [node, dist/src/jobs/worker.js]
     stop_grace_period: 180s

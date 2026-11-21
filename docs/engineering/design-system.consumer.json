@@ -1,25 +1,25 @@
 {
   "version": "1.0.0",
   "owner": "DruHustle/onesa-portal",
-  "source": "onesa-company-portal-frontend/src/styles/onesa-foundation.css",
+  "source": "onesa-portal-frontend/src/styles/onesa-foundation.css",
   "sha256": "903893a34aab19b3a46cb9543cd7d96d1dbc219c1a69b14678aeceb50eeff7a4",
   "local_artifacts": [
-    "onesa-company-portal-frontend/src/styles/onesa-foundation.css"
+    "onesa-portal-frontend/src/styles/onesa-foundation.css"
   ],
   "guide": "https://docs.internal.onesa.eu/docs/architecture/ONESA_DESIGN_SYSTEM",
   "adoption": "Review the versioned owner artifact, verify SHA256, copy into this repository, test affected consumers, promote dev → staging → main. No sibling imports or mutable runtime dependency.",
   "applications": {
     "version": "1.1.2",
-    "source": "onesa-company-portal-frontend/src/config/onesa-applications.json",
+    "source": "onesa-portal-frontend/src/config/onesa-applications.json",
     "sha256": "e4ce109960f2134078dca0893bf58b0822e41a9020100891dc7ba9178a2b098d",
     "local_artifacts": [
-      "onesa-company-portal-frontend/src/config/onesa-applications.json"
+      "onesa-portal-frontend/src/config/onesa-applications.json"
     ]
   },
   "guide_availability": "Pending verified access on the internal documents host.",
   "identity": {
     "version": "1.0.0",
-    "source": "onesa-company-portal-frontend/public/brand/icons/v1/sources.json",
+    "source": "onesa-portal-frontend/public/brand/icons/v1/sources.json",
     "producer": "scripts/generate_identity_icons.mjs",
     "sourceArtworkSha256": "4dc5ada01211fe5127ab59f33a9e4b19482658ef9878300fa088de4b27e6d7e6",
     "product": "company",
@@ -31,7 +31,7 @@
         "width": 32,
         "height": 32,
         "mime": "image/svg+xml",
-        "path": "onesa-company-portal-frontend/public/brand/icons/v1/onesa-company.svg"
+        "path": "onesa-portal-frontend/public/brand/icons/v1/onesa-company.svg"
       },
       {
         "name": "onesa-company-16.png",
@@ -40,7 +40,7 @@
         "width": 16,
         "height": 16,
         "mime": "image/png",
-        "path": "onesa-company-portal-frontend/public/brand/icons/v1/onesa-company-16.png"
+        "path": "onesa-portal-frontend/public/brand/icons/v1/onesa-company-16.png"
       },
       {
         "name": "onesa-company-32.png",
@@ -49,7 +49,7 @@
         "width": 32,
         "height": 32,
         "mime": "image/png",
-        "path": "onesa-company-portal-frontend/public/brand/icons/v1/onesa-company-32.png"
+        "path": "onesa-portal-frontend/public/brand/icons/v1/onesa-company-32.png"
       },
       {
         "name": "onesa-company-64.png",
@@ -58,7 +58,7 @@
         "width": 64,
         "height": 64,
         "mime": "image/png",
-        "path": "onesa-company-portal-frontend/public/brand/icons/v1/onesa-company-64.png"
+        "path": "onesa-portal-frontend/public/brand/icons/v1/onesa-company-64.png"
       },
       {
         "name": "onesa-company.ico",
@@ -67,7 +67,7 @@
         "width": null,
         "height": null,
         "mime": "image/vnd.microsoft.icon",
-        "path": "onesa-company-portal-frontend/public/brand/icons/v1/onesa-company.ico"
+        "path": "onesa-portal-frontend/public/brand/icons/v1/onesa-company.ico"
       },
       {
         "name": "onesa-company-180.png",
@@ -76,7 +76,7 @@
         "width": 180,
         "height": 180,
         "mime": "image/png",
-        "path": "onesa-company-portal-frontend/public/brand/icons/v1/onesa-company-180.png"
+        "path": "onesa-portal-frontend/public/brand/icons/v1/onesa-company-180.png"
       }
     ]
   }

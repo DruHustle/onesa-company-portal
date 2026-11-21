@@ -117,7 +117,7 @@ def install(sha):
     # Never rerun it over established production operations as an upgrade.
     run("sudo test ! -e /etc/onesa/operations.json", timeout=20)
     runtime = json.loads((PRIVATE / "deployment.json").read_text())["commit"]
-    for folder in ["onesa-company-portal-backend", "infra/oracle/clamav"]:
+    for folder in ["onesa-portal-backend", "infra/oracle/clamav"]:
         trees = [
             subprocess.check_output(
                 ["git", "rev-parse", c + ":" + folder], cwd=worker.ROOT

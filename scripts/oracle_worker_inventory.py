@@ -9,7 +9,7 @@ import oracle_worker as worker
 
 
 def names():
-    source = (worker.ROOT / "onesa-company-portal-backend/src/config/env.ts").read_text()
+    source = (worker.ROOT / "onesa-portal-backend/src/config/env.ts").read_text()
     declared = set(re.findall(r"\b([A-Z][A-Z0-9_]+)\s*:", source))
     declared.update(re.findall(r"process\.env\.([A-Z][A-Z0-9_]*)", source))
     # The locked SDK's environment credential adapter supplies these supported names.

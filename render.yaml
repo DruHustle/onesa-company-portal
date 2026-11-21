@@ -8,7 +8,7 @@ services:
     region: frankfurt
     plan: free
     branch: main
-    rootDir: onesa-company-portal-backend
+    rootDir: onesa-portal-backend
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/v1/ready
@@ -43,4 +43,4 @@ services:
       - key: AWS_SECRET_ACCESS_KEY
         sync: false
     buildFilter:
-      paths: [onesa-company-portal-backend/**, render.yaml]
+      paths: [onesa-portal-backend/**, render.yaml]

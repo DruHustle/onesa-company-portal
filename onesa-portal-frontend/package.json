@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test:e2e": "playwright test",
-    "api:generate": "openapi-typescript ../onesa-company-portal-backend/openapi/openapi.json -o src/lib/api/generated/schema.d.ts",
+    "api:generate": "openapi-typescript ../onesa-portal-backend/openapi/openapi.json -o src/lib/api/generated/schema.d.ts",
     "api:check": "python3 ../scripts/check-contracts.py",
     "test:contracts": "python3 ../scripts/test-contract-break.py",
     "test:domains": "node --test unit/domains.test.ts unit/onesa-identity.test.ts unit/engineering-identity.test.ts unit/engineering-sign-in-errors.test.ts unit/account-return.test.ts unit/mobile-apps.test.ts unit/identity-administration.test.ts",

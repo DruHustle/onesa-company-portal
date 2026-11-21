@@ -191,7 +191,7 @@ def source_equivalence(folder, binding, plan):
     )
     _, old = r.source_inventory(archive, baseline)
     _, new = r.source_inventory(folder / "source.tar", binding)
-    prefix = "onesa-company-portal-backend/"
+    prefix = "onesa-portal-backend/"
     changed = {
         name
         for name in old.keys() | new.keys()

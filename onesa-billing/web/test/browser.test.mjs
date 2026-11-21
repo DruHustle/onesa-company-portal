@@ -84,7 +84,7 @@ test('real Chromium billing journey uses only synthetic same-origin APIs', { tim
   const profile = await mkdtemp(join(tmpdir(), 'onesa-billing-chromium-'));
   const assets = new Map();
   for (const name of ['client.mjs', 'mount.mjs', 'money.mjs', 'billing.css']) assets.set('/' + name, await readFile(join(ROOT, name)));
-  assets.set('/foundation.css', await readFile(new URL('../../../onesa-company-portal-frontend/src/styles/onesa-foundation.css', import.meta.url)));
+  assets.set('/foundation.css', await readFile(new URL('../../../onesa-portal-frontend/src/styles/onesa-foundation.css', import.meta.url)));
   const script = `import {mountBilling} from '/mount.mjs';window.fixture={expired:0,navigations:[],navigation:location.search};window.fixture.mount=mountBilling(document.querySelector('#billing'),{csrf:()=>${JSON.stringify(PROOF)},onSessionExpired:()=>{window.fixture.expired++},navigate:url=>{window.fixture.navigations.push(url)}});`;
   const html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
     + '<link rel="stylesheet" href="/foundation.css"><link rel="stylesheet" href="/billing.css"><style>body{margin:0;background:var(--onesa-surface)}</style></head>'
@@ -156,7 +156,7 @@ test('real Chromium billing journey uses only synthetic same-origin APIs', { tim
     let port;
     try { port = await until(async () => {
       const content = await readFile(join(profile, 'DevToolsActivePort'), 'utf8'); return Number(content.split('\n')[0]);
-    }, 'Chromium did not start'); } catch {
+    }, 'Chromium did not start', 30000); } catch {
       throw Error(`Chromium startup failed (exit=${chromium.exitCode}, signal=${chromium.signalCode}): ${chromiumError}`);
     }
     const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json(); observations.browser = version.Browser;

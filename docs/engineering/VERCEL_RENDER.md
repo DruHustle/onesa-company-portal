@@ -15,7 +15,7 @@ organization repositories. Deploy through `.github/workflows/deploy.yml`, dispat
 
 ## Vercel
 
-Create project `onesa-company-portal` with Next.js, Node 24, root directory `onesa-company-portal-frontend`,
+Create project `onesa-company-portal` with Next.js, Node 24, root directory `onesa-portal-frontend`,
 install `npm ci` and build `npm run build`. Configuration is in that root's
 `vercel.json`. For the AI frontend enable inclusion of source outside the project root
 for its shared API client within the frontend directory. Production branch: `main`.

@@ -92,7 +92,7 @@ class SevenClientFrontendTests(unittest.TestCase):
             archive = root / "reviewed.tar"
             whole = snapshot(source, archive, files)
             subtree = subprocess.check_output(["git", "-C", str(source), "rev-parse",
-                                                whole + ":onesa-company-portal-frontend"], text=True).strip()
+                                                whole + ":onesa-portal-frontend"], text=True).strip()
             portal.source_inventory(archive, {"source_tree": whole}, frontend_trees={subtree})
             (source / (prefix+"unexpected.js")).chmod(0o755)
             modified = snapshot(source, archive, files)

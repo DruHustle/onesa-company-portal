@@ -99,28 +99,28 @@ class InstallTests(unittest.TestCase):
             self.put(local, data)
             self.manifest["files"][local] = hashlib.sha256(data).hexdigest()
         for name in [
-            "onesa-company-portal-frontend/package.json",
-            "onesa-company-portal-frontend/package-lock.json",
-            "onesa-company-portal-frontend/vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
+            "onesa-portal-frontend/package.json",
+            "onesa-portal-frontend/package-lock.json",
+            "onesa-portal-frontend/vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
             "scripts/check_tls_bundle.mjs",
         ]:
             files[name] = (repo / name).read_bytes()
         for name in ["src/config/products.ts", "src/components/home-products.tsx"]:
-            files["onesa-company-portal-frontend/" + name] = (
+            files["onesa-portal-frontend/" + name] = (
                 b"// disposable parser fixture only\n"
             )
         if self.component in {"identity", "identity-acceptance"}:
             for name in subprocess.check_output(
-                ["git", "-C", str(repo), "ls-files", "onesa-company-portal-backend"],
+                ["git", "-C", str(repo), "ls-files", "onesa-portal-backend"],
                 text=True,
             ).splitlines():
-                if not name.startswith("onesa-company-portal-backend/migrations/"):
+                if not name.startswith("onesa-portal-backend/migrations/"):
                     files[name] = (repo / name).read_bytes()
             migration_inputs = schema_016_migrations(repo)
             if self.allowed == installer.IDENTITY_V3_ALLOWED:
-                migration_inputs.update({path.name: path.read_bytes() for path in (repo / "onesa-company-portal-backend/migrations").glob("*.sql") if path.name[:3] in {"017", "018", "019"}})
+                migration_inputs.update({path.name: path.read_bytes() for path in (repo / "onesa-portal-backend/migrations").glob("*.sql") if path.name[:3] in {"017", "018", "019"}})
             for name, data in migration_inputs.items():
-                files["onesa-company-portal-backend/migrations/" + name] = data
+                files["onesa-portal-backend/migrations/" + name] = data
         for name, data in files.items():
             path = source_root / name
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -457,7 +457,7 @@ class IdentityInstallTests(InstallTests):
 
     def test_identity_requires_reviewed_source_map_and_explicit_migration_checks(self):
         tool = self.policy["toolchain"]
-        name = "onesa-company-portal-backend/src/identity/routes.ts"
+        name = "onesa-portal-backend/src/identity/routes.ts"
         original = tool["identity_files"][name]
         tool["identity_files"][name] = "0" * 64
         self.seal()
@@ -478,7 +478,7 @@ class IdentityAcceptanceInstallTests(IdentityInstallTests):
     prefix = "portal-identity-acceptance-"
 
     def test_identity_requires_reviewed_source_map_and_explicit_migration_checks(self):
-        name = "onesa-company-portal-backend/src/identity/routes.ts"
+        name = "onesa-portal-backend/src/identity/routes.ts"
         self.policy["toolchain"]["identity_files"].pop(name)
         self.seal()
         with self.assertRaises(verifier.Rejected):

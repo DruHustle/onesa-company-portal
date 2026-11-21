@@ -78,7 +78,7 @@ class Issuer(unittest.TestCase):
 
     def test_enrollment_source_and_immutable_sql(self):
         root = Path(__file__).resolve().parents[2]
-        backend = root / "onesa-company-portal-backend"
+        backend = root / "onesa-portal-backend"
         sources = [*backend.joinpath("src").rglob("*.ts"), *backend.glob("package*.json"), backend / "Dockerfile"]
         migrations = sorted(backend.glob("migrations/*.sql"))
         reviewed = [p for p in migrations if int(p.name[:3]) <= 19]
@@ -87,13 +87,13 @@ class Issuer(unittest.TestCase):
         current = {**files, **{str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
                                for p in migrations}}
         # V3 is a historical release. The managed Portal schema adds migration 020.
-        self.assertIn("onesa-company-portal-backend/migrations/020_managed_portal_login.sql", current)
+        self.assertIn("onesa-portal-backend/migrations/020_managed_portal_login.sql", current)
         with self.assertRaises(runtime.Refused):
             identity.identity_source_files(current, profile=identity.PROFILE_V3)
         self.assertEqual(identity.identity_source_files(files, profile=identity.PROFILE_V3), files)
         with self.assertRaises(runtime.Refused):
             identity.identity_source_files(files, profile=identity.PROFILE_V2)
-        files["onesa-company-portal-backend/migrations/019_engineering_enrollment_accounts.sql"] = "a"*64
+        files["onesa-portal-backend/migrations/019_engineering_enrollment_accounts.sql"] = "a"*64
         with self.assertRaises(runtime.Refused):
             identity.identity_source_files(files, profile=identity.PROFILE_V3)
 

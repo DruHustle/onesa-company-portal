@@ -1,6 +1,6 @@
 # Company portal API
 
-The source contract is `onesa-company-portal-backend/openapi/openapi.json`, generated
+The source contract is `onesa-portal-backend/openapi/openapi.json`, generated
 from Fastify/Zod route schemas. All routes are under `/api/v1`. Public routes expose
 verified company information and approved content; enquiries/applications are subject
 to publication gates. `/api/v1/ready` checks DB access and production role restrictions.

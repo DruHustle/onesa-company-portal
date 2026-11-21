@@ -1,7 +1,7 @@
 name: onesa-company-portal-production
 x-backend: &backend
   image: ${BACKEND_IMAGE:-onesa-portal-backend:local}
-  build: ./onesa-company-portal-backend
+  build: ./onesa-portal-backend
   env_file: ${PORTAL_ENV_FILE:-.env.production}
   environment:
     NODE_ENV: production
@@ -69,7 +69,7 @@ services:
         condition: service_healthy
   frontend:
     image: ${FRONTEND_IMAGE:-onesa-portal-frontend:local}
-    build: ./onesa-company-portal-frontend
+    build: ./onesa-portal-frontend
     env_file: ${PORTAL_ENV_FILE:-.env.production}
     environment:
       NODE_ENV: production

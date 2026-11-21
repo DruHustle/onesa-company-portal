@@ -221,7 +221,7 @@ class HostingInspectionTests(unittest.TestCase):
             "repo": "https://github.com/DruHustle/onesa-portal.git",
             "branch": "staging",
             "type": "web_service",
-            "rootDir": "onesa-company-portal-backend",
+            "rootDir": "onesa-portal-backend",
             "autoDeployTrigger": "off",
             "envVars": [{"value": marker}],
             "serviceDetails": {

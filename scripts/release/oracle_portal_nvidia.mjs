@@ -8,8 +8,8 @@ import AxeBuilder from '@axe-core/playwright';
 import {assertExactOrigin,establishPreviewSession} from './oracle_portal_browser_session.mjs';
 import {CONTRACT,pinnedCatalog,publicReferences,assertDeliveredAsset,readDeliveredModelResponse,TEXT_DIAGNOSTIC_LIMITS,boundedPublicDiagnostic,boundedPublicTextClip,publicTextImage,validatePublicTextRecord,writePublicTextDiagnostics} from './oracle_portal_nvidia_contract.mjs';
 
-const catalogPath=new URL('../../onesa-company-portal-frontend/public/models/nvidia/manifest.json',import.meta.url);
-const licensePath=new URL('../../onesa-company-portal-frontend/public/licenses/three.txt',import.meta.url);
+const catalogPath=new URL('../../onesa-portal-frontend/public/models/nvidia/manifest.json',import.meta.url);
+const licensePath=new URL('../../onesa-portal-frontend/public/licenses/three.txt',import.meta.url);
 const tags=['wcag2a','wcag2aa','wcag21aa','wcag22aa'];
 const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 

@@ -18,7 +18,7 @@ import evidence  # noqa: E402
 INSTANCE = "ocid1.instance.oc1.eu-frankfurt-1.antheljsdhe5tbaceekd4uxnzp5trhvl5miigwg3gk2kyyayue7jp54co6jq"
 HOST = "92.5.170.138"
 PRIVATE = ROOT / "private/oracle/worker"
-PATHS = ["compose.oracle-staging.yaml", "infra/oracle/clamav", "onesa-company-portal-backend", "scripts/release/image_gate.py"]
+PATHS = ["compose.oracle-staging.yaml", "infra/oracle/clamav", "onesa-portal-backend", "scripts/release/image_gate.py"]
 TRIVY = "aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa"
 
 

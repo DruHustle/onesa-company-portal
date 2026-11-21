@@ -138,7 +138,7 @@ def main():
                 b"CREATE TABLE schema_migrations(name text PRIMARY KEY,checksum text NOT NULL);",
             )
             for migration in sorted(
-                (ROOT / "onesa-company-portal-backend/migrations").glob("*.sql")
+                (ROOT / "onesa-portal-backend/migrations").glob("*.sql")
             ):
                 data = migration.read_bytes()
                 query = (

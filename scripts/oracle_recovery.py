@@ -70,7 +70,7 @@ def recover(sha):
         run(
             ["node", "--input-type=module", "-e", source],
             json.dumps(request).encode(),
-            cwd=ops.worker.ROOT / "onesa-company-portal-backend",
+            cwd=ops.worker.ROOT / "onesa-portal-backend",
         )
     )
     ops.worker.require(

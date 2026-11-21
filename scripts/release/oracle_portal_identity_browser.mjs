@@ -517,7 +517,7 @@ async function passwordReset(context, request, fixture, expect) {
 
 export async function observeHostedIdentity(input) {
   const request = validateRequest(input);
-  const load = createRequire(new URL('../../onesa-company-portal-frontend/package.json', import.meta.url));
+  const load = createRequire(new URL('../../onesa-portal-frontend/package.json', import.meta.url));
   const {chromium, expect} = load('@playwright/test');
   const browser = await chromium.launch({headless: true});
   // Fail through finally before the hard process watchdog. Existing per-request

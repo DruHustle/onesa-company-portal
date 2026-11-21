@@ -61,22 +61,22 @@ jobs:
           \  if (!run || run.status !== 'completed' || run.conclusion !== 'success') throw new Error(`${workflow_id} must\
           \ pass for this repair revision`);\n}\n"
     - run: npm ci
-      working-directory: onesa-company-portal-backend
+      working-directory: onesa-portal-backend
     - name: Inspect identified Portal schema and role without revealing credentials
       if: inputs.portal_action == 'inspect-role'
-      working-directory: onesa-company-portal-backend
+      working-directory: onesa-portal-backend
       run: node --import tsx src/services/render-role-repair.ts
     - name: Inspect the owner-confirmed alternate Portal target without changing databases
       if: inputs.portal_action == 'inspect-confirmed-target'
-      working-directory: onesa-company-portal-backend
+      working-directory: onesa-portal-backend
       run: node --import tsx src/services/render-role-repair.ts --inspect-confirmed-target
     - name: Provision and verify a restricted role then save only the API runtime URL
       if: inputs.portal_action == 'repair-role'
-      working-directory: onesa-company-portal-backend
+      working-directory: onesa-portal-backend
       run: node --import tsx src/services/render-role-repair.ts --apply
     - name: Initialize only the confirmed empty database; leave Render runtime untouched
       if: inputs.portal_action == 'initialize-confirmed-target'
-      working-directory: onesa-company-portal-backend
+      working-directory: onesa-portal-backend
       env:
         PORTAL_APP_DB_PASSWORD: ${{ secrets.PORTAL_APP_DB_PASSWORD }}
       run: node --import tsx src/services/render-role-repair.ts --initialize-confirmed-target
@@ -159,9 +159,9 @@ jobs:
             if (!run || run.head_sha !== context.sha || run.head_branch !== 'staging' || run.head_repository.full_name !== context.payload.repository.full_name || run.status !== 'completed' || run.conclusion !== 'success') throw new Error(`${workflow_id} must pass on this exact staging revision`);
           }
     - run: npm ci
-      working-directory: onesa-company-portal-backend
+      working-directory: onesa-portal-backend
     - name: Bind only the existing restricted database login to verified free staging
-      working-directory: onesa-company-portal-backend
+      working-directory: onesa-portal-backend
       env:
         RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
         PORTAL_APP_DB_PASSWORD: ${{ secrets.PORTAL_APP_DB_PASSWORD }}

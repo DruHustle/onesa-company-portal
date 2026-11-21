@@ -70,7 +70,7 @@ def portal(action, config, settings):
             env[key] = settings[key]
     result = subprocess.run(
         ["node", "--import", "tsx", "src/auth/staging-fixtures.ts", action],
-        cwd=ROOT / "onesa-company-portal-backend",
+        cwd=ROOT / "onesa-portal-backend",
         env=env,
         input=json.dumps(config),
         capture_output=True,

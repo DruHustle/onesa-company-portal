@@ -323,7 +323,7 @@ class FrontendScopeTests(unittest.TestCase):
             subprocess.run(
                 ["git", "init", "--quiet", str(source)], check=True, capture_output=True
             )
-            prefix = "onesa-company-portal-frontend/"
+            prefix = "onesa-portal-frontend/"
 
             def put(name, body):
                 p = source / (prefix + name)
@@ -580,7 +580,7 @@ class CredentialFreeBuildTests(unittest.TestCase):
             binding = {"source_sha256": r.sha(folder / "source.tar")}
             settings = {
                 "framework": "nextjs",
-                "rootDirectory": "onesa-company-portal-frontend",
+                "rootDirectory": "onesa-portal-frontend",
                 "nodeVersion": "24.x",
                 "buildCommand": None,
                 "installCommand": None,

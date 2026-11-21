@@ -347,7 +347,7 @@ class SourceScopeTests(unittest.TestCase):
             subprocess.run(
                 ["git", "init", "--quiet", str(source)], check=True, capture_output=True
             )
-            prefix = "onesa-company-portal-backend/"
+            prefix = "onesa-portal-backend/"
 
             def put(name, raw):
                 path = source / (prefix + name)
@@ -386,7 +386,7 @@ class SourceScopeTests(unittest.TestCase):
             put("package.json", json.dumps(package))
             put("package-lock.json", json.dumps(lock))
             for name in ["src/config/products.ts", "src/components/home-products.tsx"]:
-                path = source / "onesa-company-portal-frontend" / name
+                path = source / "onesa-portal-frontend" / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("// unchanged presentation fixture\n")
             old = snapshot("baseline-source.tar")

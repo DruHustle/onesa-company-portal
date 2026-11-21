@@ -35,7 +35,7 @@ assert not any(
 front = ROOT / (
     "onesa-ai-platform-frontend/apps/chat"
     if ROOT.name == "onesa-ai-platform"
-    else "onesa-company-portal-frontend"
+    else "onesa-portal-frontend"
 )
 vercel = json.loads((front / "vercel.json").read_text())
 deployments = vercel["git"]["deploymentEnabled"]

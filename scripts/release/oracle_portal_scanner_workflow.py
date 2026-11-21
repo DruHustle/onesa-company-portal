@@ -164,7 +164,7 @@ def verify_application(binding, plan, folder):
         )
         and build.get("architecture") == "arm64"
         and build.get("dockerfile_sha256")
-        == files["onesa-company-portal-backend/Dockerfile"],
+        == files["onesa-portal-backend/Dockerfile"],
         "SCANNER_WORKFLOW_APPLICATION_BUILD_CHANGED",
     )
     image = json.loads(r.docker("image", "inspect", application["artifact_digest"]))[0]
@@ -204,7 +204,7 @@ def verify_application(binding, plan, folder):
         "SCANNER_WORKFLOW_APPLICATION_SCAN_CHANGED",
     )
     r.image_security(r.read(folder / scan_name), application["artifact_digest"])
-    prefix = "onesa-company-portal-backend/"
+    prefix = "onesa-portal-backend/"
     names = [
         name[len(prefix) :]
         for name in files

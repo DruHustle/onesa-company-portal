@@ -31,8 +31,8 @@ test('shared product navigation uses the pinned applications artifact and curren
   assert.equal(applications.applications.find(product=>product.id==='robot').label,'Onesa Robot');
 });
 test('initial and live appearance require no boot script, timer or persisted override',async()=>{
-  for(const path of ['onesa-company-portal-frontend/src/lib/day-night-boot.ts','onesa-company-portal-frontend/src/components/automatic-day-night.tsx'])await assert.rejects(access(new URL(path,root)));
-  for(const path of ['onesa-company-portal-frontend/src/app/[locale]/layout.tsx','onesa-company-portal-frontend/src/app/admin/layout.tsx']){
+  for(const path of ['onesa-portal-frontend/src/lib/day-night-boot.ts','onesa-portal-frontend/src/components/automatic-day-night.tsx'])await assert.rejects(access(new URL(path,root)));
+  for(const path of ['onesa-portal-frontend/src/app/[locale]/layout.tsx','onesa-portal-frontend/src/app/admin/layout.tsx']){
     const source=await readFile(new URL(path,root),'utf8');
     assert.doesNotMatch(source,/AutomaticDayNight|suppressHydrationWarning|localStorage|setTimeout|getHours/);
     assert.match(source,/data-onesa-product="company"/);
@@ -51,10 +51,11 @@ test('all shared text, product action and status mappings meet ordinary text con
   }
 });
 test('versioned identity assets are square, self-contained and distinct across products',async()=>{
-  const directory='onesa-company-portal-frontend/public/brand/icons/v1/';
+  const directory='onesa-portal-frontend/public/brand/icons/v1/';
   const sources=JSON.parse(await readFile(new URL(directory+'sources.json',root),'utf8'));
   assert.equal(sources.version,'1.0.0');
-  assert.equal(createHash('sha256').update(await readFile(new URL(sources.source,root))).digest('hex'),sources.sourceSha256);
+  assert.equal(sources.source,'onesa-company-portal-frontend/public/brand/onesa-orbit.png','preserve immutable asset provenance while relocating the physical tree');
+  assert.equal(createHash('sha256').update(await readFile(new URL('onesa-portal-frontend/public/brand/onesa-orbit.png',root))).digest('hex'),sources.sourceSha256);
   const icons=[];
   for(const product of sources.products){
     if(product.id==='robot')assert.equal(product.title,'Onesa Robot');
@@ -86,14 +87,14 @@ test('versioned identity assets are square, self-contained and distinct across p
   for(const file of manifest.identity.files)assert.equal(createHash('sha256').update(await readFile(new URL(file.path,root))).digest('hex'),file.sha256);
 });
 test('canonical title-only generation preserves pixels and rejects changed or missing inputs',async(t)=>{
-  const icons='onesa-company-portal-frontend/public/brand/icons/v1/';
+  const icons='onesa-portal-frontend/public/brand/icons/v1/';
   for(const scenario of ['rename','missing','tampered-raster','changed-geometry'])await t.test(scenario,async()=>{
     const fixture=await mkdtemp(join(tmpdir(),'onesa-identity-title-'));
     try{
       await mkdir(join(fixture,'scripts'));
       await cp(new URL('scripts/generate_identity_icons.mjs',root),join(fixture,'scripts/generate_identity_icons.mjs'));
-      await mkdir(join(fixture,'onesa-company-portal-frontend/public/brand'),{recursive:true});
-      await cp(new URL('onesa-company-portal-frontend/public/brand/onesa-orbit.png',root),join(fixture,'onesa-company-portal-frontend/public/brand/onesa-orbit.png'));
+      await mkdir(join(fixture,'onesa-portal-frontend/public/brand'),{recursive:true});
+      await cp(new URL('onesa-portal-frontend/public/brand/onesa-orbit.png',root),join(fixture,'onesa-portal-frontend/public/brand/onesa-orbit.png'));
       await cp(new URL(icons,root),join(fixture,icons),{recursive:true});
       const manifestPath=join(fixture,icons,'sources.json');
       const recorded=JSON.parse(await readFile(manifestPath,'utf8'));

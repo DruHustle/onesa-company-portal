@@ -249,8 +249,8 @@ def frontend_component_scope(binding):
 def frontend_provider_root(binding=None):
     if binding and binding.get("repository") == CANONICAL_REPOSITORY:
         frontend_component_scope(binding)
-        return "onesa-company-portal/onesa-company-portal-frontend"
-    return "onesa-company-portal-frontend"
+        return "onesa-portal/onesa-portal-frontend"
+    return "onesa-portal-frontend"
 
 
 def frontend_source_identity(binding):
@@ -863,7 +863,7 @@ def source_inventory(archive_path, binding, *, frontend_trees=None):
                     b"100755" if member.mode & 0o111 else b"100644",
                     blob,
                 )
-            prefix = "onesa-company-portal-frontend/"
+            prefix = "onesa-portal-frontend/"
             if member.isfile() and member.name.startswith(prefix):
                 rel = member.name[len(prefix) :]
                 if rel in {
@@ -888,7 +888,7 @@ def source_inventory(archive_path, binding, *, frontend_trees=None):
         ).digest()
 
     if frontend_trees is not None:
-        frontend = tree.get("onesa-company-portal-frontend")
+        frontend = tree.get("onesa-portal-frontend")
         require(isinstance(frontend, dict) and git_tree(frontend).hex() in frontend_trees,
                 "FRONTEND_IDENTITY_V2_EXACT_SOURCE_TREE_REQUIRED")
     expected_tree = binding["source_tree"]
@@ -1199,7 +1199,7 @@ IDENTITY_PROFILE_V3 = "frontend-identity-v3"
 REGISTERED_CALLBACK_PROFILES = {IDENTITY_PROFILE_V2, IDENTITY_PROFILE_V3}
 IDENTITY_PROFILES = {IDENTITY_PROFILE, *REGISTERED_CALLBACK_PROFILES}
 REVIEWED_FRONTEND_PROFILES = {NVIDIA_PROFILE, *IDENTITY_PROFILES}
-NVIDIA_PREFIX = "onesa-company-portal-frontend/"
+NVIDIA_PREFIX = "onesa-portal-frontend/"
 NVIDIA_CATALOG = NVIDIA_PREFIX + "public/models/nvidia/manifest.json"
 NVIDIA_LICENSE = NVIDIA_PREFIX + "public/licenses/three.txt"
 NVIDIA_PROXY_CHANGES = (
@@ -1303,9 +1303,9 @@ def probe_source_files(files, selected=PRESENTATION_PROFILE):
         "scripts/release/oracle_vercel_transport_guard.cjs",
         "scripts/check_tls_bundle.mjs",
         "scripts/oracle_backup_store.mjs",
-        "onesa-company-portal-frontend/package.json",
-        "onesa-company-portal-frontend/package-lock.json",
-        "onesa-company-portal-frontend/vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
+        "onesa-portal-frontend/package.json",
+        "onesa-portal-frontend/package-lock.json",
+        "onesa-portal-frontend/vendor/onesa-portal-minimatch-callable-1.0.0.tgz",
     }
     if selected in REVIEWED_FRONTEND_PROFILES:
         names |= {
@@ -1403,7 +1403,7 @@ def source_equivalence(folder, binding, plan):
     )
     _, old = source_inventory(archive, {"source_tree": baseline["source_tree"]})
     _, new = source_inventory(folder / "source.tar", binding)
-    prefix = "onesa-company-portal-frontend/"
+    prefix = "onesa-portal-frontend/"
     changed = {
         name
         for name in old.keys() | new.keys()
