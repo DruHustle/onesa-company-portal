@@ -23,7 +23,7 @@ frontend mirrors before merge.
 - A symbolic link is **not** a valid Vercel Root Directory; actual
   Vercel preview builds confirmed the real-tree approach succeeds.
 
-After making frontend changes, run the safe synchronizer for your branch:
+After editing the authoritative frontend, review and `git add` **only intended source files** first; the helper never stages new source files automatically. Then run the synchronizer for your branch:
 
 ```bash
 # Main / staging source:
