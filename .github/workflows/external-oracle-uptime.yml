@@ -41,6 +41,10 @@ jobs:
           node-version: '24'
       - name: Test bounded external Oracle/Identity readiness classification
         run: node --test scripts/test_external_identity_health.mjs
+      - name: Observe current public Identity readiness (PR diagnostic only)
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        run: node scripts/external_identity_health.mjs
   probe-live:
     if: ${{ github.event.repository.private == false && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
     needs: probe-tests
