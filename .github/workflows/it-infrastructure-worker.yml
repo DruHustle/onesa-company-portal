@@ -1,0 +1,28 @@
+name: IT infrastructure Worker checks
+on:
+  pull_request:
+    paths:
+      - 'infra/monitoring/it-infrastructure-worker.mjs'
+      - 'infra/monitoring/it-infrastructure-worker.test.mjs'
+      - '.github/workflows/it-infrastructure-worker.yml'
+  push:
+    branches: [dev, staging, main]
+    paths:
+      - 'infra/monitoring/it-infrastructure-worker.mjs'
+      - 'infra/monitoring/it-infrastructure-worker.test.mjs'
+      - '.github/workflows/it-infrastructure-worker.yml'
+permissions:
+  contents: read
+jobs:
+  worker-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test Cloudflare Worker fail-closed health classification
+        run: node --test infra/monitoring/it-infrastructure-worker.test.mjs
