@@ -15,13 +15,22 @@ permissions:
   contents: read
 jobs:
   worker-test:
+    if: ${{ github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - name: Verify hosted runner and repository visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+          test "$actual" = "$EXPECTED_PRIVATE" || { echo "Repository visibility changed; rerun verification"; exit 1; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '24'
       - name: Test Cloudflare Worker fail-closed health classification
