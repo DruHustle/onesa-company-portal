@@ -1,0 +1,28 @@
+name: Portal Vercel root contract
+'on':
+  pull_request:
+    branches: [main, staging, dev]
+  push:
+    branches: [main, staging, dev]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: portal-vercel-root-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  verify-root:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Reject invalid aliases, wrong Next.js roots, and unsynced frontend changes
+        run: |
+          node --test scripts/test-portal-vercel-root.mjs
+          node scripts/check-portal-vercel-root.mjs
