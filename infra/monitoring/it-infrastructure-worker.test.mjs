@@ -19,7 +19,7 @@ async function sampleStatus(status) {
 
 test('a homepage HTTP 200 is not a passed application health check', async () => {
   const result = await sampleStatus(200);
-  assert.equal(result.scope, 'edge_http_and_verified_identity_readiness');
+  assert.equal(result.scope, 'edge_http_identity_and_pasofi_capability_preflight');
   assert.ok(Array.isArray(result.services) && result.services.length > 0);
   assert.ok(result.services.filter(x => x.name !== 'Onesa Account').every(x => x.state === 'unknown' && x.status === 200));
   const identity = result.services.find(x => x.name === 'Onesa Account');
@@ -113,4 +113,69 @@ test('static directory is restricted and excludes inactive Render production hos
 test('control methods cannot mutate the directory', async () => {
   const response = await worker.fetch(new Request(base + '/api/status', {method:'POST'}));
   assert.equal(response.status, 405);
+});
+
+test('live disabled PasoFi checkout and network are a critical operational failure, not a healthy homepage', async () => {
+  const original = globalThis.fetch;
+  const observed = [];
+  globalThis.fetch = async url => {
+    observed.push(String(url));
+    if (String(url) === 'https://pasofi.mobile.onesa.eu/api/capabilities') {
+      return Response.json({demo:false,paymentMode:'disabled',paymentCheckout:false,
+        vouchers:false,networkAccess:false});
+    }
+    return new Response('static homepage', {status:200,headers:{'content-type':'text/html'}});
+  };
+  try {
+    const response = await worker.fetch(new Request(base+'/api/status'));
+    assert.equal(response.status,200);
+    const body=await response.json();
+    const pasofi=body.services.find(service=>service.name==='PasoFi');
+    assert.equal(pasofi.state,'bad');
+    assert.equal(pasofi.label,'Customer service disabled');
+    assert.match(pasofi.detail,/cannot serve paying customers/);
+    assert.equal(observed.filter(url=>url.endsWith('/api/capabilities')).length,1);
+    assert.equal(observed.filter(url=>url==='https://pasofi.mobile.onesa.eu').length,0);
+    assert.ok(body.services.filter(s=>s.name!=='PasoFi' && s.name!=='Onesa Account').every(s=>s.state==='unknown'));
+  } finally {globalThis.fetch=original;}
+});
+
+test('payment and RADIUS capability flags never by themselves constitute commercial acceptance', async () => {
+  const original=globalThis.fetch;
+  globalThis.fetch=async url => String(url).endsWith('/api/capabilities')
+    ? Response.json({demo:false,paymentMode:'production',paymentCheckout:true,
+        vouchers:true,networkAccess:true})
+    : new Response('home', {status:200,headers:{'content-type':'text/html'}});
+  try {
+    const result=await (await worker.fetch(new Request(base+'/api/status'))).json();
+    const pasofi=result.services.find(s=>s.name==='PasoFi');
+    assert.equal(pasofi.state,'unknown');
+    assert.equal(pasofi.label,'Commercial readiness unverified');
+    assert.match(pasofi.detail,/RADIUS and guest internet acceptance still required/);
+  } finally {globalThis.fetch=original;}
+});
+
+test('invalid, oversized, redirected and unknown PasoFi capacity responses fail closed without leaking content', async () => {
+  const examples=[
+    () => Response.json({demo:false,paymentMode:'production',paymentCheckout:true,
+       networkAccess:true}),
+    () => Response.json({demo:false,paymentMode:'production',paymentCheckout:'true',
+       vouchers:true,networkAccess:true}),
+    () => new Response('x'.repeat(5000),{status:200,headers:{'content-type':'application/json'}}),
+    () => new Response('<html>Access portal</html>',{status:200,headers:{'content-type':'text/html'}}),
+    () => new Response(null,{status:302,headers:{'Location':'https://auth.onesa.eu/authorize'}}),
+    () => new Response('bad JSON',{status:200,headers:{'content-type':'application/json'}}),
+  ];
+  for(const makeResponse of examples){
+    const original=globalThis.fetch;
+    globalThis.fetch=async url=>String(url).endsWith('/api/capabilities')?makeResponse():
+      new Response('static site',{status:200,headers:{'content-type':'text/html'}});
+    try{
+      const result=await (await worker.fetch(new Request(base+'/api/status'))).json();
+      const pasofi=result.services.find(s=>s.name==='PasoFi');
+      assert.equal(pasofi.state,'unknown','Unverified flags must remain UNKNOWN');
+      assert.ok(!/healthy|ready|operational/i.test(pasofi.label));
+      assert.ok(!JSON.stringify(result).includes('bad JSON'));
+    }finally{globalThis.fetch=original;}
+  }
 });
