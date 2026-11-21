@@ -37,7 +37,7 @@ git diff --cached --stat
 # Review, then commit BOTH frontend paths together.
 ```
 
-The script stages only the explicitly chosen source path, reconstructs
+The script uses only the explicitly staged source path, reconstructs
 the other directory from its already-staged Git tree, and refuses CI
 writes or local changes to the mirror. The CI check refuses missing
 directories, symlink roots, absent Next.js build files, and unequal
