@@ -1,45 +1,55 @@
 # Onesa Portal — Vercel Root Directory contract
 
-The project `onesa-company-portal` (team `druhustles-projects`, ID
-`prj_91TBAfa7ByYzG6Q022gTbzI6iR2m`) must retain the **fixed Vercel Root Directory**
-`onesa-company-portal-frontend`. Vercel uses this path on every linked
-Git commit and cannot dynamically select a different path per branch.
+The Vercel project `onesa-company-portal` (team `druhustles-projects`, ID
+`prj_91TBAfa7ByYzG6Q022gTbzI6iR2m`) uses the **fixed Root Directory**
+`onesa-company-portal-frontend`. Vercel applies one project setting to
+commits from all branches; it does not select a directory per branch.
 
-## Branch transition
+## No missing-root / stale-preview invariant
 
-- `main` and `staging` currently have the original real directory
-  `onesa-company-portal-frontend`.
-- `dev` has the renamed canonical source `onesa-portal-frontend` **and** a
-  second **real Git tree** under `onesa-company-portal-frontend` with
-  byte-identical tracked files. Both paths have the same Git tree SHA.
-- A symbolic link is not an acceptable Vercel Root Directory. The real
-  Git-tree mirror was successfully built in a Vercel preview on 2026-11-21.
+Every supported branch — `main`, `staging`, and `dev` — must contain BOTH
+real Git directories: `onesa-company-portal-frontend` and
+`onesa-portal-frontend`. Their Git tree SHAs must be **identical**.
+This protects against missing-root failures if the project root is
+accidentally changed between either known name, and detects stale
+frontend mirrors before merge.
 
-Until the directory migration is complete across `main` and `staging`,
-keep both tracked paths synchronized on `dev` and its PR branches:
+- `main` and `staging`: edit `onesa-company-portal-frontend` (legacy source),
+  mirror it into `onesa-portal-frontend`.
+- `dev`: edit `onesa-portal-frontend` (current canonical source),
+  mirror it into `onesa-company-portal-frontend`.
+- Git shares the exact same blob/tree objects across both directory names;
+  it does not duplicate stored source file contents.
+- A symbolic link is **not** a valid Vercel Root Directory; actual
+  Vercel preview builds confirmed the real-tree approach succeeds.
+
+After making frontend changes, run the safe synchronizer for your branch:
 
 ```bash
-# After editing the canonical dev frontend:
-bash scripts/sync-portal-vercel-root.sh
+# Main / staging source:
+bash scripts/sync-portal-vercel-root.sh onesa-company-portal-frontend
+# OR dev source:
+bash scripts/sync-portal-vercel-root.sh onesa-portal-frontend
+
 node --test scripts/test-portal-vercel-root.mjs
 node scripts/check-portal-vercel-root.mjs
 git diff --cached --stat
-# Review and commit both directory changes together.
+# Review, then commit BOTH frontend paths together.
 ```
 
-The synchronization script stages the canonical frontend and constructs
-the mirror from **the same Git tree object**, not a second collection of
-independently edited files. It refuses CI writes and dirty alias trees.
+The script stages only the explicitly chosen source path, reconstructs
+the other directory from its already-staged Git tree, and refuses CI
+writes or local changes to the mirror. The CI check refuses missing
+directories, symlink roots, absent Next.js build files, and unequal
+subtree SHAs on EVERY branch.
 
-Every PR targeting `main`, `staging`, or `dev` runs the separate
-`Portal Vercel root contract` workflow. It rejects missing roots,
-symbolic links, non-Next.js project layouts, and mismatched Git tree
-hashes before a PR can be considered release-qualified. The GitHub
-workflow cannot inspect privately scoped Vercel settings without a
-dedicated scoped API credential; the deployed project setting must
-also remain `onesa-company-portal-frontend`.
+`.github/workflows/portal-vercel-root.yml` runs on every push and PR
+targeting `main`, `staging`, or `dev`. It needs no external credentials.
+The Vercel project setting itself should remain
+`onesa-company-portal-frontend`; GitHub CI cannot read that private
+setting without a scoped Vercel API credential.
 
-**Removal plan:** only remove the compatibility tree when all supported
-branches have one canonical directory, live Vercel has been updated to
-that directory, and an exact-SHA preview has passed. Until then,
-do not change the Vercel Root Directory as part of an unrelated PR.
+**Migration cleanup:** remove the second real tree only after all
+supported branches have one canonical frontend directory, the live
+project is configured for that directory, and an exact-SHA preview
+has passed. Never change the Vercel Root Directory in an unrelated PR.
