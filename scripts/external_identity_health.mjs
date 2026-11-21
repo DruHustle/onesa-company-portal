@@ -1,3 +1,5 @@
+import {fileURLToPath} from "node:url";
+import {resolve} from "node:path";
 // Independent public readiness probe. Run only on a trusted GitHub-hosted
 // runner outside the single Oracle VM. No credentials, raw body or secrets.
 // A Portal/Cloudflare sign-in redirect is NOT a successful origin check.
@@ -63,7 +65,11 @@ export async function probeIdentity(fetcher = fetch) {
 
 // The third-party polling environment is not an admin session, and its health
 // state never authorizes product login, billing, rollout or physical operations.
-if (process.argv[1] && import.meta.url === new URL("file://" + process.argv[1]).href) {
+export function isDirectExecution(entry, path = process.argv[1]) {
+  return typeof path === "string" && path.length > 0 &&
+    fileURLToPath(entry) === resolve(path);
+}
+if (isDirectExecution(import.meta.url)) {
   const observations = [];
   for (let attempt = 0; attempt < 2; attempt++) {
     if (attempt) await new Promise(resolve => setTimeout(resolve, 1500));
