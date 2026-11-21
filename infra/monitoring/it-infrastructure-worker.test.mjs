@@ -19,10 +19,54 @@ async function sampleStatus(status) {
 
 test('a homepage HTTP 200 is not a passed application health check', async () => {
   const result = await sampleStatus(200);
-  assert.equal(result.scope, 'edge_http_reachability');
+  assert.equal(result.scope, 'edge_http_and_verified_identity_readiness');
   assert.ok(Array.isArray(result.services) && result.services.length > 0);
-  assert.ok(result.services.every(x => x.state === 'unknown' && x.status === 200));
+  assert.ok(result.services.filter(x => x.name !== 'Onesa Account').every(x => x.state === 'unknown' && x.status === 200));
+  const identity = result.services.find(x => x.name === 'Onesa Account');
+  assert.equal(identity.state, 'bad', 'A contentless HTTP 200 cannot verify /readyz');
   assert.ok(result.services.every(x => !/operational|healthy/i.test(x.label)));
+});
+
+
+test('the verified Identity readiness endpoint alone may display healthy', async () => {
+  const previous = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async url => {
+    calls.push(String(url));
+    if (url === 'https://account.onesa.eu/readyz')
+      return Response.json({service:'onesa-identity',ready:true});
+    return new Response('Home page', {status:200,headers:{'content-type':'text/html'}});
+  };
+  try {
+    const response = await worker.fetch(new Request(base + '/api/status'));
+    const result = await response.json();
+    const identity = result.services.find(x=>x.name==='Onesa Account');
+    assert.equal(identity.state,'ok');
+    assert.equal(identity.label,'Identity ready');
+    assert.ok(result.services.filter(x=>x.name!=='Onesa Account').every(x=>x.state==='unknown'));
+    assert.equal(calls.filter(url=>url.endsWith('/readyz')).length,1);
+  } finally {globalThis.fetch=previous;}
+});
+
+test('malformed, misleading and oversized Identity responses never pass readiness', async () => {
+  const fixtures = [
+    Response.json({service:'onesa-identity',ready:false}),
+    Response.json({service:'other',ready:true}),
+    Response.json({service:'onesa-identity',ready:'true'}),
+    new Response('<html>sign in</html>', {status:200,headers:{'content-type':'text/html'}}),
+    new Response('x'.repeat(5000), {status:200,headers:{'content-type':'application/json'}}),
+    new Response(null, {status:200,headers:{'content-type':'application/json'}}),
+  ];
+  for (const fixture of fixtures) {
+    const previous=globalThis.fetch;
+    globalThis.fetch=async url=> url==='https://account.onesa.eu/readyz' ? fixture : Response.json({service:'other',ready:true});
+    try{
+      const response=await worker.fetch(new Request(base+'/api/status'));
+      const result=await response.json();
+      assert.equal(result.services.find(x=>x.name==='Onesa Account').state,'bad');
+      assert.ok(result.services.filter(x=>x.name!=='Onesa Account').every(x=>x.state==='unknown'));
+    }finally{globalThis.fetch=previous;}
+  }
 });
 
 test('a Cloudflare Access redirect never counts as verified origin health', async () => {
