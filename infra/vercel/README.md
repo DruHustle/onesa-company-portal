@@ -23,7 +23,7 @@ frontend mirrors before merge.
 - A symbolic link is **not** a valid Vercel Root Directory; actual
   Vercel preview builds confirmed the real-tree approach succeeds.
 
-After making frontend changes, run the safe synchronizer for your branch:
+After editing the authoritative frontend, review and `git add` **only intended source files** first; the helper never stages new source files automatically. Then run the synchronizer for your branch:
 
 ```bash
 # Main / staging source:
@@ -37,7 +37,7 @@ git diff --cached --stat
 # Review, then commit BOTH frontend paths together.
 ```
 
-The script stages only the explicitly chosen source path, reconstructs
+The script uses only the explicitly staged source path, reconstructs
 the other directory from its already-staged Git tree, and refuses CI
 writes or local changes to the mirror. The CI check refuses missing
 directories, symlink roots, absent Next.js build files, and unequal
