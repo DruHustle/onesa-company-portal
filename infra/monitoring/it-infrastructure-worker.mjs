@@ -28,7 +28,7 @@ async function verifiedIdentityReadiness(response){
 // functions, but even enabled feature flags NEVER prove paid Internet access.
 // Bound every body; do not accept redirects, HTML, secrets or malformed flags.
 async function verifiedPasofiCapabilities(response){
- if(response.status!==200||!/^application\\/json(?:;|$)/i.test(response.headers.get("content-type")||"")||!response.body)return "unknown";
+ if(response.status!==200||!/^application\/json(?:;|$)/i.test(response.headers.get("content-type")||"")||!response.body)return "unknown";
  const reader=response.body.getReader(),decoder=new TextDecoder("utf-8",{fatal:true});
  let size=0,text="";
  try{
