@@ -1,0 +1,57 @@
+name: External Oracle readiness
+'on':
+  pull_request:
+    branches: [dev, staging, main]
+    paths:
+      - scripts/external_identity_health.mjs
+      - scripts/test_external_identity_health.mjs
+      - .github/workflows/external-oracle-uptime.yml
+  push:
+    branches: [dev, staging, main]
+    paths:
+      - scripts/external_identity_health.mjs
+      - scripts/test_external_identity_health.mjs
+      - .github/workflows/external-oracle-uptime.yml
+  schedule:
+    # Outside the VM; offset from the top of the hour to reduce GitHub load.
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: external-oracle-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  probe-tests:
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify hosted and public repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')" = false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Test bounded external Oracle/Identity readiness classification
+        run: node --test scripts/test_external_identity_health.mjs
+  probe-live:
+    if: ${{ github.event.repository.private == false && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+    needs: probe-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Check Oracle Identity origin readiness without credentials
+        run: node scripts/external_identity_health.mjs
