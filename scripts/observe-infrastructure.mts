@@ -3,7 +3,7 @@ import { mkdir, open, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { type InfrastructureObservation, readInfrastructureSnapshot, serviceRegistry, snapshotSchema } from "../onesa-company-portal-backend/src/operations/infrastructure.js";
+import { type InfrastructureObservation, readInfrastructureSnapshot, serviceRegistry, snapshotSchema } from "../onesa-portal-backend/src/operations/infrastructure.js";
 
 async function readPublicProbe(url: string) {
   const response = await fetch(url, { redirect: "error", cache: "no-store", signal: AbortSignal.timeout(8000), headers: { Accept: "application/json" } });
